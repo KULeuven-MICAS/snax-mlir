@@ -1,18 +1,19 @@
 # Courtesy of Federico Ficarelli
 
-FROM ghcr.io/pulp-platform/snitch_cluster:latest@sha256:9978f9d0e3e6b7ad1b2c1f0eb628a113226e8443bc42ae8b4ddd3f34d9528e96 as builder
+ARG config=target/snitch_cluster/cfg/default.hjson
+
+FROM ghcr.io/pulp-platform/snitch_cluster:latest@sha256:aa0d9a25022d1ef51f451dc667b850e3e8dba4c15d949b51b5cfde10f89defe9 as builder
 
 RUN git clone --recursive https://github.com/kuleuven-micas/snitch_cluster.git /src \
  # verilator model
- && cd /src/target/snitch_cluster \
- && make bin/snitch_cluster.vlt
+ && make CFG_OVERRIDE=$config -C /src/target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)
  # spike-dasm
 RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
  && ./configure --prefix=/opt/snitch-spike \
  && make install 
  # snitch runtime
 RUN cd /src/target/snitch_cluster \
- && make DEBUG=ON sw 
+ && make DEBUG=ON sw  -j$(nproc)
  # clang+llvm+lld
 RUN mkdir -p /opt/snitch-llvm \
  && wget -qO- https://github.com/pulp-platform/llvm-project/releases/download/0.12.0/riscv32-pulp-llvm-ubuntu1804-0.12.0.tar.gz | \
