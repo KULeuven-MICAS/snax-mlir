@@ -4,9 +4,12 @@ ARG config=target/snitch_cluster/cfg/default.hjson
 
 FROM ghcr.io/pulp-platform/snitch_cluster:latest@sha256:aa0d9a25022d1ef51f451dc667b850e3e8dba4c15d949b51b5cfde10f89defe9 as builder
 
-RUN git clone --recursive https://github.com/kuleuven-micas/snitch_cluster.git /src \
+RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
+ && cd /src \
+ && git reset --hard 49adab2090275f5c8dee2b73060f673bff37767b \
+ && git submodule update --init \
  # verilator model
- && make CFG_OVERRIDE=$config -C /src/target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)
+ && make CFG_OVERRIDE=$config -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)
  # spike-dasm
 RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
  && ./configure --prefix=/opt/snitch-spike \
