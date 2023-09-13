@@ -21,7 +21,7 @@ RUN cd /src/target/snitch_cluster \
 RUN mkdir -p /opt/snitch-llvm \
  && wget -qO- https://github.com/pulp-platform/llvm-project/releases/download/0.12.0/riscv32-pulp-llvm-ubuntu1804-0.12.0.tar.gz | \
     tar xz --strip-components=1 -C /opt/snitch-llvm 
- # python 3.11
+#  # python 3.11
  RUN apt update -y \
  && apt install -y \
       build-essential \
@@ -34,6 +34,9 @@ RUN mkdir -p /opt/snitch-llvm \
       libffi-dev \
       libsqlite3-dev \
       wget \
+      libbz2-dev \
+      lzma \
+      liblzma-dev \
       libbz2-dev \
  && mkdir -p /tmp/python-src \
  && wget -qO- https://www.python.org/ftp/python/3.11.5/Python-3.11.5.tgz | \
@@ -71,9 +74,6 @@ RUN apt-get -y update \
       libffi6 \
       libsqlite3-0 \
       bzip2 \
-      lzma \
-      liblzma-dev \
-      libbz2-dev \
  # make pip able to install via git
  && apt-get -y install git \
  # mlir
@@ -94,11 +94,14 @@ deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-16 main\n" >> /etc/apt
  && rm -rf /var/lib/apt/lists/* /var/tmp/* /tmp/*
 
 # install stardew
-RUN export PATH=/opt/python3.11/bin/:$PATH
-RUN cd / \
+RUN export PATH=/opt/python3.11/bin:$PATH \
+ && cd / \
  && git clone https://github.com/Groverkss/stardew.git \
  && pip3 install -r stardew/requirements.txt \
  ## until fixed torch requirements gets accepted upstream
  && pip3 install --pre torch-mlir torchvision -f https://llvm.github.io/torch-mlir/package-index/ --extra-index-url https://download.pytorch.org/whl/nightly/cpu \
  ## && pip install -r stardew/requirements-torch.txt \
- && pip3 install stardew
+ && pip3 install --editable stardew
+
+# add python3.11 to path in bashrc
+RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
