@@ -94,7 +94,7 @@ deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-16 main\n" >> /etc/apt
  && rm -rf /var/lib/apt/lists/* /var/tmp/* /tmp/*
 
 # install stardew
-RUN cd /
+RUN cd / \
  && git clone https://github.com/Groverkss/stardew.git \
  && pip3 install -r stardew/requirements.txt \
  ## until fixed torch requirements gets accepted upstream
