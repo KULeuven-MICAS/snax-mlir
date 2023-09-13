@@ -71,6 +71,9 @@ RUN apt-get -y update \
       libffi6 \
       libsqlite3-0 \
       bzip2 \
+      lzma \
+      liblzma-dev \
+      libbz2-dev \
  # make pip able to install via git
  && apt-get -y install git \
  # mlir
@@ -89,3 +92,12 @@ deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-16 main\n" >> /etc/apt
  && apt-get -y install make \
  #
  && rm -rf /var/lib/apt/lists/* /var/tmp/* /tmp/*
+
+# install stardew
+RUN cd /
+ && git clone https://github.com/Groverkss/stardew.git \
+ && pip3 install -r stardew/requirements.txt \
+ ## until fixed torch requirements gets accepted upstream
+ && pip3 install --pre torch-mlir torchvision -f https://llvm.github.io/torch-mlir/package-index/ --extra-index-url https://download.pytorch.org/whl/nightly/cpu \
+ ## && pip install -r stardew/requirements-torch.txt \
+ && pip3 install stardew
