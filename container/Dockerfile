@@ -94,6 +94,7 @@ deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-16 main\n" >> /etc/apt
  && rm -rf /var/lib/apt/lists/* /var/tmp/* /tmp/*
 
 # install stardew
+RUN export PATH=/opt/python3.11/bin/:$PATH
 RUN cd / \
  && git clone https://github.com/Groverkss/stardew.git \
  && pip3 install -r stardew/requirements.txt \
