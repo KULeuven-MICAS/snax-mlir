@@ -40,3 +40,11 @@ All C code is lowered with the same flow (1):
 
 1. `c code` -> `clang-12` (snitch-specific) -> RISC-V binary -> `ld.lld-12` -> RISC-V executable
 2. `linalg code` -> `mlir-opt-16` (16.0.6) -> `llvm` dialect -> `mlir-translate-16` (16.0.6) -> `llvm` bytecode -> `tollvm12.py` -> `llvm-12` bytecode -> `clang-12` (snitch-specific) -> RISC-V binary -> `ld.lld-12` -> RISC-V executable
+
+Note: We use a `tollvm12.py` script for multiple reasons:
+* Certain ABI information is required to be added, since `mlir-translate-16` does not add this, and otherwise it is not possible to link it with the C runtime libraries provided by snitch.
+* Certain LLVM metadata, introduced by `mlir-translate-16` was only introduced in versions later than LLVM 12, and they would throw an error if they are not removed.
+
+Note: Due to snitch's dependency on a custom LLVM-12 backend (which does not support LLVM opaque pointers) we are stuck with MLIR version 16.
+Opaque pointers were introduced in LLVM 15, and support for typed pointers is removed in LLVM 17. 
+More information is available [here](https://llvm.org/docs/OpaquePointers.html). 
