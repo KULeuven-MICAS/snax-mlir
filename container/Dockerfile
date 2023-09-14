@@ -97,6 +97,7 @@ deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-16 main\n" >> /etc/apt
 RUN export PATH=/opt/python3.11/bin:$PATH \
  && cd / \
  && git clone https://github.com/Groverkss/stardew.git \
+ && git reset --hard a8de904a3253779343c0a50ac5f2b90fd85e2aec \
  && pip3 install -r stardew/requirements.txt \
  ## until fixed torch requirements gets accepted upstream
  && pip3 install --pre torch-mlir torchvision -f https://llvm.github.io/torch-mlir/package-index/ --extra-index-url https://download.pytorch.org/whl/nightly/cpu \
