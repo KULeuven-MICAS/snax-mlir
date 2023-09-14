@@ -17,7 +17,7 @@ jobs:
       image: ghcr.io/kuleuven-micas/snax-mlir:main
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
     - name: Install pytest
       run: |
         python3 -m pip install --upgrade pip
