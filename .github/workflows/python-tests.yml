@@ -21,7 +21,7 @@ jobs:
     - name: Install pytest
       shell: bash
       run: |
-        pip3 pytest
+        pip3 install pytest
     - name: Test with pytest
       shell: bash
       run: |
