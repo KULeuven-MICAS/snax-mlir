@@ -15,7 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/kuleuven-micas/snax-mlir:main
-      volumes: `pwd`:/repo
+      volumes: 
+        - `pwd`:/repo
 
     steps:
     - uses: actions/checkout@v4
