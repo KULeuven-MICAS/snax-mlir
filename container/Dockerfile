@@ -99,11 +99,11 @@ RUN export PATH=/opt/python3.11/bin:$PATH \
  && git clone https://github.com/Groverkss/stardew.git \
  && cd stardew \
  && git reset --hard a8de904a3253779343c0a50ac5f2b90fd85e2aec \
- && pip3 install -r stardew/requirements.txt \
+ && pip3 install -r requirements.txt \
  ## until fixed torch requirements gets accepted upstream
  && pip3 install --pre torch-mlir torchvision -f https://llvm.github.io/torch-mlir/package-index/ --extra-index-url https://download.pytorch.org/whl/nightly/cpu \
- ## && pip install -r stardew/requirements-torch.txt \
- && pip3 install --editable stardew
+ ## && pip install -r requirements-torch.txt \
+ && pip3 install --editable .
 
 # add python3.11 to path in bashrc
 RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
