@@ -1,0 +1,102 @@
+MAKEFILE_RULES_DIRNAME := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# Courtesy of Federico Ficarelli
+
+# NOTE: we are using  absolute paths from the Docker container
+SNITCH_LLVM_PATH = /opt/snitch-llvm
+SNITCH_RTL_PATH = /opt/snitch_cluster
+CC            = $(SNITCH_LLVM_PATH)/bin/riscv32-unknown-elf-clang
+LD            = $(SNITCH_LLVM_PATH)/bin/riscv32-unknown-elf-clang
+AR            = $(SNITCH_LLVM_PATH)/bin/llvm-ar
+RANLIB        = $(SNITCH_LLVM_PATH)/bin/llvm-ranlib
+VLTSIM        = /opt/snitch-rtl/bin/snitch_cluster.vlt
+DASM          = /opt/snitch-spike/bin/spike-dasm
+GENTRACE      = /opt/snitch_cluster/util/trace/gen_trace.py
+MLIROPT       = mlir-opt-16
+MLIRTRANSLATE = mlir-translate-16
+PYTHON        = /opt/python3.11/bin/python3
+
+CFLAGS =
+# Mixing .c and .ll files makes some flags, useful for the former,
+# unused for the latter (e.g. -I)
+CFLAGS += -Wno-unused-command-line-argument
+# Common flags
+CFLAGS += -I$(SNITCH_RTL_PATH)/target/snitch_cluster/sw/runtime/rtl/src
+CFLAGS += -I$(SNITCH_RTL_PATH)/target/snitch_cluster/sw/runtime/common
+CFLAGS += -I$(SNITCH_RTL_PATH)/sw/snRuntime/api
+CFLAGS += -I$(SNITCH_RTL_PATH)/sw/snRuntime/src
+CFLAGS += -I$(SNITCH_RTL_PATH)/sw/snRuntime/src/omp/
+CFLAGS += -I$(SNITCH_RTL_PATH)/sw/snRuntime/api/omp/
+CFLAGS += -I$(SNITCH_RTL_PATH)/sw/math/arch/riscv64/bits/
+CFLAGS += -I$(SNITCH_RTL_PATH)/sw/math/arch/generic
+CFLAGS += -I$(SNITCH_RTL_PATH)/sw/math/src/include
+CFLAGS += -I$(SNITCH_RTL_PATH)/sw/math/src/internal
+CFLAGS += -I$(SNITCH_RTL_PATH)/sw/math/include/bits
+CFLAGS += -I$(SNITCH_RTL_PATH)/sw/math/include
+CFLAGS += -D__DEFINED_uint64_t
+CFLAGS += -menable-experimental-extensions
+CFLAGS += -mcpu=snitch
+CFLAGS += -mabi=ilp32d
+CFLAGS += -mcmodel=medany
+CFLAGS += -ftls-model=local-exec
+CFLAGS += -ffast-math
+CFLAGS += -fno-builtin-printf
+CFLAGS += -fno-common
+CFLAGS += -O3
+
+LDFLAGS =
+LDFLAGS += -fuse-ld=$(SNITCH_LLVM_PATH)/bin/ld.lld
+LDFLAGS += -L$(SNITCH_LLVM_PATH)/lib/clang/12.0.1/lib/
+LDFLAGS += -T$(SNITCH_RTL_PATH)/sw/snRuntime/base.ld
+LDFLAGS += -L$(SNITCH_RTL_PATH)/target/snitch_cluster/sw/runtime/rtl
+LDFLAGS += -L$(SNITCH_RTL_PATH)/target/snitch_cluster/sw/runtime/rtl/build
+LDFLAGS += -nostartfiles
+LDFLAGS += -nostdlib
+LDFLAGS += -lclang_rt.builtins-riscv32
+LDFLAGS += -lc
+LDFLAGS += -lsnRuntime
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+%.ll12: %.ll
+	$(MAKEFILE_RULES_DIRNAME)/tollvm12.py < $< > $@
+
+%.o: %.ll12
+	$(CC) $(CFLAGS) -x ir -c $< -o $@
+
+%.o: %.S
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# MLIR
+
+MLIROPTFLAGS =
+MLIROPTFLAGS += -opaque-pointers=0
+MLIROPTFLAGS += --convert-linalg-to-loops
+MLIROPTFLAGS += --convert-scf-to-cf
+MLIROPTFLAGS += --canonicalize
+MLIROPTFLAGS += --cse
+MLIROPTFLAGS += --convert-math-to-llvm
+MLIROPTFLAGS += --convert-memref-to-llvm='use-generic-functions index-bitwidth=32'
+MLIROPTFLAGS += --convert-func-to-llvm='use-bare-ptr-memref-call-conv index-bitwidth=32'
+MLIROPTFLAGS += --convert-index-to-llvm=index-bitwidth=32
+MLIROPTFLAGS += --convert-cf-to-llvm=index-bitwidth=32
+MLIROPTFLAGS += --convert-arith-to-llvm=index-bitwidth=32
+MLIROPTFLAGS += --reconcile-unrealized-casts
+
+%.ll.mlir: %.mlir
+	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
+
+%.ll: %.ll.mlir
+	$(MLIRTRANSLATE) -opaque-pointers=0 --mlir-to-llvmir -o $@ $<
+
+# Trace rules
+
+%.trace.txt %.trace.json: %.dasm
+	$(DASM) < $< | $(GENTRACE) --permissive -d $*.trace.json > $*.trace.txt
+
+define get_trace_targets
+	$(addsuffix .trace.txt, $(basename $(shell find $(1) -name 'trace_hart_*.dasm')))
+endef
+
+traces: $(call get_trace_targets,.)
