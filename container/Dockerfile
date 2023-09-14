@@ -21,7 +21,7 @@ RUN cd /src/target/snitch_cluster \
 RUN mkdir -p /opt/snitch-llvm \
  && wget -qO- https://github.com/pulp-platform/llvm-project/releases/download/0.12.0/riscv32-pulp-llvm-ubuntu1804-0.12.0.tar.gz | \
     tar xz --strip-components=1 -C /opt/snitch-llvm 
-#  # python 3.11
+ # python 3.11
  RUN apt update -y \
  && apt install -y \
       build-essential \
@@ -105,3 +105,4 @@ RUN export PATH=/opt/python3.11/bin:$PATH \
 
 # add python3.11 to path in bashrc
 RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
+
