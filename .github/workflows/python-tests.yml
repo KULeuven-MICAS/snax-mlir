@@ -16,7 +16,7 @@ jobs:
     container: 
       image: ghcr.io/kuleuven-micas/snax-mlir:main
       volumes: 
-        - `pwd`:/repo
+        - /:/repo
 
     steps:
     - uses: actions/checkout@v4
