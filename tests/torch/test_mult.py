@@ -1,5 +1,6 @@
 from stardew.torch import torch_compiler
 import pytest
+import torch
 
 def test_mult():
     
