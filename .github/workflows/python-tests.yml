@@ -25,4 +25,5 @@ jobs:
     - name: Test with pytest
       shell: bash
       run: |
-        /opt/python3.11/bin/python3 -m pytest snax-mlir
+        /opt/python3.11/bin/python3 -m pytest .
+
