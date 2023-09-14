@@ -15,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/kuleuven-micas/snax-mlir:main
-      volumes: 
-        - /:/repo
 
     steps:
     - uses: actions/checkout@v4
@@ -26,4 +24,4 @@ jobs:
         pip3 pytest
     - name: Test with pytest
       run: |
-        pytest repo/tests
+        pytest snax-mlir/tests
