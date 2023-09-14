@@ -104,6 +104,7 @@ RUN export PATH=/opt/python3.11/bin:$PATH \
  && pip3 install --pre torch-mlir torchvision -f https://llvm.github.io/torch-mlir/package-index/ --extra-index-url https://download.pytorch.org/whl/nightly/cpu \
  ## && pip install -r requirements-torch.txt \
  && pip3 install --editable .
+ && pip3 install pytest
 
 # add python3.11 to path in bashrc
 RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
