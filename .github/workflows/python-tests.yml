@@ -1,0 +1,28 @@
+name: python-tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  python-tests:
+
+    runs-on: ubuntu-latest
+    container: 
+      image: ghcr.io/kuleuven-micas/snax-mlir:main
+      volumes: `pwd`:/repo
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install pytest
+      run: |
+        python3 -m pip install --upgrade pip
+        pip3 pytest
+    - name: Test with pytest
+      run: |
+        pytest repo/tests
