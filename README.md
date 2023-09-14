@@ -5,6 +5,7 @@ Repository for running MLIR compiled stuff on SNAX
 ## Requirements
 
 * [stardew](https://github.com/Groverkss/stardew)
+* pytest
 * numpy
 
 ## Docker Container
@@ -47,4 +48,21 @@ Note: We use a `tollvm12.py` script for multiple reasons:
 
 Note: Due to snitch's dependency on a custom LLVM-12 backend (which does not support LLVM opaque pointers) we are stuck with MLIR version 16.
 Opaque pointers were introduced in LLVM 15, and support for typed pointers is removed in LLVM 17. 
-More information is available [here](https://llvm.org/docs/OpaquePointers.html). 
+More information is available [here](https://llvm.org/docs/OpaquePointers.html).
+
+## Run torch-mlir tests
+
+The folder tests include some examples of translating torch models to mlir using the stardew framework.
+The python3.11 installation in the docker container comes with all the requirements pre-installed and can be run:
+
+```sh
+python3 tests/test_mult.py
+```
+This will output the final MLIR code.
+
+
+All tests can be run using pytest:
+```sh
+pytest tests
+```
+
