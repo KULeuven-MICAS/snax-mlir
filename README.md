@@ -11,23 +11,23 @@ pytorch -> `torch-mlir` -> linalg dialect -> mlir-opt, mlir-translate, clang -> 
 * pytest
 * numpy
 
-## Docker Container
+## Setup with Docker Container
 
 For compiling the low-level kernels you need the snitch compilation toolchain, 
 which is easiest to get through a docker container.
 
 ### Getting the container remotely
 
-You can run your experiments in this repository with:
+You can run tests/experiments in this repository with:
 ```sh
 docker run -itv `pwd`:/repo:z ghcr.io/kuleuven-micas/snax-mlir:main
 ```
 This will download the image if it is not present on your system yet.
 The repository will be available under `/repo`
 
-### Building the container locally
+### Building the container locally (optional)
 
-A Dockerfile for such container is provided here 
+To build the container locally, you can use the following commands:
 ```sh
 cd container
 docker build . -t ghcr.io/kuleuven-micas/snax-mlir:main # optional: --build-arg config=path_to_your_hjson_file.hjson
