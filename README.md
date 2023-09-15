@@ -2,6 +2,9 @@
 
 Repository for running MLIR compiled stuff on SNAX
 
+General flow:
+pytorch -> `torch-mlir` -> linalg dialect -> mlir-opt, mlir-translate, clang -> snax binary
+
 ## Requirements
 
 * [stardew](https://github.com/Groverkss/stardew)
@@ -24,7 +27,30 @@ docker run -itv `pwd`:/repo:z snax-toolchain
 ```
 The repository will be available under `/repo`
 
-## Run Kernels
+
+
+## Pytorch -> Linalg
+
+### Run stardew tests
+
+The folder tests include some examples of translating torch models to mlir using the stardew framework.
+The python3.11 installation in the docker container comes with all the requirements pre-installed and can be run:
+
+```sh
+python3 tests/test_mult.py
+```
+This will output the final MLIR code.
+
+
+All tests can be run using pytest:
+```sh
+pytest tests
+```
+
+
+## Linalg -> Snax
+
+### Run Snax Kernels
 
 Inside the docker container:
 ```sh
@@ -50,19 +76,36 @@ Note: Due to snitch's dependency on a custom LLVM-12 backend (which does not sup
 Opaque pointers were introduced in LLVM 15, and support for typed pointers is removed in LLVM 17. 
 More information is available [here](https://llvm.org/docs/OpaquePointers.html).
 
-## Run torch-mlir tests
+### Inspect traces for snax kernels
 
-The folder tests include some examples of translating torch models to mlir using the stardew framework.
-The python3.11 installation in the docker container comes with all the requirements pre-installed and can be run:
+Tracing tracks individual instructions as they are executed by the RISC-V cores in the snax-cluster.
+Therefore tracing requires running a program with a tracer.
+The default `allrun` recipe in the makefile runs all examples with a tracer.
+To convert the machine-readable traces to human-readable format, use
 
+Inside the docker container:
 ```sh
-python3 tests/test_mult.py
+cd /kernels/simple_mult
+make allrun # If you haven't ran the kernels before
+make traces
 ```
-This will output the final MLIR code.
+Human readable traces are put in a `.logs` directory with the same name as the kernel binary.
+Statistics are computed for each section of the program execution.
 
+Note: In this context a section means a part of the trace as delimited by an `mcycle` instruction.
+E.g. calling `mcycle` in a program once will yield two sections, one before the mcycle instruction and one after.
 
-All tests can be run using pytest:
+### Inspect disassembly for generated binaries
+
+Disassembly is the conversion of the compiled binary to human-readable form.
+In this way you can inspect the program the way it is put into the memory.
 ```sh
-pytest tests
+cd /kernels/simple_mult
+make baseline.o # Make an object file
+/opt/snitch-llvm/bin/llvm-objdump -d baseline.o
 ```
+As you can see, disassembly does not require running the program.
+
+Note: The dissassembly might show multiple "sections". In this context, a section is a unit of information in an ELF-file.
+E.g. the `.text` section will container your program and the `.data` section will contain your static data.
 
