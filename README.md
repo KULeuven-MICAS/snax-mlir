@@ -15,19 +15,27 @@ pytorch -> `torch-mlir` -> linalg dialect -> mlir-opt, mlir-translate, clang -> 
 
 For compiling the low-level kernels you need the snitch compilation toolchain, 
 which is easiest to get through a docker container.
-A Dockerfile for such container is provided here (note that leaving out the `config` `--build-arg` will use the default `snitch_cluster` setup:
+
+### Getting the container remotely
+
+You can run your experiments in this repository with:
 ```sh
-cd container
-docker build . -t snax-toolchain --build-arg config=path_to_your_hjson_file.hjson
-cd ..
+docker run -itv `pwd`:/repo:z ghcr.io/kuleuven-micas/snax-mlir:main
 ```
-Then you can run your experiments in this repository with:
-```sh
-docker run -itv `pwd`:/repo:z snax-toolchain
-```
+This will download the image if it is not present on your system yet.
 The repository will be available under `/repo`
 
+### Building the container locally
 
+A Dockerfile for such container is provided here 
+```sh
+cd container
+docker build . -t ghcr.io/kuleuven-micas/snax-mlir:main # optional: --build-arg config=path_to_your_hjson_file.hjson
+cd ..
+```
+Then you can run the experiments with the above `docker run` command
+
+Note: leaving out the `config` `--build-arg` will use the default `snitch_cluster` setup.
 
 ## Pytorch -> Linalg
 
