@@ -2,29 +2,63 @@
 
 Repository for running MLIR compiled stuff on SNAX
 
+General flow:
+pytorch -> `torch-mlir` -> linalg dialect -> mlir-opt, mlir-translate, clang -> snax binary
+
 ## Requirements
 
 * [stardew](https://github.com/Groverkss/stardew)
 * pytest
 * numpy
 
-## Docker Container
+## Setup with Docker Container
 
 For compiling the low-level kernels you need the snitch compilation toolchain, 
 which is easiest to get through a docker container.
-A Dockerfile for such container is provided here (note that leaving out the `config` `--build-arg` will use the default `snitch_cluster` setup:
+
+### Getting the container remotely
+
+You can run tests/experiments in this repository with:
 ```sh
-cd container
-docker build . -t snax-toolchain --build-arg config=path_to_your_hjson_file.hjson
-cd ..
+docker run -itv `pwd`:/repo:z ghcr.io/kuleuven-micas/snax-mlir:main
 ```
-Then you can run your experiments in this repository with:
-```sh
-docker run -itv `pwd`:/repo:z snax-toolchain
-```
+This will download the image if it is not present on your system yet.
 The repository will be available under `/repo`
 
-## Run Kernels
+### Building the container locally (optional)
+
+To build the container locally, you can use the following commands:
+```sh
+cd container
+docker build . -t ghcr.io/kuleuven-micas/snax-mlir:main # optional: --build-arg config=path_to_your_hjson_file.hjson
+cd ..
+```
+Then you can run the experiments with the above `docker run` command
+
+Note: leaving out the `config` `--build-arg` will use the default `snitch_cluster` setup.
+
+## Pytorch -> Linalg
+
+### Run stardew tests
+
+The folder tests include some examples of translating torch models to mlir using the stardew framework.
+The python3.11 installation in the docker container comes with all the requirements pre-installed and can be run:
+
+```sh
+python3 tests/test_mult.py
+```
+This will output the final MLIR code.
+
+
+All tests can be run using pytest:
+```sh
+pytest tests
+```
+
+
+## Linalg -> Snax
+
+### Run Snax Kernels
 
 Inside the docker container:
 ```sh
@@ -50,19 +84,36 @@ Note: Due to snitch's dependency on a custom LLVM-12 backend (which does not sup
 Opaque pointers were introduced in LLVM 15, and support for typed pointers is removed in LLVM 17. 
 More information is available [here](https://llvm.org/docs/OpaquePointers.html).
 
-## Run torch-mlir tests
+### Inspect traces for snax kernels
 
-The folder tests include some examples of translating torch models to mlir using the stardew framework.
-The python3.11 installation in the docker container comes with all the requirements pre-installed and can be run:
+Tracing tracks individual instructions as they are executed by the RISC-V cores in the snax-cluster.
+Therefore tracing requires running a program with a tracer.
+The default `allrun` recipe in the makefile runs all examples with a tracer.
+To convert the machine-readable traces to human-readable format, use
 
+Inside the docker container:
 ```sh
-python3 tests/test_mult.py
+cd /kernels/simple_mult
+make allrun # If you haven't ran the kernels before
+make traces
 ```
-This will output the final MLIR code.
+Human readable traces are put in a `.logs` directory with the same name as the kernel binary.
+Statistics are computed for each section of the program execution.
 
+Note: In this context a section means a part of the trace as delimited by an `mcycle` instruction.
+E.g. calling `mcycle` in a program once will yield two sections, one before the mcycle instruction and one after.
 
-All tests can be run using pytest:
+### Inspect disassembly for generated binaries
+
+Disassembly is the conversion of the compiled binary to human-readable form.
+In this way you can inspect the program the way it is put into the memory.
 ```sh
-pytest tests
+cd /kernels/simple_mult
+make baseline.o # Make an object file
+/opt/snitch-llvm/bin/llvm-objdump -d baseline.o
 ```
+As you can see, disassembly does not require running the program.
+
+Note: The dissassembly might show multiple "sections". In this context, a section is a unit of information in an ELF-file.
+E.g. the `.text` section will container your program and the `.data` section will contain your static data.
 
