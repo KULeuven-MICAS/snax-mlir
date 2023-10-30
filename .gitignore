@@ -1,1 +1,10 @@
 .env
+.github
+.ruff_cache
+*.logs
+*.o
+*.ll12
+*.ll
+*.x
+data.c
+data.h
