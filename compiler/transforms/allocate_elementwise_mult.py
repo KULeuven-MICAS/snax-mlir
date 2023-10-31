@@ -21,8 +21,6 @@ class AddLibraryCall(RewritePattern):
         #   (3) 1D-shape
         #   (4) type integer
 
-        # print("execute match and rewrite")
-
         if len(op.inputs) != 2:
             return
 
