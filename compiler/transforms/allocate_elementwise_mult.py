@@ -18,9 +18,8 @@ class AddLibraryCall(RewritePattern):
         ## conditions for library call:
         #   (1) 2 operands
         #   (2) both operands of type memref
-        #   (3) both operands of same shape (need to check this?)
-        #   (4) 1D-shape
-        #   (5) type integer
+        #   (3) 1D-shape
+        #   (4) type integer
 
         # print("execute match and rewrite")
 
