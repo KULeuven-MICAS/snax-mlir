@@ -9,3 +9,6 @@
 data.c
 data.h
 __pycache__
+launch.json
+settings.json
+.pyc
