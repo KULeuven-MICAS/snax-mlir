@@ -8,3 +8,4 @@
 *.x
 data.c
 data.h
+__pycache__
