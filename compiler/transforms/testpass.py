@@ -11,17 +11,6 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
-# from xdsl.traits import HasCanonicalisationPatternsTrait
-# from xdsl.transforms.dead_code_elimination import dce
-
-
-class TestRewrite(RewritePattern):
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg_ext.Mul, rewriter: PatternRewriter):
-        pass
-
-        return
-
 
 class AddLibraryCall(RewritePattern):
     @op_type_rewrite_pattern
@@ -60,7 +49,6 @@ class AddFunc(RewritePattern):
             return
 
         rewriter.insert_op_before_matched_op(
-            # test.TestOp.create()
             func.FuncOp.external(
                 op.library_call.data,
                 [x.type for x in op.inputs],
@@ -73,35 +61,21 @@ class AddFunc(RewritePattern):
         return
 
 
-class TestPass(ModulePass):
+class AllocateElementWiseMult(ModulePass):
     """
-    Applies a test pass.
+    This pass detects integer elementwise multiplications, and replaces them with
+    an external function call hwpe_mult.
     """
 
-    name = "test-pass"
+    name = "allocate-elementwise-mult"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
                 [
-                    TestRewrite(),
                     AddLibraryCall(),
                     AddFunc(),
                 ]
             ),
             apply_recursively=False,
         ).rewrite_module(op)
-
-
-# class TestPass2(ModulePass):
-#     name = "test-pass2"
-
-#     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-#         PatternRewriteWalker(
-#             GreedyRewritePatternApplier(
-#                 [
-#                     TestRewrite(),
-#                     AddFunc(),
-#                 ]
-#             )
-#         ).rewrite_module(op)
