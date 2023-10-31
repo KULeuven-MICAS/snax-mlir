@@ -63,13 +63,10 @@ class AddExternalFunc(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, module: builtin.ModuleOp, rewriter: PatternRewriter):
         for op in module.walk():
-            print(op)
             if not isinstance(op, func.Call):
                 continue
             if "snax_hwpe" not in op.callee.string_value():
                 continue
-
-            print("inserting")
 
             rewriter.insert_op_at_end(
                 func.FuncOp.external(
