@@ -37,28 +37,51 @@ class AddLibraryCall(RewritePattern):
             if not isinstance(inp.type.get_element_type(), builtin.IntegerType):
                 return
 
-        op.library_call = builtin.StringAttr("hwpe_mult")
+        op.library_call = builtin.StringAttr("snax_hwpe_mult")
 
         return
 
 
-class AddFunc(RewritePattern):
+class LowerLinalgTofunc(RewritePattern):
+    """
+    Lowers linalg.mul functions marked with a library call to function calls
+    """
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg_ext.Mul, rewriter: PatternRewriter):
         if op.library_call is None:
             return
 
-        rewriter.insert_op_before_matched_op(
-            func.FuncOp.external(
-                op.library_call.data,
-                [x.type for x in op.inputs],
-                [x.type for x in op.outputs],
-            )
-        )
-
         rewriter.replace_matched_op(func.Call(op.library_call.data, op.operands, []))
 
         return
+
+
+class AddExternalFunc(RewritePattern):
+    """
+    Looks for hwpe function calls and adds an external
+    func call to it for LLVM to link in
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, module: builtin.ModuleOp, rewriter: PatternRewriter):
+        for op in module.walk():
+            print(op)
+            if not isinstance(op, func.Call):
+                continue
+            if "snax_hwpe" not in op.callee.string_value():
+                continue
+
+            print("inserting")
+
+            rewriter.insert_op_at_end(
+                func.FuncOp.external(
+                    op.callee.string_value(),
+                    [arg.type for arg in op.arguments],
+                    [res.type for res in op.results],
+                ),
+                module.body.block,
+            )
 
 
 class AllocateElementWiseMult(ModulePass):
@@ -74,8 +97,11 @@ class AllocateElementWiseMult(ModulePass):
             GreedyRewritePatternApplier(
                 [
                     AddLibraryCall(),
-                    AddFunc(),
+                    LowerLinalgTofunc(),
                 ]
             ),
             apply_recursively=False,
         ).rewrite_module(op)
+        PatternRewriteWalker(AddExternalFunc(), apply_recursively=False).rewrite_module(
+            op
+        )
