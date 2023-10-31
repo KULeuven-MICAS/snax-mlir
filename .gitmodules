@@ -1,0 +1,3 @@
+[submodule "xdsl"]
+	path = xdsl
+	url = https://github.com/xdslproject/xdsl
