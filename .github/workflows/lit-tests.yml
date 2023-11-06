@@ -1,4 +1,4 @@
-name: python-tests
+name: lit-tests
 
 on:
   push:
