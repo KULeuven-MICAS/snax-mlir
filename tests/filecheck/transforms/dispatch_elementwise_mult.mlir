@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt %s -p allocate-elementwise-mult --allow-unregistered-dialect --print-op-generic | filecheck %s
+// RUN: ./compiler/snax-opt %s -p dispatch-elementwise-mult --allow-unregistered-dialect --print-op-generic | filecheck %s
 
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> (), "sym_visibility" = "public"}> ({

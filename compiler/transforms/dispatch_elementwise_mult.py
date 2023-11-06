@@ -84,7 +84,7 @@ class DispatchElementWiseMult(ModulePass):
     an external function call hwpe_mult.
     """
 
-    name = "allocate-elementwise-mult"
+    name = "dispatch-elementwise-mult"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
