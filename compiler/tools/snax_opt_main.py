@@ -2,7 +2,7 @@ import argparse
 from xdsl.xdsl_opt_main import xDSLOptMain
 from xdsl.ir import MLContext
 from dialects.linalg_ext import LinalgExt
-from compiler.transforms.dispatch_elementwise_mult import DispatchElementWiseMult
+from transforms.dispatch_elementwise_mult import DispatchElementWiseMult
 from collections.abc import Sequence
 
 
