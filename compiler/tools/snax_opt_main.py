@@ -2,7 +2,7 @@ import argparse
 from xdsl.xdsl_opt_main import xDSLOptMain
 from xdsl.ir import MLContext
 from dialects.linalg_ext import LinalgExt
-from compiler.transforms.dispatch_elementwise_mult import AllocateElementWiseMult
+from compiler.transforms.dispatch_elementwise_mult import DispatchElementWiseMult
 from collections.abc import Sequence
 
 
@@ -24,7 +24,7 @@ class SNAXOptMain(xDSLOptMain):
 
         ## Add custom dialects & passes
         self.ctx.load_dialect(LinalgExt)
-        super().register_pass(AllocateElementWiseMult)
+        super().register_pass(DispatchElementWiseMult)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)

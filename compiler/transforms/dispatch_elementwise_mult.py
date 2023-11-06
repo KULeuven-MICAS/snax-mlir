@@ -39,7 +39,7 @@ class AddLibraryCall(RewritePattern):
         return
 
 
-class LowerLinalgTofunc(RewritePattern):
+class LowerLinalgToFunc(RewritePattern):
     """
     Lowers linalg.mul functions marked with a library call to function calls
     """
@@ -78,7 +78,7 @@ class AddExternalFunc(RewritePattern):
             )
 
 
-class AllocateElementWiseMult(ModulePass):
+class DispatchElementWiseMult(ModulePass):
     """
     This pass detects integer elementwise multiplications, and replaces them with
     an external function call hwpe_mult.
@@ -91,7 +91,7 @@ class AllocateElementWiseMult(ModulePass):
             GreedyRewritePatternApplier(
                 [
                     AddLibraryCall(),
-                    LowerLinalgTofunc(),
+                    LowerLinalgToFunc(),
                 ]
             ),
             apply_recursively=False,
