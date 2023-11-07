@@ -1,1 +1,14 @@
 .env
+.github
+.ruff_cache
+*.logs
+*.o
+*.ll12
+*.ll
+*.x
+data.c
+data.h
+__pycache__
+launch.json
+settings.json
+.pyc
