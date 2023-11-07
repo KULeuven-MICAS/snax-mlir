@@ -69,4 +69,4 @@ class Mul(IRDLOperation):
 
 
 # Extended Linalg Dialect
-LinalgExt = Dialect("linalg_ext", [Mul])
+LinalgExtension = Dialect("linalg_extension", [Mul])

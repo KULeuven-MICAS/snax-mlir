@@ -1,7 +1,7 @@
 from typing import Any
 
 from xdsl.dialects import linalg
-from dialects import linalg_ext
+from dialects import linalg_extension
 from xdsl.interpreter import (
     Interpreter,
     InterpreterFunctions,
@@ -13,7 +13,7 @@ from xdsl.interpreter import (
 
 @register_impls
 class LinalgExtFunctions(InterpreterFunctions):
-    @impl(linalg_ext.Mul)
+    @impl(linalg_extension.Mul)
     def run_mul(
         self, interpreter: Interpreter, op: linalg.Mul, args: tuple[Any, ...]
     ) -> PythonValues:

@@ -1,5 +1,5 @@
 from xdsl.dialects import builtin, func
-from dialects import linalg_ext
+from dialects import linalg_extension
 from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
 from xdsl.dialects.memref import MemRefType
@@ -14,7 +14,7 @@ from xdsl.pattern_rewriter import (
 
 class AddLibraryCall(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg_ext.Mul, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: linalg_extension.Mul, rewriter: PatternRewriter):
         ## conditions for library call:
         #   (1) 2 operands
         #   (2) both operands of type memref
@@ -45,7 +45,7 @@ class LowerLinalgToFunc(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg_ext.Mul, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: linalg_extension.Mul, rewriter: PatternRewriter):
         if op.library_call is None:
             return
 
