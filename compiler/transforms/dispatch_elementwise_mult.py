@@ -10,6 +10,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.traits import SymbolTable
 
 
 class AddLibraryCall(RewritePattern):
@@ -68,14 +69,13 @@ class AddExternalFunc(RewritePattern):
             if "snax_hwpe" not in op.callee.string_value():
                 continue
 
-            rewriter.insert_op_at_end(
-                func.FuncOp.external(
-                    op.callee.string_value(),
-                    [arg.type for arg in op.arguments],
-                    [res.type for res in op.results],
-                ),
-                module.body.block,
+            func_op = func.FuncOp.external(
+                op.callee.string_value(),
+                [arg.type for arg in op.arguments],
+                [res.type for res in op.results],
             )
+
+            SymbolTable.insert_or_update(module, func_op)
 
 
 class DispatchElementWiseMult(ModulePass):
