@@ -1,0 +1,26 @@
+name: lit-tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  python-tests:
+
+    runs-on: ubuntu-latest
+    container: 
+      image: ghcr.io/kuleuven-micas/snax-mlir:pr-9@sha256:f1f626db8f7acf021272fb441165fd8a657622881650202e76dc464012d16491
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test with lit
+      shell: bash
+      run: |
+        export PATH=/opt/python3.11/bin:$PATH
+        /opt/python3.11/bin/lit tests/filecheck -v
+

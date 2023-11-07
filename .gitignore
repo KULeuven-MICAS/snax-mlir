@@ -12,3 +12,4 @@ __pycache__
 launch.json
 settings.json
 .pyc
+.lit*
