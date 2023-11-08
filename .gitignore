@@ -13,3 +13,4 @@ launch.json
 settings.json
 .pyc
 .lit*
+*.egg*
