@@ -1,26 +1,29 @@
-from xdsl.dialects import builtin, func
-from dialects import linalg_extension
+from xdsl.dialects import builtin, linalg, arith
 from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
 from xdsl.dialects.memref import MemRefType
 from xdsl.pattern_rewriter import (
-    GreedyRewritePatternApplier,
     PatternRewriteWalker,
     PatternRewriter,
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.traits import SymbolTable
 
 
 class AddLibraryCall(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg_extension.Mul, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
         ## conditions for library call:
+        #   (0) must not already have library call
         #   (1) 2 operands
         #   (2) both operands of type memref
         #   (3) 1D-shape
         #   (4) type integer
+        #   (5) iterator type also 1D and parallel
+        #   (6) region must be non reducing mult of both inputs
+
+        if op.library_call is not None:
+            return
 
         if len(op.inputs) != 2:
             return
@@ -35,67 +38,46 @@ class AddLibraryCall(RewritePattern):
             if not isinstance(inp.type.get_element_type(), builtin.IntegerType):
                 return
 
+        if len(op.iterator_types) != 1:
+            return
+
+        if op.iterator_types.data[0].data is not linalg.IteratorType.PARALLEL:
+            return
+
+        ## Check if operation is muli
+        ## two operations: first operation is arith.muli, last operation is yield
+
+        mult_op = op.body.block.first_op
+        yield_op = op.body.block.last_op
+
+        # last operation is linalg.yield
+        if not isinstance(yield_op, linalg.YieldOp):
+            return
+        # first operaion is arith.muli
+        if not isinstance(mult_op, arith.Muli):
+            return
+        # yield is result of muli
+        if mult_op.result is not yield_op.arguments[0]:
+            return
+        # muli is based on first two args
+        if not (
+            op.body.block.args[0] in mult_op.operands
+            and op.body.block.args[1] in mult_op.operands
+        ):
+            return
+
         op.library_call = builtin.StringAttr("snax_hwpe_mult")
 
         return
 
 
-class LowerLinalgToFunc(RewritePattern):
-    """
-    Lowers linalg.mul functions marked with a library call to function calls
-    """
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg_extension.Mul, rewriter: PatternRewriter):
-        if op.library_call is None:
-            return
-
-        rewriter.replace_matched_op(func.Call(op.library_call.data, op.operands, []))
-
-        return
-
-
-class AddExternalFunc(RewritePattern):
-    """
-    Looks for hwpe function calls and adds an external
-    func call to it for LLVM to link in
-    """
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, module: builtin.ModuleOp, rewriter: PatternRewriter):
-        for op in module.walk():
-            if not isinstance(op, func.Call):
-                continue
-            if "snax_hwpe" not in op.callee.string_value():
-                continue
-
-            func_op = func.FuncOp.external(
-                op.callee.string_value(),
-                [arg.type for arg in op.arguments],
-                [res.type for res in op.results],
-            )
-
-            SymbolTable.insert_or_update(module, func_op)
-
-
 class DispatchElementWiseMult(ModulePass):
     """
-    This pass detects integer elementwise multiplications, and replaces them with
-    an external function call hwpe_mult.
+    This pass detects integer elementwise multiplications (linalg.mul),
+    and inserts a library call to snax-hwpe.
     """
 
     name = "dispatch-elementwise-mult"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(
-            GreedyRewritePatternApplier(
-                [
-                    AddLibraryCall(),
-                    LowerLinalgToFunc(),
-                ]
-            ),
-            apply_recursively=False,
-        ).rewrite_module(op)
-        PatternRewriteWalker(AddExternalFunc(), apply_recursively=False).rewrite_module(
-            op
-        )
+        PatternRewriteWalker(AddLibraryCall()).rewrite_module(op)
