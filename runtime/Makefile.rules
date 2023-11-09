@@ -14,6 +14,7 @@ DASM          = /opt/snitch-spike/bin/spike-dasm
 GENTRACE      = /opt/snitch_cluster/util/trace/gen_trace.py
 MLIROPT       = mlir-opt-16
 MLIRTRANSLATE = mlir-translate-16
+SNAXOPT 	  = snax-opt
 PYTHON        = /opt/python3.11/bin/python3
 
 CFLAGS =
@@ -68,6 +69,29 @@ LDFLAGS += -lsnRuntime
 %.o: %.S
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# MLIR Preprocessing
+
+MLIRPREPROCFLAGS =
+MLIRPREPROCFLAGS += --linalg-generalize-named-ops
+MLIRPREPROCFLAGS += --mlir-print-op-generic
+MLIRPREPROCFLAGS += --mlir-print-local-scope
+
+%.preproc.mlir: %.mlir
+	$(MLIROPT) $(MLIRPREPROCFLAGS) -o $@ $<
+
+# SNAX opt
+
+SNAXOPTFLAGS = -p dispatch-elementwise-mult,linalg-to-library-call
+
+%.preproc18.mlir: %.preproc.mlir
+	$(MAKEFILE_RULES_DIRNAME)/tomlir18.py < $< > $@
+
+%.snax-opt18.mlir: %.preproc18.mlir
+	$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<
+
+%.snax-opt.mlir: %.snax-opt18.mlir
+	$(MAKEFILE_RULES_DIRNAME)/tomlir16.py < $< > $@
+
 # MLIR
 
 MLIROPTFLAGS =
@@ -84,7 +108,7 @@ MLIROPTFLAGS += --convert-cf-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --convert-arith-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --reconcile-unrealized-casts
 
-%.ll.mlir: %.mlir
+%.ll.mlir: %.snax-opt.mlir
 	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
 
 %.ll: %.ll.mlir

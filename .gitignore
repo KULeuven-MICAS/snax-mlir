@@ -14,3 +14,4 @@ settings.json
 .pyc
 .lit*
 *.egg*
+build

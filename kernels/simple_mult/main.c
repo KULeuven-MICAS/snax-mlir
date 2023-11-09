@@ -6,6 +6,12 @@
 // Kernel provided via external definition
 void simple_mult(int32_t *a, int32_t *b, int32_t *d);
 
+void snax_hwpe_mult(int32_t *a, int32_t *b, int32_t *d) {
+  for (uint32_t i = 0; i < 64; ++i) {
+    d[i] = a[i] * b[i];
+  }
+}
+
 int main() {
   // Allocate shared local memory
   // By avoiding allocators and bumping by a known offset a base pointer
