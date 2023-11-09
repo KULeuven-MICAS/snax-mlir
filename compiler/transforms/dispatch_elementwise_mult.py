@@ -13,6 +13,12 @@ from xdsl.pattern_rewriter import (
 class AddLibraryCall(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
+        """Add a library call to a linalg generic that implements an
+        elementwise multiplication. This is done on linalg.generics as
+        named linalg ops do not support library calls. This makes the task
+        of detecting an elementwise multiplication somewhat harder,
+        but this can be more structured in future work."""
+
         ## conditions for library call:
         #   (0) must not already have library call
         #   (1) 2 operands
@@ -53,7 +59,7 @@ class AddLibraryCall(RewritePattern):
         # last operation is linalg.yield
         if not isinstance(yield_op, linalg.YieldOp):
             return
-        # first operaion is arith.muli
+        # first operation is arith.muli
         if not isinstance(mult_op, arith.Muli):
             return
         # yield is result of muli
