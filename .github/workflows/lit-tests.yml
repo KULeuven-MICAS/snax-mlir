@@ -25,7 +25,7 @@ jobs:
     - name: Export path
       shell: bash
       run: |
-        /export PATH=/opt/python3.11/bin:$PATH
+        export PATH=/opt/python3.11/bin:$PATH
     - name: Test with lit
       shell: bash
       run: |
