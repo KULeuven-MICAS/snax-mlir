@@ -18,6 +18,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install modules
+      shell: bash
+      run: |
+        /opt/python3.11/bin/python3 -m pip install -e .
     - name: Test with lit
       shell: bash
       run: |
