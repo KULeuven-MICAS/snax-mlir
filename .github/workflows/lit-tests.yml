@@ -18,9 +18,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install modules
+      shell: bash
+      run: |
+        /opt/python3.11/bin/python3 -m pip install -e .
+    - name: Export path
+      shell: bash
+      run: |
+        /export PATH=/opt/python3.11/bin:$PATH
     - name: Test with lit
       shell: bash
       run: |
-        export PATH=/opt/python3.11/bin:$PATH
         /opt/python3.11/bin/lit tests/filecheck -v
 
