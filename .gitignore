@@ -1,5 +1,4 @@
 .env
-.github
 .ruff_cache
 *.logs
 *.o

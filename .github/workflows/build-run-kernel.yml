@@ -7,11 +7,14 @@ on:
   pull_request:
 
 jobs:
-  build-and-run-kernels:
+  build-and-run-kernels: 
     runs-on: ubuntu-latest
     container: ghcr.io/kuleuven-micas/snax-mlir:main
     steps:
       - uses: actions/checkout@v3
+      - name: Install snax compiler
+        run: |
+          pip3 install -e .
       - name: Build and run kernel simple mult
         run: make allrun
         working-directory: kernels/simple_mult

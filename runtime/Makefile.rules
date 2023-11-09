@@ -14,7 +14,7 @@ DASM          = /opt/snitch-spike/bin/spike-dasm
 GENTRACE      = /opt/snitch_cluster/util/trace/gen_trace.py
 MLIROPT       = mlir-opt-16
 MLIRTRANSLATE = mlir-translate-16
-SNAXOPT 	  = snax-opt
+SNAXOPT 	  = $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
 PYTHON        = /opt/python3.11/bin/python3
 
 CFLAGS =
