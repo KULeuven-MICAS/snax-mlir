@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  build-and-run-kernels:
+  build-and-run-kernels: 
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/kuleuven-micas/snax-mlir:main
