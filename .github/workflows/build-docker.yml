@@ -36,4 +36,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |-
+            CONFIG=target/snitch_cluster/cfg/snax-mac.hjson
             SNITCH_LLVM_VERSION=latest
