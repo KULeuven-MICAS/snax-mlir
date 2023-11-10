@@ -1,5 +1,4 @@
 .env
-.github
 .ruff_cache
 *.logs
 *.o
@@ -14,3 +13,4 @@ settings.json
 .pyc
 .lit*
 *.egg*
+build
