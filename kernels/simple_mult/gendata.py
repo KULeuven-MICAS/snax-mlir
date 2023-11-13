@@ -42,6 +42,7 @@ if __name__ == "__main__":
         low_bound, high_bound, size=array_size, dtype=np.dtype("int32")
     )
     G = A * B
-    variables = {"A": A, "B": B, "G": G}
+    D = G * 0
+    variables = {"A": A, "B": B, "G": G, "D": D}
     create_header("data.h", array_size, variables)
     create_data("data.c", array_size, variables)
