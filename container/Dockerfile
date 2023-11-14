@@ -1,15 +1,15 @@
 # Courtesy of Federico Ficarelli
 
-ARG config=target/snitch_cluster/cfg/default.hjson
 
 FROM ghcr.io/pulp-platform/snitch_cluster:latest@sha256:aa0d9a25022d1ef51f451dc667b850e3e8dba4c15d949b51b5cfde10f89defe9 as builder
 
+ARG config=cfg/default.hjson
 RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
  && cd /src \
- && git reset --hard 49adab2090275f5c8dee2b73060f673bff37767b \
+ && git reset --hard 56a9660c97dc7424062534a68af8b26a0844fef3 \
  && git submodule update --init \
  # verilator model
- && make CFG_OVERRIDE=$config -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)
+ && echo $config && make CFG_OVERRIDE=$config -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)
  # spike-dasm
 RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
  && ./configure --prefix=/opt/snitch-spike \
@@ -55,6 +55,7 @@ COPY --from=builder /src/util/trace /opt/snitch_cluster/util/trace
 COPY --from=builder /src/sw/snRuntime /opt/snitch_cluster/sw/snRuntime
 COPY --from=builder /src/target/snitch_cluster/sw/runtime/rtl /opt/snitch_cluster/target/snitch_cluster/sw/runtime/rtl
 COPY --from=builder /src/target/snitch_cluster/sw/runtime/common /opt/snitch_cluster/target/snitch_cluster/sw/runtime/common
+COPY --from=builder /src/target/snitch_cluster/sw/snax/ /opt/snitch_cluster/target/snitch_cluster/sw/snax
 COPY --from=builder /src/sw/math/ /opt/snitch_cluster/sw/math/
 # Transitive deps, this stuff must go at some point
 COPY --from=builder /src/sw/deps/riscv-opcodes /opt/snitch_cluster/sw/deps/riscv-opcodes
