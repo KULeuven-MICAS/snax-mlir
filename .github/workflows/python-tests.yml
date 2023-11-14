@@ -14,7 +14,7 @@ jobs:
 
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/kuleuven-micas/snax-mlir:main
+      image: ghcr.io/kuleuven-micas/snax-mlir:pr-13
 
     steps:
     - uses: actions/checkout@v3
