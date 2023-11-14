@@ -8,10 +8,10 @@
 void simple_mult(int32_t *a, int32_t *b, int32_t *d);
 
 void snax_hwpe_mult(int32_t *a, int32_t *b, int32_t *d) {
-    // shape of data is statically defined in data.h
-    snax_mac_setup_simple_mult(a, b, d, N);
-    snax_mac_launch();
-    snax_mac_sw_barrier();
+  // shape of data is statically defined in data.h
+  snax_mac_setup_simple_mult(a, b, d, N);
+  snax_mac_launch();
+  snax_mac_sw_barrier();
 }
 
 int main() {
