@@ -11,8 +11,6 @@ void _mlir_ciface_simple_mult(OneDMemrefI32_t *a, OneDMemrefI32_t *b,
 
 void _mlir_ciface_snax_hwpe_mult(OneDMemrefI32_t *a, OneDMemrefI32_t *b,
                                  OneDMemrefI32_t *d) {
-  // shape of data is statically defined in data.h
-  // printf("%x\n", *((uint32_t*)a->shape[0]));
   snax_mac_setup_simple_mult(a->aligned_data, b->aligned_data, d->aligned_data,
                              a->shape[0]);
   snax_mac_launch();
@@ -53,10 +51,6 @@ int main() {
       .shape[0] = &constant_size,
       .stride[0] = &constant_zero,
   };
-
-  // int32_t *local_A = (int32_t *)snrt_l1_next();
-  // int32_t *local_B = local_A + N;
-  // int32_t *local_D = local_B + N;
 
   // Copy data in shared local memory
   if (snrt_is_dm_core()) {
