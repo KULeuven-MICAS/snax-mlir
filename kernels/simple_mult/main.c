@@ -1,26 +1,16 @@
 #include "data.h"
 #include "mac.h"
+#include "memref.h"
 #include "stdint.h"
 
 #include <snrt.h>
 
-struct OneDMemrefI32 {
-  int32_t *data; // allocated pointer: Pointer to data buffer as allocated,
-                 // only used for deallocating the memref
-  int32_t *aligned_data; // aligned pointer: Pointer to properly aligned data
-                         // that memref indexes
-  uint32_t *offset;
-  uint32_t *shape[1];
-  uint32_t *stride[1];
-};
-
 // Kernel provided via external definition
-void _mlir_ciface_simple_mult(struct OneDMemrefI32 *a, struct OneDMemrefI32 *b,
-                              struct OneDMemrefI32 *d);
+void _mlir_ciface_simple_mult(OneDMemrefI32_t *a, OneDMemrefI32_t *b,
+                              OneDMemrefI32_t *d);
 
-void _mlir_ciface_snax_hwpe_mult(struct OneDMemrefI32 *a,
-                                 struct OneDMemrefI32 *b,
-                                 struct OneDMemrefI32 *d) {
+void _mlir_ciface_snax_hwpe_mult(OneDMemrefI32_t *a, OneDMemrefI32_t *b,
+                                 OneDMemrefI32_t *d) {
   // shape of data is statically defined in data.h
   // printf("%x\n", *((uint32_t*)a->shape[0]));
   snax_mac_setup_simple_mult(a->aligned_data, b->aligned_data, d->aligned_data,
@@ -40,7 +30,7 @@ int main() {
   uint32_t constant_size = N;
   // Allocate memory for the fields
 
-  struct OneDMemrefI32 memrefA = {
+  OneDMemrefI32_t memrefA = {
       .data = (int32_t *)snrt_l1_next(),
       .aligned_data = memrefA.data,
       .offset = &constant_zero,
@@ -48,7 +38,7 @@ int main() {
       .stride[0] = &constant_zero,
   };
 
-  struct OneDMemrefI32 memrefB = {
+  OneDMemrefI32_t memrefB = {
       .data = (int32_t *)memrefA.data + N,
       .aligned_data = memrefB.data,
       .offset = &constant_zero,
@@ -56,7 +46,7 @@ int main() {
       .stride[0] = &constant_zero,
   };
 
-  struct OneDMemrefI32 memrefD = {
+  OneDMemrefI32_t memrefD = {
       .data = (int32_t *)memrefB.data + N,
       .aligned_data = memrefD.data,
       .offset = &constant_zero,
