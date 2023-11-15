@@ -112,6 +112,6 @@ RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
 
 # install latest xdsl and test dependencies
 RUN export PATH=/opt/python3.11/bin:$PATH \
-   && pip3 install git+https://github.com/xdslproject/xdsl.git@182514a06f74f191623199e050cb0bb4d48dac79\
+   && pip3 install git+https://github.com/xdslproject/xdsl.git@4c04de0a16df7c3b29f81aa66a7a2603d6b80f1e\
    && pip3 install filecheck \
    && pip3 install lit
