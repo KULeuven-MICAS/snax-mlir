@@ -3,6 +3,7 @@ from xdsl.ir import MLContext
 from xdsl.ir.core import SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
+    GreedyRewritePatternApplier,
     RewritePattern,
     PatternRewriter,
     op_type_rewrite_pattern,
