@@ -34,6 +34,7 @@ CFLAGS += -I$(SNITCH_RTL_PATH)/sw/math/src/include
 CFLAGS += -I$(SNITCH_RTL_PATH)/sw/math/src/internal
 CFLAGS += -I$(SNITCH_RTL_PATH)/sw/math/include/bits
 CFLAGS += -I$(SNITCH_RTL_PATH)/sw/math/include
+CFLAGS += -I$(SNITCH_RTL_PATH)/target/snitch_cluster/sw/snax/mac/include
 CFLAGS += -D__DEFINED_uint64_t
 CFLAGS += -menable-experimental-extensions
 CFLAGS += -mcpu=snitch
@@ -56,6 +57,7 @@ LDFLAGS += -nostdlib
 LDFLAGS += -lclang_rt.builtins-riscv32
 LDFLAGS += -lc
 LDFLAGS += -lsnRuntime
+LDFLAGS += $(SNITCH_RTL_PATH)/target/snitch_cluster/sw/snax/mac/build/mac.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
