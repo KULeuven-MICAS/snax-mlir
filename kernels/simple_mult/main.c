@@ -60,8 +60,10 @@ int main() {
 
   // Copy data in shared local memory
   if (snrt_is_dm_core()) {
-    snrt_dma_start_1d(memrefA.data, A, N * sizeof(int32_t));
-    snrt_dma_start_1d(memrefB.data, B, N * sizeof(int32_t));
+    snrt_dma_start_1d(memrefA.aligned_data, A,
+                      *(memrefA.shape[0]) * sizeof(int32_t));
+    snrt_dma_start_1d(memrefB.aligned_data, B,
+                      *(memrefB.shape[0]) * sizeof(int32_t));
   }
 
   snrt_cluster_hw_barrier();
@@ -78,7 +80,7 @@ int main() {
   // Correctness check
   int nerr = 0;
   for (int i = 0; i < N; i++) {
-    int32_t error = memrefD.data[i] - G[i];
+    int32_t error = memrefD.aligned_data[i] - G[i];
     if (error != 0)
       nerr += 1;
   }
