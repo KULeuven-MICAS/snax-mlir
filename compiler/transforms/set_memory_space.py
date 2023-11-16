@@ -11,7 +11,7 @@ from xdsl.pattern_rewriter import (
 )
 
 
-class AddMemorySpace(RewritePattern):
+class InitFuncMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: func.FuncOp, rewriter: PatternRewriter):
         """Add a default (0 : i32) memory space to memrefs used in the function
@@ -66,7 +66,7 @@ class AddMemorySpace(RewritePattern):
         rewriter.replace_matched_op(new_op)
 
 
-class LowerMemorySpace(RewritePattern):
+class InitLinalgMemorySpace(RewritePattern):
     """Walk through dispatchable operations (just linalg.Generic for now)
     and change them to use only memrefs in memory space (1 : i32). If they
     currently use a memref in a different memory adress space, insert a
@@ -225,8 +225,8 @@ class SetMemorySpace(ModulePass):
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
                 [
-                    AddMemorySpace(),
-                    LowerMemorySpace(),
+                    InitFuncMemorySpace(),
+                    InitLinalgMemorySpace(),
                 ]
             )
         ).rewrite_module(op)
