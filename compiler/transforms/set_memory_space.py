@@ -3,7 +3,6 @@ from xdsl.ir import MLContext
 from xdsl.ir.core import SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
-    GreedyRewritePatternApplier,
     RewritePattern,
     PatternRewriter,
     op_type_rewrite_pattern,
@@ -222,12 +221,6 @@ class SetMemorySpace(ModulePass):
     name = "set-memory-space"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(
-            GreedyRewritePatternApplier(
-                [
-                    InitFuncMemorySpace(),
-                    InitLinalgMemorySpace(),
-                ]
-            )
-        ).rewrite_module(op)
+        PatternRewriteWalker(InitFuncMemorySpace()).rewrite_module(op)
+        PatternRewriteWalker(InitLinalgMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(RealizeMemorySpaceCasts()).rewrite_module(op)
