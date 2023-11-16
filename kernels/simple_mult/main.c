@@ -36,7 +36,7 @@ int main() {
   // Allocate memory for the fields
 
   OneDMemrefI32_t memrefA = {
-      .data = (int32_t *)snrt_l1_alloc(N * sizeof(int32_t)),
+      .data = (int32_t *)snrt_l1alloc(N * sizeof(int32_t)),
       .aligned_data = memrefA.data,
       .offset = &constant_zero,
       .shape[0] = &constant_size,
@@ -44,7 +44,7 @@ int main() {
   };
 
   OneDMemrefI32_t memrefB = {
-      .data = (int32_t *)snrt_l1_alloc(N * sizeof(int32_t)),
+      .data = (int32_t *)snrt_l1alloc(N * sizeof(int32_t)),
       .aligned_data = memrefB.data,
       .offset = &constant_zero,
       .shape[0] = &constant_size,
@@ -52,7 +52,7 @@ int main() {
   };
 
   OneDMemrefI32_t memrefD = {
-      .data = (int32_t *)snrt_l1_alloc(N * sizeof(int32_t)),
+      .data = (int32_t *)snrt_l1alloc(N * sizeof(int32_t)),
       .aligned_data = memrefD.data,
       .offset = &constant_zero,
       .shape[0] = &constant_size,
