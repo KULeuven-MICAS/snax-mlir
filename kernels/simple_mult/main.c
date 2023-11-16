@@ -73,7 +73,7 @@ int main() {
   (void)snrt_mcycle();
   // section 2 start
 
-  if(!snrt_is_dm_core())
+  if (!snrt_is_dm_core())
     _mlir_ciface_simple_mult(&memrefA, &memrefB, &memrefD);
 
   // section 2 end
