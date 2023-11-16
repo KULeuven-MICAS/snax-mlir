@@ -26,13 +26,7 @@ class AddMemorySpace(RewritePattern):
             [
                 isinstance(x, memref.MemRefType)
                 and isinstance(x.memory_space, builtin.NoneAttr)
-                for x in op.function_type.inputs
-            ]
-        ) or any(
-            [
-                isinstance(x, memref.MemRefType)
-                and isinstance(x.memory_space, builtin.NoneAttr)
-                for x in op.function_type.outputs
+                for x in [*op.function_type.inputs, *op.function_type.outputs]
             ]
         ):
             return
