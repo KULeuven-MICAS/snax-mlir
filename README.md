@@ -90,7 +90,7 @@ graph LR
 2. mlir input
 ```mermaid
 graph LR
-    A[Input MLIR (MLIR-16)] --> B(mlir-opt-16: preprocessing)
+    A[Input MLIR] --> B(mlir-opt-16: preprocessing)
     B --> C(snax-opt)
     C --> D(mlir-opt-16: lowering)
     D --> E(mlir-translate)
