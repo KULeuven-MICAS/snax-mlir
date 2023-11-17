@@ -96,7 +96,7 @@ graph LR
     D --> E(mlir-translate)
     E --> F(clang-12)
     F --> G(lld-12)
-    F --> G[RISC-V Executable]
+    G --> H[RISC-V Executable]
 ```
 
 Note: Due to snitch's dependency on a custom LLVM-12 backend (which does not support LLVM opaque pointers) we are stuck with MLIR version 16.
