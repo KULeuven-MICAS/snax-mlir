@@ -151,12 +151,10 @@ class RealizeMemorySpaceCasts(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.MemorySpaceCast, rewriter: PatternRewriter):
-        # check for invalid memory space cast,
-        # no results => unused, removed by cse
+        # dont rewrite for invalid memory space casts:
+        # if these are still present, dce should remove them later
         if len(op.results) < 1:
             return
-
-        # remove cast, unused op: will be removed by cse
         if len(op.results[0].uses) == 0:
             return
 
@@ -177,7 +175,7 @@ class RealizeMemorySpaceCasts(RewritePattern):
         # input or output, list to visit all uses of allocated memrefs:
         uses = [x.operation for x in op.results[0].uses]
 
-        # insert copy to for first use as input
+        # insert "copy to" for first use as input
         # walk parent op in order to find first use as input
         for use_op in op.parent.walk():
             if use_op not in uses:
@@ -195,7 +193,7 @@ class RealizeMemorySpaceCasts(RewritePattern):
                 rewriter.insert_op_before(copy_op, use_op)
                 break
 
-        # insert copy from for first use as output
+        # insert "copy from" for last use as output
         # walk parent op in reverse order to find last use as output
         for use_op in op.parent.walk_reverse():
             if use_op not in uses:
