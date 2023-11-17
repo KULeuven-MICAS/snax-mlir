@@ -10,6 +10,7 @@ pytorch -> `torch-mlir` -> linalg dialect -> mlir-opt, mlir-translate, clang -> 
 * [stardew](https://github.com/Groverkss/stardew)
 * pytest
 * numpy
+* [xdsl](https://github.com/xdslproject/xdsl)
 
 ## Setup with Docker Container
 
@@ -24,6 +25,12 @@ docker run -itv `pwd`:/repo:z ghcr.io/kuleuven-micas/snax-mlir:main
 ```
 This will download the image if it is not present on your system yet.
 The repository will be available under `/repo`
+
+To use the custom snax-opt compiler across the repo you need to additionaly install it with pip:
+
+```sh
+pip3 install -e /repo
+```
 
 ### Building the container locally (optional)
 
@@ -73,16 +80,35 @@ This will compile `main.c` two different `kernel`s:
 Note that for both kernels, a different lowering path is employed.
 All C code is lowered with the same flow (1):
 
-1. `c code` -> `clang-12` (snitch-specific) -> RISC-V binary -> `ld.lld-12` -> RISC-V executable
-2. `linalg code` -> `mlir-opt-16` (16.0.6) -> `llvm` dialect -> `mlir-translate-16` (16.0.6) -> `llvm` bytecode -> `tollvm12.py` -> `llvm-12` bytecode -> `clang-12` (snitch-specific) -> RISC-V binary -> `ld.lld-12` -> RISC-V executable
-
-Note: We use a `tollvm12.py` script for multiple reasons:
-* Certain ABI information is required to be added, since `mlir-translate-16` does not add this, and otherwise it is not possible to link it with the C runtime libraries provided by snitch.
-* Certain LLVM metadata, introduced by `mlir-translate-16` was only introduced in versions later than LLVM 12, and they would throw an error if they are not removed.
+1. c code input
+```mermaid
+graph LR
+    A[Input C code] --> B(clang-12)
+    B --> C(lld-12)
+    C --> D[RISC-V Executable]
+```
+2. mlir input
+```mermaid
+graph LR
+    A[Input MLIR (MLIR-16)] --> B(mlir-opt-16: preprocessing)
+    B --> C(snax-opt)
+    C --> D(mlir-opt-16: lowering)
+    D --> E(mlir-translate)
+    E --> F(clang-12)
+    F --> G(lld-12)
+    F --> G[RISC-V Executable]
+```
 
 Note: Due to snitch's dependency on a custom LLVM-12 backend (which does not support LLVM opaque pointers) we are stuck with MLIR version 16.
 Opaque pointers were introduced in LLVM 15, and support for typed pointers is removed in LLVM 17. 
 More information is available [here](https://llvm.org/docs/OpaquePointers.html).
+However, we also need to use MLIR version 18, as our custom snax-opt compiler is built upon xDSL, which is based on the latest version of MLIR-18. This results in a combination of llvm versions 12, 16 and 18.
+To enable the conversions, we use a couple of conversion scripts:
+
+* `tollvm12.py` converts the LLVM output from mlir-translate from version LLVM 16 to LLVM 12
+    * Certain LLVM metadata, introduced by `mlir-translate-16` was only introduced in versions later than LLVM 12, and they would throw an error if they are not removed
+* `tomlir16.py` and `tomlir18.py`convert the MLIR code between MLIR 16 and 18, such that we can use our own compiler written based on xDSL.
+    * The main difference between MLIR 16 and 18 is the introduction of MLIR properties, and the difference in spelling of `operandSegmentSizes`
 
 ### Inspect traces for snax kernels
 
