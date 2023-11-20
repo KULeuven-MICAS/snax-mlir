@@ -151,13 +151,6 @@ class RealizeMemorySpaceCasts(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.MemorySpaceCast, rewriter: PatternRewriter):
-        # dont rewrite for invalid memory space casts:
-        # if these are still present, dce should remove them later
-        if len(op.results) < 1:
-            return
-        if len(op.results[0].uses) == 0:
-            return
-
         # check if result is memreftype to make pyright happy
         if not isinstance(op.results[0].type, memref.MemRefType):
             return
