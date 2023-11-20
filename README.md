@@ -102,7 +102,7 @@ graph LR
 Note: Due to snitch's dependency on a custom LLVM-12 backend (which does not support LLVM opaque pointers) we are stuck with MLIR version 16.
 Opaque pointers were introduced in LLVM 15, and support for typed pointers is removed in LLVM 17. 
 More information is available [here](https://llvm.org/docs/OpaquePointers.html).
-However, we also need to use MLIR version 18, as our custom snax-opt compiler is built upon xDSL, which is based on the latest version of MLIR-18. This results in a combination of llvm versions 12, 16 and 18.
+However, we also need to use MLIR version 18, as our custom `snax-opt` compiler is built upon xDSL, which is based on the latest version of MLIR-18. This results in a combination of llvm versions 12, 16 and 18.
 To enable the conversions, we use a couple of conversion scripts:
 
 * `tollvm12.py` converts the LLVM output from mlir-translate from version LLVM 16 to LLVM 12
