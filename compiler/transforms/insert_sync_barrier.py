@@ -17,9 +17,6 @@ class InsertSyncBarrierRewriter(RewritePattern):
 
         ## walk the entire module in order
         for op in module.walk():
-            if len(op.operands) + len(op.results) == 0:
-                continue
-
             ## if the current op must be synced, insert operation and flush buffer
             if op in ops_to_sync:
                 # insert op
