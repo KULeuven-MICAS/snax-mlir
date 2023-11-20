@@ -26,7 +26,7 @@ docker run -itv `pwd`:/repo:z ghcr.io/kuleuven-micas/snax-mlir:main
 This will download the image if it is not present on your system yet.
 The repository will be available under `/repo`
 
-To use the custom snax-opt compiler across the repo you need to additionaly install it with pip:
+To use the custom `snax-opt` compiler across the repo you need to additionaly install it with pip:
 
 ```sh
 pip3 install -e /repo
