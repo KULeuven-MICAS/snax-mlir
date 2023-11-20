@@ -5,6 +5,7 @@ from compiler.dialects.snax import Snax
 from compiler.transforms.dispatch_elementwise_mult import DispatchElementWiseMult
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.set_memory_space import SetMemorySpace
+from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from collections.abc import Sequence
 
 
@@ -29,6 +30,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(DispatchElementWiseMult)
         super().register_pass(LinalgToLibraryCall)
         super().register_pass(SetMemorySpace)
+        super().register_pass(InsertSyncBarrier)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
