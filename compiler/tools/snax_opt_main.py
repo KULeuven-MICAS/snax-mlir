@@ -1,9 +1,11 @@
 import argparse
 from xdsl.xdsl_opt_main import xDSLOptMain
 from xdsl.ir import MLContext
+from compiler.dialects.snax import Snax
 from compiler.transforms.dispatch_elementwise_mult import DispatchElementWiseMult
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.set_memory_space import SetMemorySpace
+from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from collections.abc import Sequence
 
 
@@ -24,9 +26,11 @@ class SNAXOptMain(xDSLOptMain):
         super().register_all_targets()
 
         ## Add custom dialects & passes
+        self.ctx.load_dialect(Snax)
         super().register_pass(DispatchElementWiseMult)
         super().register_pass(LinalgToLibraryCall)
         super().register_pass(SetMemorySpace)
+        super().register_pass(InsertSyncBarrier)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
