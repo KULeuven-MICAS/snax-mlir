@@ -11,6 +11,12 @@ from xdsl.pattern_rewriter import (
 
 
 class InsertSyncBarrierRewriter(RewritePattern):
+    """The algorithm used for this pass investigates these dependencies across
+    cores to insert synchronization passes at the correct times. This is done by
+    walking through every op in the IR. For every operand used by the operation,
+    we check if it also used by an operation on another core. If this is the case,
+    we must insert a synchronization barrier between the two."""
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, module: builtin.ModuleOp, rewriter: PatternRewriter):
         ops_to_sync = []
