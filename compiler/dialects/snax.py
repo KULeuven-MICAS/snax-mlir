@@ -9,12 +9,9 @@ from xdsl.irdl import (
 
 @irdl_op_definition
 class ClusterSyncOp(IRDLOperation):
-<<<<<<< HEAD
     """Cluster sync operation for a snax cluster. This
     translates directly to the C function snrt_cluster_hw_barrier()"""
 
-=======
->>>>>>> abff01d (init snax dialect)
     name = "snax.cluster_sync_op"
 
 
