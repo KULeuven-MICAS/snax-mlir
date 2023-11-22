@@ -1,4 +1,4 @@
-from xdsl.dialects import builtin, memref
+from xdsl.dialects import builtin, memref, linalg
 from compiler.dialects import snax
 from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
@@ -17,37 +17,43 @@ class InsertSyncBarrierRewriter(RewritePattern):
 
         ## walk the entire module in order
         for op in module.walk():
-            ## if the current op must be synced, insert operation and flush buffer
+            ## if the current op must be synced, insert operation and clear the list
             if op in ops_to_sync:
                 # insert op
                 sync_op = snax.ClusterSyncOp()
                 rewriter.insert_op_before(sync_op, op)
 
-                # flush buffer
+                # clear the list
                 ops_to_sync = []
 
             # check all operands of current op
             for operand in [*op.operands, *op.results]:
                 # check all ops that use the operand -> dependency with current op
                 for op_use in operand.uses:
-                    # now check if op and op_use will be dispatched on
-                    # different cores - if yes, there must be a synchronisation
+                    # now check if op is dispatched to a specific core and the result
+                    # is used on another core - if yes, there must be a synchronisation
                     # barrier between the two ops
 
-                    # rules: all memref ops on dm core, all others on compute core
-                    def xor(a, b):
-                        return a and not b or not a and b
+                    # basic dispatching rules for now
+                    def check_core(op):
+                        if isinstance(op, memref.CopyOp):
+                            return "dm"
+                        if isinstance(op, linalg.Generic):
+                            return "compute"
+                        return "global"
 
-                    if xor(
-                        type(op) in memref.MemRef.operations,
-                        type(op_use.operation) in memref.MemRef.operations,
+                    if check_core(op) != "global" and check_core(op) != check_core(
+                        op_use.operation
                     ):
-                        # there must be a hw barrier synchronisation before the
-                        # use op
                         ops_to_sync.append(op_use.operation)
 
 
 class InsertSyncBarrier(ModulePass):
+    """This pass inserts  snax synchronisation barriers in a program.
+    Synchronisation barriers are required when data is shared between
+    multiple cores in a cluster, and the correct data flow of the
+    program must be maintained."""
+
     name = "insert-sync-barrier"
 
     def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
