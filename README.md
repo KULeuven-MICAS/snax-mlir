@@ -7,7 +7,6 @@ pytorch -> `torch-mlir` -> linalg dialect -> mlir-opt, mlir-translate, clang -> 
 
 ## Requirements
 
-* [stardew](https://github.com/Groverkss/stardew)
 * pytest
 * numpy
 * [xdsl](https://github.com/xdslproject/xdsl)
