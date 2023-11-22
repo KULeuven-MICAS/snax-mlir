@@ -100,7 +100,7 @@ RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
 # install python requirements
 RUN export PATH=/opt/python3.11/bin:$PATH \
  && git clone https://github.com/kuleuven-micas/snax-mlir.git \
- && cd /snax-mlir \
+ && cd snax-mlir \
  && pip3 install -r requirements.txt
 
 # install latest xdsl and test dependencies
