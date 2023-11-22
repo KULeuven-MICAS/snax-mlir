@@ -97,6 +97,12 @@ deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-16 main\n" >> /etc/apt
 # add python3.11 to path in bashrc
 RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
 
+# install python requirements
+RUN export PATH=/opt/python3.11/bin:$PATH \
+ && git clone https://github.com/kuleuven-micas/snax-mlir.git \
+ && cd snax-mlir \
+ && pip3 install -r requirements.txt
+
 # install latest xdsl and test dependencies
 RUN export PATH=/opt/python3.11/bin:$PATH \
    && pip3 install git+https://github.com/xdslproject/xdsl.git@4c04de0a16df7c3b29f81aa66a7a2603d6b80f1e\
