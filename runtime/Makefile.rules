@@ -84,7 +84,7 @@ MLIRPREPROCFLAGS += --mlir-print-local-scope
 
 # SNAX opt
 
-SNAXOPTFLAGS = -p dispatch-elementwise-mult,linalg-to-library-call
+SNAXOPTFLAGS = -p dispatch-elementwise-mult,linalg-to-library-call,snax-copy-to-dma
 
 %.preproc18.mlir: %.preproc.mlir
 	$(MAKEFILE_RULES_DIRNAME)/tomlir18.py < $< > $@
