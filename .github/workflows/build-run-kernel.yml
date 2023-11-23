@@ -21,3 +21,8 @@ jobs:
           export PATH=/opt/python3.11/bin:$PATH
           make allrun
         working-directory: kernels/simple_mult
+      - name: Build and run kernel simple copy
+        run: |
+          export PATH=/opt/python3.11/bin:$PATH
+          make allrun
+        working-directory: kernels/simple_copy
