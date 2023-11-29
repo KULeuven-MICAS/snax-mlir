@@ -3,40 +3,41 @@
 #include "stdint.h"
 #include <snrt.h>
 
-void _mlir_ciface_snax_dma_1d_transfer(OneDMemrefI32_t *a, OneDMemrefI32_t *b) {
-  snrt_dma_start_1d(b->aligned_data, a->aligned_data,
-                    *(a->shape[0]) * sizeof(int32_t));
+// treat incoming size as pointer
+void _mlir_ciface_snax_dma_1d_transfer(size_t *source, size_t *destination,
+                                       size_t *size) {
+  snrt_dma_start_1d((void *)destination, (void *)source,
+                    *size * sizeof(size_t));
   return;
 }
 
 int main() {
 
-  uint32_t constant_zero = 0;
-  uint32_t constant_size = N;
+  uint32_t constant_zero[1] = {0};
+  uint32_t constant_one[1] = {1};
+  uint32_t constant_size[1] = {N};
 
   // create memref object for A
   OneDMemrefI32_t memrefA = {
       .data = &A,
       .aligned_data = &A,
-      .offset = &constant_zero,
-      .shape[0] = &constant_size,
-      .stride[0] = &constant_zero,
+      .offset = constant_zero,
+      .shape = constant_size,
+      .stride = constant_one,
   };
 
   // allocate memory in L1 for copy target
   OneDMemrefI32_t memrefB = {
       .data = (int32_t *)snrt_l1_next(),
       .aligned_data = memrefB.data,
-      .offset = &constant_zero,
-      .shape[0] = &constant_size,
-      .stride[0] = &constant_zero,
+      .offset = constant_zero,
+      .shape = constant_size,
+      .stride = constant_one,
   };
 
   // execute copy
   if (snrt_is_dm_core()) {
     _mlir_ciface_simple_copy(&memrefA, &memrefB);
-    // snrt_dma_start_1d((&memrefB)->aligned_data, (&memrefA)->aligned_data,
-    // *((&memrefA)->shape[0]) * sizeof(int32_t));
   }
 
   snrt_cluster_hw_barrier();
