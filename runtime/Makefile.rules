@@ -60,6 +60,9 @@ LDFLAGS += -lc
 LDFLAGS += -lsnRuntime
 LDFLAGS += $(SNITCH_RTL_PATH)/target/snitch_cluster/sw/snax/mac/build/mac.o
 
+%.ll: %.c
+	$(CC) $(CFLAGS) -emit-llvm -O0 -S -c $< -o $@
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
