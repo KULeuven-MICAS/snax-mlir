@@ -12,19 +12,20 @@ from xdsl.traits import SymbolTable
 
 class InsertFunctionCalls(RewritePattern):
     """
-    Looks for hwpe function calls and adds an external
-    func call to it for LLVM to link in
+    Looks for memref copy operations and insert a snitch 1d dma call
     """
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.CopyOp, rewriter: PatternRewriter):
         # Exctract size information
         zero_const = arith.Constant.from_int_and_width(0, builtin.IndexType())
-        seven_const = arith.Constant.from_int_and_width(7, builtin.IndexType())
-
         dim_op = memref.Dim.from_source_and_index(op.source, zero_const.result)
+
+        # Extract source and destination pointers
         source_ptr_op = memref.ExtractAlignedPointerAsIndexOp.get(op.source)
         dest_ptr_op = memref.ExtractAlignedPointerAsIndexOp.get(op.destination)
+
+        # Make function call
         func_call = func.Call(
             "snax_dma_1d_transfer",
             [source_ptr_op.aligned_pointer, dest_ptr_op.aligned_pointer, dim_op.result],
@@ -33,15 +34,14 @@ class InsertFunctionCalls(RewritePattern):
 
         # Replace op with function call
         rewriter.insert_op_before_matched_op(
-            [zero_const, seven_const, dim_op, source_ptr_op, dest_ptr_op]
+            [zero_const, dim_op, source_ptr_op, dest_ptr_op]
         )
         rewriter.replace_op(op, func_call)
 
 
 class SNAXCopyToDMA(ModulePass):
     """
-    This pass detects linalg operations with an external library call, and
-    replaces them with a function call and definition.
+    This pass translates memref copies to snitch DMA calls.
     """
 
     name = "snax-copy-to-dma"
