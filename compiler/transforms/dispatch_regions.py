@@ -1,4 +1,4 @@
-from xdsl.dialects import builtin, memref, func, scf, linalg
+from xdsl.dialects import builtin, func, scf
 from xdsl.ir.core import Operation, Block
 from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
@@ -10,6 +10,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.traits import SymbolTable
+from compiler.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
 
 
 class DispatchRegionsRewriter(RewritePattern):
@@ -57,20 +58,6 @@ class DispatchRegionsRewriter(RewritePattern):
                     changes_made = True
 
             return changes_made
-
-        def dispatch_to_dm(op):
-            """Rule to dispatch operations to the dm core:
-            for now, this is only memref copy operations"""
-            if isinstance(op, memref.CopyOp):
-                return True
-            return False
-
-        def dispatch_to_compute(op):
-            """Rule to dispatch operations to the dm core:
-            for now, this is only linalg generic operations"""
-            if isinstance(op, linalg.Generic):
-                return True
-            return False
 
         # find root module op of func op:
         # this is necessary to declare the external functions
