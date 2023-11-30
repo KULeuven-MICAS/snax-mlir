@@ -59,42 +59,44 @@ class DispatchRegionsRewriter(RewritePattern):
 
             return changes_made
 
-        # find root module op of func op:
-        # this is necessary to declare the external functions
-        # such as is_dm_core and is_compute core at the correct place
-        module_op = func_op
-        while not isinstance(module_op, builtin.ModuleOp):
-            module_op = module_op.parent
+        ## dispatch dm core ops, insert function call
+        # in dominator block if changes made
+        func_call_dm = func.Call("snrt_is_dm_core", [], [builtin.i1])
+        if any(
+            dispatcher(block, func_call_dm.res[0], dispatch_to_dm)
+            for block in func_op.body.blocks
+        ):
+            rewriter.insert_op_at_start(func_call_dm, func_op.body.blocks[0])
 
-        for block in func_op.body.blocks:
-            # Dispatch DM core ops:
-            # check if core is dm core
-            func_call_dm = func.Call("snrt_is_dm_core", [], [builtin.i1])
+        ## dispatch compute core ops, insert function call
+        # in dominator block if changes made
+        func_call_compute = func.Call("snrt_is_compute_core", [], [builtin.i1])
+        if any(
+            dispatcher(block, func_call_compute.res[0], dispatch_to_compute)
+            for block in func_op.body.blocks
+        ):
+            # insert function call in dominator block (first one)
+            rewriter.insert_op_at_start(func_call_compute, func_op.body.blocks[0])
 
-            # dispatch ops
-            changes_made = dispatcher(block, func_call_dm.res[0], dispatch_to_dm)
-            if changes_made:
-                # Insert external function definition and function call
-                func_op_dm = func.FuncOp.external("snrt_is_dm_core", [], [builtin.i1])
-                SymbolTable.insert_or_update(module_op, func_op_dm)
-                rewriter.insert_op_at_start(func_call_dm, block)
 
-            # Dispatch compute core ops:
-            # check if core is compute core
-            func_call_compute = func.Call("snrt_is_compute_core", [], [builtin.i1])
+class InsertFunctionDeclaration(RewritePattern):
+    """Insert external function declarations of snrt_is_compute core
+    and snrt_is_dm_core if they are used in the module"""
 
-            # dispatch ops
-            changes_made = dispatcher(
-                block, func_call_compute.res[0], dispatch_to_compute
-            )
-
-            if changes_made:
-                # Insert external function definition and function call
-                func_op_compute = func.FuncOp.external(
-                    "snrt_is_compute_core", [], [builtin.i1]
-                )
-                SymbolTable.insert_or_update(module_op, func_op_compute)
-                rewriter.insert_op_at_start(func_call_compute, block)
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, module_op: builtin.ModuleOp, rewriter: PatternRewriter):
+        for op in module_op.walk():
+            if isinstance(op, func.Call):
+                if op.callee.string_value() == "snrt_is_compute_core":
+                    func_op_compute = func.FuncOp.external(
+                        "snrt_is_compute_core", [], [builtin.i1]
+                    )
+                    SymbolTable.insert_or_update(module_op, func_op_compute)
+                if op.callee.string_value() == "snrt_is_dm_core":
+                    func_op_dm = func.FuncOp.external(
+                        "snrt_is_dm_core", [], [builtin.i1]
+                    )
+                    SymbolTable.insert_or_update(module_op, func_op_dm)
 
 
 class DispatchRegions(ModulePass):
@@ -108,4 +110,7 @@ class DispatchRegions(ModulePass):
     def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             DispatchRegionsRewriter(), apply_recursively=False
+        ).rewrite_module(module)
+        PatternRewriteWalker(
+            InsertFunctionDeclaration(), apply_recursively=False
         ).rewrite_module(module)

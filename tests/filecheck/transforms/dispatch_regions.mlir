@@ -106,9 +106,9 @@
 //CHECK-NEXT:     }) : (i1) -> ()
 //CHECK-NEXT:     "func.return"() : () -> ()
 //CHECK-NEXT:   }) : () -> ()
-//CHECK-NEXT:   "func.func"() <{"sym_name" = "snrt_is_dm_core", "function_type" = () -> i1, "sym_visibility" = "private"}> ({
-//CHECK-NEXT:   }) : () -> ()
 //CHECK-NEXT:   "func.func"() <{"sym_name" = "snrt_is_compute_core", "function_type" = () -> i1, "sym_visibility" = "private"}> ({
+//CHECK-NEXT:   }) : () -> ()
+//CHECK-NEXT:   "func.func"() <{"sym_name" = "snrt_is_dm_core", "function_type" = () -> i1, "sym_visibility" = "private"}> ({
 //CHECK-NEXT:   }) : () -> ()
 //CHECK-NEXT: }) : () -> ()
 
