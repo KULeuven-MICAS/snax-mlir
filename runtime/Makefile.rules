@@ -60,6 +60,10 @@ LDFLAGS += -lc
 LDFLAGS += -lsnRuntime
 LDFLAGS += $(SNITCH_RTL_PATH)/target/snitch_cluster/sw/snax/mac/build/mac.o
 
+# useful for debugging at llvm level:
+%.ll: %.c
+	$(CC) $(CFLAGS) -emit-llvm -O0 -S -c $< -o $@
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -84,7 +88,7 @@ MLIRPREPROCFLAGS += --mlir-print-local-scope
 
 # SNAX opt
 
-SNAXOPTFLAGS = -p dispatch-elementwise-mult,linalg-to-library-call
+SNAXOPTFLAGS = -p dispatch-elementwise-mult,linalg-to-library-call,snax-copy-to-dma
 
 %.preproc18.mlir: %.preproc.mlir
 	$(MAKEFILE_RULES_DIRNAME)/tomlir18.py < $< > $@
