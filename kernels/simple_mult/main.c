@@ -24,40 +24,35 @@ int main() {
   // essentially providing the same memory regions to all the cores in this
   // cluster.
 
-  uint32_t constant_zero = 0;
-  uint32_t constant_size = N;
   // Allocate memory for the fields
 
-  OneDMemrefI32_t memrefA = {
-      .data = (int32_t *)snrt_l1_next(),
-      .aligned_data = memrefA.data,
-      .offset = &constant_zero,
-      .shape[0] = &constant_size,
-      .stride[0] = &constant_zero,
-  };
+  OneDMemrefI32_t memrefA;
+  memrefA.data = (int32_t *)snrt_l1_next();
+  memrefA.aligned_data = memrefA.data;
+  memrefA.offset = 0;
+  memrefA.shape[0] = N;
+  memrefA.stride[0] = sizeof(int32_t);
 
-  OneDMemrefI32_t memrefB = {
-      .data = (int32_t *)memrefA.data + N,
-      .aligned_data = memrefB.data,
-      .offset = &constant_zero,
-      .shape[0] = &constant_size,
-      .stride[0] = &constant_zero,
-  };
+  OneDMemrefI32_t memrefB;
+  memrefB.data = (int32_t *)memrefA.data + N;
+  memrefB.aligned_data = memrefB.data;
+  memrefB.offset = 0;
+  memrefB.shape[0] = N;
+  memrefB.stride[0] = sizeof(int32_t);
 
-  OneDMemrefI32_t memrefD = {
-      .data = (int32_t *)memrefB.data + N,
-      .aligned_data = memrefD.data,
-      .offset = &constant_zero,
-      .shape[0] = &constant_size,
-      .stride[0] = &constant_zero,
-  };
+  OneDMemrefI32_t memrefD;
+  memrefD.data = (int32_t *)memrefB.data + N;
+  memrefD.aligned_data = memrefD.data;
+  memrefD.offset = 0;
+  memrefD.shape[0] = N;
+  memrefD.stride[0] = sizeof(int32_t);
 
   // Copy data in shared local memory
   if (snrt_is_dm_core()) {
     snrt_dma_start_1d(memrefA.aligned_data, A,
-                      *(memrefA.shape[0]) * sizeof(int32_t));
+                      (memrefA.shape[0]) * sizeof(int32_t));
     snrt_dma_start_1d(memrefB.aligned_data, B,
-                      *(memrefB.shape[0]) * sizeof(int32_t));
+                      (memrefB.shape[0]) * sizeof(int32_t));
   }
 
   snrt_cluster_hw_barrier();
