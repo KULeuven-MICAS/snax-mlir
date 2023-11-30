@@ -74,6 +74,7 @@
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> (), "sym_visibility" = "public"}> ({
   ^0(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>):
+    %alloc = "memref.alloc"() <{"operandSegmentSizes" = array<i32: 0, 0>}> {"alignment" = 64 : i64} : () -> memref<64xi32>
     "memref.copy"(%0, %1) : (memref<64xi32>, memref<64xi32>) -> ()
     "snax.cluster_sync_op"() : () -> ()
     "linalg.generic"(%0, %1, %2) <{"indexing_maps" = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], "iterator_types" = [#linalg.iterator_type<parallel>], "operandSegmentSizes" = array<i32: 2, 1>}> ({
@@ -89,6 +90,7 @@
 //CHECK-NEXT:   ^0(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>):
 //CHECK-NEXT:     %3 = "func.call"() <{"callee" = @snrt_is_compute_core}> : () -> i1
 //CHECK-NEXT:     %4 = "func.call"() <{"callee" = @snrt_is_dm_core}> : () -> i1
+//CHECK-NEXT:     %alloc = "memref.alloc"() <{"operandSegmentSizes" = array<i32: 0, 0>}> {"alignment" = 64 : i64} : () -> memref<64xi32>
 //CHECK-NEXT:     "scf.if"(%4) ({
 //CHECK-NEXT:       "memref.copy"(%0, %1) : (memref<64xi32>, memref<64xi32>) -> ()
 //CHECK-NEXT:       "scf.yield"() : () -> ()
