@@ -71,9 +71,6 @@ int main() {
   _mlir_ciface_simple_mult(&memrefA, &memrefB, &memrefD);
   (void)snrt_mcycle();
 
-  static void *test;
-  static int test2;
-
   // Correctness check
   int nerr = 0;
   for (int i = 0; i < N; i++) {

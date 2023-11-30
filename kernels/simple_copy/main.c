@@ -2,38 +2,34 @@
 #include "memref.h"
 #include "stdint.h"
 #include <snrt.h>
+#include <stdint.h>
 
-// treat incoming size as pointer
+// how to properly use memref calling convention: see
+// https://discourse.llvm.org/t/using-c-compatible-memref-wrappers/75312
+
 void _mlir_ciface_snax_dma_1d_transfer(size_t *source, size_t *destination,
-                                       size_t *size) {
-  snrt_dma_start_1d((void *)destination, (void *)source,
-                    *size * sizeof(size_t));
+                                       size_t size) {
+  snrt_dma_start_1d((void *)destination, (void *)source, size * sizeof(size_t));
   return;
 }
 
 int main() {
 
-  uint32_t constant_zero[1] = {0};
-  uint32_t constant_one[1] = {1};
-  uint32_t constant_size[1] = {N};
-
   // create memref object for A
-  OneDMemrefI32_t memrefA = {
-      .data = &A,
-      .aligned_data = &A,
-      .offset = constant_zero,
-      .shape = constant_size,
-      .stride = constant_one,
-  };
+  OneDMemrefI32_t memrefA;
+  memrefA.data = &A;
+  memrefA.aligned_data = &A;
+  memrefA.offset = 0;
+  memrefA.shape[0] = N;
+  memrefA.stride[0] = sizeof(int32_t);
 
   // allocate memory in L1 for copy target
-  OneDMemrefI32_t memrefB = {
-      .data = (int32_t *)snrt_l1_next(),
-      .aligned_data = memrefB.data,
-      .offset = constant_zero,
-      .shape = constant_size,
-      .stride = constant_one,
-  };
+  OneDMemrefI32_t memrefB;
+  memrefB.data = (int32_t *)snrt_l1_next();
+  memrefB.aligned_data = memrefB.data;
+  memrefB.offset = 0;
+  memrefB.shape[0] = N;
+  memrefB.stride[0] = sizeof(int32_t);
 
   // execute copy
   if (snrt_is_dm_core()) {

@@ -17,7 +17,18 @@ class InsertFunctionCalls(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.CopyOp, rewriter: PatternRewriter):
-        # Exctract size information
+        # If memref has rank > 1, it is not supported for now
+        if not isinstance(op.source.type, memref.MemRefType) and not isinstance(
+            op.destination.type, memref.MemRefType
+        ):
+            return
+        if (
+            op.source.type.get_num_dims() != 1
+            or op.destination.type.get_num_dims() != 1
+        ):
+            return
+
+        # Extract size information
         zero_const = arith.Constant.from_int_and_width(0, builtin.IndexType())
         dim_op = memref.Dim.from_source_and_index(op.source, zero_const.result)
 

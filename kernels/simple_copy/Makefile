@@ -5,7 +5,6 @@
 include ../../runtime/Makefile.rules
 
 TESTS =
-TESTS += baseline.x
 TESTS += simple_copy.x
 
 CFLAGS += -std=gnu11
