@@ -3,6 +3,7 @@
 #include <snrt.h>
 
 // Kernel provided via external definition
+// The C interface converts the pass by value to a pass by refernece!
 void _mlir_ciface_simple_alloc(OneDMemrefI32_t *returned_alloc);
 
 int8_t *allocated_pointer;
