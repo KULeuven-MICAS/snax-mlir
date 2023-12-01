@@ -45,5 +45,26 @@ int main() {
     }
     snrt_cluster_hw_barrier();
   }
-  return 0;
+  // Shape has to be 10 here for the test to work!
+  if (memrefA.shape[0] != 10) {
+    return 420;
+  }
+  uint32_t test_data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  // core 0's return value is reported in CI, hence it needs to be
+  // used for the final check
+  if (snrt_cluster_core_idx() == 1) {
+    // memcpy stack data into allocated pointer on heap
+    for (size_t i = 0; i < memrefA.shape[0]; i++) {
+      memrefA.data[i] = test_data[i];
+    }
+  }
+  snrt_cluster_hw_barrier();
+  // check if another core can access the same data!
+  int nerr = 0;
+  if (snrt_cluster_core_idx() != 1) {
+    for (size_t i = 0; i < memrefA.shape[0]; i++) {
+      nerr += test_data[i] - memrefA.data[i];
+    }
+  }
+  return nerr;
 }
