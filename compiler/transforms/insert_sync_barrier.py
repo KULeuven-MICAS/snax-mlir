@@ -1,4 +1,4 @@
-from xdsl.dialects import builtin, memref, linalg
+from xdsl.dialects import builtin
 from compiler.dialects import snax
 from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
@@ -8,6 +8,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from compiler.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
 
 
 class InsertSyncBarrierRewriter(RewritePattern):
@@ -40,15 +41,10 @@ class InsertSyncBarrierRewriter(RewritePattern):
                     # is used on another core - if yes, there must be a synchronisation
                     # barrier between the two ops
 
-                    # basic dispatching rules for now
-                    def check_core(op):
-                        if isinstance(op, memref.CopyOp):
-                            return "dm"
-                        if isinstance(op, linalg.Generic):
-                            return "compute"
-                        return "global"
+                    if dispatch_to_dm(op) and not dispatch_to_dm(op_use.operation):
+                        ops_to_sync.append(op_use.operation)
 
-                    if check_core(op) != "global" and check_core(op) != check_core(
+                    if dispatch_to_compute(op) and not dispatch_to_compute(
                         op_use.operation
                     ):
                         ops_to_sync.append(op_use.operation)
