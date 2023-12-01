@@ -18,8 +18,12 @@ if __name__ == "__main__":
 
     # swap attributes and region from place, and remove <> from attributes
     ir = re.sub(
-        r"<({.*?})>\s*(\({[^}]*}\))", lambda x: f"{x.group(2)} {x.group(1)}", ir
+        r"<({.*})>\s*(\({[\S\s]*<{.*}>[^}]*}\))",
+        lambda x: f"{x.group(2)} {x.group(1)}",
+        ir,
     )
+
+    ir = re.sub(r"<({.*})>", lambda x: f"{x.group(1)}", ir)
     # remove quotes
     ir = re.sub('"indexing_maps"', "indexing_maps", ir)
     # remove quotes
