@@ -29,8 +29,6 @@ void _mlir_ciface_snax_dma_1d_transfer(size_t *source, size_t *destination,
   return;
 }
 
-int8_t _mlir_ciface_snax_is_dm_core() { return (int8_t)snrt_is_dm_core(); }
+int _mlir_ciface_snax_is_dm_core() { return snrt_is_dm_core(); }
 
-int8_t _mlir_ciface_snax_is_compute_core() {
-  return (int8_t)snrt_is_compute_core();
-}
+int _mlir_ciface_snax_is_compute_core() { return snrt_is_compute_core(); }
