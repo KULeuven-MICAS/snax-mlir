@@ -9,6 +9,7 @@ from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_to_func import SNAXToFunc
+from compiler.transforms.clear_memory_space import ClearMemorySpace
 from collections.abc import Sequence
 
 
@@ -37,6 +38,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(DispatchRegions)
         super().register_pass(SNAXCopyToDMA)
         super().register_pass(SNAXToFunc)
+        super().register_pass(ClearMemorySpace)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
