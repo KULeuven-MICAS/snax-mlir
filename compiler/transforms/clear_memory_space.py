@@ -23,8 +23,9 @@ class ClearMemorySpace(ModulePass):
             for operand in op_in_module.operands:
                 operand.type = clear_memory_space(operand.type)
 
-            # special case for func ops
             if isinstance(op_in_module, func.FuncOp):
+                # special case for func ops because func ops do not have
+                # operands, they have function_types which have ins & outs
                 # Define new function type with updated inputs and outputs
                 # mapped to a default memory space
                 new_function_type = builtin.FunctionType.from_lists(
