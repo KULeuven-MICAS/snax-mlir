@@ -1,9 +1,11 @@
 #include "data.h"
 #include "mac.h"
 #include "memref.h"
+#include "snax_rt.h"
 #include "stdint.h"
 
 #include <snrt.h>
+#include <stdint.h>
 
 // Kernel provided via external definition
 void _mlir_ciface_simple_mult(OneDMemrefI32_t *a, OneDMemrefI32_t *b,
