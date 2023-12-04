@@ -1,0 +1,11 @@
+// RUN: ./compiler/snax-opt --split-input-file %s -p snax-to-func --print-op-generic | filecheck %s
+
+"builtin.module"() ({
+  "snax.cluster_sync_op"() : () -> ()
+}) : () -> ()
+
+//CHECK: "builtin.module"() ({
+//CHECK-NEXT:   "func.call"() <{"callee" = @snrt_cluster_hw_barrier}> : () -> ()
+//CHECK-NEXT:   "func.func"() <{"sym_name" = "snrt_cluster_hw_barrier", "function_type" = () -> (), "sym_visibility" = "private"}> ({
+//CHECK-NEXT:   }) : () -> ()
+//CHECK-NEXT: }) : () -> ()
