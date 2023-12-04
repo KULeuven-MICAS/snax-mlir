@@ -1,14 +1,9 @@
 #include "data.h"
 #include "memref.h"
+#include "snax_rt.h"
 #include "stdint.h"
 #include <snrt.h>
 #include <stdint.h>
-
-void _mlir_ciface_snax_dma_1d_transfer(size_t *source, size_t *destination,
-                                       size_t size) {
-  snrt_dma_start_1d((void *)destination, (void *)source, size * sizeof(size_t));
-  return;
-}
 
 int main() {
 
