@@ -46,7 +46,7 @@ class InitFuncMemorySpace(RewritePattern):
         # mapped to a default memory space
         new_function_type = builtin.FunctionType.from_lists(
             map(change_to_memory_space, op.function_type.inputs),
-            map(change_to_memory_space, op.function_type.outputs),
+            (op.function_type.outputs),
         )
 
         # Change region of function to use new argument types
