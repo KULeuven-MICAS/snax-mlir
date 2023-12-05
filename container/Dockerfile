@@ -1,23 +1,12 @@
 # Courtesy of Federico Ficarelli
+FROM rgantonio/snax-chisel-test:latest@sha256:f3d6207ab764a081866886e18f5249891f861061bdf6106d2cf23b6a0342bf96 as deps
 
-
-FROM ghcr.io/pulp-platform/snitch_cluster:latest@sha256:aa0d9a25022d1ef51f451dc667b850e3e8dba4c15d949b51b5cfde10f89defe9 as builder
-
-ARG config=cfg/default.hjson
 RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
  && cd /src \
- && git reset --hard 56a9660c97dc7424062534a68af8b26a0844fef3 \
- && git submodule update --init \
- # verilator model
- && echo $config && make CFG_OVERRIDE=$config -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)
- # spike-dasm
-RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
- && ./configure --prefix=/opt/snitch-spike \
- && make install 
- # snitch runtime
-RUN cd /src/target/snitch_cluster \
- && make DEBUG=ON sw  -j$(nproc)
- # clang+llvm+lld
+ && git reset --hard a276279a6d2d9ca3fa92df050f04bbb21c1b3773 \
+ && git submodule update --init
+
+# clang+llvm+lld
 RUN mkdir -p /opt/snitch-llvm \
  && wget -qO- https://github.com/pulp-platform/llvm-project/releases/download/0.12.0/riscv32-pulp-llvm-ubuntu1804-0.12.0.tar.gz | \
     tar xz --strip-components=1 -C /opt/snitch-llvm 
@@ -45,21 +34,54 @@ RUN mkdir -p /opt/snitch-llvm \
  && ./configure --prefix=/opt/python3.11 \
  && make install
 
+FROM deps as snax-mac
+ # verilator model
+RUN  cd /src && make CFG_OVERRIDE=cfg/snax-mac.hjson -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)
+# spike-dasm
+RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
+ && ./configure --prefix=/opt/snitch-spike \
+ && make install
+ # snitch runtime
+RUN cd /src/target/snitch_cluster \
+ && make DEBUG=ON sw  -j$(nproc)
+
+FROM deps as snax-gemm
+ # verilator model
+RUN cd /src && make CFG_OVERRIDE=cfg/snax-gemm.hjson -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)
+ # snitch runtime
+RUN cd /src/target/snitch_cluster \
+ && make DEBUG=ON sw  -j$(nproc)
+
 FROM ubuntu:18.04 as toolchain
-COPY --from=builder /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snitch-rtl/bin/snitch_cluster.vlt
-COPY --from=builder /opt/snitch-spike /opt/snitch-spike
-COPY --from=builder /opt/snitch-llvm /opt/snitch-llvm
-COPY --from=builder /opt/python3.11 /opt/python3.11
-COPY --from=builder /src/util/trace /opt/snitch_cluster/util/trace
+# shared dependencies
+COPY --from=deps /opt/snitch-llvm /opt/snitch-llvm
+COPY --from=deps /opt/python3.11 /opt/python3.11
+COPY --from=deps /src/util/trace /opt/snitch_cluster/util/trace
+COPY --from=snax-mac /opt/snitch-spike /opt/snitch-spike
+
+# SNAX-MAC dependencies
+COPY --from=snax-mac /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-mac-rtl/bin/snitch_cluster.vlt
 # Compile and link time dependencies
-COPY --from=builder /src/sw/snRuntime /opt/snitch_cluster/sw/snRuntime
-COPY --from=builder /src/target/snitch_cluster/sw/runtime/rtl /opt/snitch_cluster/target/snitch_cluster/sw/runtime/rtl
-COPY --from=builder /src/target/snitch_cluster/sw/runtime/common /opt/snitch_cluster/target/snitch_cluster/sw/runtime/common
-COPY --from=builder /src/target/snitch_cluster/sw/snax/ /opt/snitch_cluster/target/snitch_cluster/sw/snax
-COPY --from=builder /src/sw/math/ /opt/snitch_cluster/sw/math/
+COPY --from=snax-mac /src/sw/snRuntime /opt/snax-mac/sw/snRuntime
+COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/rtl /opt/snax-mac/target/snitch_cluster/sw/runtime/rtl
+COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/common /opt/snax-mac/target/snitch_cluster/sw/runtime/common
+COPY --from=snax-mac /src/target/snitch_cluster/sw/snax/ /opt/snax-mac/target/snitch_cluster/sw/snax
+COPY --from=snax-mac /src/sw/math/ /opt/snax-mac/sw/math/
 # Transitive deps, this stuff must go at some point
-COPY --from=builder /src/sw/deps/riscv-opcodes /opt/snitch_cluster/sw/deps/riscv-opcodes
-COPY --from=builder /src/sw/deps/printf /opt/snitch_cluster/sw/deps/printf
+COPY --from=snax-mac /src/sw/deps/riscv-opcodes /opt/snax-mac/sw/deps/riscv-opcodes
+COPY --from=snax-mac /src/sw/deps/printf /opt/snax-mac/sw/deps/printf
+
+# SNAX-GEMM dependencies
+COPY --from=snax-gemm /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-gemm-rtl/bin/snitch_cluster.vlt
+# Compile and link time dependencies
+COPY --from=snax-gemm /src/sw/snRuntime /opt/snax-gemm/sw/snRuntime
+COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/rtl /opt/snax-gemm/target/snitch_cluster/sw/runtime/rtl
+COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/common /opt/snax-gemm/target/snitch_cluster/sw/runtime/common
+COPY --from=snax-gemm /src/target/snitch_cluster/sw/snax/ /opt/snax-gemm/target/snitch_cluster/sw/snax
+COPY --from=snax-gemm /src/sw/math/ /opt/snax-gemm/sw/math/
+# Transitive deps, this stuff must go at some point
+COPY --from=snax-gemm /src/sw/deps/riscv-opcodes /opt/snax-gemm/sw/deps/riscv-opcodes
+COPY --from=snax-gemm /src/sw/deps/printf /opt/snax-gemm/sw/deps/printf
 
 RUN apt-get -y update \
  && apt-get -y upgrade \
