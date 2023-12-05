@@ -4,12 +4,10 @@ MAKEFILE_RULES_DIRNAME := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # NOTE: we are using  absolute paths from the Docker container
 SNITCH_LLVM_PATH = /opt/snitch-llvm
-SNITCH_SW_PATH = /opt/snax-mac
 CC            = $(SNITCH_LLVM_PATH)/bin/riscv32-unknown-elf-clang
 LD            = $(SNITCH_LLVM_PATH)/bin/riscv32-unknown-elf-clang
 AR            = $(SNITCH_LLVM_PATH)/bin/llvm-ar
 RANLIB        = $(SNITCH_LLVM_PATH)/bin/llvm-ranlib
-VLTSIM        = /opt/snax-mac-rtl/bin/snitch_cluster.vlt
 DASM          = /opt/snitch-spike/bin/spike-dasm
 GENTRACE      = /opt/snitch_cluster/util/trace/gen_trace.py
 MLIROPT       = mlir-opt-16
