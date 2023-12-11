@@ -31,7 +31,7 @@ def create_data(file_name: str, size: int, variables: Dict[str, npt.NDArray]):
 if __name__ == "__main__":
     # Reset random seed for reproducible behavior
     low_bound = -128
-    high_bound = 128
+    high_bound = 127
     array_size = 10
     np.random.seed(0)
     # G = A*B
@@ -41,7 +41,8 @@ if __name__ == "__main__":
     B = np.random.randint(
         low_bound, high_bound, size=array_size, dtype=np.dtype("int32")
     )
+    D = np.zeros(array_size, dtype=np.dtype("int32"))
     G = A * B
-    variables = {"A": A, "B": B, "G": G}
+    variables = {"A": A, "B": B, "D": D, "G": G}
     create_header("data.h", array_size, variables)
     create_data("data.c", array_size, variables)
