@@ -2,6 +2,7 @@
 
 .DEFAULT_GOAL := all
 
+include ../../runtime/snax-mac.rules
 include ../../runtime/Makefile.rules
 
 TESTS =

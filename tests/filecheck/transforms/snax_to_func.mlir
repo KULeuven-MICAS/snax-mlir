@@ -5,7 +5,7 @@
 }) : () -> ()
 
 //CHECK: "builtin.module"() ({
-//CHECK-NEXT:   "func.call"() <{"callee" = @snrt_cluster_hw_barrier}> : () -> ()
-//CHECK-NEXT:   "func.func"() <{"sym_name" = "snrt_cluster_hw_barrier", "function_type" = () -> (), "sym_visibility" = "private"}> ({
+//CHECK-NEXT:   "func.call"() <{"callee" = @snax_cluster_hw_barrier}> : () -> ()
+//CHECK-NEXT:   "func.func"() <{"sym_name" = "snax_cluster_hw_barrier", "function_type" = () -> (), "sym_visibility" = "private"}> ({
 //CHECK-NEXT:   }) : () -> ()
 //CHECK-NEXT: }) : () -> ()

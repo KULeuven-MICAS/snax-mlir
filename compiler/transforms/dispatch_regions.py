@@ -61,7 +61,7 @@ class DispatchRegionsRewriter(RewritePattern):
 
         ## dispatch dm core ops, insert function call
         # in dominator block if changes made
-        func_call_dm = func.Call("snrt_is_dm_core", [], [builtin.i1])
+        func_call_dm = func.Call("snax_is_dm_core", [], [builtin.i1])
         if any(
             dispatcher(block, func_call_dm.res[0], dispatch_to_dm)
             for block in func_op.body.blocks
@@ -70,7 +70,7 @@ class DispatchRegionsRewriter(RewritePattern):
 
         ## dispatch compute core ops, insert function call
         # in dominator block if changes made
-        func_call_compute = func.Call("snrt_is_compute_core", [], [builtin.i1])
+        func_call_compute = func.Call("snax_is_compute_core", [], [builtin.i1])
         if any(
             dispatcher(block, func_call_compute.res[0], dispatch_to_compute)
             for block in func_op.body.blocks
@@ -80,21 +80,21 @@ class DispatchRegionsRewriter(RewritePattern):
 
 
 class InsertFunctionDeclaration(RewritePattern):
-    """Insert external function declarations of snrt_is_compute core
-    and snrt_is_dm_core if they are used in the module"""
+    """Insert external function declarations of snax_is_compute core
+    and snax_is_dm_core if they are used in the module"""
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, module_op: builtin.ModuleOp, rewriter: PatternRewriter):
         for op in module_op.walk():
             if isinstance(op, func.Call):
-                if op.callee.string_value() == "snrt_is_compute_core":
+                if op.callee.string_value() == "snax_is_compute_core":
                     func_op_compute = func.FuncOp.external(
-                        "snrt_is_compute_core", [], [builtin.i1]
+                        "snax_is_compute_core", [], [builtin.i1]
                     )
                     SymbolTable.insert_or_update(module_op, func_op_compute)
-                if op.callee.string_value() == "snrt_is_dm_core":
+                if op.callee.string_value() == "snax_is_dm_core":
                     func_op_dm = func.FuncOp.external(
-                        "snrt_is_dm_core", [], [builtin.i1]
+                        "snax_is_dm_core", [], [builtin.i1]
                     )
                     SymbolTable.insert_or_update(module_op, func_op_dm)
 

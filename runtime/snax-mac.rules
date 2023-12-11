@@ -1,0 +1,3 @@
+# Specific settings for snax-mac RTL
+SNITCH_SW_PATH = /opt/snax-mac
+VLTSIM        = /opt/snax-mac-rtl/bin/snitch_cluster.vlt
