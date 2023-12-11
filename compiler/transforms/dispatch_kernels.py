@@ -52,13 +52,13 @@ class AddLibraryCall(RewritePattern):
         return
 
 
-class DispatchElementWiseMult(ModulePass):
+class DispatchKernels(ModulePass):
     """
     This pass detects integer elementwise multiplications (linalg.mul),
     and inserts a library call to snax-hwpe.
     """
 
-    name = "dispatch-elementwise-mult"
+    name = "dispatch-kernels"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(AddLibraryCall()).rewrite_module(op)
