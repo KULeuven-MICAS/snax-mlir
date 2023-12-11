@@ -37,7 +37,7 @@ int main() {
   memrefB.stride[0] = sizeof(int32_t);
 
   OneDMemrefI32_t memrefD;
-  memrefD.data = &G;
+  memrefD.data = &D;
   memrefD.aligned_data = memrefD.data;
   memrefD.offset = 0;
   memrefD.shape[0] = N;
