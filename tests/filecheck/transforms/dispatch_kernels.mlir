@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt %s -p dispatch-elementwise-mult --allow-unregistered-dialect --print-op-generic | filecheck %s
+// RUN: ./compiler/snax-opt %s -p dispatch-kernels --allow-unregistered-dialect --print-op-generic | filecheck %s
 
 "builtin.module"() ({
   %0, %1, %2 = "test.op"() : () -> (memref<64xi32>, memref<64xi32>, memref<64xi32>)
