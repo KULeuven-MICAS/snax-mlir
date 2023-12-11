@@ -109,11 +109,11 @@ class KernelType(Enum):
                         if op.lhs in linalg_block.args and isinstance(
                             types[op.lhs], IntegerType
                         ):
+                            has_zero_point_adjustment = True
                             if op.rhs in linalg_block_inputs:
                                 # reached root op, break loop
                                 op = op.rhs
                                 linalg_block_inputs.remove(op)
-                                has_zero_point_adjustment = True
                                 break
                             if hasattr(op.rhs, "op"):
                                 # else continue
@@ -123,11 +123,11 @@ class KernelType(Enum):
                         elif op.rhs in linalg_block.args and isinstance(
                             types[op.rhs], IntegerType
                         ):
+                            has_zero_point_adjustment = True
                             if op.lhs in linalg_block_inputs:
                                 # reached root
                                 op = op.lhs
                                 linalg_block_inputs.remove(op)
-                                has_zero_point_adjustment = True
                             if hasattr(op.lhs, "op"):
                                 # else continue
                                 op = op.lhs.op
