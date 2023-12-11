@@ -8,6 +8,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from compiler.util.kernel_type import KernelType
 
 
 class AddLibraryCall(RewritePattern):
@@ -20,18 +21,14 @@ class AddLibraryCall(RewritePattern):
         but this can be more structured in future work."""
 
         ## conditions for library call:
-        #   (0) must not already have library call
-        #   (1) 2 operands
-        #   (2) both operands of type memref
-        #   (3) 1D-shape
-        #   (4) type integer
-        #   (5) iterator type also 1D and parallel
-        #   (6) region must be non reducing mult of both inputs
+        # (1) kernel type must be mul
+        # (2) data type must be 1D integer memref
+        # (3) dataflow must be all parallel
 
         if op.library_call is not None:
             return
 
-        if len(op.inputs) != 2:
+        if KernelType.get_type(op) != KernelType.MUL:
             return
 
         for inp in op.inputs:
@@ -48,28 +45,6 @@ class AddLibraryCall(RewritePattern):
             return
 
         if op.iterator_types.data[0].data is not linalg.IteratorType.PARALLEL:
-            return
-
-        ## Check if operation is muli
-        ## two operations: first operation is arith.muli, last operation is yield
-
-        mult_op = op.body.block.first_op
-        yield_op = op.body.block.last_op
-
-        # last operation is linalg.yield
-        if not isinstance(yield_op, linalg.YieldOp):
-            return
-        # first operation is arith.muli
-        if not isinstance(mult_op, arith.Muli):
-            return
-        # yield is result of muli
-        if mult_op.result is not yield_op.arguments[0]:
-            return
-        # muli is based on first two args
-        if not (
-            op.body.block.args[0] in mult_op.operands
-            and op.body.block.args[1] in mult_op.operands
-        ):
             return
 
         op.library_call = builtin.StringAttr("snax_hwpe_mult")
