@@ -11,11 +11,14 @@ class KernelType(Enum):
     QMAC = "qmac"
 
     @staticmethod
-    def get_type(linalg_block: Block, input_types: List):
-        # detect the kernel type of a linalg block
+    def get_type(linalg_op: linalg.Generic):
+        # detect the kernel type of a linalg kernel
         # will detect either MUL, MAC, or QMAC
         # if it detects neither of these ops, the
         # function returns none
+
+        linalg_block: Block = linalg_op.body.block
+        input_types: List = [o.type for o in linalg_op.operands]
 
         # generate a dictionary of the input types of the linalg
         # (the inputs of the linalg block are all i8 or i32,
