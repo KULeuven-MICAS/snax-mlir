@@ -2,4 +2,5 @@ pre-commit
 filecheck
 lit
 numpy
+xdsl @ git+https://github.com/xdslproject/xdsl.git@82e4af23bacddefa100ecf662385e34c3b4a1c5f
 
