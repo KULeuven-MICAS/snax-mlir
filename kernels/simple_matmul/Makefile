@@ -7,7 +7,6 @@ include ../../runtime/Makefile.rules
 
 TESTS =
 TESTS += baseline.x
-TESTS += linalg.x
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra

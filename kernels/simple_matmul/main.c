@@ -42,7 +42,7 @@ int main() {
   memrefA.stride[1] = sizeof(int8_t);
 
   TwoDMemrefI32_t memrefC;
-  memrefC.data = &G;
+  memrefC.data = &C;
   memrefC.aligned_data = memrefC.data;
   memrefC.offset = 0;
   memrefC.shape[0] = M_size;
@@ -62,7 +62,7 @@ int main() {
 
   int nerr = 0;
   for (int i = 0; i < M_size * N_size; i++) {
-    int32_t error = memrefC.aligned_data[i] - G[i];
+    int32_t error = memrefC.aligned_data[i] - C_golden[i];
     if (error != 0)
       nerr += 1;
   }
