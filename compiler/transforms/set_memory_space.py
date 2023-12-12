@@ -1,4 +1,4 @@
-from xdsl.dialects import func, builtin, memref, linalg
+from xdsl.dialects import func, builtin, memref, linalg, arith
 from xdsl.ir import MLContext
 from xdsl.ir.core import SSAValue
 from xdsl.passes import ModulePass
@@ -155,13 +155,25 @@ class RealizeMemorySpaceCasts(RewritePattern):
         if not isinstance(op.results[0].type, memref.MemRefType):
             return
 
+        # create memref.dim operations for dynamic dimensions
+        shapes = [x.value.data for x in op.results[0].type.shape.data]
+        dyn_operands = []
+        for i in range(len(shapes)):
+            if shapes[i] == -1:
+                ## create dim op
+                index = arith.Constant.from_int_and_width(i, builtin.IndexType())
+                dim_op = memref.Dim.from_source_and_index(op.source, index.result)
+                rewriter.insert_op_before_matched_op([index, dim_op])
+                dyn_operands.append(dim_op)
+
         # replace cast with allocation
         alloc_op = memref.Alloc.get(
             op.results[0].type.get_element_type(),
             64,  # default 64 alignment (necessary ?)
             op.results[0].type.get_shape(),
-            op.results[0].type.layout,
-            op.results[0].type.memory_space,
+            dynamic_sizes=dyn_operands,
+            layout=op.results[0].type.layout,
+            memory_space=op.results[0].type.memory_space,
         )
 
         # Insert copy ops if newly allocated memref is used as
