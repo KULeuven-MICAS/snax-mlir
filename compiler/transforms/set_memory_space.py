@@ -159,6 +159,7 @@ class RealizeMemorySpaceCasts(RewritePattern):
         shapes = [x.value.data for x in op.results[0].type.shape.data]
         dyn_operands = []
         for i in range(len(shapes)):
+            # Dynamic shapes are represented as -1
             if shapes[i] == -1:
                 ## create dim op
                 index = arith.Constant.from_int_and_width(i, builtin.IndexType())
