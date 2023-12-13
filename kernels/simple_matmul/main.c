@@ -1,6 +1,7 @@
 #include "data.h"
 #include "memref.h"
 #include "snax-gemm-lib.h"
+#include "snax-gemm-params.h"
 #include "snax_rt.h"
 #include "stdint.h"
 
@@ -11,14 +12,32 @@
 void _mlir_ciface_simple_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
                                 TwoDMemrefI32_t *c);
 
-// void _mlir_ciface_snax_hwpe_mult(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
-//                                 TwoDMemrefI32_t *c) {
-//
-//   set_batch_gemm(a->aligned_data, b->aligned_data, c->aligned_data,
-//                              a->shape[0]);
-//   start_batch_gemm();
-//   wait_batch_gemm();
-// }
+void _mlir_ciface_simple_matmul_cpu(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
+                                    TwoDMemrefI32_t *c) {
+  uint8_t Batch = 1;
+  // meshRow, tileSize and meshCol are defined in snax-gemm-params.h
+  uint8_t M_param = M_size / meshRow;
+  uint8_t K_param = K_size / tileSize;
+  uint8_t N_param = N_size / meshCol;
+  int8_t *A_ptr = a->aligned_data;
+  int8_t *B_ptr = b->aligned_data;
+  int32_t *C_ptr = c->aligned_data;
+  // Extracted from datagen.py in snitch_cluster repo
+  uint32_t strideInnermostA = 256;
+  uint32_t strideInnermostB = 256;
+  uint32_t strideInnermostC = 256;
+  uint32_t ldA = 2048;
+  uint32_t ldB = 2048;
+  uint32_t ldC = 1024;
+  uint32_t strideA = 0;
+  uint32_t strideB = 0;
+  uint32_t strideC = 0;
+  // delta_local_a: 64,
+  // delta_local_b: 8192
+  batch_gemm_cpu(Batch, M_param, K_param, N_param, A_ptr, B_ptr, C_ptr,
+                 strideInnermostA, strideInnermostB, strideInnermostC, ldA, ldB,
+                 ldC, strideA, strideB, strideC);
+}
 
 int main() {
 
