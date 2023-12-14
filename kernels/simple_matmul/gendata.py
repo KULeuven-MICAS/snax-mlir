@@ -48,10 +48,18 @@ if __name__ == "__main__":
     np.random.seed(0)
     # G = A*B
     A = np.random.randint(low_bound, high_bound, size=A_size, dtype=np.dtype("int8"))
-    A = np.ones(A_size, dtype=np.dtype("int8"))
+    # convert from row-major to block row-major
+    A = np.reshape(A, [2, 8, 2, 8])
+    # convert to [2,2,8,8]
+    A = np.swapaxes(A, 1, 2)
     B = np.random.randint(low_bound, high_bound, size=B_size, dtype=np.dtype("int8"))
-    B = np.ones(B_size, dtype=np.dtype("int8"))
+    # convert from column-major to block column-major
+    B = np.reshape(B, [2, 8, 2, 8])
+    # convert to [2,2,8,8]
+    B = np.swapaxes(B, 1, 2)
     C_golden = np.matmul(A.astype(np.dtype("int32")), B.astype(np.dtype("int32")))
+    C_golden = np.reshape(C_golden, [2, 8, 2, 8])
+    C_golden = np.swapaxes(C_golden, 1, 2)
     C = np.zeros(C_golden.shape, np.dtype("int32"))
     variables = {"A": A, "B": B, "C_golden": C_golden, "C": C}
     assert A.shape[1] == B.shape[0]
