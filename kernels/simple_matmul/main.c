@@ -17,9 +17,9 @@ uint8_t N_param = N_size / meshCol;
 uint32_t strideInnermostA = 256;
 uint32_t strideInnermostB = 256;
 uint32_t strideInnermostC = 256;
-uint32_t ldA = 2048;
-uint32_t ldB = 2048;
-uint32_t ldC = 1024;
+uint32_t ldA = 512;
+uint32_t ldB = 512;
+uint32_t ldC = 512;
 uint32_t strideA = 0;
 uint32_t strideB = 0;
 uint32_t strideC = 0;
@@ -30,10 +30,10 @@ void _mlir_ciface_simple_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
 
 void _mlir_ciface_simple_matmul_cpu(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
                                     TwoDMemrefI32_t *c) {
-  int8_t *A_ptr = a->aligned_data;
-  int8_t *B_ptr = b->aligned_data;
-  int32_t *C_ptr = c->aligned_data;
-  batch_gemm_cpu(Batch, M_param, K_param, N_param, A_ptr, B_ptr, C_ptr,
+  int8_t *a_ptr = a->aligned_data;
+  int8_t *b_ptr = b->aligned_data;
+  int32_t *c_ptr = c->aligned_data;
+  batch_gemm_cpu(Batch, M_param, K_param, N_param, a_ptr, b_ptr, c_ptr,
                  strideInnermostA, strideInnermostB, strideInnermostC, ldA, ldB,
                  ldC, strideA, strideB, strideC);
 }
@@ -66,12 +66,13 @@ int main() {
     // calculation in bytes directly
     allocated_a = (int8_t *)snrt_l1alloc(256 * M_size * K_size / 64);
     allocated_b = (int8_t *)snrt_l1alloc(256 * K_size * N_size / 64);
-    allocated_c = (int32_t *)snrt_l1alloc(256 * M_size * K_size / 64);
+    allocated_c = (int32_t *)snrt_l1alloc(256 * M_size * N_size / 64);
   }
+  snrt_cluster_hw_barrier();
 
   // Create memref descriptors for data stored in L1
   TwoDMemrefI8_t memrefA;
-  memrefA.data = &A;
+  memrefA.data = allocated_a;
   memrefA.aligned_data = memrefA.data;
   memrefA.shape[0] = M_size;
   memrefA.shape[1] = K_size;
@@ -81,7 +82,7 @@ int main() {
   memrefA.stride[1] = sizeof(int8_t);
 
   TwoDMemrefI8_t memrefB;
-  memrefB.data = &B;
+  memrefB.data = allocated_b;
   // Data is stored in banks 8 - 15, so increment by 8banks*8bytes = 64
   memrefB.aligned_data = memrefB.data + 64;
   memrefB.shape[0] = K_size;
@@ -92,7 +93,7 @@ int main() {
   memrefB.stride[1] = sizeof(int8_t);
 
   TwoDMemrefI32_t memrefC;
-  memrefC.data = &C;
+  memrefC.data = allocated_c;
   memrefC.aligned_data = memrefC.data;
   memrefC.shape[0] = M_size;
   memrefC.shape[1] = N_size;
@@ -106,10 +107,13 @@ int main() {
                     memrefB.aligned_data, A, B, strideInnermostA,
                     strideInnermostB, ldA, ldB, strideA, strideB);
   }
-
+  snrt_cluster_hw_barrier();
   (void)snrt_mcycle();
-  _mlir_ciface_simple_matmul(&memrefA, &memrefB, &memrefC);
+  if (snrt_is_compute_core()) {
+    _mlir_ciface_simple_matmul(&memrefA, &memrefB, &memrefC);
+  }
   (void)snrt_mcycle();
+  snrt_cluster_hw_barrier();
 
   // Correctness check -
   // from this point on only core 0 is required to be alive.
@@ -119,6 +123,7 @@ int main() {
 
   int nerr = 0;
   for (int i = 0; i < M_size * N_size; i++) {
+    // printf("%d , golden : %d\n", memrefC.aligned_data[i],C_golden[i]);
     int32_t error = memrefC.aligned_data[i] - C_golden[i];
     if (error != 0)
       nerr += 1;

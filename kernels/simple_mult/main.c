@@ -55,6 +55,7 @@ int main() {
 
   int nerr = 0;
   for (int i = 0; i < N; i++) {
+    printf("result: %d golden: %d\n", memrefD.aligned_data[i], G[i]);
     int32_t error = memrefD.aligned_data[i] - G[i];
     if (error != 0)
       nerr += 1;
