@@ -59,21 +59,29 @@ if __name__ == "__main__":
     sizes = {"N_size": A.shape[0], "K_size": A.shape[1], "M_size": B.shape[1]}
 
     # Perform layout transformations before writing to memory
-    # convert from row-major to block row-major
-    A = np.reshape(A, [2, 8, 2, 8])
-    # convert to [2,2,8,8]
-    A = np.swapaxes(A, 1, 2)
-    B = np.transpose(B)
-    # convert from column-major to block column-major
-    B = np.reshape(B, [2, 8, 2, 8])
-    # convert to [2,2,8,8]
-    B = np.swapaxes(B, 1, 2)
-    # convert from row-major to block row-major
-    C_golden = np.reshape(C_golden, [2, 8, 2, 8])
-    # convert to [2,2,8,8]
-    C_golden = np.swapaxes(C_golden, 1, 2)
 
-    variables = {"A": A, "B": B, "C_golden": C_golden, "C": C}
+    # convert from row-major to block row-major
+    A_new_layout = np.reshape(A, [2, 8, 2, 8])
+    # convert to [2,2,8,8]
+    A_new_layout = np.swapaxes(A_new_layout, 1, 2)
+
+    B_new_layout = np.transpose(B)
+    # convert from column-major to block column-major
+    B_new_layout = np.reshape(B_new_layout, [2, 8, 2, 8])
+    # convert to [2,2,8,8]
+    B_new_layout = np.swapaxes(B_new_layout, 1, 2)
+    # convert from row-major to block row-major
+    C_golden_new_layout = np.reshape(C_golden, [2, 8, 2, 8])
+    # convert to [2,2,8,8]
+    C_golden_new_layout = np.swapaxes(C_golden_new_layout, 1, 2)
+
+    # C are just all zeros, so layout not important
+    variables = {
+        "A": A_new_layout,
+        "B": B_new_layout,
+        "C_golden": C_golden_new_layout,
+        "C": C,
+    }
 
     create_header("data.h", sizes, variables)
     create_data("data.c", variables)
