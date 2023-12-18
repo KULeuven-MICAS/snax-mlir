@@ -15,7 +15,6 @@ MLIRTRANSLATE = mlir-translate-16
 SNAXOPT 	  = $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
 PYTHON        = /opt/python3.11/bin/python3
 
-CFLAGS =
 # Mixing .c and .ll files makes some flags, useful for the former,
 # unused for the latter (e.g. -I)
 CFLAGS += -Wno-unused-command-line-argument
@@ -32,7 +31,6 @@ CFLAGS += -I$(SNITCH_SW_PATH)/sw/math/src/include
 CFLAGS += -I$(SNITCH_SW_PATH)/sw/math/src/internal
 CFLAGS += -I$(SNITCH_SW_PATH)/sw/math/include/bits
 CFLAGS += -I$(SNITCH_SW_PATH)/sw/math/include
-CFLAGS += -I$(SNITCH_SW_PATH)/target/snitch_cluster/sw/snax/mac/include
 CFLAGS += -I$(MAKEFILE_RULES_DIRNAME)include
 CFLAGS += -D__DEFINED_uint64_t
 CFLAGS += -menable-experimental-extensions
@@ -45,7 +43,6 @@ CFLAGS += -fno-builtin-printf
 CFLAGS += -fno-common
 CFLAGS += -O3
 
-LDFLAGS =
 LDFLAGS += -fuse-ld=$(SNITCH_LLVM_PATH)/bin/ld.lld
 LDFLAGS += -L$(SNITCH_LLVM_PATH)/lib/clang/12.0.1/lib/
 LDFLAGS += -T$(SNITCH_SW_PATH)/sw/snRuntime/base.ld
@@ -56,7 +53,6 @@ LDFLAGS += -nostdlib
 LDFLAGS += -lclang_rt.builtins-riscv32
 LDFLAGS += -lc
 LDFLAGS += -lsnRuntime
-LDFLAGS += $(SNITCH_SW_PATH)/target/snitch_cluster/sw/snax/mac/build/mac.o
 
 # useful for debugging at llvm level:
 %.ll: %.c
