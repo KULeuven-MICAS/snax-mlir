@@ -1,12 +1,28 @@
-#include "data.h"
-#include "memref.h"
-#include "snax-gemm-lib.h"
-#include "snax-gemm-params.h"
-#include "snax_rt.h"
 #include "stdint.h"
 
+#include "data.h"
+#include "memref.h"
+#include "snax_rt.h"
+
+/*
+ * These libraries are included from github.com/KULeuven-MICAS/snitch_cluster
+ * Interested users, might want to look at:
+ *
+ * /sw/snRuntime/api
+ * /target/snitch_cluster/sw/runtime/rtl/src
+ * /target/snitch_cluster/sw/runtime/common
+ * */
 #include <snrt.h>
-#include <stdint.h>
+
+/* These libraries are included from github.com/KULeuven-MICAS/snitch_cluster
+ * Interested users, might want to look at:
+ *
+ * /target/snitch_cluster/sw/snax/gemm/include"
+ * /target/snitch_cluster/sw/snax/mac/include"
+ *
+ * */
+#include "snax-gemm-lib.h"
+#include "snax-gemm-params.h"
 
 uint8_t Batch = 1;
 // meshRow, tileSize and meshCol are defined in snax-gemm-params.h
@@ -76,10 +92,13 @@ int main() {
   memrefA.aligned_data = memrefA.data;
   memrefA.shape[0] = M_size;
   memrefA.shape[1] = K_size;
-  // These are not considered correctly right now
+  // The following values of this memref are ignored right now.
+  // A 2D memref is not enough to express a tiled-block layout (=4D),
+  // necessary by the accelerator,
+  // Instead we use the variables strideInnermostA, ldA and strideA
   memrefA.offset = 0;
-  memrefA.stride[0] = sizeof(int8_t);
-  memrefA.stride[1] = sizeof(int8_t);
+  memrefA.stride[0] = 0;
+  memrefA.stride[1] = 0;
 
   TwoDMemrefI8_t memrefB;
   memrefB.data = allocated_b;
@@ -87,17 +106,23 @@ int main() {
   memrefB.aligned_data = memrefB.data + 64;
   memrefB.shape[0] = K_size;
   memrefB.shape[1] = N_size;
-  // These are not considered correctly right now
+  // The following values of this memref are ignored right now.
+  // A 2D memref is not enough to express a tiled-block layout (=4D),
+  // necessary by the accelerator,
+  // Instead we use the variables strideInnermostB, ldB and strideB.
   memrefB.offset = 0;
-  memrefB.stride[0] = sizeof(int8_t);
-  memrefB.stride[1] = sizeof(int8_t);
+  memrefB.stride[0] = 0;
+  memrefB.stride[1] = 0;
 
   TwoDMemrefI32_t memrefC;
   memrefC.data = allocated_c;
   memrefC.aligned_data = memrefC.data;
   memrefC.shape[0] = M_size;
   memrefC.shape[1] = N_size;
-  // These are not considered correctly right now
+  // The following values of this memref are ignored right now.
+  // A 2D memref is not enough to express a tiled-block layout (=4D),
+  // necessary by the accelerator,
+  // Instead we use the variables strideInnermostC, ldC and strideC
   memrefC.offset = 0;
   memrefC.stride[0] = sizeof(int32_t);
   memrefC.stride[1] = sizeof(int32_t);
@@ -123,7 +148,6 @@ int main() {
 
   int nerr = 0;
   for (int i = 0; i < M_size * N_size; i++) {
-    // printf("%d , golden : %d\n", memrefC.aligned_data[i],C_golden[i]);
     int32_t error = memrefC.aligned_data[i] - C_golden[i];
     if (error != 0)
       nerr += 1;

@@ -49,13 +49,12 @@ if __name__ == "__main__":
 
     # C = A.B
     A = np.random.randint(low_bound, high_bound, size=A_size, dtype=np.dtype("int8"))
-    # A = np.ones(A_size, dtype=np.dtype("int8"))
     B = np.random.randint(low_bound, high_bound, size=B_size, dtype=np.dtype("int8"))
-    # B = np.ones(B_size, dtype=np.dtype("int8"))
+    # Make sure the product is possible!
+    assert A.shape[1] == B.shape[0]
     C_golden = np.matmul(A.astype(np.dtype("int32")), B.astype(np.dtype("int32")))
     C = np.zeros(C_golden.shape, np.dtype("int32"))
 
-    assert A.shape[1] == B.shape[0]
     sizes = {"N_size": A.shape[0], "K_size": A.shape[1], "M_size": B.shape[1]}
 
     # Perform layout transformations before writing to memory
