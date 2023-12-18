@@ -124,8 +124,9 @@ int main() {
   // necessary by the accelerator,
   // Instead we use the variables strideInnermostC, ldC and strideC
   memrefC.offset = 0;
-  memrefC.stride[0] = sizeof(int32_t);
-  memrefC.stride[1] = sizeof(int32_t);
+  memrefC.stride[0] = 0;
+  memrefC.stride[1] = 0;
+
   if (snrt_is_dm_core()) {
     load_input_data(Batch, M_size / meshRow, K_size / tileSize,
                     N_size / meshCol, memrefA.aligned_data,
