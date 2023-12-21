@@ -1,38 +1,38 @@
-# name: python-tests
+name: python-tests
 
-# on:
-#   push:
-#     branches: [ "main" ]
-#   pull_request:
-#   workflow_dispatch:
-#       inputs:
-#         container-tag:
-#           description: 'Container tag'
-#           required: true
-#           default: 'main'
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+  workflow_dispatch:
+      inputs:
+        container-tag:
+          description: 'Container tag'
+          required: true
+          default: 'main'
 
-# permissions:
-#   contents: read
+permissions:
+  contents: read
 
-# jobs:
-#   python-tests:
+jobs:
+  python-tests:
 
-#     runs-on: ubuntu-latest
-#     container: 
-#       image: ghcr.io/kuleuven-micas/snax-mlir:${{ github.event.inputs.container-tag || 'main' }}
+    runs-on: ubuntu-latest
+    container: 
+      image: ghcr.io/kuleuven-micas/snax-mlir:${{ github.event.inputs.container-tag || 'main' }}
 
-#     steps:
-#     - uses: actions/checkout@v3
-#     - name: Install pytest
-#       shell: bash
-#       run: |
-#         /opt/python3.11/bin/python3 -m pip install pytest
-#     - name: Reinstall pip modules from requirements
-#       shell: bash
-#       run: |
-#         /opt/python3.11/bin/python3 -m pip install -r requirements.txt
-#     - name: Test with pytest
-#       shell: bash
-#       run: |
-#         /opt/python3.11/bin/python3 -m pytest .
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install pytest
+      shell: bash
+      run: |
+        /opt/python3.11/bin/python3 -m pip install pytest
+    - name: Reinstall pip modules from requirements
+      shell: bash
+      run: |
+        /opt/python3.11/bin/python3 -m pip install -r requirements.txt
+    - name: Test with pytest
+      shell: bash
+      run: |
+        /opt/python3.11/bin/python3 -m pytest .
 
