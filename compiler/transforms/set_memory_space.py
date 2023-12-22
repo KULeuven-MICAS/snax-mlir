@@ -155,7 +155,7 @@ class RealizeMemorySpaceCasts(RewritePattern):
             return
 
         # create memref.dim operations for dynamic dimensions
-        shapes = [x.value.data for x in op.results[0].type.shape.data]
+        shapes = [x.data for x in op.results[0].type.shape.data]
         dyn_operands = []
         for i in range(len(shapes)):
             # Dynamic shapes are represented as -1
