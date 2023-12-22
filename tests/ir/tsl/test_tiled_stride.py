@@ -4,12 +4,12 @@ from compiler.ir.tsl.stride import Stride
 from compiler.ir.tsl.tiled_stride import TiledStride
 
 
-@pytest.fixture
+@pytest.fixture()
 def example_strides():
     return (Stride(1, 4), Stride(4, 6), Stride(24, 2))
 
 
-@pytest.fixture
+@pytest.fixture()
 def example_tiled_strides(example_strides):
     stride1, stride2, stride3 = example_strides
     tiledStride1 = TiledStride([stride1, stride2])
@@ -35,8 +35,8 @@ def test_tiled_stride_depth(example_tiled_strides):
 
 def test_tiled_stride_str(example_tiled_strides):
     tiledStride1, tiledStride2 = example_tiled_strides
-    assert str(tiledStride1) == "[1, 4] x [4, 6]"
-    assert str(tiledStride2) == "[1, 4, 24] x [4, 6, 2]"
+    assert str(tiledStride1) == "[1, 4] * [4, 6]"
+    assert str(tiledStride2) == "[1, 4, 24] * [4, 6, 2]"
 
 
 def test_tiled_stride_iter(example_strides, example_tiled_strides):
