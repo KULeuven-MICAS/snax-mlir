@@ -7,7 +7,8 @@ RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
  && git submodule update --init
 
 # mlir and clang
-RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 17 && rm llvm.sh \
+RUN apt-get -y install wget lsb-release software-properties-common gnupg \
+ && wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 17 && rm llvm.sh \
  && apt-get -y install mlir-17-tools
 # Snitch-specific version for libc and clang runtime libraries
 RUN mkdir -p /opt/snitch-llvm \
@@ -38,30 +39,32 @@ RUN apt update -y \
  && make install
 
 FROM deps as snax-mac
- # verilator model
-RUN  cd /src && \
- make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
+# snitch runtime
+RUN cd /src/target/snitch_cluster \
+ && make DEBUG=ON sw  -j$(nproc) \
  CFG_OVERRIDE=cfg/snax-mac.hjson \
  SELECT_TOOLCHAIN=llvm-generic \
  SELECT_RUNTIME=rtl-generic
+# verilator model
+RUN  cd /src && \
+make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
+ CFG_OVERRIDE=cfg/snax-mac.hjson
 # spike-dasm
 RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
  && ./configure --prefix=/opt/snitch-spike \
  && make install
- # snitch runtime
-RUN cd /src/target/snitch_cluster \
- && make DEBUG=ON sw  -j$(nproc)
 
 FROM deps as snax-gemm
- # verilator model
+# snitch runtime
+RUN cd /src/target/snitch_cluster \
+ && make DEBUG=ON sw  -j$(nproc) \
+ SELECT_TOOLCHAIN=llvm-generic \
+ SELECT_RUNTIME=rtl-generic \
+ CFG_OVERRIDE=cfg/snax-gemm.hjson
+# verilator model
 RUN  cd /src && \
  make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
- CFG_OVERRIDE=cfg/snax-gemm.hjson \
- SELECT_TOOLCHAIN=llvm-generic \
- SELECT_RUNTIME=rtl-generic
- # snitch runtime
-RUN cd /src/target/snitch_cluster \
- && make DEBUG=ON sw  -j$(nproc)
+ CFG_OVERRIDE=cfg/snax-gemm.hjson
 
 FROM ubuntu:18.04 as toolchain
 # shared dependencies
@@ -77,6 +80,7 @@ COPY --from=snax-mac /opt/snitch-spike /opt/snitch-spike
 COPY --from=snax-mac /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-mac-rtl/bin/snitch_cluster.vlt
 # Compile and link time dependencies
 COPY --from=snax-mac /src/sw/snRuntime /opt/snax-mac/sw/snRuntime
+# rtl-generic includes from rtl, so we also need rtl, even if we don't build it
 COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/rtl /opt/snax-mac/target/snitch_cluster/sw/runtime/rtl
 COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/rtl-generic /opt/snax-mac/target/snitch_cluster/sw/runtime/rtl-generic
 COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/common /opt/snax-mac/target/snitch_cluster/sw/runtime/common
@@ -90,6 +94,7 @@ COPY --from=snax-mac /src/sw/deps/printf /opt/snax-mac/sw/deps/printf
 COPY --from=snax-gemm /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-gemm-rtl/bin/snitch_cluster.vlt
 # Compile and link time dependencies
 COPY --from=snax-gemm /src/sw/snRuntime /opt/snax-gemm/sw/snRuntime
+# rtl-generic includes from rtl, so we also need rtl, even if we don't build it
 COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/rtl /opt/snax-gemm/target/snitch_cluster/sw/runtime/rtl
 COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/rtl-generic /opt/snax-gemm/target/snitch_cluster/sw/runtime/rtl-generic
 COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/common /opt/snax-gemm/target/snitch_cluster/sw/runtime/common
