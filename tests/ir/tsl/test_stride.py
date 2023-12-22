@@ -1,8 +1,9 @@
 import pytest
+
 from compiler.ir.tsl.stride import Stride
 
 
-@pytest.fixture
+@pytest.fixture()
 def example_strides():
     return (Stride(1, 4), Stride(4, 6), Stride(24, 2))
 
