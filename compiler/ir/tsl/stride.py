@@ -1,40 +1,31 @@
 from __future__ import annotations
 
+from typing import List
 from dataclasses import dataclass
 
 
 @dataclass
 class Stride:
     """A stride represents the distance between elements in an array.
-    A Stride is defined by a step and a bound, and can be
+    A Stride is defined by a stride and a bound, and the stride can be
     used to generate all values within the bound.
 
     Args:
-        stride (int | None): The stride of the Stride
-            None represents a dynamic step
-        bound (int | None): The bound of the Stride
-            None represents a dynamic bound
+        stride (int): The stride of the Stride
+        bound (int): The bound of the Stride
     """
 
-    step: int | None
-    bound: int | None
+    stride: int
+    bound: int
 
-    def is_dynamic(self) -> bool:
-        """Check if the Stride is dynamic"""
-        return self.step is None or self.bound is None
-
-    def all_values(self) -> list[int]:
+    def all_values(self) -> List[int]:
         """Get all values within the bound of the Stride"""
-        if self.is_dynamic():
-            raise ValueError("Cannot get all values of a dynamic stride")
-        return list(range(0, self.step * self.bound, self.step))
+        return list(range(0, self.stride * self.bound, self.stride))
 
     def __str__(self) -> str:
-        step = "?" if self.step is None else str(self.step)
-        bound = "?" if self.bound is None else str(self.bound)
-        return f"{bound} -> {step}"
+        return f"{self.stride} x {self.bound}"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Stride):
             return NotImplemented
-        return self.step == other.step and self.bound == other.bound
+        return self.stride == other.stride and self.bound == other.bound
