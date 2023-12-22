@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
+
 from compiler.ir.tsl.stride import Stride
-from typing import Iterator, List
 
 
 @dataclass
@@ -23,7 +23,7 @@ class TiledStride:
 
     """
 
-    strides: List[Stride]
+    strides: list[Stride]
 
     def __init__(self, strides: Sequence[Stride]):
         self.strides = list(strides)
@@ -31,9 +31,9 @@ class TiledStride:
     def __str__(self) -> str:
         strides = ", ".join(str(stride.stride) for stride in self.strides)
         bounds = ", ".join(str(stride.bound) for stride in self.strides)
-        return f"[{strides}] x [{bounds}]"
+        return f"[{strides}] * [{bounds}]"
 
-    def __iter__(self) -> Iterator[List[int, Stride]]:
+    def __iter__(self) -> Iterator[list[int, Stride]]:
         """Returns an iterator over the depths and strides of the Tiled Stride
 
         Yields:

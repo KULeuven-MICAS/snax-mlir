@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
+
+import numpy as np
+
 from compiler.ir.tsl.stride import Stride
 from compiler.ir.tsl.tiled_stride import TiledStride
-from typing import Iterator, List, Tuple
-import numpy as np
 
 
 @dataclass
@@ -16,15 +18,15 @@ class TiledStridedLayout:
         tstrides (List[TiledStride]): A list of TiledStrides, one for each dimension
     """
 
-    tstrides: List[TiledStride]
+    tstrides: list[TiledStride]
 
-    def __init__(self, tstrides: List[TiledStride]):
+    def __init__(self, tstrides: list[TiledStride]):
         self.tstrides = tstrides
 
     def __str__(self) -> str:
         return "(" + ", ".join(map(str, self.tstrides)) + ")"
 
-    def __iter__(self) -> Iterator[Tuple[int, int, Stride]]:
+    def __iter__(self) -> Iterator[tuple[int, int, Stride]]:
         """Returns an iterator over the dimensions, depths and
         strides of the Tiled Strided Layout"""
 
@@ -81,10 +83,10 @@ class TiledStridedLayout:
         return np.max(all_values) == len(all_values) - 1
 
     def largest_common_contiguous_block(
-        self, other: "TiledStridedLayout"
-    ) -> List[Stride]:
+        self, other: TiledStridedLayout
+    ) -> list[Stride]:
         """Get the largest common contiguous block between two Tiled Strided Layouts"""
-        result: List[Stride] = []
+        result: list[Stride] = []
 
         # does not work on illegal workloads
         if self.self_overlaps():

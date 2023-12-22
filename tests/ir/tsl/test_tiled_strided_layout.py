@@ -5,7 +5,7 @@ from compiler.ir.tsl.tiled_stride import TiledStride
 from compiler.ir.tsl.tiled_strided_layout import TiledStridedLayout
 
 
-@pytest.fixture
+@pytest.fixture()
 def example_tsl():
     tiledStride1 = TiledStride(
         [
@@ -31,7 +31,7 @@ def test_tsl_constructor(example_tsl):
 
 def test_tsl_str(example_tsl):
     tsl = example_tsl
-    assert str(tsl) == "([4, 32] x [4, 2], [1, 16] x [4, 2])"
+    assert str(tsl) == "([4, 32] * [4, 2], [1, 16] * [4, 2])"
 
 
 def test_tsl_iter(example_tsl):

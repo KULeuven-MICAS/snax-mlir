@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import List
 from dataclasses import dataclass
 
 
@@ -18,7 +17,7 @@ class Stride:
     stride: int
     bound: int
 
-    def all_values(self) -> List[int]:
+    def all_values(self) -> list[int]:
         """Get all values within the bound of the Stride"""
         return list(range(0, self.stride * self.bound, self.stride))
 
