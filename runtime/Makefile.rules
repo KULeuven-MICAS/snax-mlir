@@ -10,8 +10,8 @@ AR            = $(SNITCH_LLVM_PATH)/bin/llvm-ar
 RANLIB        = $(SNITCH_LLVM_PATH)/bin/llvm-ranlib
 DASM          = /opt/snitch-spike/bin/spike-dasm
 GENTRACE      = /opt/snitch_cluster/util/trace/gen_trace.py
-MLIROPT       = mlir-opt-16
-MLIRTRANSLATE = mlir-translate-16
+MLIROPT       = mlir-opt-17
+MLIRTRANSLATE = mlir-translate-17
 SNAXOPT 	  = $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
 PYTHON        = /opt/python3.11/bin/python3
 
@@ -84,26 +84,19 @@ MLIRPREPROCFLAGS += --mlir-print-local-scope
 
 SNAXOPTFLAGS = -p set-memory-space,insert-sync-barrier,dispatch-regions,dispatch-elementwise-mult,linalg-to-library-call,snax-copy-to-dma,snax-to-func,clear-memory-space
 
-%.preproc18.mlir: %.preproc.mlir
-	$(MAKEFILE_RULES_DIRNAME)/tomlir18.py < $< > $@
-
-%.snax-opt18.mlir: %.preproc18.mlir
+%.snax-opt.mlir: %.preproc.mlir
 	$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<
-
-%.snax-opt.mlir: %.snax-opt18.mlir
-	$(MAKEFILE_RULES_DIRNAME)/tomlir16.py < $< > $@
 
 # MLIR
 
 MLIROPTFLAGS =
-MLIROPTFLAGS += -opaque-pointers=0
 MLIROPTFLAGS += --convert-linalg-to-loops
 MLIROPTFLAGS += --convert-scf-to-cf
 MLIROPTFLAGS += --canonicalize
 MLIROPTFLAGS += --cse
 MLIROPTFLAGS += --convert-math-to-llvm
 MLIROPTFLAGS += --llvm-request-c-wrappers
-MLIROPTFLAGS += --convert-memref-to-llvm='use-generic-functions index-bitwidth=32'
+MLIROPTFLAGS += --finalize-memref-to-llvm='use-generic-functions index-bitwidth=32'
 MLIROPTFLAGS += --convert-func-to-llvm='index-bitwidth=32'
 MLIROPTFLAGS += --convert-index-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --convert-cf-to-llvm=index-bitwidth=32
@@ -114,7 +107,7 @@ MLIROPTFLAGS += --reconcile-unrealized-casts
 	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
 
 %.ll: %.ll.mlir
-	$(MLIRTRANSLATE) -opaque-pointers=0 --mlir-to-llvmir -o $@ $<
+	$(MLIRTRANSLATE) --mlir-to-llvmir -o $@ $<
 
 # Trace rules
 
