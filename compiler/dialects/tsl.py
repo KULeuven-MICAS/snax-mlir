@@ -27,7 +27,7 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
             return tslparser.parse()
 
     def print_parameter(self, printer: Printer) -> None:
-        printer.print_string(f"{self.data}")
+        printer.print_string(f"<{self.data}>")
 
 
 TSL = Dialect("tsl", [], [TiledStridedLayoutAttr])
