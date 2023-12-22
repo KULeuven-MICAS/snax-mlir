@@ -3,11 +3,12 @@ MAKEFILE_RULES_DIRNAME := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 # Courtesy of Federico Ficarelli
 
 # NOTE: we are using  absolute paths from the Docker container
-SNITCH_LLVM_PATH = /opt/snitch-llvm
-CC            = $(SNITCH_LLVM_PATH)/bin/riscv32-unknown-elf-clang
-LD            = $(SNITCH_LLVM_PATH)/bin/riscv32-unknown-elf-clang
-AR            = $(SNITCH_LLVM_PATH)/bin/llvm-ar
-RANLIB        = $(SNITCH_LLVM_PATH)/bin/llvm-ranlib
+SNITCH_LLVM_PATH = /usr/bin
+LLVM_VERSION_POSTFIX = -17
+CC            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
+LD            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
+AR            = $(SNITCH_LLVM_PATH)/llvm-ar$(LLVM_VERSION_POSTFIX)
+RANLIB        = $(SNITCH_LLVM_PATH)/llvm-ranlib$(LLVM_VERSION_POSTFIX)
 DASM          = /opt/snitch-spike/bin/spike-dasm
 GENTRACE      = /opt/snitch_cluster/util/trace/gen_trace.py
 MLIROPT       = mlir-opt-17
@@ -33,8 +34,9 @@ CFLAGS += -I$(SNITCH_SW_PATH)/sw/math/include/bits
 CFLAGS += -I$(SNITCH_SW_PATH)/sw/math/include
 CFLAGS += -I$(MAKEFILE_RULES_DIRNAME)include
 CFLAGS += -D__DEFINED_uint64_t
-CFLAGS += -menable-experimental-extensions
-CFLAGS += -mcpu=snitch
+CFLAGS += --target=riscv32-unknown-elf
+CFLAGS += -mcpu=generic-rv32
+CFLAGS += -march=rv32imafdzfh
 CFLAGS += -mabi=ilp32d
 CFLAGS += -mcmodel=medany
 CFLAGS += -ftls-model=local-exec
@@ -43,12 +45,17 @@ CFLAGS += -fno-builtin-printf
 CFLAGS += -fno-common
 CFLAGS += -O3
 
-LDFLAGS += -fuse-ld=$(SNITCH_LLVM_PATH)/bin/ld.lld
-LDFLAGS += -L$(SNITCH_LLVM_PATH)/lib/clang/12.0.1/lib/
+LDFLAGS += -fuse-ld=$(SNITCH_LLVM_PATH)/ld.lld$(LLVM_VERSION_POSTFIX)
+LDFLAGS += -L/opt/snitch-llvm/lib/clang/12.0.1/lib/
+LDFLAGS += -L/opt/snitch-llvm/riscv32-unknown-elf/lib/
+LDFLAGS += --target=riscv32-unknown-elf
+LDFLAGS += -mcpu=generic-rv32
+LDFLAGS += -march=rv32imafdzfh
+LDFLAGS += -mabi=ilp32d
+LDFLAGS += -mcmodel=medany
 LDFLAGS += -T$(SNITCH_SW_PATH)/sw/snRuntime/base.ld
 LDFLAGS += -L$(SNITCH_SW_PATH)/target/snitch_cluster/sw/runtime/rtl
 LDFLAGS += -L$(SNITCH_SW_PATH)/target/snitch_cluster/sw/runtime/rtl/build
-LDFLAGS += -nostartfiles
 LDFLAGS += -nostdlib
 LDFLAGS += -lclang_rt.builtins-riscv32
 LDFLAGS += -lc
