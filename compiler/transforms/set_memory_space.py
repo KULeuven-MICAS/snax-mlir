@@ -1,12 +1,11 @@
-from xdsl.dialects import func, builtin, memref, linalg, arith
-from xdsl.ir import MLContext
-from xdsl.ir.core import SSAValue
+from xdsl.dialects import arith, builtin, func, linalg, memref
+from xdsl.ir import MLContext, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
-    RewritePattern,
     PatternRewriter,
-    op_type_rewrite_pattern,
     PatternRewriteWalker,
+    RewritePattern,
+    op_type_rewrite_pattern,
 )
 
 

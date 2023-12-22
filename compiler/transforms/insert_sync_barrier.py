@@ -1,13 +1,14 @@
 from xdsl.dialects import builtin
-from compiler.dialects import snax
 from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
-    PatternRewriteWalker,
     PatternRewriter,
+    PatternRewriteWalker,
     RewritePattern,
     op_type_rewrite_pattern,
 )
+
+from compiler.dialects import snax
 from compiler.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
 
 

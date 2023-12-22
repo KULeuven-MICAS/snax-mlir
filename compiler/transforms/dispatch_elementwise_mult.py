@@ -1,10 +1,10 @@
-from xdsl.dialects import builtin, linalg, arith
+from xdsl.dialects import arith, builtin, linalg
+from xdsl.dialects.memref import MemRefType
 from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
-from xdsl.dialects.memref import MemRefType
 from xdsl.pattern_rewriter import (
-    PatternRewriteWalker,
     PatternRewriter,
+    PatternRewriteWalker,
     RewritePattern,
     op_type_rewrite_pattern,
 )

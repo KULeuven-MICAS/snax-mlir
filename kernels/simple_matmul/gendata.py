@@ -1,11 +1,11 @@
 # simple script to generate inputs and expected outputs for simple_matmult
+
 import numpy as np
 from numpy import typing as npt
-from typing import Dict
 
 
 def create_header(
-    file_name: str, sizes: Dict[str, int], variables: Dict[str, npt.NDArray]
+    file_name: str, sizes: dict[str, int], variables: dict[str, npt.NDArray]
 ) -> None:
     with open(file_name, "w") as f:
         includes = ["#include <stdint.h>", "#pragma once", ""]
@@ -22,7 +22,7 @@ def create_header(
         f.write("\n")
 
 
-def create_data(file_name: str, variables: Dict[str, npt.NDArray]):
+def create_data(file_name: str, variables: dict[str, npt.NDArray]):
     includes = ['#include "data.h"', "", ""]
     includes = "\n".join(includes)
     variables = {i: np.reshape(j, j.size) for i, j in variables.items()}

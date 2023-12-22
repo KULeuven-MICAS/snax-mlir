@@ -2,9 +2,9 @@
 
 # Courtesy of Federico Ficarelli
 
+import argparse
 import re
 import sys
-import argparse
 
 PARSER = argparse.ArgumentParser(
     prog="tollvm12.py",
@@ -47,11 +47,11 @@ def get_availale_metadata_id(ir):
 
 if __name__ == "__main__":
     args = PARSER.parse_args()
-    LLVM_TARGET_TRIPLE = re.compile('target\s+triple\s*=\s*".+"')
-    LLVM_TARGET_DATALAYOUT = re.compile('target\s+datalayout\s*=\s*".+"')
-    LLVM_NAMED_METADATA = re.compile("!(\d+)\s*=\s*!")
-    LLVM_MODULE_FLAGS = re.compile("!llvm\.module\.flags\s*=\s*.+")
-    LLVM_ATTR_SIDEEFFECT = re.compile("memory\(.*\)")
+    LLVM_TARGET_TRIPLE = re.compile(r'target\s+triple\s*=\s*".+"')
+    LLVM_TARGET_DATALAYOUT = re.compile(r'target\s+datalayout\s*=\s*".+"')
+    LLVM_NAMED_METADATA = re.compile(r"!(\d+)\s*=\s*!")
+    LLVM_MODULE_FLAGS = re.compile(r"!llvm\.module\.flags\s*=\s*.+")
+    LLVM_ATTR_SIDEEFFECT = re.compile(r"memory\(.*\)")
     ir = sys.stdin.read()
     # Remove offending stuff:
     ir = re.sub(LLVM_TARGET_TRIPLE, "", ir)

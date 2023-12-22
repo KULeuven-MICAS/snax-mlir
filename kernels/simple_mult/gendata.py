@@ -1,10 +1,10 @@
 # simple script to generate inputs and expected outputs for simple_mult
+
 import numpy as np
 from numpy import typing as npt
-from typing import Dict
 
 
-def create_header(file_name: str, size: int, variables: Dict[str, npt.NDArray]) -> None:
+def create_header(file_name: str, size: int, variables: dict[str, npt.NDArray]) -> None:
     with open(file_name, "w") as f:
         includes = ["#include <stdint.h>", "#pragma once", "", f"#define N {size}", ""]
         includes = "\n".join(includes)
@@ -16,7 +16,7 @@ def create_header(file_name: str, size: int, variables: Dict[str, npt.NDArray]) 
         f.write("\n")
 
 
-def create_data(file_name: str, size: int, variables: Dict[str, npt.NDArray]):
+def create_data(file_name: str, size: int, variables: dict[str, npt.NDArray]):
     includes = ['#include "data.h"', "", ""]
     includes = "\n".join(includes)
     with open(file_name, "w") as f:

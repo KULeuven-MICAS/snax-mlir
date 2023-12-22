@@ -2,13 +2,14 @@ from xdsl.dialects import builtin, func
 from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
-    PatternRewriteWalker,
     PatternRewriter,
+    PatternRewriteWalker,
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from compiler.dialects import snax
 from xdsl.traits import SymbolTable
+
+from compiler.dialects import snax
 
 
 class InsertFunctionCall(RewritePattern):

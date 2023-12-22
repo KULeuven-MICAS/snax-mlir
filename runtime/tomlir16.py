@@ -3,15 +3,14 @@
 """ Convert an MLIR18 file to MLIR16
 This program performs the following conversion steps:
     *   take properties enclosed in <{}> and make them attributes:
-        change enclosing to {} and move them to come after the 
+        change enclosing to {} and move them to come after the
         region of the operation
     *   change operandSegmentSizes to operand_segment_sizes
-    *   remove double quotes from attribute names 
+    *   remove double quotes from attribute names
 """
 
 import re
 import sys
-
 
 if __name__ == "__main__":
     ir = sys.stdin.read()
