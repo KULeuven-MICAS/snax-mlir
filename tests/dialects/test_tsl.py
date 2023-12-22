@@ -1,8 +1,9 @@
 import pytest
+
 from compiler.dialects.tsl import StrideAttr, TiledStrideAttr, TiledStridedLayoutAttr
 
 
-@pytest.fixture
+@pytest.fixture()
 def example_strides():
     return (StrideAttr(1, 4), StrideAttr(4, 6), StrideAttr(24, 2))
 
@@ -28,7 +29,7 @@ def test_stride_str(example_strides):
     assert str(stride3) == "24 x 2"
 
 
-@pytest.fixture
+@pytest.fixture()
 def example_tiled_strides(example_strides):
     stride1, stride2, stride3 = example_strides
     tiledStride1 = TiledStrideAttr([stride1, stride2])
@@ -68,7 +69,7 @@ def test_tiled_stride_iter(example_strides, example_tiled_strides):
         assert stride == strides[depth]
 
 
-@pytest.fixture
+@pytest.fixture()
 def example_tsl():
     tiledStride1 = TiledStrideAttr(
         [
