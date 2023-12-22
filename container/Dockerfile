@@ -115,16 +115,18 @@ RUN apt-get -y update \
       libffi6 \
       libsqlite3-0 \
       bzip2 \
- # make pip able to install via git
+# make pip able to install via git
  && apt-get -y install git \
+# mlir and clang
+ && apt-get -y install wget lsb-release software-properties-common gnupg \
+ && wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 17 && rm llvm.sh \
+ && apt-get -y install mlir-17-tools \
+# make
+ && apt-get -y install make
+
 # add python3.11 to path in bashrc
 RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
 
-# mlir and clang
-RUN apt-get -y install wget lsb-release software-properties-common gnupg \
- && wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 17 && rm llvm.sh \
- && apt-get -y install mlir-17-tools \
- && apt-get -y install make
 
 # install python requirements
 RUN export PATH=/opt/python3.11/bin:$PATH \
