@@ -1,15 +1,16 @@
+from collections.abc import Callable, Iterable
+
 from xdsl.dialects import builtin, func, scf
-from xdsl.ir.core import Operation, Block
-from xdsl.ir import MLContext
+from xdsl.ir import Block, MLContext, Operation
 from xdsl.passes import ModulePass
-from collections.abc import Iterable, Callable
 from xdsl.pattern_rewriter import (
-    PatternRewriteWalker,
     PatternRewriter,
+    PatternRewriteWalker,
     RewritePattern,
     op_type_rewrite_pattern,
 )
 from xdsl.traits import SymbolTable
+
 from compiler.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
 
 

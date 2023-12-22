@@ -1,4 +1,4 @@
-from xdsl.dialects import builtin, memref, func
+from xdsl.dialects import builtin, func, memref
 from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
 

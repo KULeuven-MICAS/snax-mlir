@@ -1,16 +1,18 @@
 import argparse
-from xdsl.xdsl_opt_main import xDSLOptMain
+from collections.abc import Sequence
+
 from xdsl.ir import MLContext
+from xdsl.xdsl_opt_main import xDSLOptMain
+
 from compiler.dialects.snax import Snax
+from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.dispatch_elementwise_mult import DispatchElementWiseMult
+from compiler.transforms.dispatch_regions import DispatchRegions
+from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.set_memory_space import SetMemorySpace
-from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
-from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_to_func import SNAXToFunc
-from compiler.transforms.clear_memory_space import ClearMemorySpace
-from collections.abc import Sequence
 
 
 class SNAXOptMain(xDSLOptMain):

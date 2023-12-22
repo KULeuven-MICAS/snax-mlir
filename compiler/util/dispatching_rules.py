@@ -1,4 +1,4 @@
-from xdsl.dialects import memref, linalg
+from xdsl.dialects import linalg, memref
 
 
 def dispatch_to_dm(op):
