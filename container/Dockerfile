@@ -6,11 +6,8 @@ RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
  && git reset --hard d87720fdf66b15325b37391494b990ac606503ab \
  && git submodule update --init
 
-# mlir and clang
-RUN apt-get -y install wget lsb-release software-properties-common gnupg \
- && wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 17 && rm llvm.sh \
- && apt-get -y install mlir-17-tools
 # Snitch-specific version for libc and clang runtime libraries
+# LLVM 17 is already installed in base image
 RUN mkdir -p /opt/snitch-llvm \
  && wget -qO- https://github.com/pulp-platform/llvm-project/releases/download/0.12.0/riscv32-pulp-llvm-ubuntu1804-0.12.0.tar.gz | \
     tar xz --strip-components=1 -C /opt/snitch-llvm
@@ -119,9 +116,15 @@ RUN apt-get -y update \
       libsqlite3-0 \
       bzip2 \
  # make pip able to install via git
- && apt-get -y install git
+ && apt-get -y install git \
 # add python3.11 to path in bashrc
 RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
+
+# mlir and clang
+RUN apt-get -y install wget lsb-release software-properties-common gnupg \
+ && wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 17 && rm llvm.sh \
+ && apt-get -y install mlir-17-tools \
+ && apt-get -y install make
 
 # install python requirements
 RUN export PATH=/opt/python3.11/bin:$PATH \
