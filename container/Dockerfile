@@ -9,6 +9,10 @@ RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
 # mlir and clang
 RUN wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 17 && rm llvm.sh \
  && apt-get -y install mlir-17-tools
+# Snitch-specific version for libc and clang runtime libraries
+RUN mkdir -p /opt/snitch-llvm \
+ && wget -qO- https://github.com/pulp-platform/llvm-project/releases/download/0.12.0/riscv32-pulp-llvm-ubuntu1804-0.12.0.tar.gz | \
+    tar xz --strip-components=1 -C /opt/snitch-llvm
 # python 3.11
 RUN apt update -y \
  && apt install -y \
@@ -61,6 +65,10 @@ RUN cd /src/target/snitch_cluster \
 
 FROM ubuntu:18.04 as toolchain
 # shared dependencies
+# libc for memset from old toolchain
+COPY --from=deps /opt/snitch-llvm/riscv32-unknown-elf/lib /opt/snitch-llvm/riscv32-unknown-elf/lib
+# libclang_rt.builtins_riscv32 from old toolchain
+COPY --from=deps /opt/snitch-llvm/lib/clang/12.0.1/lib /opt/snitch-llvm/lib/clang/12.0.1/lib
 COPY --from=deps /opt/python3.11 /opt/python3.11
 COPY --from=deps /src/util/trace /opt/snitch_cluster/util/trace
 COPY --from=snax-mac /opt/snitch-spike /opt/snitch-spike
