@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator
 from dataclasses import dataclass
 
 from compiler.ir.tsl.stride import Stride
@@ -25,7 +25,7 @@ class TiledStride:
 
     strides: list[Stride]
 
-    def __init__(self, strides: Sequence[Stride]):
+    def __init__(self, strides: list[Stride]):
         self.strides = list(strides)
 
     def __str__(self) -> str:
@@ -34,7 +34,8 @@ class TiledStride:
         return f"[{strides}] * [{bounds}]"
 
     def __iter__(self) -> Iterator[list[int, Stride]]:
-        """Returns an iterator over the depths and strides of the Tiled Stride
+        """Returns an iterator of (depth, stride) over all
+            the strides of the Tiled Stride
 
         Yields:
             Iterator[List[int, Stride]]: An iterator over the depths and strides
@@ -50,7 +51,7 @@ class TiledStride:
         """
         return len(self.strides)
 
-    def all_values(self) -> Sequence[Sequence[int]]:
+    def all_values(self) -> list[list[int]]:
         """Get all resulting values of the Tiled Stride"""
         return [stride.all_values() for stride in self.strides]
 
@@ -64,6 +65,7 @@ class TiledStride:
             Stride | None: The stride at the specified depth,
             or None if the depth is invalid.
         """
-        if depth < 0 or depth >= len(self.strides):
+        try:
+            return self.strides[depth]
+        except IndexError:
             return None
-        return self.strides[depth]
