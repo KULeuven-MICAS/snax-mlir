@@ -27,8 +27,13 @@ class TiledStridedLayout:
         return "(" + ", ".join(map(str, self.tstrides)) + ")"
 
     def __iter__(self) -> Iterator[tuple[int, int, Stride]]:
-        """Returns an iterator over the dimensions, depths and
-        strides of the Tiled Strided Layout"""
+        """Returns an iterator of (dim, depth, stride) over all the
+        strides of the Tiled Strided Layout
+
+        Yields:
+            Iterator[Tuple[int, int, Stride]]: An iterator over the dimensions,
+            depths and strides of the Tiled Strided Layout
+        """
 
         result = [
             list(map(lambda x: (dim,) + x, iter(tsride)))
@@ -68,11 +73,11 @@ class TiledStridedLayout:
     def self_overlaps(self) -> bool:
         """Check if the Tiled Strided Layout contains overlapping elements"""
         (
-            u,
-            c,
+            unique_values,
+            counts,
         ) = np.unique(self.all_values(), return_counts=True)
-        dup = u[c > 1]  # get duplicates
-        return len(dup) > 0  # return True if there are duplicates
+        duplicates = unique_values[counts > 1]  # get duplicates
+        return len(duplicates) > 0  # return True if there are duplicates
 
     def is_dense(self) -> bool:
         """Check if the Tiled Strided Layout contains no gaps"""
@@ -97,7 +102,7 @@ class TiledStridedLayout:
         # find largest contiguous block, starting with stride = 1
         current_stride = 1
         while True:
-            # search for contiguous block
+            # increase contiguous block size
             next_stride = next(
                 (
                     (dim, depth, stride_self)
