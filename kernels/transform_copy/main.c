@@ -23,10 +23,6 @@ int main() {
   memrefB.shape[0] = N;
   memrefB.stride[0] = sizeof(int32_t);
 
-  if (snrt_is_dm_core()) {
-    printf("Copying from A=%p to B=%p\n", memrefA.data, memrefB.data);
-  }
-
   snrt_cluster_hw_barrier();
 
   // execute copy
@@ -41,15 +37,10 @@ int main() {
   int thiscore = snrt_cluster_core_idx();
   if (thiscore != 0)
     return 0;
-
-  printf("Checking result at B = %p\n", memrefB.data);
-
   // Correctness check
   int nerr = 0;
   for (int i = 0; i < N; i++) {
     int32_t error = memrefB.aligned_data[i] - B[i];
-    printf("B_result[%d] = %d, B_target[%d] = %d\n", i, memrefB.aligned_data[i],
-           i, B[i]);
     if (error != 0)
       nerr += 1;
   }
