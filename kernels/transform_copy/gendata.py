@@ -29,8 +29,11 @@ def create_data(file_name: str, size: int, variables: dict[str, npt.NDArray]):
 
 
 if __name__ == "__main__":
-    array_size = 10
+    array_size = 64
     A = np.linspace(1, array_size, array_size, dtype=np.int32)
-    variables = {"A": A}
+    B = np.reshape(A, [2, 4, 2, 4])
+    B = np.swapaxes(B, 1, 2)
+    B = B.flatten()
+    variables = {"A": A, "B": B}
     create_header("data.h", array_size, variables)
     create_data("data.c", array_size, variables)
