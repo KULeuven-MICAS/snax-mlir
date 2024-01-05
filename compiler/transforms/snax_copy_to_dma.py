@@ -219,11 +219,11 @@ class InsertFunctionCalls(RewritePattern):
                         func_call = func.Call(
                             "snax_dma_2d_transfer",
                             [
-                                pointer_dst,
                                 pointer_src,
+                                pointer_dst,
                                 dma_size,
-                                dma_stride_dst,
                                 dma_stride_src,
+                                dma_stride_dst,
                                 dma_stride_bound,
                             ],
                             [],
