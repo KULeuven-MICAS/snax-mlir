@@ -6,7 +6,7 @@ include ../../runtime/snax-mac.rules
 include ../../runtime/Makefile.rules
 
 TESTS =
-TESTS += simple_copy.x
+TESTS += transform_copy.x
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
