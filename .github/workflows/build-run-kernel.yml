@@ -10,7 +10,7 @@ jobs:
   build-and-run-kernels:
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/kuleuven-micas/snax-mlir:${{github.ref_name}}
+      image: ghcr.io/kuleuven-micas/snax-mlir:pr-${{github.event.number}}
     steps:
       - uses: actions/checkout@v3
       - name: Install snax compiler
