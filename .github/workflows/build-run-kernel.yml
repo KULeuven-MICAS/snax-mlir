@@ -6,37 +6,18 @@ on:
       - main
   pull_request:
   workflow_dispatch:
-  # workflow_run:
-  #   workflows: [build-docker]
-  #   types:
-  #     - completed
+    inputs:
+      container-tag:
+        description: 'Container tag'
+        required: true
+        default: 'main'
 
 jobs:
-  figure-out-container-tag:
-    runs-on: ubuntu-latest
-    outputs:
-      container-tag: ${{ steps.set-var.outputs.container-tag }}
-    steps:
-      - name: Set output
-        id: set-var
-        run: |
-          echo "Setting Container tag"
-          echo "event name: ${{ github.event_name }}"
-          echo "github.ref: ${{ github.ref }}"
-          echo "event.number: ${{ github.event.number }}"
-          if [ "${{ github.event_name }}" == "workflow_run" ] && [ "${{github.ref}}" != "refs/heads/main" ]; then
-            echo "container-tag=pr-${{github.event.number}}"
-            echo "container-tag=pr-${{github.event.number}}" >> $GITHUB_OUTPUT
-          else
-            echo "container-tag=main"
-            echo "container-tag=main" >> $GITHUB_OUTPUT
-          fi
-
   build-and-run-kernels:
     needs: figure-out-container-tag
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/kuleuven-micas/snax-mlir:${{ needs.figure-out-container-tag.outputs.container-tag }}
+      image: ghcr.io/kuleuven-micas/snax-mlir:${{ github.event.inputs.container-tag | 'main' }}
     steps:
       - uses: actions/checkout@v3
       - name: Install snax compiler
