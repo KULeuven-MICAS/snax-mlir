@@ -53,7 +53,7 @@ Our github actions use the container build to run tests. The actions always use 
 
 * [snax-cluster](https://github.com/kuleuven-micas/snitch_cluster) and dependencies (runtime, verilator, spike)
 * llvm (llvm, clang, lld)
-* standard linux packages
+* standard linux packages (everything installed with `apt`)
 
 ## Pytorch -> Linalg
 
