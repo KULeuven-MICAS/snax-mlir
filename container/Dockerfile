@@ -1,17 +1,18 @@
 # Courtesy of Federico Ficarelli
-FROM rgantonio/snax-chisel-test:latest@sha256:f3d6207ab764a081866886e18f5249891f861061bdf6106d2cf23b6a0342bf96 as deps
+FROM ghcr.io/kuleuven-micas/snax:latest as deps
 
 RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
  && cd /src \
- && git reset --hard a276279a6d2d9ca3fa92df050f04bbb21c1b3773 \
+ && git reset --hard d87720fdf66b15325b37391494b990ac606503ab \
  && git submodule update --init
 
-# clang+llvm+lld
+# Snitch-specific version for libc and clang runtime libraries
+# LLVM 17 is already installed in base image
 RUN mkdir -p /opt/snitch-llvm \
  && wget -qO- https://github.com/pulp-platform/llvm-project/releases/download/0.12.0/riscv32-pulp-llvm-ubuntu1804-0.12.0.tar.gz | \
-    tar xz --strip-components=1 -C /opt/snitch-llvm 
- # python 3.11
- RUN apt update -y \
+    tar xz --strip-components=1 -C /opt/snitch-llvm
+# python 3.11
+RUN apt update -y \
  && apt install -y \
       build-essential \
       zlib1g-dev \
@@ -35,26 +36,39 @@ RUN mkdir -p /opt/snitch-llvm \
  && make install
 
 FROM deps as snax-mac
- # verilator model
-RUN  cd /src && make CFG_OVERRIDE=cfg/snax-mac.hjson -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)
+# snitch runtime
+RUN cd /src/target/snitch_cluster \
+ && make DEBUG=ON sw  -j$(nproc) \
+ CFG_OVERRIDE=cfg/snax-mac.hjson \
+ SELECT_TOOLCHAIN=llvm-generic \
+ SELECT_RUNTIME=rtl-generic
+# verilator model
+RUN  cd /src && \
+make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
+ CFG_OVERRIDE=cfg/snax-mac.hjson
 # spike-dasm
 RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
  && ./configure --prefix=/opt/snitch-spike \
  && make install
- # snitch runtime
-RUN cd /src/target/snitch_cluster \
- && make DEBUG=ON sw  -j$(nproc)
 
 FROM deps as snax-gemm
- # verilator model
-RUN cd /src && make CFG_OVERRIDE=cfg/snax-gemm.hjson -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)
- # snitch runtime
+# snitch runtime
 RUN cd /src/target/snitch_cluster \
- && make DEBUG=ON sw  -j$(nproc)
+ && make DEBUG=ON sw  -j$(nproc) \
+ SELECT_TOOLCHAIN=llvm-generic \
+ SELECT_RUNTIME=rtl-generic \
+ CFG_OVERRIDE=cfg/snax-gemm.hjson
+# verilator model
+RUN  cd /src && \
+ make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
+ CFG_OVERRIDE=cfg/snax-gemm.hjson
 
 FROM ubuntu:18.04 as toolchain
 # shared dependencies
-COPY --from=deps /opt/snitch-llvm /opt/snitch-llvm
+# libc for memset from old toolchain
+COPY --from=deps /opt/snitch-llvm/riscv32-unknown-elf/lib /opt/snitch-llvm/riscv32-unknown-elf/lib
+# libclang_rt.builtins_riscv32 from old toolchain
+COPY --from=deps /opt/snitch-llvm/lib/clang/12.0.1/lib /opt/snitch-llvm/lib/clang/12.0.1/lib
 COPY --from=deps /opt/python3.11 /opt/python3.11
 COPY --from=deps /src/util/trace /opt/snitch_cluster/util/trace
 COPY --from=snax-mac /opt/snitch-spike /opt/snitch-spike
@@ -63,7 +77,9 @@ COPY --from=snax-mac /opt/snitch-spike /opt/snitch-spike
 COPY --from=snax-mac /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-mac-rtl/bin/snitch_cluster.vlt
 # Compile and link time dependencies
 COPY --from=snax-mac /src/sw/snRuntime /opt/snax-mac/sw/snRuntime
+# rtl-generic includes from rtl, so we also need rtl, even if we don't build it
 COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/rtl /opt/snax-mac/target/snitch_cluster/sw/runtime/rtl
+COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/rtl-generic /opt/snax-mac/target/snitch_cluster/sw/runtime/rtl-generic
 COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/common /opt/snax-mac/target/snitch_cluster/sw/runtime/common
 COPY --from=snax-mac /src/target/snitch_cluster/sw/snax/ /opt/snax-mac/target/snitch_cluster/sw/snax
 COPY --from=snax-mac /src/sw/math/ /opt/snax-mac/sw/math/
@@ -75,7 +91,9 @@ COPY --from=snax-mac /src/sw/deps/printf /opt/snax-mac/sw/deps/printf
 COPY --from=snax-gemm /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-gemm-rtl/bin/snitch_cluster.vlt
 # Compile and link time dependencies
 COPY --from=snax-gemm /src/sw/snRuntime /opt/snax-gemm/sw/snRuntime
+# rtl-generic includes from rtl, so we also need rtl, even if we don't build it
 COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/rtl /opt/snax-gemm/target/snitch_cluster/sw/runtime/rtl
+COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/rtl-generic /opt/snax-gemm/target/snitch_cluster/sw/runtime/rtl-generic
 COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/common /opt/snax-gemm/target/snitch_cluster/sw/runtime/common
 COPY --from=snax-gemm /src/target/snitch_cluster/sw/snax/ /opt/snax-gemm/target/snitch_cluster/sw/snax
 COPY --from=snax-gemm /src/sw/math/ /opt/snax-gemm/sw/math/
@@ -97,27 +115,18 @@ RUN apt-get -y update \
       libffi6 \
       libsqlite3-0 \
       bzip2 \
- # make pip able to install via git
+# make pip able to install via git
  && apt-get -y install git \
- # mlir
+# mlir and clang
  && apt-get -y install wget lsb-release software-properties-common gnupg \
- && wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - \
- && echo "\
-deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic main \n\
-deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic main \n\
-deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-16 main \n\
-deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-16 main\n" >> /etc/apt/sources.list \
- && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
- && apt-get -y update \
- && apt-get -y upgrade \
- && apt-get -y install mlir-16-tools \
- # misc stuff
- && apt-get -y install make \
- #
- && rm -rf /var/lib/apt/lists/* /var/tmp/* /tmp/*
+ && wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 17 && rm llvm.sh \
+ && apt-get -y install mlir-17-tools \
+# make
+ && apt-get -y install make
 
 # add python3.11 to path in bashrc
 RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
+
 
 # install python requirements
 RUN export PATH=/opt/python3.11/bin:$PATH \
