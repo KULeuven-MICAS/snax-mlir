@@ -51,7 +51,7 @@ Note: leaving out the `config` `--build-arg` will use the default `snitch_cluste
 
 Our github actions use the container build to run tests. The actions always use the last docker build from the `main` branch. Be aware that if you make changes to the Dockerfile in a certain PR, the actions will still run on the `main` Docker build, which may result in errors. Changes to `requirements.txt` are reinstalled before every test, so these are safe to change. The following packages are only defined in the Dockerfile and thus require extra caution when changing:
 
-* [snax-cluster](https://github.com/kuleuven-micas/snitch_cluster) and dependencies (runtime, verilator, runtime, spike)
+* [snax-cluster](https://github.com/kuleuven-micas/snitch_cluster) and dependencies (runtime, verilator, spike)
 * llvm (llvm, clang, lld)
 * standard linux packages
 
