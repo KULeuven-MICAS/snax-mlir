@@ -49,7 +49,7 @@ void _mlir_ciface_simple_matmul_cpu(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
   int8_t *a_ptr = a->aligned_data;
   int8_t *b_ptr = b->aligned_data;
   int32_t *c_ptr = c->aligned_data;
-  batch_gemm_cpu(Batch, M_param, K_param, N_param, a_ptr, b_ptr, c_ptr,
+  batch_gemm_cpu(Batch, M_param, K_param, N_param, a_ptr, b_ptr, 0, 0, c_ptr,
                  strideInnermostA, strideInnermostB, strideInnermostC, ldA, ldB,
                  ldC, strideA, strideB, strideC);
 }
