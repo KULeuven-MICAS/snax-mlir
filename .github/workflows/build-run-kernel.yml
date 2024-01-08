@@ -1,20 +1,15 @@
 name: Build and run kernels
 
 on:
-  # push:
-  #   branches:
-  #     - main
-  #   ignore-paths:
-  #     - 'container/Dockerfile'
-  #     - 'requirements.txt'
-  # pull_request:
-  #   ignore-paths:
-  #     - 'container/Dockerfile'
-  #     - 'requirements.txt'
-  workflow_run:
-    workflows: [build-docker]
-    types:
-      - completed
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+  # workflow_run:
+  #   workflows: [build-docker]
+  #   types:
+  #     - completed
 
 jobs:
   figure-out-container-tag:
