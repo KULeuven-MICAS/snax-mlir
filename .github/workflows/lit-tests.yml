@@ -5,6 +5,12 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      container-tag:
+        description: 'Container tag'
+        required: true
+        default: 'main'
 
 permissions:
   contents: read
@@ -14,7 +20,7 @@ jobs:
 
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/kuleuven-micas/snax-mlir:main
+      image: ghcr.io/kuleuven-micas/snax-mlir:${{ github.event.inputs.container-tag | 'main' }}
 
     steps:
     - uses: actions/checkout@v3
