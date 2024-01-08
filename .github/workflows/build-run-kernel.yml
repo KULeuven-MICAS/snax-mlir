@@ -30,9 +30,9 @@ jobs:
           echo "github.ref: ${{ github.ref }}"
           echo "event.number: ${{ github.event.number }}"
           if [ "${{ github.event_name }}" == "workflow_run" ] && [ "${{github.ref}}" != "refs/heads/main" ]; then
-            echo "::set-output name=container-tag::pr-${{github.event.number}}"
+            echo "{container-tag}={pr-${{github.event.number}}}" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=container-tag::main"
+            echo "{container-tag}={main}" >> $GITHUB_OUTPUT
           fi
 
   build-and-run-kernels:
