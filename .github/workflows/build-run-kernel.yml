@@ -31,10 +31,10 @@ jobs:
           echo "event.number: ${{ github.event.number }}"
           if [ "${{ github.event_name }}" == "workflow_run" ] && [ "${{github.ref}}" != "refs/heads/main" ]; then
             echo "container-tag=pr-${{github.event.number}}"
-            echo "{container-tag}={pr-${{github.event.number}}}" >> $GITHUB_OUTPUT
+            echo "container-tag=pr-${{github.event.number}}" >> $GITHUB_OUTPUT
           else
             echo "container-tag=main"
-            echo "{container-tag}={main}" >> $GITHUB_OUTPUT
+            echo "container-tag=main" >> $GITHUB_OUTPUT
           fi
 
   build-and-run-kernels:
