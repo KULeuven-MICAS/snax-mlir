@@ -26,6 +26,7 @@ void _mlir_ciface_snax_cluster_hw_barrier() {
 void _mlir_ciface_snax_dma_1d_transfer(size_t *source, size_t *destination,
                                        size_t size) {
   snrt_dma_start_1d((void *)destination, (void *)source, size * sizeof(size_t));
+  snrt_dma_wait_all();
   return;
 }
 
