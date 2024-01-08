@@ -12,7 +12,7 @@ on:
   #     - 'container/Dockerfile'
   #     - 'requirements.txt'
   workflow_run:
-    workflows: ["build-docker"]
+    workflows: [build-docker]
     types:
       - completed
 
