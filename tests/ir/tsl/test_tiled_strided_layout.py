@@ -19,7 +19,7 @@ def example_tsl():
             Stride(16, 2),
         ]
     )
-    tsl = TiledStridedLayout([tiledStride1, tiledStride2])
+    tsl = TiledStridedLayout([tiledStride1, tiledStride2], offset=5)
     return tsl
 
 
@@ -31,7 +31,7 @@ def test_tsl_constructor(example_tsl):
 
 def test_tsl_str(example_tsl):
     tsl = example_tsl
-    assert str(tsl) == "([4, 32] * [4, 2], [1, 16] * [4, 2])"
+    assert str(tsl) == "([4, 32] * [4, 2], [1, 16] * [4, 2], offset: 5)"
 
 
 def test_tsl_iter(example_tsl):
