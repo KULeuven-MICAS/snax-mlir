@@ -19,12 +19,14 @@ class TiledStridedLayout:
     """
 
     tstrides: list[TiledStride]
+    offset: int
 
-    def __init__(self, tstrides: list[TiledStride]):
+    def __init__(self, tstrides: list[TiledStride], offset: int = 0):
         self.tstrides = tstrides
+        self.offset = offset
 
     def __str__(self) -> str:
-        return "(" + ", ".join(map(str, self.tstrides)) + ")"
+        return "(" + ", ".join(map(str, self.tstrides)) + f", offset: {self.offset})"
 
     def __iter__(self) -> Iterator[tuple[int, int, Stride]]:
         """Returns an iterator of (dim, depth, stride) over all the
