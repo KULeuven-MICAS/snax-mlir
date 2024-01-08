@@ -11,6 +11,10 @@ on:
     ignore-paths:
       - 'container/Dockerfile'
       - 'requirements.txt'
+  workflow_run:
+    workflows: ["build-docker"]
+    types:
+      - completed
 
 jobs:
   build-and-run-kernels:
