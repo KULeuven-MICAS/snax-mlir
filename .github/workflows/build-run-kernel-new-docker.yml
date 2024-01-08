@@ -1,22 +1,16 @@
 name: Build and run kernels
 
 on:
-  push:
-    branches:
-      - main
-    ignore-paths:
-      - 'container/Dockerfile'
-      - 'requirements.txt'
-  pull_request:
-    ignore-paths:
-      - 'container/Dockerfile'
-      - 'requirements.txt'
+  workflow_run:
+    workflows: ["build-docker"]
+    types:
+      - completed
 
 jobs:
   build-and-run-kernels:
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/kuleuven-micas/snax-mlir:main
+      image: ghcr.io/kuleuven-micas/snax-mlir:pr-${{github.event.number}}
     steps:
       - uses: actions/checkout@v3
       - name: Install snax compiler
