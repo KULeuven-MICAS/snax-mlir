@@ -19,23 +19,31 @@ def example_tsl():
             Stride(16, 2),
         ]
     )
+    tiledStride3 = TiledStride(
+        [
+            Stride(1, 4),
+            Stride(None, None),
+        ]
+    )
     tsl = TiledStridedLayout([tiledStride1, tiledStride2], offset=5)
-    return tsl
+    tsl2 = TiledStridedLayout([tiledStride1, tiledStride3], offset=7)
+    return tsl, tsl2
 
 
 def test_tsl_constructor(example_tsl):
-    tsl = example_tsl
+    tsl, _ = example_tsl
     assert isinstance(tsl.tstrides[0], TiledStride)
     assert isinstance(tsl.tstrides[1], TiledStride)
 
 
 def test_tsl_str(example_tsl):
-    tsl = example_tsl
+    tsl, tsl2 = example_tsl
     assert str(tsl) == "([4, 32] * [4, 2], [1, 16] * [4, 2], offset: 5)"
+    assert str(tsl2) == "([4, 32] * [4, 2], [1, ?] * [4, ?], offset: 7)"
 
 
 def test_tsl_iter(example_tsl):
-    tsl = example_tsl
+    tsl, _ = example_tsl
     count = 0
     for dim, depth, stride in tsl:
         count += 1
@@ -47,12 +55,14 @@ def test_tsl_iter(example_tsl):
 
 
 def test_tsl_all_values(example_tsl):
-    tsl = example_tsl
+    tsl, tsl2 = example_tsl
     assert set(tsl.all_values()) == set(range(64))
+    with pytest.raises(ValueError):
+        tsl2.all_values()
 
 
 def test_tsl_self_overlaps(example_tsl):
-    tsl = example_tsl
+    tsl, _ = example_tsl
     assert not tsl.self_overlaps()
 
     tiledStride1 = TiledStride(
@@ -73,7 +83,7 @@ def test_tsl_self_overlaps(example_tsl):
 
 
 def test_tsl_is_dense(example_tsl):
-    tsl = example_tsl
+    tsl, _ = example_tsl
     assert tsl.is_dense()
 
     tiledStride1 = TiledStride(

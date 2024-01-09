@@ -46,6 +46,10 @@ class TiledStridedLayout:
         # return result
         return iter(result)
 
+    def is_dynamic(self) -> bool:
+        """Check if the Tiled Strided Layout is dynamic"""
+        return any(stride.is_dynamic() for _, _, stride in self)
+
     def dimension(self) -> int:
         """Get the number of dimensions in the Tiled Strided Layout"""
         return len(self.tstrides)
