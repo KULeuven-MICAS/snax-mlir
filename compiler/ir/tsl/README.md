@@ -7,22 +7,27 @@ A TSL (tiled-strided-layout) memory layout is an MLIR attribute, designed to be 
 ## Notation
 
 We employ the following notation for TSL attributes: (for a 2D matrix and one level of tiling)
+
 `([stride , stride] x [bound, bound], [stride, stride] x [bound, bound])`
 
 Consider the following memory layout:
 The image represents an `8x8` matrix, where every digit represents the memory address where the element will be stored.
-`<img src="https://github.com/KULeuven-MICAS/snax-mlir/assets/47864363/6d03debe-888e-4e5f-82c2-040434bc1f99 " width="400">`
+<img src="https://github.com/KULeuven-MICAS/snax-mlir/assets/47864363/6d03debe-888e-4e5f-82c2-040434bc1f99 " width="400">
 
 In both dimensions, the data is tiled in 2 tiles of size 4, this information is represented with the tiling bounds:
+
 `([stride , stride] x [4, 2], [stride, stride] x [4, 2])`
 
 For the first dimension there is a stride within the tile of 4 and across tiles of 32:
+
 `([4, 32] x [4, 2], [stride, stride] x [4, 2])`
 
 For the second dimension there is a stride within the tile of 1 and across tiles of 16:
+
 `([4, 32] x [4, 2], [1, 16] x [4, 2])`
 
 Additionally, the full TSL layout attribute also includes a base memory offset:
+
 `#tsl.tsl<([4, 32] * [4, 2], [1, 16] * [4, 2], offset: 5)>`
 
 ## Dynamic Sizes
