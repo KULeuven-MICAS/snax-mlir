@@ -30,6 +30,13 @@ void _mlir_ciface_snax_dma_1d_transfer(size_t *source, size_t *destination,
   return;
 }
 
+void _mlir_ciface_snax_dma_2d_transfer(size_t *source, size_t *destination,
+                                       size_t size, size_t src_stride,
+                                       size_t dst_stride, size_t repeat) {
+  snrt_dma_start_2d((void *)destination, (void *)source, size * sizeof(size_t),
+                    dst_stride, src_stride, repeat);
+}
+
 int _mlir_ciface_snax_is_dm_core() { return snrt_is_dm_core(); }
 
 int _mlir_ciface_snax_is_compute_core() { return snrt_is_compute_core(); }
