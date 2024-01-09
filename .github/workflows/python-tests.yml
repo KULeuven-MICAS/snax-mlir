@@ -20,7 +20,7 @@
 
 #     runs-on: ubuntu-latest
 #     container: 
-#       image: ghcr.io/kuleuven-micas/snax-mlir:${{ github.event.inputs.container-tag | 'main' }}
+#       image: ghcr.io/kuleuven-micas/snax-mlir:${{ github.event.inputs.container-tag || 'main' }}
 
 #     steps:
 #     - uses: actions/checkout@v3
