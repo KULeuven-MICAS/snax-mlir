@@ -37,7 +37,7 @@ class TSLParser(BaseParser):
         self._parse_token(Token.Kind.L_SQUARE, "Expected opening bracket")
         bounds: list[int] = []
         while not self._parse_optional_token(Token.Kind.R_SQUARE):
-            bounds.append(self.parse_integer())
+            bounds.append(self._parse_int_or_question())
             self._parse_optional_token(Token.Kind.COMMA)
         return bounds
 
