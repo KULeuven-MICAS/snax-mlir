@@ -29,8 +29,12 @@ class TiledStride:
         self.strides = list(strides)
 
     def __str__(self) -> str:
-        strides = ", ".join(str(stride.stride) for stride in self.strides)
-        bounds = ", ".join(str(stride.bound) for stride in self.strides)
+        strides = ", ".join(
+            str(stride.stride) if stride.stride else "?" for stride in self.strides
+        )
+        bounds = ", ".join(
+            str(stride.bound) if stride.bound else "?" for stride in self.strides
+        )
         return f"[{strides}] * [{bounds}]"
 
     def __iter__(self) -> Iterator[list[int, Stride]]:
@@ -42,6 +46,10 @@ class TiledStride:
             of the Tiled Stride
         """
         yield from zip(range(self.depth()), self.strides)
+
+    def is_dynamic(self) -> bool:
+        """Check if the Tiled Stride is dynamic"""
+        return any(stride.is_dynamic() for _, stride in self.strides)
 
     def depth(self) -> int:
         """Get the number of strides in the Tiled Stride

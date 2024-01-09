@@ -11,6 +11,14 @@ class TSLParser(BaseParser):
     def __init__(self, state: ParserState) -> None:
         self._resume_from(state)
 
+    def _parse_int_or_question(self, context_msg: str = "") -> int | None:
+        """Parse either an integer literal, or a '?'."""
+        if self._parse_optional_token(Token.Kind.QUESTION) is not None:
+            return None
+        if (v := self.parse_optional_integer(allow_boolean=False)) is not None:
+            return v
+        self.raise_error("Expected an integer literal or `?`" + context_msg)
+
     def _parse_stride(self) -> list[int]:
         """
         strides ::== `[` stride (`,` stride)* `]`
@@ -18,7 +26,7 @@ class TSLParser(BaseParser):
         self._parse_token(Token.Kind.L_SQUARE, "Expected opening bracket")
         strides: list[int] = []
         while not self._parse_optional_token(Token.Kind.R_SQUARE):
-            strides.append(self.parse_integer())
+            strides.append(self._parse_int_or_question())
             self._parse_optional_token(Token.Kind.COMMA)
         return strides
 
@@ -29,7 +37,7 @@ class TSLParser(BaseParser):
         self._parse_token(Token.Kind.L_SQUARE, "Expected opening bracket")
         bounds: list[int] = []
         while not self._parse_optional_token(Token.Kind.R_SQUARE):
-            bounds.append(self.parse_integer())
+            bounds.append(self._parse_int_or_question())
             self._parse_optional_token(Token.Kind.COMMA)
         return bounds
 
