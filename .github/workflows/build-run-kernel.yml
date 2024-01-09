@@ -14,7 +14,6 @@ on:
 
 jobs:
   build-and-run-kernels:
-    needs: figure-out-container-tag
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/kuleuven-micas/snax-mlir:${{ github.event.inputs.container-tag || 'main' }}
