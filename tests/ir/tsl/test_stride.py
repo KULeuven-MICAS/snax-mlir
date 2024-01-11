@@ -10,11 +10,11 @@ def example_strides():
 
 def test_stride_constructor(example_strides):
     stride1, stride2, _, dynamic_stride = example_strides
-    assert stride1.stride == 1
+    assert stride1.step == 1
     assert stride1.bound == 4
-    assert stride2.stride == 4
+    assert stride2.step == 4
     assert stride2.bound == 6
-    assert dynamic_stride.stride is None
+    assert dynamic_stride.step is None
     assert dynamic_stride.bound is None
 
 

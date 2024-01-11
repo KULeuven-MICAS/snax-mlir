@@ -116,7 +116,7 @@ class TiledStridedLayout:
                 (
                     (dim, depth, stride_self)
                     for dim, depth, stride_self in self
-                    if stride_self.stride == current_stride
+                    if stride_self.step == current_stride
                 ),
                 None,
             )
@@ -131,7 +131,7 @@ class TiledStridedLayout:
             stride_other = other.get_stride(dim, depth)
             if stride_self == stride_other:
                 result.append(stride_self)
-                current_stride = stride_self.stride * stride_self.bound
+                current_stride = stride_self.step * stride_self.bound
 
             else:
                 return result

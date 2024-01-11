@@ -16,25 +16,25 @@ class Stride:
             None represents a dynamic bound
     """
 
-    stride: int | None
+    step: int | None
     bound: int | None
 
     def is_dynamic(self) -> bool:
         """Check if the Stride is dynamic"""
-        return self.stride is None or self.bound is None
+        return self.step is None or self.bound is None
 
     def all_values(self) -> list[int]:
         """Get all values within the bound of the Stride"""
         if self.is_dynamic():
             raise ValueError("Cannot get all values of a dynamic stride")
-        return list(range(0, self.stride * self.bound, self.stride))
+        return list(range(0, self.step * self.bound, self.step))
 
     def __str__(self) -> str:
-        stride = "?" if self.stride is None else str(self.stride)
+        stride = "?" if self.step is None else str(self.step)
         bound = "?" if self.bound is None else str(self.bound)
         return f"{stride} x {bound}"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Stride):
             return NotImplemented
-        return self.stride == other.stride and self.bound == other.bound
+        return self.step == other.step and self.bound == other.bound
