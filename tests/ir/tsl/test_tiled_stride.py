@@ -37,9 +37,9 @@ def test_tiled_stride_depth(example_tiled_strides):
 
 def test_tiled_stride_str(example_tiled_strides):
     tiledStride1, tiledStride2, tiledStride3 = example_tiled_strides
-    assert str(tiledStride1) == "[1, 4] * [4, 6]"
-    assert str(tiledStride2) == "[1, 4, 24] * [4, 6, 2]"
-    assert str(tiledStride3) == "[1, ?] * [4, ?]"
+    assert str(tiledStride1) == "[6, 4] -> (4, 1)"
+    assert str(tiledStride2) == "[2, 6, 4] -> (24, 4, 1)"
+    assert str(tiledStride3) == "[?, 4] -> (?, 1)"
 
 
 def test_tiled_stride_iter(example_strides, example_tiled_strides):
