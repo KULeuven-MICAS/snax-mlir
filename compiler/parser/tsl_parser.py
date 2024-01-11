@@ -43,7 +43,7 @@ class TSLParser(BaseParser):
 
     def _parse_tiled_stride(self) -> TiledStride:
         """
-        tiled-stride ::= strides * bounds
+        tiled-stride ::= bounds `->` strides
         """
         bounds = self._parse_bound()
         self._parse_token(Token.Kind.ARROW, "Expected arrow")
@@ -55,16 +55,17 @@ class TSLParser(BaseParser):
 
     def parse(self) -> TiledStridedLayout:
         """
-        tsl ::= `(` tiled-stride (`,` tiled-stride)*`, offset: ` offset `)`
+        tsl ::= tiled-stride (`,` tiled-stride)*` (, offset: ` offset)?
         """
-        self._parse_token(Token.Kind.L_PAREN, "Expected opening bracket")
         tstrides = []
-        self.parse_optional_characters("offset:")
-        # while not self._parse_optional_token(Token.Kind.R_PAREN):
-        while not self.parse_optional_characters("offset"):
+        offset = 0
+        while True:
+            if self._current_token.kind == Token.Kind.GREATER:
+                break
+            if self.parse_optional_characters("offset"):
+                self._parse_token(Token.Kind.COLON, "Expected colon")
+                offset = self.parse_integer()
+                break
             tstrides.append(self._parse_tiled_stride())
             self._parse_optional_token(Token.Kind.COMMA)
-        self._parse_token(Token.Kind.COLON, "Expected colon")
-        offset = self.parse_integer()
-        self._parse_token(Token.Kind.R_PAREN, "Expected closing bracket")
         return TiledStridedLayout(tstrides, offset=offset)
