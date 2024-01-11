@@ -211,6 +211,9 @@ class TransformDMA(RewritePattern):
             region = Region(Block([for_loop, scf.Yield()], arg_types=(IndexType(),)))
             for_loop = scf.For(lower, upper[i + 1], step, [], region)
 
+        # save outermost for loop to insert at the end
+        outermost_for_loop = for_loop
+
         # step 6.3: insert indexing operations in for loop nest
 
         pointer_src = pointer_src
@@ -264,7 +267,7 @@ class TransformDMA(RewritePattern):
                 for_loop = next_for_op
 
         rewriter.insert_op_before_matched_op(ops_to_insert)
-        rewriter.replace_op(op, for_loop)
+        rewriter.replace_op(op, outermost_for_loop)
 
 
 class SNAXCopyToDMA(ModulePass):

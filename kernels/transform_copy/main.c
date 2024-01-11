@@ -5,6 +5,8 @@
 #include <snrt.h>
 #include <stdint.h>
 
+void _mlir_ciface_transform_copy(OneDMemrefI32_t *A, OneDMemrefI32_t *B);
+
 int main() {
 
   // create memref object for A
