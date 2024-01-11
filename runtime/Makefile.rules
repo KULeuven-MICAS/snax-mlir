@@ -81,13 +81,15 @@ LDFLAGS += -lsnRuntime
 # MLIR Preprocessing
 
 MLIRPREPROCFLAGS =
-MLIRPREPROCFLAGS += --pass-pipeline='builtin.module(func.func(tosa-to-linalg))' 
+MLIRPREPROCFLAGS = --pass-pipeline='builtin.module(func.func(tosa-to-linalg-named, tosa-to-tensor, tosa-to-scf, tosa-to-linalg))'
 # MLIRPREPROCFLAGS += --linalg-generalize-named-ops
 MLIRPREPROCFLAGS += --mlir-print-op-generic
 MLIRPREPROCFLAGS += --mlir-print-local-scope
 
 %.preproc.mlir: %.mlir
-	$(MLIROPT) $(MLIRPREPROCFLAGS) -o $@ $<
+	$(MLIROPT) $(MLIRPREPROCFLAGS) -o preproc_intermediate.mlir $<
+    # Individual pass pipeline options are not allowed in the same invocation?
+	$(MLIROPT) --tosa-to-arith="include-apply-rescale" --mlir-print-op-generic --mlir-print-local-scope -o $@ preproc_intermediate.mlir
 
 # SNAX opt
 
@@ -133,5 +135,6 @@ traces: $(call get_trace_targets,.)
 %.mlir.bc: %.tflite
 	$(TFLITE_TO_TOSA) -c $< -o $@
 
-%.mlir: %.mlir18
-	$(MAKEFILE_RULES_DIRNAME)/tomlir16.py < $< > $@
+# Convert bytecode to textual format
+%.mlir: %.mlir.bc
+	$(MLIROPT) -o $@ $<
