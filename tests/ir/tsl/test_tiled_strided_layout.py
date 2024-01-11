@@ -38,8 +38,8 @@ def test_tsl_constructor(example_tsl):
 
 def test_tsl_str(example_tsl):
     tsl, tsl2 = example_tsl
-    assert str(tsl) == "([2, 4] -> (32, 4), [2, 4] -> (16, 1), offset: 5)"
-    assert str(tsl2) == "([2, 4] -> (32, 4), [?, 4] -> (?, 1), offset: 7)"
+    assert str(tsl) == "[2, 4] -> (32, 4), [2, 4] -> (16, 1), offset: 5"
+    assert str(tsl2) == "[2, 4] -> (32, 4), [?, 4] -> (?, 1), offset: 7"
 
 
 def test_tsl_iter(example_tsl):
