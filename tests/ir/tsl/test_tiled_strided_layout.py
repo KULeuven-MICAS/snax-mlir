@@ -147,20 +147,20 @@ def test_tsl_largest_common_contiguous_block():
     ## Check largest common contiguous block between tsl1 and tsl2
     lccb1 = tsl1.largest_common_contiguous_block(tsl2)
     assert len(lccb1) == 2
-    assert lccb1[0].stride == 1
+    assert lccb1[0].step == 1
     assert lccb1[0].bound == 4
-    assert lccb1[1].stride == 4
+    assert lccb1[1].step == 4
     assert lccb1[1].bound == 4
 
     ## other way around should be the same
     lccb2 = tsl2.largest_common_contiguous_block(tsl1)
     assert len(lccb2) == 2
-    assert lccb2[0].stride == 1
+    assert lccb2[0].step == 1
     assert lccb2[0].bound == 4
-    assert lccb2[1].stride == 4
+    assert lccb2[1].step == 4
     assert lccb2[1].bound == 4
 
     lccb3 = tsl1.largest_common_contiguous_block(tsl3)
     assert len(lccb3) == 1
-    assert lccb3[0].stride == 1
+    assert lccb3[0].step == 1
     assert lccb3[0].bound == 4
