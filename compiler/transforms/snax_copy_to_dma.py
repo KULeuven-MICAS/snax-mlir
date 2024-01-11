@@ -54,17 +54,17 @@ class Match1DDMA(RewritePattern):
                 total_size_op = dim_op
             else:
                 total_size_op = Muli(total_size_op.result, dim_op.result, IndexType())
-                ops_to_insert.append(const_op)
+                ops_to_insert.append(total_size_op)
 
         # step 2: calculate element size to get total size in bytes
-        element_type = op.source.type.get_element_type()
-        element_size = IntegerType.get_bit_width(element_type) // 8
-        total_size_op = Muli(
-            total_size_op.result,
-            Constant.from_int_and_width(element_size, IndexType()).result,
-            IndexType(),
-        )
-        ops_to_insert.append(total_size_op)
+        # element_type = op.source.type.get_element_type()
+        # element_size = IntegerType.get_bit_width(element_type) // 8
+        # total_size_op = Muli(
+        #     total_size_op.result,
+        #     Constant.from_int_and_width(element_size, IndexType()).result,
+        #     IndexType(),
+        # )
+        # ops_to_insert.append(total_size_op)
 
         # step 3: extract source and destination pointers
         source_ptr_op = ExtractAlignedPointerAsIndexOp.get(op.source)
