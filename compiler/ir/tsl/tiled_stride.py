@@ -30,7 +30,7 @@ class TiledStride:
 
     def __str__(self) -> str:
         strides = ", ".join(
-            str(stride.stride) if stride.stride else "?"
+            str(stride.step) if stride.step else "?"
             for stride in reversed(self.strides)
         )
         bounds = ", ".join(
