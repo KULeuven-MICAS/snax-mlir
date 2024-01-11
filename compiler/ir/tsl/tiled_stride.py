@@ -30,12 +30,14 @@ class TiledStride:
 
     def __str__(self) -> str:
         strides = ", ".join(
-            str(stride.stride) if stride.stride else "?" for stride in self.strides
+            str(stride.stride) if stride.stride else "?"
+            for stride in reversed(self.strides)
         )
         bounds = ", ".join(
-            str(stride.bound) if stride.bound else "?" for stride in self.strides
+            str(stride.bound) if stride.bound else "?"
+            for stride in reversed(self.strides)
         )
-        return f"[{strides}] * [{bounds}]"
+        return f"[{bounds}] -> ({strides})"
 
     def __iter__(self) -> Iterator[list[int, Stride]]:
         """Returns an iterator of (depth, stride) over all

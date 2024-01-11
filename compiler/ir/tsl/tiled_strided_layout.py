@@ -26,7 +26,10 @@ class TiledStridedLayout:
         self.offset = offset
 
     def __str__(self) -> str:
-        return "(" + ", ".join(map(str, self.tstrides)) + f", offset: {self.offset})"
+        result = ", ".join(map(str, self.tstrides))
+        if self.offset != 0:
+            result += f", offset: {self.offset}"
+        return result
 
     def __iter__(self) -> Iterator[tuple[int, int, Stride]]:
         """Returns an iterator of (dim, depth, stride) over all the
