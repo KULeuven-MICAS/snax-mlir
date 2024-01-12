@@ -1,4 +1,4 @@
-from xdsl.dialects import arith, builtin, func, memref, scf
+from xdsl.dialects import arith, builtin, func, scf
 from xdsl.dialects.arith import Addi, Constant, Muli
 from xdsl.dialects.builtin import IndexType, IntegerType, NoneAttr
 from xdsl.dialects.memref import CopyOp, Dim, ExtractAlignedPointerAsIndexOp, MemRefType
@@ -278,17 +278,23 @@ class SNAXCopyToDMA(ModulePass):
     name = "snax-copy-to-dma"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        contains_copies = any(
-            isinstance(op_in_module, memref.CopyOp) for op_in_module in op.walk()
-        )
-
-        if contains_copies:
-            PatternRewriteWalker(Match1DDMA()).rewrite_module(op)
-            PatternRewriteWalker(TransformDMA()).rewrite_module(op)
+        PatternRewriteWalker(Match1DDMA()).rewrite_module(op)
+        if any(
+            isinstance(op_in_module, func.Call)
+            and op_in_module.callee.root_reference.data == "snax_dma_1d_transfer"
+            for op_in_module in op.walk()
+        ):
             func_decl = func.FuncOp.external(
                 "snax_dma_1d_transfer", 3 * [builtin.IndexType()], []
             )
             SymbolTable.insert_or_update(op, func_decl)
+
+        PatternRewriteWalker(TransformDMA()).rewrite_module(op)
+        if any(
+            isinstance(op_in_module, func.Call)
+            and op_in_module.callee.root_reference.data == "snax_dma_2d_transfer"
+            for op_in_module in op.walk()
+        ):
             func_decl = func.FuncOp.external(
                 "snax_dma_2d_transfer", 6 * [builtin.IndexType()], []
             )
