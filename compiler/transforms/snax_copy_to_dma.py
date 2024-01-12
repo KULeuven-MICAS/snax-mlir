@@ -57,14 +57,16 @@ class Match1DDMA(RewritePattern):
                 ops_to_insert.append(total_size_op)
 
         # step 2: calculate element size to get total size in bytes
-        # element_type = op.source.type.get_element_type()
-        # element_size = IntegerType.get_bit_width(element_type) // 8
-        # total_size_op = Muli(
-        #     total_size_op.result,
-        #     Constant.from_int_and_width(element_size, IndexType()).result,
-        #     IndexType(),
-        # )
-        # ops_to_insert.append(total_size_op)
+        element_type: IntegerType = op.source.type.get_element_type()
+        element_size = element_type.width.data // 8
+        element_size_op = Constant.from_int_and_width(element_size, IndexType())
+        total_size_op = Muli(
+            total_size_op.result,
+            element_size_op.result,
+            IndexType(),
+        )
+        ops_to_insert.append(element_size_op)
+        ops_to_insert.append(total_size_op)
 
         # step 3: extract source and destination pointers
         source_ptr_op = ExtractAlignedPointerAsIndexOp.get(op.source)
@@ -124,7 +126,9 @@ class TransformDMA(RewritePattern):
         tsl_source = op.source.type.layout.data
         tsl_dest = op.destination.type.layout.data
 
-        lcb = tsl_source.largest_common_contiguous_block(tsl_dest)
+        lcb = tsl_source.largest_common_contiguous_block(
+            tsl_dest, op.source.type.element_type.width.data // 8
+        )
 
         # step 3: generate a sorted list of remaing strides;
         # all strides excluded from the contiguous block must be generated
@@ -148,9 +152,11 @@ class TransformDMA(RewritePattern):
         else:
             dma_loop = remaining_strides.pop(0)
 
-        dma_size = Constant.from_int_and_width(lcb[-1].bound, IndexType())
-        dma_stride_src = Constant.from_int_and_width(dma_loop[0].stride, IndexType())
-        dma_stride_dst = Constant.from_int_and_width(dma_loop[1].stride, IndexType())
+        dma_size = Constant.from_int_and_width(
+            lcb[-1].bound * lcb[-1].step, IndexType()
+        )
+        dma_stride_src = Constant.from_int_and_width(dma_loop[0].step, IndexType())
+        dma_stride_dst = Constant.from_int_and_width(dma_loop[1].step, IndexType())
         dma_stride_bound = Constant.from_int_and_width(dma_loop[0].bound, IndexType())
         ops_to_insert.extend(
             [dma_size, dma_stride_src, dma_stride_dst, dma_stride_bound]
@@ -225,7 +231,7 @@ class TransformDMA(RewritePattern):
 
             # source indexing operations:
             stride_src = Constant.from_int_and_width(
-                remaining_strides[i][0].stride, IndexType()
+                remaining_strides[i][0].step, IndexType()
             )
             increment_src = Muli(for_loop.body.block.args[0], stride_src, IndexType())
             pointer_src = Addi(pointer_src, increment_src, IndexType())
@@ -233,7 +239,7 @@ class TransformDMA(RewritePattern):
 
             # destination indexing operations:
             stride_dst = Constant.from_int_and_width(
-                remaining_strides[i][1].stride, IndexType()
+                remaining_strides[i][1].step, IndexType()
             )
             increment_dst = Muli(for_loop.body.block.args[0], stride_dst, IndexType())
             pointer_dst = Addi(pointer_dst, increment_dst, IndexType())
