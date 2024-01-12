@@ -97,9 +97,22 @@ class TiledStridedLayout:
         return np.max(all_values) == len(all_values) - 1
 
     def largest_common_contiguous_block(
-        self, other: TiledStridedLayout
+        self, other: TiledStridedLayout, starting_stride: int = 1
     ) -> list[Stride]:
-        """Get the largest common contiguous block between two Tiled Strided Layouts"""
+        """
+        Get the largest common contiguous block between two Tiled Strided Layouts.
+
+        Args:
+            other (TiledStridedLayout): The other Tiled Strided Layout to compare with.
+            starting_stride (int, optional): The starting stride for searching
+            the contiguous block. Defaults to 1. this should be set to the width
+            of the element type in bytes
+
+        Returns:
+            list[Stride]: The list of Strides representing the largest common
+            contiguous block.
+
+        """
         result: list[Stride] = []
 
         # does not work on illegal workloads
@@ -108,8 +121,8 @@ class TiledStridedLayout:
         if other.self_overlaps():
             return result
 
-        # find largest contiguous block, starting with stride = 1
-        current_stride = 1
+        # find largest contiguous block
+        current_stride = starting_stride
         while True:
             # increase contiguous block size
             next_stride = next(
