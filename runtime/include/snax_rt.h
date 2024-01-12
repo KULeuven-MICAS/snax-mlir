@@ -25,7 +25,7 @@ void _mlir_ciface_snax_cluster_hw_barrier() {
 
 void _mlir_ciface_snax_dma_1d_transfer(size_t *source, size_t *destination,
                                        size_t size) {
-  snrt_dma_start_1d((void *)destination, (void *)source, size * sizeof(size_t));
+  snrt_dma_start_1d((void *)destination, (void *)source, size);
   snrt_dma_wait_all();
   return;
 }
@@ -33,8 +33,8 @@ void _mlir_ciface_snax_dma_1d_transfer(size_t *source, size_t *destination,
 void _mlir_ciface_snax_dma_2d_transfer(size_t *source, size_t *destination,
                                        size_t size, size_t src_stride,
                                        size_t dst_stride, size_t repeat) {
-  snrt_dma_start_2d((void *)destination, (void *)source, size * sizeof(size_t),
-                    dst_stride, src_stride, repeat);
+  snrt_dma_start_2d((void *)destination, (void *)source, size, dst_stride,
+                    src_stride, repeat);
 }
 
 int _mlir_ciface_snax_is_dm_core() { return snrt_is_dm_core(); }
