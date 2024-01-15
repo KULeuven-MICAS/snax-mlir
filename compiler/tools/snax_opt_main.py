@@ -33,14 +33,16 @@ class SNAXOptMain(xDSLOptMain):
 
         ## Add custom dialects & passes
         self.ctx.load_dialect(Snax)
-        super().register_pass(DispatchElementWiseMult)
-        super().register_pass(LinalgToLibraryCall)
-        super().register_pass(SetMemorySpace)
-        super().register_pass(InsertSyncBarrier)
-        super().register_pass(DispatchRegions)
-        super().register_pass(SNAXCopyToDMA)
-        super().register_pass(SNAXToFunc)
-        super().register_pass(ClearMemorySpace)
+        super().register_pass(
+            DispatchElementWiseMult.name, lambda: DispatchElementWiseMult
+        )
+        super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
+        super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
+        super().register_pass(InsertSyncBarrier.name, lambda: InsertSyncBarrier)
+        super().register_pass(DispatchRegions.name, lambda: DispatchRegions)
+        super().register_pass(SNAXCopyToDMA.name, lambda: SNAXCopyToDMA)
+        super().register_pass(SNAXToFunc.name, lambda: SNAXToFunc)
+        super().register_pass(ClearMemorySpace.name, lambda: ClearMemorySpace)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
