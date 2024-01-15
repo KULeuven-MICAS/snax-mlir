@@ -12,20 +12,20 @@ def example_strides():
 @pytest.fixture()
 def example_tiled_strides(example_strides):
     stride1, stride2, stride3, dynamic_stride = example_strides
-    tiledStride1 = TiledStride([stride1, stride2])
-    tiledStride2 = TiledStride([stride1, stride2, stride3])
-    tiledStride3 = TiledStride([stride1, dynamic_stride])
+    tiledStride1 = TiledStride([stride2, stride1])
+    tiledStride2 = TiledStride([stride3, stride2, stride1])
+    tiledStride3 = TiledStride([dynamic_stride, stride1])
     return tiledStride1, tiledStride2, tiledStride3
 
 
 def test_tiled_stride_constructor(example_strides, example_tiled_strides):
     stride1, stride2, stride3, _ = example_strides
     tiledStride1, tiledStride2, _ = example_tiled_strides
-    assert tiledStride1.strides[0] == stride1
-    assert tiledStride1.strides[1] == stride2
-    assert tiledStride2.strides[0] == stride1
+    assert tiledStride1.strides[0] == stride2
+    assert tiledStride1.strides[1] == stride1
+    assert tiledStride2.strides[0] == stride3
     assert tiledStride2.strides[1] == stride2
-    assert tiledStride2.strides[2] == stride3
+    assert tiledStride2.strides[2] == stride1
 
 
 def test_tiled_stride_depth(example_tiled_strides):
@@ -43,7 +43,9 @@ def test_tiled_stride_str(example_tiled_strides):
 
 
 def test_tiled_stride_iter(example_strides, example_tiled_strides):
-    strides = example_strides
+    stride1, stride2, stride3, _ = example_strides
+    strides = [stride3, stride2, stride1]
+
     _, tiledStride2, _ = example_tiled_strides
 
     for depth, stride in tiledStride2:

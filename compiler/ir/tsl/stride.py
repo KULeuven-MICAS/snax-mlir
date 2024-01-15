@@ -6,12 +6,12 @@ from dataclasses import dataclass
 @dataclass
 class Stride:
     """A stride represents the distance between elements in an array.
-    A Stride is defined by a stride and a bound, and the stride can be
+    A Stride is defined by a step and a bound, and can be
     used to generate all values within the bound.
 
     Args:
         stride (int | None): The stride of the Stride
-            None represents a dynamic stride
+            None represents a dynamic step
         bound (int | None): The bound of the Stride
             None represents a dynamic bound
     """
@@ -30,9 +30,9 @@ class Stride:
         return list(range(0, self.step * self.bound, self.step))
 
     def __str__(self) -> str:
-        stride = "?" if self.step is None else str(self.step)
+        step = "?" if self.step is None else str(self.step)
         bound = "?" if self.bound is None else str(self.bound)
-        return f"{stride} x {bound}"
+        return f"{bound} -> {step}"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Stride):

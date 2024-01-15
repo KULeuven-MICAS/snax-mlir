@@ -28,7 +28,7 @@ def test_stride_all_values(example_strides):
 
 def test_stride_str(example_strides):
     stride1, stride2, stride3, dynamic_stride = example_strides
-    assert str(stride1) == "1 x 4"
-    assert str(stride2) == "4 x 6"
-    assert str(stride3) == "24 x 2"
-    assert str(dynamic_stride) == "? x ?"
+    assert str(stride1) == "4 -> 1"
+    assert str(stride2) == "6 -> 4"
+    assert str(stride3) == "2 -> 24"
+    assert str(dynamic_stride) == "? -> ?"

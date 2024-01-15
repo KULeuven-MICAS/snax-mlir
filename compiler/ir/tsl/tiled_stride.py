@@ -14,7 +14,7 @@ class TiledStride:
     The class works with an arbitrary number of tile levels. The most common use case
     is one level of tiling, which results in a tile depth of 2.
 
-    For example, consider a Tiled Stride for a vector of length 8 of [1, 16] x [4, 2].
+    For example, consider a Tiled Stride for a vector of length 8 of [2, 4] -> (16, 1).
     This Tiled Stride means that the distance between elements in the first
     tile of size 4 is 1, and the distance between elements in the second tile
     of size 2 is 16. This results in the following memory addresses:
@@ -30,12 +30,10 @@ class TiledStride:
 
     def __str__(self) -> str:
         strides = ", ".join(
-            str(stride.step) if stride.step else "?"
-            for stride in reversed(self.strides)
+            str(stride.step) if stride.step else "?" for stride in self.strides
         )
         bounds = ", ".join(
-            str(stride.bound) if stride.bound else "?"
-            for stride in reversed(self.strides)
+            str(stride.bound) if stride.bound else "?" for stride in self.strides
         )
         return f"[{bounds}] -> ({strides})"
 
