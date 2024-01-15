@@ -80,16 +80,22 @@ LDFLAGS += -lsnRuntime
 
 # MLIR Preprocessing
 
-MLIRPREPROCFLAGS =
 MLIRPREPROCFLAGS = --pass-pipeline='builtin.module(func.func(tosa-to-linalg-named, tosa-to-tensor, tosa-to-scf, tosa-to-linalg))'
-# MLIRPREPROCFLAGS += --linalg-generalize-named-ops
 MLIRPREPROCFLAGS += --mlir-print-op-generic
 MLIRPREPROCFLAGS += --mlir-print-local-scope
+
+MLIRPREPROC2FLAGS = --tosa-to-arith="include-apply-rescale" 
+MLIRPREPROC2FLAGS += --empty-tensor-to-alloc-tensor 
+MLIRPREPROC2FLAGS += --one-shot-bufferize="bufferize-function-boundaries allow-return-allocs function-boundary-type-conversion=identity-layout-map"
+MLIRPREPROC2FLAGS += --linalg-generalize-named-ops
+MLIRPREPROC2FLAGS += --mlir-print-op-generic
+MLIRPREPROC2FLAGS += --mlir-print-local-scope
+
 
 %.preproc.mlir: %.mlir
 	$(MLIROPT) $(MLIRPREPROCFLAGS) -o preproc_intermediate.mlir $<
     # Individual pass pipeline options are not allowed in the same invocation?
-	$(MLIROPT) --tosa-to-arith="include-apply-rescale" --mlir-print-op-generic --mlir-print-local-scope -o $@ preproc_intermediate.mlir
+	$(MLIROPT) $(MLIRPREPROC2FLAGS) -o $@ preproc_intermediate.mlir
 
 # SNAX opt
 
