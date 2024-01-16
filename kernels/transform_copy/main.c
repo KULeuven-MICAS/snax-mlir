@@ -6,14 +6,18 @@
 #include <snrt.h>
 #include <stdint.h>
 
+// extern const int32_t N;
+// extern const int32_t* A;
+// extern const int32_t* B;
+
 void _mlir_ciface_transform_copy(TwoDMemrefI32_t *A, TwoDMemrefI32_t *B);
 
 int main() {
 
   // create memref object for A
   TwoDMemrefI32_t memrefA;
-  memrefA.data = &A;
-  memrefA.aligned_data = &A;
+  memrefA.data = A;
+  memrefA.aligned_data = A;
   memrefA.shape[0] = sqrt(N);
   memrefA.shape[1] = sqrt(N);
 
