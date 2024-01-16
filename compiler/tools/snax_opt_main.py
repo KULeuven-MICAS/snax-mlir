@@ -5,6 +5,7 @@ from xdsl.ir import MLContext
 from xdsl.xdsl_opt_main import xDSLOptMain
 
 from compiler.dialects.snax import Snax
+from compiler.dialects.tsl import TSL
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.dispatch_elementwise_mult import DispatchElementWiseMult
 from compiler.transforms.dispatch_regions import DispatchRegions
@@ -33,6 +34,7 @@ class SNAXOptMain(xDSLOptMain):
 
         ## Add custom dialects & passes
         self.ctx.load_dialect(Snax)
+        self.ctx.load_dialect(TSL)
         super().register_pass(
             DispatchElementWiseMult.name, lambda: DispatchElementWiseMult
         )
