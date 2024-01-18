@@ -13,7 +13,7 @@ We employ the following notation for TSL attributes: (for a 2D matrix and one le
 Consider the following memory layout:
 The image represents an `8x8` matrix, where every digit represents the memory address where the element will be stored.
 
-`<img src="https://github.com/KULeuven-MICAS/snax-mlir/assets/47864363/6d03debe-888e-4e5f-82c2-040434bc1f99 " width="400">`
+<img src="https://github.com/KULeuven-MICAS/snax-mlir/assets/47864363/6d03debe-888e-4e5f-82c2-040434bc1f99 " width="400">
 
 In both dimensions, the data is tiled in 2 tiles of size 4, this information is represented with the tiling bounds:
 
