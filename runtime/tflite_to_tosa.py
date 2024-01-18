@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 
-""" 
-"""
-
 import sys
-import tensorflow as tf
 
+import tensorflow as tf
 
 if __name__ == "__main__":
     # Check the number of arguments
