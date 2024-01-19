@@ -15,6 +15,7 @@ MLIROPT       = mlir-opt-17
 MLIRTRANSLATE = mlir-translate-17
 SNAXOPT 	  = $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
 PYTHON        = /opt/python3.11/bin/python3
+TFLITE_TO_TOSA = $(MAKEFILE_RULES_DIRNAME)/tflite_to_tosa.py
 
 # Mixing .c and .ll files makes some flags, useful for the former,
 # unused for the latter (e.g. -I)
@@ -79,13 +80,22 @@ LDFLAGS += -lsnRuntime
 
 # MLIR Preprocessing
 
-MLIRPREPROCFLAGS =
-MLIRPREPROCFLAGS += --linalg-generalize-named-ops
+MLIRPREPROCFLAGS = --pass-pipeline='builtin.module(func.func(tosa-to-linalg-named, tosa-to-tensor, tosa-to-scf, tosa-to-linalg))'
 MLIRPREPROCFLAGS += --mlir-print-op-generic
 MLIRPREPROCFLAGS += --mlir-print-local-scope
 
+MLIRPREPROC2FLAGS = --tosa-to-arith="include-apply-rescale" 
+MLIRPREPROC2FLAGS += --empty-tensor-to-alloc-tensor 
+MLIRPREPROC2FLAGS += --one-shot-bufferize="bufferize-function-boundaries allow-return-allocs function-boundary-type-conversion=identity-layout-map"
+MLIRPREPROC2FLAGS += --linalg-generalize-named-ops
+MLIRPREPROC2FLAGS += --mlir-print-op-generic
+MLIRPREPROC2FLAGS += --mlir-print-local-scope
+
+
 %.preproc.mlir: %.mlir
-	$(MLIROPT) $(MLIRPREPROCFLAGS) -o $@ $<
+	$(MLIROPT) $(MLIRPREPROCFLAGS) -o preproc_intermediate.mlir $<
+    # Individual pass pipeline options are not allowed in the same invocation?
+	$(MLIROPT) $(MLIRPREPROC2FLAGS) -o $@ preproc_intermediate.mlir
 
 # SNAX opt
 
@@ -126,3 +136,11 @@ define get_trace_targets
 endef
 
 traces: $(call get_trace_targets,.)
+
+# TFLite Flatbuffer conversion
+%.mlir.bc: %.tflite
+	$(TFLITE_TO_TOSA) -c $< -o $@
+
+# Convert bytecode to textual format
+%.mlir: %.mlir.bc
+	$(MLIROPT) -o $@ $<
