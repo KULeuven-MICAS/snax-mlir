@@ -300,11 +300,13 @@ class RealizeMemorySpaceCasts(RewritePattern):
                 continue
             # check if input
             is_output = False
-            if not isinstance(use_op, linalg.Generic):
+            if isinstance(use_op, linalg.Generic):
+                is_output = op.results[0] in use_op.outputs
+            elif isinstance(use_op, func.Return):
+                is_output = False
+            else:
                 # don't know if input or output, default to yes
                 is_output = True
-            else:
-                is_output = op.results[0] in use_op.outputs
             if is_output:
                 # insert copy op
                 copy_op = memref.CopyOp(op.dest, op.source)
@@ -323,5 +325,5 @@ class SetMemorySpace(ModulePass):
         PatternRewriteWalker(InitMemRefGlobalMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(InitMemRefAllocMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(InitLinalgMemorySpace()).rewrite_module(op)
-        PatternRewriteWalker(RealizeMemorySpaceCasts()).rewrite_module(op)
         PatternRewriteWalker(HandleFuncReturns()).rewrite_module(op)
+        PatternRewriteWalker(RealizeMemorySpaceCasts()).rewrite_module(op)
