@@ -9,20 +9,20 @@ from compiler.ir.tsl.tiled_strided_layout import TiledStridedLayout
 def example_tsl():
     tiledStride1 = TiledStride(
         [
-            Stride(4, 4),
             Stride(32, 2),
+            Stride(4, 4),
         ]
     )
     tiledStride2 = TiledStride(
         [
-            Stride(1, 4),
             Stride(16, 2),
+            Stride(1, 4),
         ]
     )
     tiledStride3 = TiledStride(
         [
-            Stride(1, 4),
             Stride(None, None),
+            Stride(1, 4),
         ]
     )
     tsl = TiledStridedLayout([tiledStride1, tiledStride2], offset=5)
@@ -67,14 +67,14 @@ def test_tsl_self_overlaps(example_tsl):
 
     tiledStride1 = TiledStride(
         [
-            Stride(4, 4),
             Stride(16, 2),
+            Stride(4, 4),
         ]
     )
     tiledStride2 = TiledStride(
         [
-            Stride(1, 4),
             Stride(16, 2),
+            Stride(1, 4),
         ]
     )
     tsl2 = TiledStridedLayout([tiledStride1, tiledStride2])
@@ -88,14 +88,14 @@ def test_tsl_is_dense(example_tsl):
 
     tiledStride1 = TiledStride(
         [
-            Stride(4, 4),
             Stride(64, 2),
+            Stride(4, 4),
         ]
     )
     tiledStride2 = TiledStride(
         [
-            Stride(1, 4),
             Stride(16, 2),
+            Stride(1, 4),
         ]
     )
     tsl2 = TiledStridedLayout([tiledStride1, tiledStride2])
@@ -106,40 +106,40 @@ def test_tsl_is_dense(example_tsl):
 def test_tsl_largest_common_contiguous_block():
     tiledStride1 = TiledStride(
         [
-            Stride(4, 4),
             Stride(16, 2),
+            Stride(4, 4),
         ]
     )
     tiledStride2 = TiledStride(
         [
-            Stride(1, 4),
             Stride(32, 2),
+            Stride(1, 4),
         ]
     )
     tsl1 = TiledStridedLayout([tiledStride1, tiledStride2])
     tiledStride1 = TiledStride(
         [
-            Stride(4, 4),
             Stride(32, 2),
+            Stride(4, 4),
         ]
     )
     tiledStride2 = TiledStride(
         [
-            Stride(1, 4),
             Stride(16, 2),
+            Stride(1, 4),
         ]
     )
     tsl2 = TiledStridedLayout([tiledStride1, tiledStride2])
     tiledStride1 = TiledStride(
         [
-            Stride(8, 4),
             Stride(32, 2),
+            Stride(8, 4),
         ]
     )
     tiledStride2 = TiledStride(
         [
-            Stride(1, 4),
             Stride(4, 2),
+            Stride(1, 4),
         ]
     )
     tsl3 = TiledStridedLayout([tiledStride1, tiledStride2])

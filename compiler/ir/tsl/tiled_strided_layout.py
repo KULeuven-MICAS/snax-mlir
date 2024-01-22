@@ -58,7 +58,7 @@ class TiledStridedLayout:
         return len(self.tstrides)
 
     def get_stride(self, dim: int, depth: int) -> Stride:
-        """Get the stride at a particular dimensaion and depth of
+        """Get the stride at a particular dimension and depth of
         the Tiled Strided Layout"""
         return self.tstrides[dim].strides[depth]
 
@@ -101,6 +101,8 @@ class TiledStridedLayout:
     ) -> list[Stride]:
         """
         Get the largest common contiguous block between two Tiled Strided Layouts.
+        Stops searching when it hits a dynamic Stride, so it finds the largest static
+        block.
 
         Args:
             other (TiledStridedLayout): The other Tiled Strided Layout to compare with.
@@ -115,11 +117,11 @@ class TiledStridedLayout:
         """
         result: list[Stride] = []
 
-        # # does not work on illegal workloads
-        # if self.self_overlaps():
-        #     return result
-        # if other.self_overlaps():
-        #     return result
+        # does not work on illegal workloads
+        if self.self_overlaps():
+            return result
+        if other.self_overlaps():
+            return result
 
         # find largest contiguous block
         current_stride = starting_stride
