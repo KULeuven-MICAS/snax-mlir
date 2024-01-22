@@ -92,7 +92,7 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
 class InitMemRefAllocMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.Alloc, rewriter: PatternRewriter):
-        # allocs should go in memory space 0 (L1)
+        # allocs should go in memory space 1 (L3)
         memspace = op.memref.type.memory_space
 
         if isinstance(memspace, builtin.IntegerAttr) and memspace.value.data == 1:
@@ -191,6 +191,10 @@ class InitLinalgMemorySpace(RewritePattern):
 
 
 class HandleFuncReturns(RewritePattern):
+    """Function returns which return a memref object must be replaced
+    such that the memref object is returned in the memory space specified
+    in the function handle"""
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: func.Return, rewriter: PatternRewriter):
         # get function op
