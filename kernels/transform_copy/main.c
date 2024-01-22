@@ -2,28 +2,31 @@
 #include "memref.h"
 #include "snax_rt.h"
 #include "stdint.h"
+#include <math.h>
 #include <snrt.h>
 #include <stdint.h>
 
-void _mlir_ciface_transform_copy(OneDMemrefI32_t *A, OneDMemrefI32_t *B);
+// extern const int32_t N;
+// extern const int32_t* A;
+// extern const int32_t* B;
+
+void _mlir_ciface_transform_copy(TwoDMemrefI32_t *A, TwoDMemrefI32_t *B);
 
 int main() {
 
   // create memref object for A
-  OneDMemrefI32_t memrefA;
-  memrefA.data = &A;
-  memrefA.aligned_data = &A;
-  memrefA.offset = 0;
-  memrefA.shape[0] = N;
-  memrefA.stride[0] = sizeof(int32_t);
+  TwoDMemrefI32_t memrefA;
+  memrefA.data = A;
+  memrefA.aligned_data = A;
+  memrefA.shape[0] = sqrt(N);
+  memrefA.shape[1] = sqrt(N);
 
   // allocate memory in L1 for copy target
-  OneDMemrefI32_t memrefB;
+  TwoDMemrefI32_t memrefB;
   memrefB.data = (int32_t *)snrt_l1_next();
   memrefB.aligned_data = memrefB.data;
-  memrefB.offset = 0;
-  memrefB.shape[0] = N;
-  memrefB.stride[0] = sizeof(int32_t);
+  memrefA.shape[0] = sqrt(N);
+  memrefA.shape[1] = sqrt(N);
 
   snrt_cluster_hw_barrier();
 

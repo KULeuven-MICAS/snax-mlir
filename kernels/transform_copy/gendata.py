@@ -1,10 +1,13 @@
 # simple script to generate inputs and expected outputs for simple_mult
 
+import os
+
 import numpy as np
 from numpy import typing as npt
 
 
 def create_header(file_name: str, size: int, variables: dict[str, npt.NDArray]) -> None:
+    os.makedirs(os.path.dirname(file_name), exist_ok=True)
     with open(file_name, "w") as f:
         includes = ["#include <stdint.h>", "#pragma once", "", f"#define N {size}", ""]
         includes = "\n".join(includes)
@@ -19,6 +22,8 @@ def create_header(file_name: str, size: int, variables: dict[str, npt.NDArray]) 
 def create_data(file_name: str, size: int, variables: dict[str, npt.NDArray]):
     includes = ['#include "data.h"', "", ""]
     includes = "\n".join(includes)
+    # create folder if does not exist
+    os.makedirs(os.path.dirname(file_name), exist_ok=True)
     with open(file_name, "w") as f:
         f.write(includes)
         for variable_name, variable_value in variables.items():
@@ -35,5 +40,5 @@ if __name__ == "__main__":
     B = np.swapaxes(B, 1, 2)
     B = B.flatten()
     variables = {"A": A, "B": B}
-    create_header("data.h", array_size, variables)
-    create_data("data.c", array_size, variables)
+    create_header("transform_copy/data.h", array_size, variables)
+    create_data("transform_copy/data.c", array_size, variables)

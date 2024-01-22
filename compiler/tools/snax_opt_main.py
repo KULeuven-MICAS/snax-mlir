@@ -6,7 +6,6 @@ from xdsl.xdsl_opt_main import xDSLOptMain
 
 from compiler.dialects.snax import Snax
 from compiler.dialects.tsl import TSL
-from compiler.dialects.tsl import TSL
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.dispatch_elementwise_mult import DispatchElementWiseMult
 from compiler.transforms.dispatch_regions import DispatchRegions

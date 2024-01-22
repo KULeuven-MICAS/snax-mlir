@@ -115,11 +115,11 @@ class TiledStridedLayout:
         """
         result: list[Stride] = []
 
-        # does not work on illegal workloads
-        if self.self_overlaps():
-            return result
-        if other.self_overlaps():
-            return result
+        # # does not work on illegal workloads
+        # if self.self_overlaps():
+        #     return result
+        # if other.self_overlaps():
+        #     return result
 
         # find largest contiguous block
         current_stride = starting_stride
