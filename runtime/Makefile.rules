@@ -2,19 +2,20 @@ MAKEFILE_RULES_DIRNAME := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # Courtesy of Federico Ficarelli
 
-# NOTE: we are using  absolute paths from the Docker container
+# NOTE: we are using	absolute paths from the Docker container
 SNITCH_LLVM_PATH = /usr/bin
 LLVM_VERSION_POSTFIX = -17
-CC            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
-LD            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
-AR            = $(SNITCH_LLVM_PATH)/llvm-ar$(LLVM_VERSION_POSTFIX)
-RANLIB        = $(SNITCH_LLVM_PATH)/llvm-ranlib$(LLVM_VERSION_POSTFIX)
-DASM          = /opt/snitch-spike/bin/spike-dasm
-GENTRACE      = /opt/snitch_cluster/util/trace/gen_trace.py
-MLIROPT       = mlir-opt-17
+CC						= $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
+LD						= $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
+AR						= $(SNITCH_LLVM_PATH)/llvm-ar$(LLVM_VERSION_POSTFIX)
+RANLIB				= $(SNITCH_LLVM_PATH)/llvm-ranlib$(LLVM_VERSION_POSTFIX)
+DASM					= /opt/snitch-spike/bin/spike-dasm
+GENTRACE			= /opt/snitch_cluster/util/trace/gen_trace.py
+MLIROPT				= mlir-opt-17
+IREEOPT				= /$(MAKEFILE_RULES_DIRNAME)/../iree/bin/iree-opt
 MLIRTRANSLATE = mlir-translate-17
-SNAXOPT 	  = $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
-PYTHON        = /opt/python3.11/bin/python3
+SNAXOPT				= $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
+PYTHON				= /opt/python3.11/bin/python3
 TFLITE_TO_TOSA = $(MAKEFILE_RULES_DIRNAME)/tflite_to_tosa.py
 
 # Mixing .c and .ll files makes some flags, useful for the former,
@@ -64,19 +65,19 @@ LDFLAGS += -lsnRuntime
 
 # useful for debugging at llvm level:
 %.ll: %.c
-	$(CC) $(CFLAGS) -emit-llvm -O0 -S -c $< -o $@
+		$(CC) $(CFLAGS) -emit-llvm -O0 -S -c $< -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+		$(CC) $(CFLAGS) -c $< -o $@
 
 %.ll12: %.ll
-	$(MAKEFILE_RULES_DIRNAME)/tollvm12.py < $< > $@
+		$(MAKEFILE_RULES_DIRNAME)/tollvm12.py < $< > $@
 
 %.o: %.ll12
-	$(CC) $(CFLAGS) -x ir -c $< -o $@
+		$(CC) $(CFLAGS) -x ir -c $< -o $@
 
 %.o: %.S
-	$(CC) $(CFLAGS) -c $< -o $@
+		$(CC) $(CFLAGS) -c $< -o $@
 
 # MLIR Preprocessing
 
@@ -85,24 +86,27 @@ MLIRPREPROCFLAGS += --mlir-print-op-generic
 MLIRPREPROCFLAGS += --mlir-print-local-scope
 
 MLIRPREPROC2FLAGS = --tosa-to-arith="include-apply-rescale" 
-MLIRPREPROC2FLAGS += --empty-tensor-to-alloc-tensor 
-MLIRPREPROC2FLAGS += --one-shot-bufferize="bufferize-function-boundaries allow-return-allocs function-boundary-type-conversion=identity-layout-map"
-MLIRPREPROC2FLAGS += --linalg-generalize-named-ops
-MLIRPREPROC2FLAGS += --mlir-print-op-generic
-MLIRPREPROC2FLAGS += --mlir-print-local-scope
+MLIRPREPROC2FLAGS += --empty-tensor-to-alloc-tensor
 
+IREEPREPROCFLAGS = --iree-flow-tensor-pad-to-tensor-insert-slice
+
+MLIRPREPROC3FLAGS += --empty-tensor-to-alloc-tensor --one-shot-bufferize="bufferize-function-boundaries allow-return-allocs function-boundary-type-conversion=identity-layout-map"
+MLIRPREPROC3FLAGS += --linalg-generalize-named-ops
+MLIRPREPROC3FLAGS += --mlir-print-op-generic
+MLIRPREPROC3FLAGS += --mlir-print-local-scope
 
 %.preproc.mlir: %.mlir
-	$(MLIROPT) $(MLIRPREPROCFLAGS) -o preproc_intermediate.mlir $<
-    # Individual pass pipeline options are not allowed in the same invocation?
-	$(MLIROPT) $(MLIRPREPROC2FLAGS) -o $@ preproc_intermediate.mlir
+		$(MLIROPT) $(MLIRPREPROCFLAGS) -o preproc_intermediate.mlir $<
+		$(MLIROPT) $(MLIRPREPROC2FLAGS) -o preproc_intermediate2.mlir preproc_intermediate.mlir
+		$(IREEOPT) $(IREEPREPROCFLAGS) -o preproc_intermediate3.mlir preproc_intermediate2.mlir
+		$(MLIROPT) $(MLIRPREPROC3FLAGS) -o $@ preproc_intermediate3.mlir
 
 # SNAX opt
 
 SNAXOPTFLAGS = -p set-memory-space,insert-sync-barrier,dispatch-regions,dispatch-elementwise-mult,linalg-to-library-call,snax-copy-to-dma,snax-to-func,clear-memory-space
 
 %.snax-opt.mlir: %.preproc.mlir
-	$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<
+		$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<
 
 # MLIR
 
@@ -121,26 +125,26 @@ MLIROPTFLAGS += --convert-arith-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --reconcile-unrealized-casts
 
 %.ll.mlir: %.snax-opt.mlir
-	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
+		$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
 
 %.ll: %.ll.mlir
-	$(MLIRTRANSLATE) --mlir-to-llvmir -o $@ $<
+		$(MLIRTRANSLATE) --mlir-to-llvmir -o $@ $<
 
 # Trace rules
 
 %.trace.txt %.trace.json: %.dasm
-	$(DASM) < $< | $(GENTRACE) --permissive -d $*.trace.json > $*.trace.txt
+		$(DASM) < $< | $(GENTRACE) --permissive -d $*.trace.json > $*.trace.txt
 
 define get_trace_targets
-	$(addsuffix .trace.txt, $(basename $(shell find $(1) -name 'trace_hart_*.dasm')))
+		$(addsuffix .trace.txt, $(basename $(shell find $(1) -name 'trace_hart_*.dasm')))
 endef
 
 traces: $(call get_trace_targets,.)
 
 # TFLite Flatbuffer conversion
 %.mlir.bc: %.tflite
-	$(TFLITE_TO_TOSA) -c $< -o $@
+		$(TFLITE_TO_TOSA) -c $< -o $@
 
 # Convert bytecode to textual format
 %.mlir: %.mlir.bc
-	$(MLIROPT) -o $@ $<
+		$(MLIROPT) -o $@ $<
