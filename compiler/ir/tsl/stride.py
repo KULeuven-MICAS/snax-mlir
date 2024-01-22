@@ -10,8 +10,8 @@ class Stride:
     used to generate all values within the bound.
 
     Args:
-        stride (int | None): The stride of the Stride
-            None represents a dynamic stride
+        step (int | None): The step of the Stride
+            None represents a dynamic step
         bound (int | None): The bound of the Stride
             None represents a dynamic bound
     """
