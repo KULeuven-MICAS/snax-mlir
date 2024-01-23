@@ -1,7 +1,5 @@
-from functools import reduce
-
 from xdsl.dialects import arith, builtin, func, scf
-from xdsl.dialects.arith import Addi, Constant, DivUI, Muli
+from xdsl.dialects.arith import Addi, Constant, Muli
 from xdsl.dialects.builtin import IndexType, IntegerType, NoneAttr
 from xdsl.dialects.memref import CopyOp, Dim, ExtractAlignedPointerAsIndexOp, MemRefType
 from xdsl.ir import Block, MLContext, Region
@@ -20,7 +18,9 @@ from compiler.ir.tsl.stride import Stride
 
 class Match1DDMA(RewritePattern):
     """
-    Looks for simple dense memref copy operations and insert a snitch 1d dma call
+    Looks for simple dense memref copy (without layout information)
+    operations and inserts a snitch 1d dma call. The size of the memrefs
+    is determinded by the shape and element type of the memref.
     """
 
     @op_type_rewrite_pattern
@@ -45,6 +45,7 @@ class Match1DDMA(RewritePattern):
             return
 
         # step 1: extract size information to calculate total size
+        # this is done by multiplying all the shape dimensions
         ops_to_insert = []
         total_size_op = None
         for dim in range(op.source.type.get_num_dims()):
@@ -59,6 +60,8 @@ class Match1DDMA(RewritePattern):
                 ops_to_insert.append(total_size_op)
 
         # step 2: calculate element size to get total size in bytes
+        # multiyply the # elements by the (element size // 8) to get the
+        # total size in bytes
         element_type: IntegerType = op.source.type.get_element_type()
         element_size = element_type.width.data // 8
         element_size_op = Constant.from_int_and_width(element_size, IndexType())
@@ -116,6 +119,7 @@ class TransformDMA(RewritePattern):
         if not isinstance(op.source.type.get_element_type(), IntegerType):
             return
 
+        # list of all ops that need to be inserted
         ops_to_insert = []
 
         # step 1: extract base addresses
@@ -125,200 +129,73 @@ class TransformDMA(RewritePattern):
         ops_to_insert.append(pointer_dst)
 
         # step 2: find largest common contiguous block, to be used for dma transfers
-        tsl_source = op.source.type.layout.data
-        tsl_dest = op.destination.type.layout.data
+        tsl_source = op.source.type.layout
+        tsl_dest = op.destination.type.layout
 
         # lcb is completely static
-        lcb = tsl_source.largest_common_contiguous_block(
-            tsl_dest, op.source.type.element_type.width.data // 8
+        lcb = tsl_source.data.largest_common_contiguous_block(
+            tsl_dest.data, op.source.type.element_type.width.data // 8
         )
 
-        # step 3: generate a sorted list of remaing strides;
-        # all strides excluded from the contiguous block must be generated
-        # using for loops / multi-dimensional dma transfers
-        remaining_strides = [stride for stride in tsl_source if stride[2] not in lcb]
-        # # sort the remaining strides by their bound, largest first, dynamic last
+        # step 3: generate ops for the strides and bounds of the TSL
+        # except for the strides in the LCB, the other strides are used
+        # to calculate the bounds of the nested for loops for these Strides
+        # we need to generate the ops for the bounds and steps of these Strides.
+        # if these values are known beforehand, we can insert them as constants
+        # if not, we need to generate the ops for the calculation of these values
 
-        # map the list to
-        # [
-        #     {
-        #         "dim": dim,
-        #         "depth": depth,
-        #         "stride_src": stride
-        #         "stride_dst": stride
-        #         "bound_op": None
-        #         "step_src_op": None
-        #         "step_dst_op": None
+        # to do this, we will generate a dict with the following structure:
+        #     (dim, depth) : {
+        #         "stride_src": Stride
+        #         "stride_dst": Stride
+        #         "bound_op": None | Op
+        #         "step_src_op": None | Op
+        #         "step_dst_op": None | Op
         #     }
-        # ]
+        # In this dict, dim and depth refer to the dimension and depth of the
+        # current Stride. stride_src and stride_dst contain  the Stride objects
+        # for the source and destination. bound_op, step_src_op and step_dst_op
+        # contain the ops for the bound, step_src and step_dst of the Stride,
+        # which we need to generate.
+
         remaining_strides = {}
 
-        # first, get the all the bound ops for strides not in lcb
+        # first, generate the bound ops, we only need to do this for the source
+        # tsl, since the destination tsl has the same bounds (constraint)
+        ops_to_add, bound_ops = tsl_source.get_bound_ops(op.source)
+        ops_to_insert.extend(ops_to_add)
 
-        for dim in range(tsl_source.dimension()):
-            for depth in range(tsl_source.tstrides[dim].depth()):
-                stride = tsl_source.get_stride(dim, depth)
-                if stride in lcb:
-                    continue
-                if stride.bound is None:
-                    dim_index_op = Constant.from_int_and_width(dim, IndexType())
-                    dim_op = dim_op = Dim.from_source_and_index(
-                        op.source, dim_index_op.result
-                    )
-                    # to calculate the bound, we must divide the size of the matrix by
-                    # the product of all lower tile sizes, which must be known
-                    tilebounds = [
-                        stride.bound
-                        for _, stride in tsl_source.tstrides[dim]
-                        if stride.bound
-                    ]
-                    product_tilebounds = reduce(lambda x, y: x * y, tilebounds, 1)
-                    div_op = Constant.from_int_and_width(
-                        product_tilebounds, IndexType()
-                    )
-                    bound_op = DivUI(dim_op.result, div_op.result, IndexType())
-                    ops_to_insert.extend([dim_index_op, dim_op, div_op, bound_op])
-                else:
-                    bound_op = Constant.from_int_and_width(stride.bound, IndexType())
-                    ops_to_insert.append(bound_op)
-                remaining_strides[(dim, depth)] = {
-                    "dim": dim,
-                    "depth": depth,
-                    "stride_src": tsl_source.get_stride(dim, depth),
-                    "stride_dst": tsl_dest.get_stride(dim, depth),
-                    "bound_op": bound_op,
+        # generate the step ops for the source tsl
+        ops_to_add, stride_ops_src = tsl_source.get_stride_ops(bound_ops)
+        ops_to_insert.extend(ops_to_add)
+
+        # generate the step ops for the destination tsl
+        ops_to_add, stride_ops_dst = tsl_dest.get_stride_ops(bound_ops)
+        ops_to_insert.extend(ops_to_add)
+
+        # construct the dict. we only need the strides not yet present in the lcb
+        for key in bound_ops.keys():
+            stride = tsl_source.data.get_stride(*key)
+            if stride not in lcb:
+                remaining_strides[key] = {
+                    "stride_src": tsl_source.data.get_stride(*key),
+                    "stride_dst": tsl_dest.data.get_stride(*key),
+                    "bound_op": bound_ops[key],
+                    "step_src_op": stride_ops_src[key],
+                    "step_dst_op": stride_ops_dst[key],
                 }
 
-        # second, get the step ops for strides not in lcb
-        # the strategy here is as follows
-
-        # a first step is to find the largest current stride
-        # as a starting point for further dense calculations
-
-        max_key = None
-        max_value = 0
-        for key, value in remaining_strides.items():
-            if value["stride_src"].step and value["stride_src"].step > max_value:
-                max_key = key
-                max_value = value["stride_src"].step
-
-        max_stride_op = Constant.from_int_and_width(
-            remaining_strides[max_key]["stride_src"].step, IndexType()
-        )
-        starting_bound = Muli(
-            remaining_strides[max_key]["bound_op"],
-            max_stride_op,
-            IndexType(),
-        )
-        ops_to_insert.append(max_stride_op)
-
-        for dim in range(tsl_source.dimension()):
-            for depth in range(tsl_source.tstrides[dim].depth()):
-                if (dim, depth) not in remaining_strides.keys():
-                    continue
-                stride = remaining_strides[(dim, depth)]
-                if stride["stride_src"].step is not None:
-                    # create const op
-                    stride_op = Constant.from_int_and_width(
-                        stride["stride_src"].step, IndexType()
-                    )
-                    ops_to_insert.append(stride_op)
-                    stride["step_src_op"] = stride_op
-                else:
-                    # assign starting bound and increment value
-                    stride_op = starting_bound
-                    # const_bound_op = Constant(stride["bound_op"], IndexType())
-                    starting_bound = Muli(
-                        starting_bound.result,
-                        stride["bound_op"],
-                        IndexType(),
-                    )
-                    ops_to_insert.append(stride_op)
-                    stride["step_src_op"] = stride_op
-
-        # now do the same for the destination strides
-
-        max_key = None
-        max_value = 0
-        for key, value in remaining_strides.items():
-            if value["stride_dst"].step and value["stride_dst"].step > max_value:
-                max_key = key
-                max_value = value["stride_dst"].step
-
-        max_stride_op = Constant.from_int_and_width(
-            remaining_strides[max_key]["stride_dst"].step, IndexType()
-        )
-        starting_bound = Muli(
-            remaining_strides[max_key]["bound_op"],
-            max_stride_op,
-            IndexType(),
-        )
-        ops_to_insert.append(max_stride_op)
-
-        for dim in range(tsl_dest.dimension()):
-            for depth in range(tsl_dest.tstrides[dim].depth()):
-                if (dim, depth) not in remaining_strides.keys():
-                    continue
-                stride = remaining_strides[(dim, depth)]
-                if stride["stride_dst"].step is not None:
-                    # create const op
-                    stride_op = Constant.from_int_and_width(
-                        stride["stride_dst"].step, IndexType()
-                    )
-                    ops_to_insert.append(stride_op)
-                    stride["step_dst_op"] = stride_op
-                else:
-                    # assign starting bound and increment value
-                    stride_op = starting_bound
-                    starting_bound = Muli(
-                        starting_bound.result,
-                        stride["bound_op"],
-                        IndexType(),
-                    )
-                    ops_to_insert.append(stride_op)
-                    stride["step_dst_op"] = stride_op
-
-        pass
-        # remaining_strides = [
-        #     {
-        #         "dim": stride[0],
-        #         "depth": stride[1],
-        #         "stride": stride[2],
-        #         "bound_op": None,
-        #         "step_src_op": None,
-        #         "step_dst_op": None,
-        #     }
-        #     for stride in remaining_strides
-        # ]
-        # remaining_strides = [
-
-        #     stride + (tsl_dest.get_stride(stride[0], stride[1]), )
-        #     for stride in remaining_strides
-        # ]
-
-        # # order values of remaining stride by their bound
-        # remaining_strides = sorted(
-        #     remaining_strides,
-        #     key=lambda stride: stride["bound_op"].result.value
-        #     if stride["bound_op"]
-        #     else 0,
-        #     reverse=True,
-        # )
-
+        # sort the remaining strides
+        # we want the nested for loop to be sorted by descending bound
         remaining_strides = sorted(
             remaining_strides.values(),
             key=lambda x: x["stride_src"].bound if x["stride_src"].bound else 0,
             reverse=True,
         )
 
-        # generate ops for stride bounds
-        # for dim in range(tsl_source.dimension()):
-        #     for depth in range(tsl_source):
-
-        # step 4: generate variables for 2D transfer
-
+        # step 4: generate variables for 2D dma transfer
         if len(remaining_strides) == 0:
-            # is 1d dma transfer
+            # is actually 1d dma transfer
             dma_loop = (Stride(1, 1), Stride(1, 1))
         else:
             dma_loop = remaining_strides.pop(0)
