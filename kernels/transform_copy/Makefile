@@ -7,7 +7,7 @@ include ../../runtime/Makefile.rules
 
 TESTS =
 TESTS += transform_copy.x
-TESTS += $(wildcard *_gen.preproc.mlir)
+TESTS += $(patsubst %_gen.preproc.mlir,%_gen.x,$(wildcard *_gen.preproc.mlir))
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
@@ -36,6 +36,12 @@ $(RUN): run_%: sim_%
 all: $(TESTS)
 
 allrun: $(RUN)
+
+printtests:
+	echo $(TESTS)
+
+printrun:
+	echo $(RUN)
 
 generate:
 	$(PYTHON) gentests.py

@@ -253,12 +253,14 @@ class TransformDMA(RewritePattern):
         # step 6.2: create nested for loop (looping from inner to outer)
         # most inner for loop has empty region
         empty_region = Region(Block([scf.Yield()], arg_types=(IndexType(),)))
-        for_loop = scf.For(lower, upper[0], step, [], empty_region)
+        for_loop = scf.For(lower, upper[-1], step, [], empty_region)
 
         for i in range(len(remaining_strides) - 1):
             # other for loops have a region with the previous for loop as body
             region = Region(Block([for_loop, scf.Yield()], arg_types=(IndexType(),)))
-            for_loop = scf.For(lower, upper[i + 1], step, [], region)
+            for_loop = scf.For(
+                lower, upper[len(remaining_strides) - 2 - i], step, [], region
+            )
 
         # save outermost for loop to insert at the end
         outermost_for_loop = for_loop

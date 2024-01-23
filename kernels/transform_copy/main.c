@@ -14,6 +14,8 @@ void _mlir_ciface_transform_copy(TwoDMemrefI32_t *A, TwoDMemrefI32_t *B);
 
 int main() {
 
+  int thiscore = snrt_cluster_core_idx();
+
   // create memref object for A
   TwoDMemrefI32_t memrefA;
   memrefA.data = A;
@@ -35,19 +37,24 @@ int main() {
     _mlir_ciface_transform_copy(&memrefA, &memrefB);
   }
 
+  if (thiscore == 1) {
+    snrt_dma_wait_all();
+  }
+
   snrt_cluster_hw_barrier();
 
   // check if result is okay with core 0
 
-  int thiscore = snrt_cluster_core_idx();
   if (thiscore != 0)
     return 0;
   // Correctness check
   int nerr = 0;
   for (int i = 0; i < N; i++) {
     int32_t error = memrefB.aligned_data[i] - B[i];
-    if (error != 0)
+    if (error != 0) {
+      printf("Error at %d: %d\n", i, error);
       nerr += 1;
+    }
   }
 
   return nerr;

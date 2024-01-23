@@ -1,7 +1,9 @@
 import os
+from math import sqrt
 
 import numpy as np
 from numpy import typing as npt
+from testcases import testcases
 
 
 def create_header(file_name: str, size: int, variables: dict[str, npt.NDArray]) -> None:
@@ -41,14 +43,14 @@ def data_generator(reshape_var, swapaxes_var, array_size_var):
     return {"A": A, "B": B}
 
 
-def generate_mlir(tslsource, tsldest):
+def generate_mlir(tslsource, tsldest, shape="?x?"):
     return f"""builtin.module {{
     func.func public @transform_copy(
-        %arg0 : memref<?x?xi32, #tsl.tsl<{tslsource}>, 0 : i32>,
-        %arg1 : memref<?x?xi32, #tsl.tsl<{tsldest}>, 1 : i32>) {{
+        %arg0 : memref<{shape}xi32, #tsl.tsl<{tslsource}>, 0 : i32>,
+        %arg1 : memref<{shape}xi32, #tsl.tsl<{tsldest}>, 1 : i32>) {{
         "memref.copy"(%arg0, %arg1) : (
-            memref<?x?xi32, #tsl.tsl<{tslsource}>, 0 : i32>,
-            memref<?x?xi32, #tsl.tsl<{tsldest}>, 1 : i32>) -> ()
+            memref<{shape}xi32, #tsl.tsl<{tslsource}>, 0 : i32>,
+            memref<{shape}xi32, #tsl.tsl<{tsldest}>, 1 : i32>) -> ()
         func.return
     }}
 }}"""
@@ -64,31 +66,31 @@ def parse_testcases(testcases):
                 {
                     "name": testcase["name"] + "_" + str(array_size) + "_gen",
                     "size": array_size,
+                    "shape": testcase["shape"],
                     "tslsrc": testcase["tslsrc"],
                     "tsldst": testcase["tsldst"],
-                    "generator": testcase["generator"],
+                    "generator": lambda _: data_generator(
+                        testcase["reshape_var"],
+                        testcase["swapaxis_var"],
+                        array_size,
+                    ),
                 }
             )
     return result
 
 
-testcases = [
-    {
-        "name": "equal_layout",
-        "array_sizes": [8 * 8],
-        "tsldst": "[?, 4] -> (16, 4), [?, 4] -> (?, ?)",
-        "tslsrc": "[?, 4] -> (16, 4), [?, 4] -> (?, ?)",
-        "generator": lambda size: data_generator(None, None, size),
-    }
-]
-
 if __name__ == "__main__":
     testcases = parse_testcases(testcases)
     for testcase in testcases:
+        size_sqrt = sqrt(testcase["size"])
         data = testcase["generator"](testcase["size"])
         create_header(testcase["name"] + "/data.h", testcase["size"], data)
         create_data(testcase["name"] + "/data.c", testcase["size"], data)
         # Generate MLIR and write it to a file
-        mlir = generate_mlir(testcase["tslsrc"], testcase["tsldst"])
+        mlir = generate_mlir(
+            testcase["tslsrc"](size_sqrt),
+            testcase["tsldst"](size_sqrt),
+            testcase["shape"](size_sqrt),
+        )
         with open(testcase["name"] + ".preproc.mlir", "w") as file:
             file.write(mlir)
