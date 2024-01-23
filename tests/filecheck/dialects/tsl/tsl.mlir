@@ -1,4 +1,5 @@
 // RUN: XDSL_ROUNDTRIP
+// RUN: XDSL_SINGLETRIP
 
 //CHECK: module
 "builtin.module"() ({
