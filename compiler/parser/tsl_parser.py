@@ -51,9 +51,7 @@ class TSLParser(BaseParser):
         if len(steps) != len(bounds):
             raise ParseError("Expected same number of steps and bounds")
         # construct the tiledstrides
-        return TiledStride(
-            [Stride(stride, bound) for stride, bound in zip(steps, bounds)]
-        )
+        return TiledStride([Stride(step, bound) for step, bound in zip(steps, bounds)])
 
     def parse(self) -> TiledStridedLayout:
         """
