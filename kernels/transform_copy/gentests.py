@@ -36,9 +36,9 @@ def data_generator(reshape_var, swapaxes_var, array_size_var):
     A = np.linspace(1, array_size_var, array_size_var, dtype=np.int32)
     B = np.copy(A)
     if reshape_var is not None:
-        B = np.reshape(B, reshape_var)
-    if swapaxes_var is not None:
-        B = np.swapaxes(B, swapaxes_var[0], swapaxes_var[1])
+        B = np.reshape(B, reshape_var(sqrt(array_size_var)))
+    for sv in swapaxes_var:
+        B = np.swapaxes(B, sv[0], sv[1])
     B = B.flatten()
     return {"A": A, "B": B}
 
@@ -69,7 +69,7 @@ def parse_testcases(testcases):
                     "shape": testcase["shape"],
                     "tslsrc": testcase["tslsrc"],
                     "tsldst": testcase["tsldst"],
-                    "generator": lambda _: data_generator(
+                    "data": data_generator(
                         testcase["reshape_var"],
                         testcase["swapaxis_var"],
                         array_size,
@@ -83,9 +83,9 @@ if __name__ == "__main__":
     testcases = parse_testcases(testcases)
     for testcase in testcases:
         size_sqrt = sqrt(testcase["size"])
-        data = testcase["generator"](testcase["size"])
-        create_header(testcase["name"] + "/data.h", testcase["size"], data)
-        create_data(testcase["name"] + "/data.c", testcase["size"], data)
+        # data = testcase["generator"](testcase["size"])
+        create_header(testcase["name"] + "/data.h", testcase["size"], testcase["data"])
+        create_data(testcase["name"] + "/data.c", testcase["size"], testcase["data"])
         # Generate MLIR and write it to a file
         mlir = generate_mlir(
             testcase["tslsrc"](size_sqrt),
