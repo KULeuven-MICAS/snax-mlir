@@ -13,7 +13,6 @@ from xdsl.pattern_rewriter import (
 from xdsl.traits import SymbolTable
 
 from compiler.dialects.tsl import TiledStridedLayoutAttr
-from compiler.ir.tsl.stride import Stride
 
 
 class Match1DDMA(RewritePattern):
@@ -195,8 +194,14 @@ class TransformDMA(RewritePattern):
 
         # step 4: generate variables for 2D dma transfer
         if len(remaining_strides) == 0:
-            # is actually 1d dma transfer
-            dma_loop = (Stride(1, 1), Stride(1, 1))
+            # is actually 1d dma transfer, fake 2d transfer for experiments
+            one_op = arith.Constant.from_int_and_width(1, IndexType())
+            ops_to_insert.append(one_op)
+            dma_loop = {
+                "step_src_op": one_op,
+                "step_dst_op": one_op,
+                "bound_op": one_op,
+            }
         else:
             dma_loop = remaining_strides.pop(0)
 
@@ -352,3 +357,6 @@ class SNAXCopyToDMA(ModulePass):
                 "snax_dma_2d_transfer", 6 * [builtin.IndexType()], []
             )
             SymbolTable.insert_or_update(op, func_decl)
+
+        # remove dead code
+        # dce(op)
