@@ -29,7 +29,7 @@ testcases = [
         "swapaxis_var": [],
     },
     {
-        "name": "transform_block_transform",
+        "name": "transform_block_transpose",
         "array_sizes": [64, 256, 1024],
         "shape": lambda size: f"{int(size)}x{int(size)}",
         "tsldst": lambda size: f"[{int(size//4)}, 4] -> (64, 4), \
@@ -43,5 +43,22 @@ testcases = [
             4,
         ],  # reshape var
         "swapaxis_var": [(0, 1)],  # swap major axis for block transform
+    },
+    {
+        # a transformation like the one needed for gemm
+        "name": "transform_gemm",
+        "array_sizes": [64, 256, 1024],
+        "shape": lambda size: f"{int(size)}x{int(size)}",
+        "tsldst": lambda size: f"[{int(size//4)}, 4] -> ({int(64*size//4)}, 16), \
+            [{int(size//4)}, 4] -> (64, 4)",
+        "tslsrc": lambda size: f"[{int(size//4)}, 4] -> ({int(64*size//4)}, \
+            {int(16*size//4)}), [{int(size//4)}, 4] -> (16, 4)",
+        "reshape_var": lambda size: [
+            int(size // 4),
+            4,
+            int(size // 4),
+            4,
+        ],  # reshape var
+        "swapaxis_var": [(1, 2)],  # swap major axis for block transform
     },
 ]
