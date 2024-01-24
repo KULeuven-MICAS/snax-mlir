@@ -11,7 +11,7 @@ class ClearMemorySpace(ModulePass):
         def clear_memory_space(t):
             if isinstance(t, memref.MemRefType):
                 if not isinstance(t.memory_space, builtin.NoneAttr):
-                    return memref.MemRefType.from_element_type_and_shape(
+                    return memref.MemRefType(
                         t.element_type,
                         t.get_shape(),
                         t.layout,
