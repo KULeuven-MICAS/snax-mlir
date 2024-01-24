@@ -358,5 +358,8 @@ class SNAXCopyToDMA(ModulePass):
             )
             SymbolTable.insert_or_update(op, func_decl)
 
-        # remove dead code
+        # remove dead code because a lot of unused stuff is generated
+        # e.g. the ops for the bounds and steps of the Strides which
+        # may not be used at the end
         # dce(op)
+        # TODO because there are some things missing in xdsl
