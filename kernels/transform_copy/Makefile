@@ -37,12 +37,6 @@ all: $(TESTS)
 
 allrun: $(RUN)
 
-printtests:
-	echo $(TESTS)
-
-printrun:
-	echo $(RUN)
-
 generate:
 	$(PYTHON) gentests.py
 

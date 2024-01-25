@@ -9,7 +9,14 @@ from testcases import testcases
 def create_header(file_name: str, size: int, variables: dict[str, npt.NDArray]) -> None:
     os.makedirs(os.path.dirname(file_name), exist_ok=True)
     with open(file_name, "w") as f:
-        includes = ["#include <stdint.h>", "#pragma once", "", f"#define N {size}", ""]
+        includes = [
+            "#include <stdint.h>",
+            "#pragma once",
+            "",
+            f"#define N {size}",
+            f"#define N_sqrt {sqrt(size)}",
+            "",
+        ]
         includes = "\n".join(includes)
         variable_names = list(variables.keys())
         variables_string = [f"extern const int32_t {i}[N];" for i in variable_names]

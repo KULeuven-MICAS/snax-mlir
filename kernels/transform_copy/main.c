@@ -20,15 +20,15 @@ int main() {
   TwoDMemrefI32_t memrefA;
   memrefA.data = A;
   memrefA.aligned_data = A;
-  memrefA.shape[0] = sqrt(N);
-  memrefA.shape[1] = sqrt(N);
+  memrefA.shape[0] = N_sqrt;
+  memrefA.shape[1] = N_sqrt;
 
   // allocate memory in L1 for copy target
   TwoDMemrefI32_t memrefB;
   memrefB.data = (int32_t *)snrt_l1_next();
   memrefB.aligned_data = memrefB.data;
-  memrefA.shape[0] = sqrt(N);
-  memrefA.shape[1] = sqrt(N);
+  memrefA.shape[0] = N_sqrt;
+  memrefA.shape[1] = N_sqrt;
 
   snrt_cluster_hw_barrier();
 

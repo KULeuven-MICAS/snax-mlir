@@ -15,7 +15,7 @@ from xdsl.traits import SymbolTable
 from compiler.dialects.tsl import TiledStridedLayoutAttr
 
 
-class Match1DDMA(RewritePattern):
+class MatchSimpleCopy(RewritePattern):
     """
     Looks for simple dense memref copy (without layout information)
     operations and inserts a snitch 1d dma call. The size of the memrefs
@@ -25,22 +25,16 @@ class Match1DDMA(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: CopyOp, rewriter: PatternRewriter):
         # only works on memrefs with nonetype layouts and equal shape and element type
-        if not isinstance(op.source.type, MemRefType):
-            return
-        if not isinstance(op.destination.type, MemRefType):
-            return
-        if not isinstance(op.source.type.layout, NoneAttr):
-            return
-        if not isinstance(op.destination.type.layout, NoneAttr):
-            return
-        if not op.destination.type.get_shape() == op.source.type.get_shape():
-            return
-        if (
+        if any(
+            not isinstance(op.source.type, MemRefType),
+            not isinstance(op.destination.type, MemRefType),
+            not isinstance(op.source.type.layout, NoneAttr),
+            not isinstance(op.destination.type.layout, NoneAttr),
+            not op.destination.type.get_shape() == op.source.type.get_shape(),
             not op.destination.type.get_element_type()
-            == op.source.type.get_element_type()
+            == op.source.type.get_element_type(),
+            not isinstance(op.source.type.get_element_type(), IntegerType),
         ):
-            return
-        if not isinstance(op.source.type.get_element_type(), IntegerType):
             return
 
         # step 1: extract size information to calculate total size
@@ -62,6 +56,7 @@ class Match1DDMA(RewritePattern):
         # multiyply the # elements by the (element size // 8) to get the
         # total size in bytes
         element_type: IntegerType = op.source.type.get_element_type()
+        assert element_type.width.data % 8 == 0
         element_size = element_type.width.data // 8
         element_size_op = Constant.from_int_and_width(element_size, IndexType())
         total_size_op = Muli(
@@ -100,22 +95,16 @@ class TransformDMA(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: CopyOp, rewriter: PatternRewriter):
         # only works on memrefs with tsl layouts and equal shape and element type
-        if not isinstance(op.source.type, MemRefType):
-            return
-        if not isinstance(op.destination.type, MemRefType):
-            return
-        if not isinstance(op.source.type.layout, TiledStridedLayoutAttr):
-            return
-        if not isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
-            return
-        if not op.destination.type.get_shape() == op.source.type.get_shape():
-            return
-        if (
+        if any(
+            not isinstance(op.source.type, MemRefType),
+            not isinstance(op.destination.type, MemRefType),
+            not isinstance(op.source.type.layout, TiledStridedLayoutAttr),
+            not isinstance(op.destination.type.layout, TiledStridedLayoutAttr),
+            not op.destination.type.get_shape() == op.source.type.get_shape(),
             not op.destination.type.get_element_type()
-            == op.source.type.get_element_type()
+            == op.source.type.get_element_type(),
+            not isinstance(op.source.type.get_element_type(), IntegerType),
         ):
-            return
-        if not isinstance(op.source.type.get_element_type(), IntegerType):
             return
 
         # list of all ops that need to be inserted
@@ -132,6 +121,7 @@ class TransformDMA(RewritePattern):
         tsl_dest = op.destination.type.layout
 
         # lcb is completely static
+        assert op.source.element_type.width.data % 8 == 0
         lcb = tsl_source.data.largest_common_contiguous_block(
             tsl_dest.data, op.source.type.element_type.width.data // 8
         )
@@ -165,11 +155,11 @@ class TransformDMA(RewritePattern):
         ops_to_insert.extend(ops_to_add)
 
         # generate the step ops for the source tsl
-        ops_to_add, stride_ops_src = tsl_source.get_stride_ops(bound_ops)
+        ops_to_add, step_ops_src = tsl_source.get_step_ops(bound_ops)
         ops_to_insert.extend(ops_to_add)
 
         # generate the step ops for the destination tsl
-        ops_to_add, stride_ops_dst = tsl_dest.get_stride_ops(bound_ops)
+        ops_to_add, step_ops_dst = tsl_dest.get_step_ops(bound_ops)
         ops_to_insert.extend(ops_to_add)
 
         # construct the dict. we only need the strides not yet present in the lcb
@@ -180,8 +170,8 @@ class TransformDMA(RewritePattern):
                     "stride_src": tsl_source.data.get_stride(*key),
                     "stride_dst": tsl_dest.data.get_stride(*key),
                     "bound_op": bound_ops[key],
-                    "step_src_op": stride_ops_src[key],
-                    "step_dst_op": stride_ops_dst[key],
+                    "step_src_op": step_ops_src[key],
+                    "step_dst_op": step_ops_dst[key],
                 }
 
         # sort the remaining strides
@@ -256,7 +246,7 @@ class TransformDMA(RewritePattern):
         ops_to_insert.extend([lower, step])
 
         # step 6.2: create nested for loop (looping from inner to outer)
-        # most inner for loop has empty region
+        # innermost for loop has empty region
         empty_region = Region(Block([scf.Yield()], arg_types=(IndexType(),)))
         for_loop = scf.For(lower, upper[-1], step, [], empty_region)
 
@@ -280,18 +270,12 @@ class TransformDMA(RewritePattern):
             ops_to_insert_for_loop = []
 
             # source indexing operations:
-            # stride_src = Constant.from_int_and_width(
-            #     remaining_strides[i][0].step, IndexType()
-            # )
             stride_src = remaining_strides[i]["step_src_op"]
             increment_src = Muli(for_loop.body.block.args[0], stride_src, IndexType())
             pointer_src = Addi(pointer_src, increment_src, IndexType())
             ops_to_insert_for_loop.extend([increment_src, pointer_src])
 
             # destination indexing operations:
-            # stride_dst = Constant.from_int_and_width(
-            #     remaining_strides[i][1].step, IndexType()
-            # )
             stride_dst = remaining_strides[i]["step_dst_op"]
             increment_dst = Muli(for_loop.body.block.args[0], stride_dst, IndexType())
             pointer_dst = Addi(pointer_dst, increment_dst, IndexType())
@@ -302,7 +286,7 @@ class TransformDMA(RewritePattern):
                 ops_to_insert_for_loop, for_loop.body.block.first_op
             )
 
-            # if this is most inner for loop, also insert dma function call
+            # if this is innermost for loop, also insert dma function call
             if isinstance(next_for_op, scf.Yield):
                 func_call = func.Call(
                     "snax_dma_2d_transfer",
@@ -336,7 +320,7 @@ class SNAXCopyToDMA(ModulePass):
     name = "snax-copy-to-dma"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(Match1DDMA()).rewrite_module(op)
+        PatternRewriteWalker(MatchSimpleCopy()).rewrite_module(op)
         if any(
             isinstance(op_in_module, func.Call)
             and op_in_module.callee.root_reference.data == "snax_dma_1d_transfer"

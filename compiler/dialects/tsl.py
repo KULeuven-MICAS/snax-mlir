@@ -34,7 +34,7 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
     def get_bound_ops(
         self, memref: SSAValue | Operation
     ) -> tuple[list[Operation], dict[tuple[int, int], Operation]]:
-        """Generate the ops for the bounds of the Strides in the TSL
+        """Generate ops to get the bounds of the Strides in the TSL
         The function handles dynamic strides as well
 
         Args:
@@ -47,7 +47,8 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
 
             Result_mapping (Dict[(int, int), Operation]): a mapping from the tuple
             (dim, depth) to the operation of the bound of the stride at that dim
-            and depth
+            and depth. This is used to keep track of which sequence of operations
+            was made for which TSL Stride.
         """
         result: list[Operation] = []
         result_mapping: dict[(int, int), Operation] = {}
@@ -94,10 +95,10 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
 
         return result, result_mapping
 
-    def get_stride_ops(
+    def get_step_ops(
         self, bound_ops: dict[(int, int), Operation]
     ) -> (list[Operation], dict[(int, int), Operation]):
-        """Generate the ops for steps of the Strides in the TSL
+        """Generate ops to get the steps of the Strides in the TSL
         The function handles dynamic strides as well
 
         Args:
