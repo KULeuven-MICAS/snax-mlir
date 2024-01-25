@@ -125,7 +125,7 @@ class TransformDMA(RewritePattern):
         tsl_dest = op.destination.type.layout
 
         # lcb is completely static
-        assert op.source.element_type.width.data % 8 == 0
+        assert op.source.type.element_type.width.data % 8 == 0
         lcb = tsl_source.data.largest_common_contiguous_block(
             tsl_dest.data, op.source.type.element_type.width.data // 8
         )
