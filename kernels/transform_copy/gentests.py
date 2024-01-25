@@ -4,6 +4,12 @@ from math import sqrt
 import numpy as np
 from numpy import typing as npt
 from testcases import testcases
+from xdsl.builder import ImplicitBuilder
+from xdsl.dialects.builtin import i32
+from xdsl.dialects.func import FuncOp, Return
+from xdsl.dialects.memref import CopyOp, MemRefType
+
+from compiler.dialects.tsl import TiledStridedLayoutAttr
 
 
 def create_header(file_name: str, size: int, variables: dict[str, npt.NDArray]) -> None:
@@ -51,16 +57,15 @@ def data_generator(reshape_var, swapaxes_var, array_size_var):
 
 
 def generate_mlir(tslsource, tsldest, shape="?x?"):
-    return f"""builtin.module {{
-    func.func public @transform_copy(
-        %arg0 : memref<{shape}xi32, #tsl.tsl<{tslsource}>, 0 : i32>,
-        %arg1 : memref<{shape}xi32, #tsl.tsl<{tsldest}>, 1 : i32>) {{
-        "memref.copy"(%arg0, %arg1) : (
-            memref<{shape}xi32, #tsl.tsl<{tslsource}>, 0 : i32>,
-            memref<{shape}xi32, #tsl.tsl<{tsldest}>, 1 : i32>) -> ()
-        func.return
-    }}
-}}"""
+    memref_src = MemRefType(i32, shape, TiledStridedLayoutAttr(tslsource), 0)
+    memref_dst = MemRefType(i32, shape, TiledStridedLayoutAttr(tsldest), 0)
+    func_op = FuncOp(
+        "transform_copy", ((memref_src, memref_dst), ()), visibility="public"
+    )
+    with ImplicitBuilder(func_op.body):
+        CopyOp(func_op.args[0], func_op.args[1])
+        Return()
+    return str(func_op)
 
 
 def parse_testcases(testcases):
@@ -89,7 +94,7 @@ def parse_testcases(testcases):
 if __name__ == "__main__":
     testcases = parse_testcases(testcases)
     for testcase in testcases:
-        size_sqrt = sqrt(testcase["size"])
+        size_sqrt = int(sqrt(testcase["size"]))
         # data = testcase["generator"](testcase["size"])
         create_header(testcase["name"] + "/data.h", testcase["size"], testcase["data"])
         create_data(testcase["name"] + "/data.c", testcase["size"], testcase["data"])
