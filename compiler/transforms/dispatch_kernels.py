@@ -1,4 +1,4 @@
-from xdsl.dialects import arith, builtin, linalg
+from xdsl.dialects import builtin, linalg
 from xdsl.dialects.memref import MemRefType
 from xdsl.ir import MLContext
 from xdsl.ir.affine import AffineDimExpr, AffineMap
@@ -9,6 +9,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+
 from compiler.util.kernel_type import KernelType
 
 

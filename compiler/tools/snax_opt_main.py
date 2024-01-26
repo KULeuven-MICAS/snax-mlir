@@ -35,9 +35,7 @@ class SNAXOptMain(xDSLOptMain):
         ## Add custom dialects & passes
         self.ctx.load_dialect(Snax)
         self.ctx.load_dialect(TSL)
-        super().register_pass(
-            DispatchKernels.name, lambda: DispatchKernels
-        )
+        super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
         super().register_pass(InsertSyncBarrier.name, lambda: InsertSyncBarrier)
