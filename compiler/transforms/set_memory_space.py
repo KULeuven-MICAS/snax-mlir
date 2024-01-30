@@ -33,7 +33,7 @@ class InitFuncMemorySpace(RewritePattern):
         def change_to_memory_space(t):
             if isinstance(t, memref.MemRefType):
                 if isinstance(t.memory_space, builtin.NoneAttr):
-                    return memref.MemRefType.from_element_type_and_shape(
+                    return memref.MemRefType(
                         t.element_type,
                         t.get_shape(),
                         t.layout,
@@ -200,7 +200,7 @@ class RealizeMemorySpaceCasts(RewritePattern):
 
         # insert "copy from" for last use as output
         # walk parent op in reverse order to find last use as output
-        for use_op in op.parent.walk_reverse():
+        for use_op in op.parent.walk(reverse=True):
             if use_op not in uses:
                 continue
             # check if input
