@@ -117,12 +117,6 @@ class TiledStridedLayout:
         """
         result: list[Stride] = []
 
-        # does not work on illegal workloads
-        if self.self_overlaps():
-            return result
-        if other.self_overlaps():
-            return result
-
         # find largest contiguous block
         current_stride = starting_stride
         while True:
@@ -138,6 +132,9 @@ class TiledStridedLayout:
 
             # check if contiguous block is found
             if next_stride is None:
+                return result
+            # return if dynamic
+            if next_stride[2].is_dynamic():
                 return result
             else:
                 dim, depth, stride_self = next_stride

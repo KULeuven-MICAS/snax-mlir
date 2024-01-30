@@ -8,15 +8,15 @@ class ClearMemorySpace(ModulePass):
 
     def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
         # helper function to clear the memory space of a memref
+        # also clears the layout information of the memref - not used anymore
         def clear_memory_space(t):
             if isinstance(t, memref.MemRefType):
-                if not isinstance(t.memory_space, builtin.NoneAttr):
-                    return memref.MemRefType(
-                        t.element_type,
-                        t.get_shape(),
-                        t.layout,
-                        builtin.NoneAttr(),
-                    )
+                return memref.MemRefType(
+                    t.element_type,
+                    t.get_shape(),
+                    builtin.NoneAttr(),
+                    builtin.NoneAttr(),
+                )
             return t
 
         for op_in_module in module.walk():

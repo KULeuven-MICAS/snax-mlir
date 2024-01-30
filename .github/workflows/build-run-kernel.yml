@@ -35,6 +35,12 @@ jobs:
           export PATH=/opt/python3.11/bin:$PATH
           make allrun
         working-directory: kernels/simple_copy
+      - name: Build and run kernel transform_copy
+        run: |
+          export PATH=/opt/python3.11/bin:$PATH
+          make generate
+          make allrun
+        working-directory: kernels/transform_copy
       - name: Build and run kernel simple_matmul
         run: |
           export PATH=/opt/python3.11/bin:$PATH
