@@ -67,7 +67,7 @@ class InitFuncMemorySpace(RewritePattern):
 class InitMemRefGlobalMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.GetGlobal, rewriter: PatternRewriter):
-        # global variables should go in memory space 0 (L1)
+        # global variables should go in memory space 0 (L3)
         memspace = op.memref.type.memory_space
 
         if isinstance(memspace, builtin.IntegerAttr) and memspace.value.data == 0:
@@ -92,7 +92,7 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
 class InitMemRefAllocMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.Alloc, rewriter: PatternRewriter):
-        # allocs should go in memory space 1 (L3)
+        # allocs should go in memory space 1 (L1)
         memspace = op.memref.type.memory_space
 
         if isinstance(memspace, builtin.IntegerAttr) and memspace.value.data == 1:
