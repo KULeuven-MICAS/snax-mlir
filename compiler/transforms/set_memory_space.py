@@ -70,8 +70,8 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
         # global variables should go in memory space 0 (L3)
         memspace = op.memref.type.memory_space
 
+        # If memory space is already 0, don't do anything
         if isinstance(memspace, builtin.IntegerAttr) and memspace.value.data == 0:
-            # good, nothing left to do
             return
 
         # otherwise, create new memref type with correct memory space
