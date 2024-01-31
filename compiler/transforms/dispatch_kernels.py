@@ -30,7 +30,7 @@ class DispatchElementwiseMult(RewritePattern):
         if op.library_call is not None:
             return
 
-        if KernelType.get_type(op) != KernelType.MUL:
+        if KernelType.get_kernel(op) != KernelType.MUL:
             return
 
         for inp in op.inputs:
@@ -68,7 +68,7 @@ class DispatchQMatMul(RewritePattern):
         if op.library_call is not None:
             return
 
-        if KernelType.get_type(op) != KernelType.QMAC:
+        if KernelType.get_kernel(op) != KernelType.QMAC:
             return
 
         for inp in [x for x in op.inputs if isinstance(x.type, builtin.ShapedType)]:
