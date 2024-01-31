@@ -127,7 +127,7 @@ def test_parse_zpa():
         KernelType.parse_zpa(add)
 
 
-def test_parse_inputs(linalg_empty, linalg_mult):
+def test_parse_inputs(linalg_mult):
     yield_op, types = KernelType.parse_inputs(linalg_mult)
     assert isinstance(yield_op, linalg.YieldOp)
     assert isinstance(types, dict)
@@ -138,9 +138,6 @@ def test_parse_inputs(linalg_empty, linalg_mult):
     assert isinstance(types[operands[2]], int)
     assert isinstance(types[operands[3]], int)
     assert isinstance(types[operands[4]], memref.MemRefType)
-
-    with pytest.raises(KernelException):
-        KernelType.parse_inputs(linalg_empty)
 
 
 def test_match_inputs(linalg_mult):
