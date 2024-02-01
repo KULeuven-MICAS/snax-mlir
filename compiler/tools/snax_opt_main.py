@@ -7,7 +7,7 @@ from xdsl.xdsl_opt_main import xDSLOptMain
 from compiler.dialects.snax import Snax
 from compiler.dialects.tsl import TSL
 from compiler.transforms.clear_memory_space import ClearMemorySpace
-from compiler.transforms.dispatch_elementwise_mult import DispatchElementWiseMult
+from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
@@ -35,9 +35,7 @@ class SNAXOptMain(xDSLOptMain):
         ## Add custom dialects & passes
         self.ctx.load_dialect(Snax)
         self.ctx.load_dialect(TSL)
-        super().register_pass(
-            DispatchElementWiseMult.name, lambda: DispatchElementWiseMult
-        )
+        super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
         super().register_pass(InsertSyncBarrier.name, lambda: InsertSyncBarrier)
