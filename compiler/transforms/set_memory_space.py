@@ -75,7 +75,7 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
             return
 
         # otherwise, create new memref type with correct memory space
-        new_memref_type = memref.MemRefType.from_element_type_and_shape(
+        new_memref_type = memref.MemRefType(
             op.memref.type.element_type,
             op.memref.type.get_shape(),
             op.memref.type.layout,
