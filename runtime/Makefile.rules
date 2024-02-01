@@ -112,6 +112,9 @@ SNAXOPTFLAGS = -p set-memory-space,insert-sync-barrier,dispatch-regions,dispatch
 %.snax-opt.mlir: %.preprocfinal.mlir
 	$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<
 
+%.postproc.mlir: %.snax-opt.mlir
+	cat $< | sed 's/arith.maximumf/arith.maxf/g' | sed 's/arith.minimumf/arith.minf/g' > $@
+
 # MLIR
 
 MLIROPTFLAGS =
@@ -128,7 +131,7 @@ MLIROPTFLAGS += --convert-cf-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --convert-arith-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --reconcile-unrealized-casts
 
-%.ll.mlir: %.snax-opt.mlir
+%.ll.mlir: %.postproc.mlir
 	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
 
 %.ll: %.ll.mlir
