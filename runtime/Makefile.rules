@@ -2,7 +2,7 @@ MAKEFILE_RULES_DIRNAME := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # Courtesy of Federico Ficarelli
 
-# NOTE: we are using	absolute paths from the Docker container
+# NOTE: we are using absolute paths from the Docker container
 SNITCH_LLVM_PATH = /usr/bin
 LLVM_VERSION_POSTFIX = -17
 CC            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
