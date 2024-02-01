@@ -5,7 +5,7 @@
 }) : () -> ()
 
 //CHECK: "builtin.module"() ({
-//CHECK-NEXT:   %0 = "memref.get_global"() <{"name" = @memref.get_global}> : () -> memref<640xi32, 0 : i32>
+//CHECK-NEXT:   %0 = "memref.get_global"() <{"name" = @constant}> : () -> memref<640xi32, 0 : i32>
 //CHECK-NEXT: }) : () -> ()
 
 // -----
