@@ -28,20 +28,20 @@ jobs:
       - name: Anomaly detection
         run: |
           export PATH=/opt/python3.11/bin:$PATH
-          make ad01_int8.snax-opt.mlir
+          make ad01_int8.o
         working-directory: kernels/mlperf_tiny_ad01
       - name: Image classfication
         run: |
           export PATH=/opt/python3.11/bin:$PATH
-          make pretrainedResnet_quant.snax-opt.mlir
+          make pretrainedResnet_quant.o
         working-directory: kernels/mlperf_tiny_ic
       - name: Visual Wake Words
         run: |
           export PATH=/opt/python3.11/bin:$PATH
-          make vww_96_int8.snax-opt.mlir
+          make vww_96_int8.o
         working-directory: kernels/mlperf_tiny_vww
       - name: Keyword spotting
         run: |
           export PATH=/opt/python3.11/bin:$PATH
-          make kws_ref_model.snax-opt.mlir
+          make kws_ref_model.o
         working-directory: kernels/mlperf_tiny_kws
