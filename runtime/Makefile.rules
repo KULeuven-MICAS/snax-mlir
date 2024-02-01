@@ -100,10 +100,10 @@ MLIRPREPROC3FLAGS += --mlir-print-local-scope
 	$(MLIROPT) $(MLIRPREPROC2FLAGS) -o $@ $<
 
 %.preproc3.mlir: %.preproc2.mlir
-	$(MLIROPT) $(MLIRPREPROC3FLAGS) -o $@ $< 
+	$(MLIROPT) $(MLIRPREPROC3FLAGS) -o $@ $<
 
 %.imumf.mlir: %.preproc3.mlir
-	cat $< | sed 's/arith.maxf/arith.maximumf/g' | sed 's/arith.minf/arith.minimumf/g' > $@ 
+	cat $< | sed 's/arith.maxf/arith.maximumf/g' | sed 's/arith.minf/arith.minimumf/g' > $@
 
 # SNAX opt
 
