@@ -7,7 +7,7 @@ include ../../runtime/Makefile.rules
 
 TESTS =
 TESTS += transform_copy.x
-TESTS += $(patsubst %_gen.preproc.mlir,%_gen.x,$(wildcard *_gen.preproc.mlir))
+TESTS += $(patsubst %_gen.imumf.mlir,%_gen.x,$(wildcard *_gen.imumf.mlir))
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
@@ -41,4 +41,4 @@ generate:
 	$(PYTHON) gentests.py
 
 clean:
-	rm -fr *.ll12 *.x *.o *.logs/ logs/ data.h data.c *_gen.preproc.mlir *_gen *_gen_data.c transform_copy
+	rm -fr *.ll12 *.x *.o *.logs/ logs/ data.h data.c *_gen.imumf.mlir *_gen *_gen_data.c transform_copy
