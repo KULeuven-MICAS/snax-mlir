@@ -25,6 +25,19 @@ class InputException(KernelException):
 
 
 class KernelType(Enum):
+    """
+    Enumeration representing different types of kernel operations of a
+    linalg generic body.
+
+    Attributes:
+        MUL (str): Represents a multiplication operation.
+            out = a * b
+        MAC (str): Represents a multiply-accumulate operation.
+            out += a * b
+        QMAC (str): Represents a quantized multiply-accumulate operation.
+            out += (a - zp_a) * (b - zp_b)
+    """
+
     MUL = "mul"
     MAC = "mac"
     QMAC = "qmac"
@@ -201,6 +214,8 @@ class KernelType(Enum):
             return None
 
         # make sure yield_op is produced by other op before parsing
+        # if not, the kernel is empty (just linalg yield), and
+        # yielded_op.op would result in an AttributeError
         yielded_op = yield_op.operands[0]
         if not isinstance(yielded_op, OpResult):
             return None
