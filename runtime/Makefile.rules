@@ -5,16 +5,16 @@ MAKEFILE_RULES_DIRNAME := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 # NOTE: we are using	absolute paths from the Docker container
 SNITCH_LLVM_PATH = /usr/bin
 LLVM_VERSION_POSTFIX = -17
-CC						= $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
-LD						= $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
-AR						= $(SNITCH_LLVM_PATH)/llvm-ar$(LLVM_VERSION_POSTFIX)
-RANLIB				= $(SNITCH_LLVM_PATH)/llvm-ranlib$(LLVM_VERSION_POSTFIX)
-DASM					= /opt/snitch-spike/bin/spike-dasm
-GENTRACE			= /opt/snitch_cluster/util/trace/gen_trace.py
-MLIROPT				= mlir-opt-17
+CC            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
+LD            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
+AR            = $(SNITCH_LLVM_PATH)/llvm-ar$(LLVM_VERSION_POSTFIX)
+RANLIB        = $(SNITCH_LLVM_PATH)/llvm-ranlib$(LLVM_VERSION_POSTFIX)
+DASM          = /opt/snitch-spike/bin/spike-dasm
+GENTRACE      = /opt/snitch_cluster/util/trace/gen_trace.py
+MLIROPT       = mlir-opt-17
 MLIRTRANSLATE = mlir-translate-17
-SNAXOPT				= $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
-PYTHON				= /opt/python3.11/bin/python3
+SNAXOPT       = $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
+PYTHON        = /opt/python3.11/bin/python3
 TFLITE_TO_TOSA = $(MAKEFILE_RULES_DIRNAME)/tflite_to_tosa.py
 
 # Mixing .c and .ll files makes some flags, useful for the former,
@@ -64,19 +64,19 @@ LDFLAGS += -lsnRuntime
 
 # useful for debugging at llvm level:
 %.ll: %.c
-		$(CC) $(CFLAGS) -emit-llvm -O0 -S -c $< -o $@
+	$(CC) $(CFLAGS) -emit-llvm -O0 -S -c $< -o $@
 
 %.o: %.c
-		$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 %.ll12: %.ll
-		$(MAKEFILE_RULES_DIRNAME)/tollvm12.py < $< > $@
+	$(MAKEFILE_RULES_DIRNAME)/tollvm12.py < $< > $@
 
 %.o: %.ll12
-		$(CC) $(CFLAGS) -x ir -c $< -o $@
+	$(CC) $(CFLAGS) -x ir -c $< -o $@
 
 %.o: %.S
-		$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 # MLIR Preprocessing
 
@@ -110,7 +110,7 @@ MLIRPREPROC3FLAGS += --mlir-print-local-scope
 SNAXOPTFLAGS = -p set-memory-space,insert-sync-barrier,dispatch-regions,dispatch-elementwise-mult,linalg-to-library-call,snax-copy-to-dma,snax-to-func,clear-memory-space
 
 %.snax-opt.mlir: %.imumf.mlir
-		$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<
+	$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<
 
 # MLIR
 
@@ -129,26 +129,26 @@ MLIROPTFLAGS += --convert-arith-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --reconcile-unrealized-casts
 
 %.ll.mlir: %.snax-opt.mlir
-		$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
+	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
 
 %.ll: %.ll.mlir
-		$(MLIRTRANSLATE) --mlir-to-llvmir -o $@ $<
+	$(MLIRTRANSLATE) --mlir-to-llvmir -o $@ $<
 
 # Trace rules
 
 %.trace.txt %.trace.json: %.dasm
-		$(DASM) < $< | $(GENTRACE) --permissive -d $*.trace.json > $*.trace.txt
+	$(DASM) < $< | $(GENTRACE) --permissive -d $*.trace.json > $*.trace.txt
 
 define get_trace_targets
-		$(addsuffix .trace.txt, $(basename $(shell find $(1) -name 'trace_hart_*.dasm')))
+	$(addsuffix .trace.txt, $(basename $(shell find $(1) -name 'trace_hart_*.dasm')))
 endef
 
 traces: $(call get_trace_targets,.)
 
 # TFLite Flatbuffer conversion
 %.mlir.bc: %.tflite
-		$(TFLITE_TO_TOSA) -c $< -o $@
+	$(TFLITE_TO_TOSA) -c $< -o $@
 
 # Convert bytecode to textual format
 %.mlir: %.mlir.bc
-		$(MLIROPT) -o $@ $<
+	$(MLIROPT) -o $@ $<
