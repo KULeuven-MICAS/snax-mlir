@@ -26,28 +26,25 @@ class DispatchElementwiseMult(RewritePattern):
         # (1) kernel type must be mul
         # (2) data type must be 1D integer memref
         # (3) dataflow must be all parallel
-
-        if op.library_call is not None:
-            return
-
-        if KernelType.get_kernel(op) != KernelType.MUL:
+        if any(
+            [
+                op.library_call is not None,
+                KernelType.get_kernel(op) != KernelType.MUL,
+                len(op.iterator_types) != 1,
+                op.iterator_types.data[0].data is not linalg.IteratorType.PARALLEL,
+            ]
+        ):
             return
 
         for inp in op.inputs:
-            if not isinstance(inp.type, MemRefType):
+            if any(
+                [
+                    not isinstance(inp.type, MemRefType),
+                    len(inp.type.get_shape()) != 1,
+                    not isinstance(inp.type.get_element_type(), builtin.IntegerType),
+                ]
+            ):
                 return
-
-            if len(inp.type.get_shape()) > 1:
-                return
-
-            if not isinstance(inp.type.get_element_type(), builtin.IntegerType):
-                return
-
-        if len(op.iterator_types) != 1:
-            return
-
-        if op.iterator_types.data[0].data is not linalg.IteratorType.PARALLEL:
-            return
 
         op.library_call = builtin.StringAttr("snax_hwpe_mult")
 
@@ -65,23 +62,24 @@ class DispatchQMatMul(RewritePattern):
         # (2) data type must be 2D integer memref
         # (3) dataflow must be fit matmul flow
 
-        if op.library_call is not None:
-            return
-
-        if KernelType.get_kernel(op) != KernelType.QMAC:
+        if any(
+            [
+                op.library_call is not None,
+                KernelType.get_kernel(op) != KernelType.QMAC,
+                len(op.iterator_types) != 3,
+            ]
+        ):
             return
 
         for inp in [x for x in op.inputs if isinstance(x.type, builtin.ShapedType)]:
-            if not isinstance(inp.type, MemRefType):
+            if any(
+                [
+                    not isinstance(inp.type, MemRefType),
+                    len(inp.type.get_shape()) != 2,
+                    not isinstance(inp.type.get_element_type(), builtin.IntegerType),
+                ]
+            ):
                 return
-            if len(inp.type.get_shape()) != 2:
-                return
-            if not isinstance(inp.type.get_element_type(), builtin.IntegerType):
-                return
-
-        # matmul is 3d problem
-        if len(op.iterator_types) != 3:
-            return
 
         # required iterator types for valid quantized matrix multiplication
         itypes_target = [
