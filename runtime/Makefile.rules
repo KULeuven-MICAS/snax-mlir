@@ -93,23 +93,23 @@ MLIRPREPROC3FLAGS += --empty-tensor-to-alloc-tensor --one-shot-bufferize="buffer
 MLIRPREPROC3FLAGS += --mlir-print-op-generic
 MLIRPREPROC3FLAGS += --mlir-print-local-scope
 
-%.preproc.mlir: %.mlir
+%.preproc1.mlir: %.mlir
 	$(MLIROPT) $(MLIRPREPROCFLAGS) -o $@ $<
 
-%.preproc2.mlir: %.preproc.mlir
+%.preproc2.mlir: %.preproc1.mlir
 	$(MLIROPT) $(MLIRPREPROC2FLAGS) -o $@ $<
 
 %.preproc3.mlir: %.preproc2.mlir
 	$(MLIROPT) $(MLIRPREPROC3FLAGS) -o $@ $<
 
-%.imumf.mlir: %.preproc3.mlir
+%.preprocfinal.mlir: %.preproc3.mlir
 	cat $< | sed 's/arith.maxf/arith.maximumf/g' | sed 's/arith.minf/arith.minimumf/g' > $@
 
 # SNAX opt
 
 SNAXOPTFLAGS = -p set-memory-space,insert-sync-barrier,dispatch-regions,dispatch-elementwise-mult,linalg-to-library-call,snax-copy-to-dma,snax-to-func,clear-memory-space
 
-%.snax-opt.mlir: %.imumf.mlir
+%.snax-opt.mlir: %.preprocfinal.mlir
 	$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<
 
 # MLIR
