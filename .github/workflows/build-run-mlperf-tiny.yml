@@ -33,15 +33,15 @@ jobs:
       - name: Image classfication
         run: |
           export PATH=/opt/python3.11/bin:$PATH
-          make pretrainedResnet_quant.preproc.mlir
+          make pretrainedResnet_quant.snax-opt.mlir
         working-directory: kernels/mlperf_tiny_ic
       - name: Visual Wake Words
         run: |
           export PATH=/opt/python3.11/bin:$PATH
-          make vww_96_int8.preproc.mlir
+          make vww_96_int8.snax-opt.mlir
         working-directory: kernels/mlperf_tiny_vww
       - name: Keyword spotting
         run: |
           export PATH=/opt/python3.11/bin:$PATH
-          make kws_ref_model.preproc.mlir
+          make kws_ref_model.snax-opt.mlir
         working-directory: kernels/mlperf_tiny_kws

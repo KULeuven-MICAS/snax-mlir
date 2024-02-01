@@ -104,5 +104,5 @@ if __name__ == "__main__":
             testcase["tsldst"](size_sqrt),
             testcase["shape"](size_sqrt),
         )
-        with open(testcase["name"] + ".preproc.mlir", "w") as file:
+        with open(testcase["name"] + ".preprocfinal.mlir", "w") as file:
             file.write(mlir)

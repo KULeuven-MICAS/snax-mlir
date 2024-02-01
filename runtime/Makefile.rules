@@ -2,7 +2,7 @@ MAKEFILE_RULES_DIRNAME := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # Courtesy of Federico Ficarelli
 
-# NOTE: we are using  absolute paths from the Docker container
+# NOTE: we are using absolute paths from the Docker container
 SNITCH_LLVM_PATH = /usr/bin
 LLVM_VERSION_POSTFIX = -17
 CC            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
@@ -13,7 +13,7 @@ DASM          = /opt/snitch-spike/bin/spike-dasm
 GENTRACE      = /opt/snitch_cluster/util/trace/gen_trace.py
 MLIROPT       = mlir-opt-17
 MLIRTRANSLATE = mlir-translate-17
-SNAXOPT 	  = $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
+SNAXOPT       = $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
 PYTHON        = /opt/python3.11/bin/python3
 TFLITE_TO_TOSA = $(MAKEFILE_RULES_DIRNAME)/tflite_to_tosa.py
 
@@ -85,23 +85,31 @@ MLIRPREPROCFLAGS += --mlir-print-op-generic
 MLIRPREPROCFLAGS += --mlir-print-local-scope
 
 MLIRPREPROC2FLAGS = --tosa-to-arith="include-apply-rescale" 
-MLIRPREPROC2FLAGS += --empty-tensor-to-alloc-tensor 
-MLIRPREPROC2FLAGS += --one-shot-bufferize="bufferize-function-boundaries allow-return-allocs function-boundary-type-conversion=identity-layout-map"
-MLIRPREPROC2FLAGS += --linalg-generalize-named-ops
-MLIRPREPROC2FLAGS += --mlir-print-op-generic
-MLIRPREPROC2FLAGS += --mlir-print-local-scope
+MLIRPREPROC2FLAGS += --empty-tensor-to-alloc-tensor
 
+MLIRPREPROC3FLAGS += --test-linalg-transform-patterns="test-generalize-pad-tensor"
+MLIRPREPROC3FLAGS += --linalg-generalize-named-ops
+MLIRPREPROC3FLAGS += --empty-tensor-to-alloc-tensor --one-shot-bufferize="bufferize-function-boundaries allow-return-allocs function-boundary-type-conversion=identity-layout-map"
+MLIRPREPROC3FLAGS += --mlir-print-op-generic
+MLIRPREPROC3FLAGS += --mlir-print-local-scope
 
-%.preproc.mlir: %.mlir
-	$(MLIROPT) $(MLIRPREPROCFLAGS) -o preproc_intermediate.mlir $<
-    # Individual pass pipeline options are not allowed in the same invocation?
-	$(MLIROPT) $(MLIRPREPROC2FLAGS) -o $@ preproc_intermediate.mlir
+%.preproc1.mlir: %.mlir
+	$(MLIROPT) $(MLIRPREPROCFLAGS) -o $@ $<
+
+%.preproc2.mlir: %.preproc1.mlir
+	$(MLIROPT) $(MLIRPREPROC2FLAGS) -o $@ $<
+
+%.preproc3.mlir: %.preproc2.mlir
+	$(MLIROPT) $(MLIRPREPROC3FLAGS) -o $@ $<
+
+%.preprocfinal.mlir: %.preproc3.mlir
+	cat $< | sed 's/arith.maxf/arith.maximumf/g' | sed 's/arith.minf/arith.minimumf/g' > $@
 
 # SNAX opt
 
 SNAXOPTFLAGS = -p set-memory-space,insert-sync-barrier,dispatch-regions,dispatch-kernels,linalg-to-library-call,snax-copy-to-dma,snax-to-func,clear-memory-space
 
-%.snax-opt.mlir: %.preproc.mlir
+%.snax-opt.mlir: %.preprocfinal.mlir
 	$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<
 
 # MLIR
