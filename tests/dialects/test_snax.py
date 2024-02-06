@@ -54,13 +54,7 @@ def test_memref_memory_space_cast():
         ReShuffleOp(source_ssa, dest_type_other_space).verify()
 
     type_nolayout = MemRefType(i32, [10, 2], memory_space=builtin.IntegerAttr(1, i32))
-    ssa_nolayout = TestSSAValue(type_nolayout)
-
-    with pytest.raises(VerifyException, match="Expected source to have a layout."):
-        ReShuffleOp(ssa_nolayout, dest_type).verify()
-
-    with pytest.raises(VerifyException, match="Expected destination to have a layout."):
-        ReShuffleOp(source_ssa, type_nolayout).verify()
+    TestSSAValue(type_nolayout)
 
     # Test helper function
     reshuffle_op = ReShuffleOp.from_type_and_target_layout(source_ssa, layout_2)

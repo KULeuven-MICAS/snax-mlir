@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import cast
 
-from xdsl.dialects.builtin import NoneAttr
 from xdsl.dialects.memref import MemRefType, UnrankedMemrefType
 from xdsl.ir import Attribute, Dialect, Operation, SSAValue
 from xdsl.irdl import IRDLOperation, irdl_op_definition, operand_def, result_def
@@ -51,10 +50,6 @@ class ReShuffleOp(IRDLOperation):
     def verify_(self) -> None:
         source = cast(MemRefType[Attribute], self.source.type)
         dest = cast(MemRefType[Attribute], self.dest.type)
-        if source.layout is None or isinstance(source.layout, NoneAttr):
-            raise VerifyException("Expected source to have a layout.")
-        if dest.layout is None or isinstance(dest.layout, NoneAttr):
-            raise VerifyException("Expected destination to have a layout.")
         if source.get_shape() != dest.get_shape():
             raise VerifyException(
                 "Expected source and destination to have the same shape."
