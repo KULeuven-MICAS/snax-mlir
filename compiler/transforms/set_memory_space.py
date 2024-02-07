@@ -330,4 +330,10 @@ class SetMemorySpace(ModulePass):
         PatternRewriteWalker(InitMemRefAllocMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(InitLinalgMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(HandleFuncReturns()).rewrite_module(op)
+
+
+class RealizeMemorySpaceCastsPass(ModulePass):
+    name = "realize-memory-space-casts"
+
+    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(RealizeMemorySpaceCasts()).rewrite_module(op)
