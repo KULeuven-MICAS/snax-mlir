@@ -28,6 +28,16 @@ def test_tiled_stride_constructor(example_strides, example_tiled_strides):
     assert tiledStride2.strides[2] == stride1
 
 
+def test_tiled_stride_from_stride():
+    tiledStride1 = TiledStride.from_stride(1, [4, 6])
+    tiledStride2 = TiledStride.from_stride(24, [2, 6, 4])
+    assert tiledStride1.strides[0] == Stride(6, 4)
+    assert tiledStride1.strides[1] == Stride(1, 6)
+    assert tiledStride2.strides[0] == Stride(24 * 4 * 6, 2)
+    assert tiledStride2.strides[1] == Stride(24 * 4, 6)
+    assert tiledStride2.strides[2] == Stride(24, 4)
+
+
 def test_tiled_stride_depth(example_tiled_strides):
     tiledStride1, tiledStride2, tiledStride3 = example_tiled_strides
     assert tiledStride1.depth() == 2
@@ -52,3 +62,10 @@ def test_tiled_stride_iter(example_strides, example_tiled_strides):
         assert isinstance(depth, int)
         assert isinstance(stride, Stride)
         assert stride == strides[depth]
+
+
+def test_tiled_stride_tile_bounds(example_tiled_strides):
+    tiledStride1, tiledStride2, tiledStride3 = example_tiled_strides
+    assert tiledStride1.tile_bounds() == [6, 4]
+    assert tiledStride2.tile_bounds() == [2, 6, 4]
+    assert tiledStride3.tile_bounds() == [None, 4]

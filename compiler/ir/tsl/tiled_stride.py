@@ -28,6 +28,32 @@ class TiledStride:
     def __init__(self, strides: list[Stride]):
         self.strides = list(strides)
 
+    @staticmethod
+    def from_stride(
+        simple_stride: int | None, tile_bounds: list[int | None]
+    ) -> TiledStride:
+        """Create a TiledStride representation from a simple stride
+        (not tiled), and a given set of tile bounds
+
+        Args:
+            simple_stride (int | None): The stride for the innermost tile
+            tile_bounds (List[int | None]): A list of tile bounds
+
+        Returns:
+            TiledStride: A TiledStride object
+        """
+
+        # the step for the innermost stride is the simple stride
+        # the step for the other strides can be calculated using
+        # the previous step and the current bound
+        steps = [simple_stride]
+        for bound in reversed(tile_bounds[1:]):
+            steps = [bound * steps[0] if bound and steps[0] else None, *steps]
+
+        return TiledStride(
+            [Stride(step, bound) for step, bound in zip(steps, tile_bounds)]
+        )
+
     def __str__(self) -> str:
         strides = ", ".join(
             str(stride.step) if stride.step else "?" for stride in self.strides
@@ -77,3 +103,7 @@ class TiledStride:
             return self.strides[depth]
         except IndexError:
             return None
+
+    def tile_bounds(self) -> list[int]:
+        """Get the bounds of the tiles of the Tiled Stride"""
+        return [stride.bound for stride in self.strides]

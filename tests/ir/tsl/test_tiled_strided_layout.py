@@ -36,6 +36,19 @@ def test_tsl_constructor(example_tsl):
     assert isinstance(tsl.tstrides[1], TiledStride)
 
 
+def test_tsl_from_strides():
+    strides = [None, 1]
+    tile_bounds = [[16, 4], [16, 4]]
+    tsl_constructor = TiledStridedLayout(
+        [
+            TiledStride([Stride(None, 16), Stride(None, 4)]),
+            TiledStride([Stride(4, 16), Stride(1, 4)]),
+        ]
+    )
+    tsl_from_strides = TiledStridedLayout.from_strides(strides, tile_bounds)
+    assert tsl_constructor == tsl_from_strides
+
+
 def test_tsl_str(example_tsl):
     tsl, tsl2 = example_tsl
     assert str(tsl) == "[2, 4] -> (32, 4), [2, 4] -> (16, 1), offset: 5"
@@ -59,6 +72,11 @@ def test_tsl_all_values(example_tsl):
     assert set(tsl.all_values()) == set(range(64))
     with pytest.raises(ValueError):
         tsl2.all_values()
+
+
+def test_tsl_tile_bounds(example_tsl):
+    tsl, _ = example_tsl
+    assert tsl.tile_bounds() == [[2, 4], [2, 4]]
 
 
 def test_tsl_self_overlaps(example_tsl):
@@ -101,6 +119,12 @@ def test_tsl_is_dense(example_tsl):
     tsl2 = TiledStridedLayout([tiledStride1, tiledStride2])
 
     assert not tsl2.is_dense()
+
+
+def test_tsl_equal_tile_bounds(example_tsl):
+    tsl, tsl2 = example_tsl
+    assert tsl.equal_tile_bounds(tsl)
+    assert not tsl.equal_tile_bounds(tsl2)
 
 
 def test_tsl_largest_common_contiguous_block():
