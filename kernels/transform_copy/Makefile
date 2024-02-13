@@ -7,6 +7,8 @@ include ../../runtime/Makefile.rules
 
 TESTS =
 TESTS += transform_copy.x
+TESTS += transform_from_none.x
+TESTS += transform_from_strided.x
 TESTS += $(patsubst %_gen.preprocfinal.mlir,%_gen.x,$(wildcard *_gen.preprocfinal.mlir))
 
 CFLAGS += -std=gnu11

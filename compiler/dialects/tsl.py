@@ -141,8 +141,8 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
         )
         result.append(max_stride_op)
 
-        # assign strides left to right
-        for dim in range(tsl.dimension()):
+        # assign strides right to left
+        for dim in reversed(range(tsl.dimension())):
             # assign strides from innermost to outermost
             for depth in reversed(range(tsl.tstrides[dim].depth())):
                 stride = tsl.get_stride(dim, depth)
