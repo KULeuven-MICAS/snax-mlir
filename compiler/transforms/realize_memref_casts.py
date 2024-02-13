@@ -9,17 +9,17 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
-from compiler.dialects.snax import ReShuffleOp
+from compiler.dialects.snax import LayoutCast
 
 
 def is_cast_op(op: Operation) -> bool:
-    return isinstance(op, MemorySpaceCast) or isinstance(op, ReShuffleOp)
+    return isinstance(op, MemorySpaceCast) or isinstance(op, LayoutCast)
 
 
 class RealizeMemrefCasts(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: MemorySpaceCast | ReShuffleOp, rewriter: PatternRewriter
+        self, op: MemorySpaceCast | LayoutCast, rewriter: PatternRewriter
     ):
         # if the casting is not used anymore (perhaps made useless by previous
         # cast realizations), we do not need to do anything. dce will remove it later
@@ -38,7 +38,7 @@ class RealizeMemrefCasts(RewritePattern):
         # combine them all together
         source_op = op
         while isinstance(source_op.source, OpResult) and isinstance(
-            source_op.source.op, MemorySpaceCast | ReShuffleOp
+            source_op.source.op, MemorySpaceCast | LayoutCast
         ):
             source_op = source_op.source.op
 

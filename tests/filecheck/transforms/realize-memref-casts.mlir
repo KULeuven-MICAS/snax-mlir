@@ -18,7 +18,7 @@
 
 "builtin.module"() ({
   %0 = "test.op"() : () -> (memref<64xi32, 1 : i32>)
-  %1 = "snax.reshuffle"(%0) : (memref<64xi32, 1 : i32>) -> memref<64xi32, strided<[1, 8]>, 1 : i32>
+  %1 = "snax.layout_cast"(%0) : (memref<64xi32, 1 : i32>) -> memref<64xi32, strided<[1, 8]>, 1 : i32>
   "test.op"(%1) : (memref<64xi32, strided<[1, 8]>, 1 : i32>) -> ()
 }): () -> ()
 
@@ -35,7 +35,7 @@
 "builtin.module"() ({
   %0 = "test.op"() : () -> (memref<64xi32, 0 : i32>)
   %1 = "memref.memory_space_cast"(%0) : (memref<64xi32, 0 : i32>) -> memref<64xi32, 1 : i32>
-  %2 = "snax.reshuffle"(%1) : (memref<64xi32, 1 : i32>) -> memref<64xi32, strided<[1, 8]>, 1 : i32>
+  %2 = "snax.layout_cast"(%1) : (memref<64xi32, 1 : i32>) -> memref<64xi32, strided<[1, 8]>, 1 : i32>
   "test.op"(%2) : (memref<64xi32, strided<[1, 8]>, 1 : i32>) -> ()
 }): () -> ()
 
@@ -189,9 +189,9 @@
     %2 = "memref.memory_space_cast"(%arg0) : (memref<?x128xi8, 0 : i32>) -> memref<?x128xi8, 1 : i32>
     %3 = "memref.memory_space_cast"(%arg1) : (memref<128x128xi8, 0 : i32>) -> memref<128x128xi8, 1 : i32>
     %4 = "memref.memory_space_cast"(%arg2) : (memref<?x128xi32, 0 : i32>) -> memref<?x128xi32, 1 : i32>
-    %5 = "snax.reshuffle"(%2) : (memref<?x128xi8, 1 : i32>) -> memref<?x128xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, 1 : i32>
-    %6 = "snax.reshuffle"(%3) : (memref<128x128xi8, 1 : i32>) -> memref<128x128xi8, #tsl.tsl<[?, 8] -> (256, 1), [?, 8] -> (?, 8), offset: 64>, 1 : i32>
-    %7 = "snax.reshuffle"(%4) : (memref<?x128xi32, 1 : i32>) -> memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, 1 : i32>
+    %5 = "snax.layout_cast"(%2) : (memref<?x128xi8, 1 : i32>) -> memref<?x128xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, 1 : i32>
+    %6 = "snax.layout_cast"(%3) : (memref<128x128xi8, 1 : i32>) -> memref<128x128xi8, #tsl.tsl<[?, 8] -> (256, 1), [?, 8] -> (?, 8), offset: 64>, 1 : i32>
+    %7 = "snax.layout_cast"(%4) : (memref<?x128xi32, 1 : i32>) -> memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, 1 : i32>
     "linalg.generic"(%5, %6, %0, %1, %7) <{"indexing_maps" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> (d0, d1)>], "iterator_types" = [#linalg.iterator_type<parallel>, #linalg.iterator_type<parallel>, #linalg.iterator_type<reduction>], "operandSegmentSizes" = array<i32: 4, 1>}> ({
     ^1(%arg3 : i8, %arg4 : i8, %arg5 : i32, %arg6 : i32, %arg7 : i32):
       %8 = "arith.extsi"(%arg3) : (i8) -> i32
