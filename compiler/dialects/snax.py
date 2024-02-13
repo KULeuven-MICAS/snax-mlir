@@ -17,11 +17,11 @@ class ClusterSyncOp(IRDLOperation):
 
 
 @irdl_op_definition
-class ReShuffleOp(IRDLOperation):
-    """ReShuffle operation for memrefs in a snax cluster. This
+class LayoutCast(IRDLOperation):
+    """LayoutCast operation for memrefs in a snax cluster. This
     operation is used to change the layout of the memref data"""
 
-    name = "snax.reshuffle"
+    name = "snax.layout_cast"
 
     source = operand_def(MemRefType[Attribute] | UnrankedMemrefType[Attribute])
     dest = result_def(MemRefType[Attribute] | UnrankedMemrefType[Attribute])
@@ -37,7 +37,7 @@ class ReShuffleOp(IRDLOperation):
     def from_type_and_target_layout(
         source: SSAValue | Operation,
         layout: Attribute,
-    ) -> ReShuffleOp:
+    ) -> LayoutCast:
         assert isinstance(source.type, MemRefType)
         dest = MemRefType(
             source.type.get_element_type(),
@@ -45,7 +45,7 @@ class ReShuffleOp(IRDLOperation):
             layout=layout,
             memory_space=source.type.memory_space,
         )
-        return ReShuffleOp(source, dest)
+        return LayoutCast(source, dest)
 
     def verify_(self) -> None:
         source = cast(MemRefType[Attribute], self.source.type)
@@ -64,4 +64,4 @@ class ReShuffleOp(IRDLOperation):
             )
 
 
-Snax = Dialect("snax", [ClusterSyncOp, ReShuffleOp], [])
+Snax = Dialect("snax", [ClusterSyncOp, LayoutCast], [])

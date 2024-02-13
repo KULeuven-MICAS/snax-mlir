@@ -5,7 +5,7 @@ from xdsl.dialects.memref import MemRefType
 from xdsl.utils.exceptions import VerifyException
 from xdsl.utils.test_value import TestSSAValue
 
-from compiler.dialects.snax import ReShuffleOp
+from compiler.dialects.snax import LayoutCast
 
 
 def test_memref_memory_space_cast():
@@ -19,10 +19,10 @@ def test_memref_memory_space_cast():
 
     dest_type = MemRefType(i32, [10, 2], memory_space=builtin.IntegerAttr(1, i32))
 
-    reshuffle_op = ReShuffleOp(source_ssa, dest_type)
+    memory_layout_cast = LayoutCast(source_ssa, dest_type)
 
-    assert reshuffle_op.source is source_ssa
-    assert reshuffle_op.dest.type is dest_type
+    assert memory_layout_cast.source is source_ssa
+    assert memory_layout_cast.dest.type is dest_type
 
     dest_type_other_element = MemRefType(
         i64, [10, 2], layout=layout_2, memory_space=builtin.IntegerAttr(1, i32)
@@ -32,7 +32,7 @@ def test_memref_memory_space_cast():
         VerifyException,
         match="Expected source and destination to have the same element type.",
     ):
-        ReShuffleOp(source_ssa, dest_type_other_element).verify()
+        LayoutCast(source_ssa, dest_type_other_element).verify()
 
     dest_type_other_shape = MemRefType(
         i32, [10, 4], layout=layout_2, memory_space=builtin.IntegerAttr(1, i32)
@@ -41,7 +41,7 @@ def test_memref_memory_space_cast():
     with pytest.raises(
         VerifyException, match="Expected source and destination to have the same shape."
     ):
-        ReShuffleOp(source_ssa, dest_type_other_shape).verify()
+        LayoutCast(source_ssa, dest_type_other_shape).verify()
 
     dest_type_other_space = MemRefType(
         i32, [10, 2], layout=layout_2, memory_space=builtin.IntegerAttr(2, i32)
@@ -51,14 +51,14 @@ def test_memref_memory_space_cast():
         VerifyException,
         match="Expected source and destination to have the same memory space.",
     ):
-        ReShuffleOp(source_ssa, dest_type_other_space).verify()
+        LayoutCast(source_ssa, dest_type_other_space).verify()
 
     type_nolayout = MemRefType(i32, [10, 2], memory_space=builtin.IntegerAttr(1, i32))
     TestSSAValue(type_nolayout)
 
     # Test helper function
-    reshuffle_op = ReShuffleOp.from_type_and_target_layout(source_ssa, layout_2)
+    memory_layout_cast = LayoutCast.from_type_and_target_layout(source_ssa, layout_2)
 
-    assert reshuffle_op.source is source_ssa
-    assert isinstance(reshuffle_op.dest.type, MemRefType)
-    assert reshuffle_op.dest.type.layout is layout_2
+    assert memory_layout_cast.source is source_ssa
+    assert isinstance(memory_layout_cast.dest.type, MemRefType)
+    assert memory_layout_cast.dest.type.layout is layout_2
