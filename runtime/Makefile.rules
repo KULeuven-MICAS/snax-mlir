@@ -107,7 +107,7 @@ MLIRPREPROC3FLAGS += --mlir-print-local-scope
 
 # SNAX opt
 
-SNAXOPTFLAGS = -p set-memory-space,insert-sync-barrier,dispatch-regions,dispatch-kernels,linalg-to-library-call,snax-copy-to-dma,snax-to-func,clear-memory-space
+SNAXOPTFLAGS = -p set-memory-space,realize-memory-space-casts,insert-sync-barrier,dispatch-regions,dispatch-kernels,linalg-to-library-call,snax-copy-to-dma,snax-to-func,clear-memory-space
 
 %.snax-opt.mlir: %.preprocfinal.mlir
 	$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<

@@ -11,7 +11,10 @@ from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
-from compiler.transforms.set_memory_space import SetMemorySpace
+from compiler.transforms.set_memory_space import (
+    RealizeMemorySpaceCastsPass,
+    SetMemorySpace,
+)
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_to_func import SNAXToFunc
 
@@ -38,6 +41,9 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
+        super().register_pass(
+            RealizeMemorySpaceCastsPass.name, lambda: RealizeMemorySpaceCastsPass
+        )
         super().register_pass(InsertSyncBarrier.name, lambda: InsertSyncBarrier)
         super().register_pass(DispatchRegions.name, lambda: DispatchRegions)
         super().register_pass(SNAXCopyToDMA.name, lambda: SNAXCopyToDMA)
