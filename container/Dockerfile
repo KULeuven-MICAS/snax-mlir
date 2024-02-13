@@ -1,6 +1,8 @@
 # Courtesy of Federico Ficarelli
 FROM ghcr.io/kuleuven-micas/snax:latest as deps
 
+RUN rm -rf /root/.cache /root/.venvs
+
 RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
  && cd /src \
  && git reset --hard d87720fdf66b15325b37391494b990ac606503ab \
