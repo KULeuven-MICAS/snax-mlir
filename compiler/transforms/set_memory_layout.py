@@ -8,7 +8,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
-from compiler.dialects.snax import ReShuffleOp
+from compiler.dialects.snax import LayoutCast
 from compiler.dialects.tsl import TiledStridedLayoutAttr
 from compiler.ir.tsl import Stride, TiledStride, TiledStridedLayout
 
@@ -62,15 +62,15 @@ class AddMemoryLayout(RewritePattern):
             )
 
             # insert reshuffling ops
-            new_input_a = ReShuffleOp.from_type_and_target_layout(
+            new_input_a = LayoutCast.from_type_and_target_layout(
                 linalg_op.inputs[0], tsl_input_a
             )
 
-            new_input_b = ReShuffleOp.from_type_and_target_layout(
+            new_input_b = LayoutCast.from_type_and_target_layout(
                 linalg_op.inputs[1], tsl_input_b
             )
 
-            new_output = ReShuffleOp.from_type_and_target_layout(
+            new_output = LayoutCast.from_type_and_target_layout(
                 linalg_op.outputs[0], tsl_output
             )
 

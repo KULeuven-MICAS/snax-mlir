@@ -24,9 +24,9 @@
 // CHECK-NEXT:   ^0(%arg0 : memref<?x128xi8, 1 : i32>, %arg1 : memref<128x128xi8, 1 : i32>, %arg2 : memref<?x128xi32, 1 : i32>):
 // CHECK-NEXT:     %0 = "arith.constant"() <{"value" = 1 : i32}> : () -> i32
 // CHECK-NEXT:     %1 = "arith.constant"() <{"value" = 1 : i32}> : () -> i32
-// CHECK-NEXT:     %2 = "snax.reshuffle"(%arg0) : (memref<?x128xi8, 1 : i32>) -> memref<?x128xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, 1 : i32>
-// CHECK-NEXT:     %3 = "snax.reshuffle"(%arg1) : (memref<128x128xi8, 1 : i32>) -> memref<128x128xi8, #tsl.tsl<[?, 8] -> (256, 1), [?, 8] -> (?, 8), offset: 64>, 1 : i32>
-// CHECK-NEXT:     %4 = "snax.reshuffle"(%arg2) : (memref<?x128xi32, 1 : i32>) -> memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, 1 : i32>
+// CHECK-NEXT:     %2 = "snax.layout_cast"(%arg0) : (memref<?x128xi8, 1 : i32>) -> memref<?x128xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, 1 : i32>
+// CHECK-NEXT:     %3 = "snax.layout_cast"(%arg1) : (memref<128x128xi8, 1 : i32>) -> memref<128x128xi8, #tsl.tsl<[?, 8] -> (256, 1), [?, 8] -> (?, 8), offset: 64>, 1 : i32>
+// CHECK-NEXT:     %4 = "snax.layout_cast"(%arg2) : (memref<?x128xi32, 1 : i32>) -> memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, 1 : i32>
 // CHECK-NEXT:     "linalg.generic"(%2, %3, %0, %1, %4) <{"indexing_maps" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> (d0, d1)>], "iterator_types" = [#linalg.iterator_type<parallel>, #linalg.iterator_type<parallel>, #linalg.iterator_type<reduction>], "operandSegmentSizes" = array<i32: 4, 1>}> ({
 // CHECK-NEXT:     ^1(%arg3 : i8, %arg4 : i8, %arg5 : i32, %arg6 : i32, %arg7 : i32):
 // CHECK-NEXT:       %5 = "arith.extsi"(%arg3) : (i8) -> i32
