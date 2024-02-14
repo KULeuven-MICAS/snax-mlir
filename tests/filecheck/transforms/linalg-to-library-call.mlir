@@ -14,11 +14,16 @@
   }) {"library_call" = "snax_hwpe_mult"} : (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> ()
 }) : () -> ()
 
-
 //CHECK: "builtin.module"() ({
 //CHECK-NEXT:   %0, %1, %2, %3 = "test.op"() : () -> (memref<64xi32>, memref<64xi32>, memref<64xi32>, memref<64xi32>)
-//CHECK-NEXT:   "func.call"(%0, %1, %2) <{"callee" = @snax_hwpe_mult}> : (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> ()
-//CHECK-NEXT:   "func.call"(%1, %2, %3) <{"callee" = @snax_hwpe_mult}> : (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> ()
-//CHECK-NEXT:   "func.func"() <{"sym_name" = "snax_hwpe_mult", "function_type" = (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> (), "sym_visibility" = "private"}> ({
+//CHECK-NEXT:   %4 = "memref.cast"(%0) : (memref<64xi32>) -> memref<?xi32>
+//CHECK-NEXT:   %5 = "memref.cast"(%1) : (memref<64xi32>) -> memref<?xi32>
+//CHECK-NEXT:   %6 = "memref.cast"(%2) : (memref<64xi32>) -> memref<?xi32>
+//CHECK-NEXT:   "func.call"(%4, %5, %6) <{"callee" = @snax_hwpe_mult}> : (memref<?xi32>, memref<?xi32>, memref<?xi32>) -> ()
+//CHECK-NEXT:   %7 = "memref.cast"(%1) : (memref<64xi32>) -> memref<?xi32>
+//CHECK-NEXT:   %8 = "memref.cast"(%2) : (memref<64xi32>) -> memref<?xi32>
+//CHECK-NEXT:   %9 = "memref.cast"(%3) : (memref<64xi32>) -> memref<?xi32>
+//CHECK-NEXT:   "func.call"(%7, %8, %9) <{"callee" = @snax_hwpe_mult}> : (memref<?xi32>, memref<?xi32>, memref<?xi32>) -> ()
+//CHECK-NEXT:   "func.func"() <{"sym_name" = "snax_hwpe_mult", "function_type" = (memref<?xi32>, memref<?xi32>, memref<?xi32>) -> (), "sym_visibility" = "private"}> ({
 //CHECK-NEXT:   }) : () -> ()
 //CHECK-NEXT: }) : () -> ()
