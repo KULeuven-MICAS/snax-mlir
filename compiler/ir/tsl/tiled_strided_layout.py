@@ -25,6 +25,25 @@ class TiledStridedLayout:
         self.tstrides = tstrides
         self.offset = offset
 
+    @staticmethod
+    def from_strides(
+        strides: list[int], tile_bounds: list[int], offset: int = 0
+    ) -> TiledStridedLayout:
+        """Create a TiledStridedLayout from a list of strides and tile bounds
+
+        Args:
+            strides (List[int]): A list of strides
+            tile_bounds (List[int]): A list of tile bounds
+
+        Returns:
+            TiledStridedLayout: A TiledStridedLayout object
+        """
+        tstrides = [
+            TiledStride.from_stride(stride, bounds)
+            for stride, bounds in zip(strides, tile_bounds)
+        ]
+        return TiledStridedLayout(tstrides, offset=offset)
+
     def __str__(self) -> str:
         result = ", ".join(map(str, self.tstrides))
         if self.offset != 0:
@@ -79,6 +98,12 @@ class TiledStridedLayout:
         result = result.flatten()
         return result
 
+    def tile_bounds(self) -> list[list[int]]:
+        """
+        Returns a list of tile bounds for each dimension.
+        """
+        return [stride.tile_bounds() for stride in self.tstrides]
+
     def self_overlaps(self) -> bool:
         """Check if the Tiled Strided Layout contains overlapping elements"""
         (
@@ -95,6 +120,10 @@ class TiledStridedLayout:
 
         all_values = self.all_values()
         return np.max(all_values) == len(all_values) - 1
+
+    def equal_tile_bounds(self, other: TiledStridedLayout) -> bool:
+        """Check if the Tiled Strided Layout has the same tile bounds as another"""
+        return self.tile_bounds() == other.tile_bounds()
 
     def largest_common_contiguous_block(
         self, other: TiledStridedLayout, starting_stride: int = 1
