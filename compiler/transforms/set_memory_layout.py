@@ -18,8 +18,10 @@ class AddMemoryLayout(RewritePattern):
     This class represents a rewrite pattern for adding memory layout to a
     linalg operation. The implementation is very naive. It imposes a specific
     memory layout on the input and output of the linalg operation dispatched
-    to snax_qgemm by inserting reshuffling ops. In the future, the memory
+    to snax_qgemm by inserting layout_cast ops. In the future, the memory
     layout will be selected in a more automatic way.
+
+    Note: currently, only snax_qgemm is supported.
     """
 
     @op_type_rewrite_pattern
@@ -61,7 +63,7 @@ class AddMemoryLayout(RewritePattern):
                 )
             )
 
-            # insert reshuffling ops
+            # insert layout_cast ops
             new_input_a = LayoutCast.from_type_and_target_layout(
                 linalg_op.inputs[0], tsl_input_a
             )
