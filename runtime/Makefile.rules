@@ -115,7 +115,8 @@ SNAXOPTFLAGS = -p set-memory-space,insert-sync-barrier,dispatch-regions,dispatch
 %.postproc.mlir: %.snax-opt.mlir
 	cat $< | sed 's/arith.maximumf/arith.maxf/g' | sed 's/arith.minimumf/arith.minf/g' > $@
 
-# MLIR
+# Lower everithing to LLVM, loosely based on:
+# https://github.com/llvm/llvm-project/blob/main/mlir/test/lib/Dialect/LLVM/TestLowerToLLVM.cpp
 
 MLIROPTFLAGS =
 MLIROPTFLAGS += --convert-linalg-to-loops
