@@ -2,9 +2,19 @@ from __future__ import annotations
 
 from typing import cast
 
+from xdsl.dialects.builtin import IntegerType, NoneAttr
+from xdsl.dialects.llvm import LLVMPointerType
 from xdsl.dialects.memref import MemRefType, UnrankedMemrefType
 from xdsl.ir import Attribute, Dialect, Operation, SSAValue
-from xdsl.irdl import IRDLOperation, irdl_op_definition, operand_def, result_def
+from xdsl.irdl import (
+    IRDLOperation,
+    Operand,
+    OpResult,
+    irdl_op_definition,
+    operand_def,
+    opt_prop_def,
+    result_def,
+)
 from xdsl.utils.exceptions import VerifyException
 
 
@@ -64,4 +74,36 @@ class LayoutCast(IRDLOperation):
             )
 
 
-Snax = Dialect("snax", [ClusterSyncOp, LayoutCast], [])
+@irdl_op_definition
+class Alloc(IRDLOperation):
+    """Alloc operation in a snax cluster.
+
+    Contrary to a memref.alloc, this operation does not generate
+    a memref descriptor. Instead, it returns a pointer to the allocated
+    memory. (!llvm.ptr).
+
+    Contrary to a llvm alloc, the operation still holds information
+    about the memory space and the layout of the allocated memory,
+    such that the correct allocator can be called when allocating
+    the memory.
+    """
+
+    name = "snax.alloc"
+
+    size: Operand = operand_def(IntegerType)
+    result: OpResult = result_def(LLVMPointerType)
+    memory_space: Attribute | None = opt_prop_def(Attribute)
+
+    def __init__(
+        self,
+        size: SSAValue | Operation,
+        memory_space: Attribute = NoneAttr(),
+    ):
+        super().__init__(
+            operands=[size],
+            result_types=[LLVMPointerType.opaque()],
+            properties={"memory_space": memory_space},
+        )
+
+
+Snax = Dialect("snax", [ClusterSyncOp, LayoutCast, Alloc], [])
