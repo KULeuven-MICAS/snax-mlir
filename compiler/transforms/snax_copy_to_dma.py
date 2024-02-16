@@ -188,6 +188,17 @@ class TransformDMA(RewritePattern):
         ops_to_insert.append(pointer_src)
         ops_to_insert.append(pointer_dst)
 
+        # apply offset if it is not zero
+        if tsl_source.data.offset:
+            offset = Constant.from_int_and_width(tsl_source.data.offset, IndexType())
+            pointer_src = Addi(pointer_src, offset, IndexType())
+            ops_to_insert.append(offset)
+
+        if tsl_dest.data.offset:
+            offset = Constant.from_int_and_width(tsl_dest.data.offset, IndexType())
+            pointer_dst = Addi(pointer_dst, offset, IndexType())
+            ops_to_insert.append(offset)
+
         # step 2: find largest common contiguous block, to be used for dma transfers
 
         # lcb is completely static
