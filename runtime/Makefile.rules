@@ -135,6 +135,10 @@ MLIROPTFLAGS += --finalize-memref-to-llvm='use-generic-functions index-bitwidth=
 MLIROPTFLAGS += --canonicalize
 MLIROPTFLAGS += --reconcile-unrealized-casts
 
+# Bypass snax-opt
+%.no-snax-opt.ll.mlir: %.preproc3.mlir
+	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
+
 %.ll.mlir: %.postproc.mlir
 	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
 
