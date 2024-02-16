@@ -1,6 +1,12 @@
 from xdsl.dialects import arith, builtin, func, scf
 from xdsl.dialects.arith import Addi, Constant, Muli
-from xdsl.dialects.builtin import IndexType, IntegerType, NoneAttr
+from xdsl.dialects.builtin import (
+    IndexType,
+    IntAttr,
+    IntegerType,
+    NoneAttr,
+    StridedLayoutAttr,
+)
 from xdsl.dialects.memref import CopyOp, Dim, ExtractAlignedPointerAsIndexOp, MemRefType
 from xdsl.ir import Block, MLContext, Region
 from xdsl.passes import ModulePass
@@ -13,6 +19,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.traits import SymbolTable
 
 from compiler.dialects.tsl import TiledStridedLayoutAttr
+from compiler.ir.tsl import TiledStridedLayout
 
 
 class MatchSimpleCopy(RewritePattern):
@@ -91,18 +98,47 @@ class MatchSimpleCopy(RewritePattern):
         rewriter.replace_op(op, func_call)
 
 
+def extract_strides(memreftype: MemRefType):
+    """
+    Small helper function to extract the strides from a given memreftype
+    with a StridedLayoutAttr or NoneAttr (default row-major) layout.
+
+    Returns:
+        List[int] or None: The extracted strides, or None if the strides
+        cannot be determined.
+    """
+    if isinstance(memreftype.layout, StridedLayoutAttr):
+        strides = memreftype.layout.strides.data
+        strides = [x.data if isinstance(x, IntAttr) else None for x in strides]
+    elif isinstance(memreftype.layout, NoneAttr):
+        # default to row-major layout, construct strides
+        # based on shape of the memref type
+        strides = [memreftype.element_type.width.data // 8]
+        for size in reversed(memreftype.shape.data[1:]):
+            if size.data == -1 or strides[0] is None:
+                strides = [None] + strides
+            else:
+                strides = [size.data * strides[0]] + strides
+    else:
+        strides = None
+    return strides
+
+
 class TransformDMA(RewritePattern):
     """Look for memref copy operations with TSL layout and insert snitch DMA calls"""
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: CopyOp, rewriter: PatternRewriter):
-        # only works on memrefs with tsl layouts and equal shape and element type
+        # both operands should be memref types
+        if not (
+            isinstance(op.source.type, MemRefType)
+            and isinstance(op.destination.type, MemRefType)
+        ):
+            return
+
+        # both operands should be of equal shape and integer element type
         if any(
             [
-                not isinstance(op.source.type, MemRefType),
-                not isinstance(op.destination.type, MemRefType),
-                not isinstance(op.source.type.layout, TiledStridedLayoutAttr),
-                not isinstance(op.destination.type.layout, TiledStridedLayoutAttr),
                 not op.destination.type.get_shape() == op.source.type.get_shape(),
                 not op.destination.type.get_element_type()
                 == op.source.type.get_element_type(),
@@ -110,6 +146,38 @@ class TransformDMA(RewritePattern):
             ]
         ):
             return
+
+        # if source is not tsl, construct representation:
+        if isinstance(op.source.type.layout, TiledStridedLayoutAttr):
+            tsl_source = op.source.type.layout
+        else:
+            # destination should be tsl
+            if not isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
+                return
+            strides = extract_strides(op.source.type)
+            if not strides:
+                return
+            tsl_source = TiledStridedLayoutAttr(
+                TiledStridedLayout.from_strides(
+                    strides, op.destination.type.layout.data.tile_bounds()
+                )
+            )
+
+        # if dest is not tsl, construct representation:
+        if isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
+            tsl_dest = op.destination.type.layout
+        else:
+            # source should be tsl
+            if not isinstance(op.source.type.layout, TiledStridedLayoutAttr):
+                return
+            strides = extract_strides(op.destination.type)
+            if not strides:
+                return
+            tsl_dest = TiledStridedLayoutAttr(
+                TiledStridedLayout.from_strides(
+                    strides, op.source.type.layout.data.tile_bounds()
+                )
+            )
 
         # list of all ops that need to be inserted
         ops_to_insert = []
@@ -121,8 +189,6 @@ class TransformDMA(RewritePattern):
         ops_to_insert.append(pointer_dst)
 
         # step 2: find largest common contiguous block, to be used for dma transfers
-        tsl_source = op.source.type.layout
-        tsl_dest = op.destination.type.layout
 
         # lcb is completely static
         assert op.source.type.element_type.width.data % 8 == 0

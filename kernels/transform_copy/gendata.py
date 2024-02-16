@@ -50,3 +50,7 @@ if __name__ == "__main__":
     variables = {"A": A, "B": B}
     create_header("transform_copy/data.h", array_size, variables)
     create_data("transform_copy/data.c", array_size, variables)
+    create_header("transform_from_none/data.h", array_size, variables)
+    create_data("transform_from_none/data.c", array_size, variables)
+    create_header("transform_from_strided/data.h", array_size, variables)
+    create_data("transform_from_strided/data.c", array_size, variables)

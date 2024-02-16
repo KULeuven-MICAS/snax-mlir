@@ -52,8 +52,8 @@ int main() {
   for (int i = 0; i < N; i++) {
     int32_t error = memrefB.aligned_data[i] - B[i];
     if (error != 0) {
-      printf("Error at %d: expected %d, got %d\n", i, B[i],
-             memrefB.aligned_data[i]);
+      printf("Error at %d (%p): expected %d, got %d\n", i,
+             &memrefB.aligned_data[i], B[i], memrefB.aligned_data[i]);
       nerr += 1;
     }
   }
