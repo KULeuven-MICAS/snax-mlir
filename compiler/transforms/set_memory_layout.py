@@ -26,7 +26,8 @@ class AddMemoryLayout(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
-        # check if operation is dispatched via library call
+        # check if operation is dispatched via library call, as set by e.g.
+        # the dispatch-kernels pass
         if linalg_op.library_call is None:
             return
         else:
