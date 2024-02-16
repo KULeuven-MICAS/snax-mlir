@@ -25,23 +25,43 @@ jobs:
       - name: Reinstall pip modules from requirements
         run: |
           /opt/python3.11/bin/python3 -m pip install -r requirements.txt
-      - name: Anomaly detection
+      - name: Anomaly detection (snax)
         run: |
           export PATH=/opt/python3.11/bin:$PATH
-          make ad01_int8.snax-opt.mlir
+          make ad01_int8.o
         working-directory: kernels/mlperf_tiny_ad01
-      - name: Image classfication
+      - name: Anomaly detection (vanilla)
         run: |
           export PATH=/opt/python3.11/bin:$PATH
-          make pretrainedResnet_quant.snax-opt.mlir
+          make ad01_int8.no-snax-opt.o
+        working-directory: kernels/mlperf_tiny_ad01
+      - name: Image classfication (snax)
+        run: |
+          export PATH=/opt/python3.11/bin:$PATH
+          make pretrainedResnet_quant.o
         working-directory: kernels/mlperf_tiny_ic
-      - name: Visual Wake Words
+      - name: Image classfication (vanilla)
         run: |
           export PATH=/opt/python3.11/bin:$PATH
-          make vww_96_int8.snax-opt.mlir
+          make pretrainedResnet_quant.no-snax-opt.o
+        working-directory: kernels/mlperf_tiny_ic
+      - name: Visual Wake Words (snax)
+        run: |
+          export PATH=/opt/python3.11/bin:$PATH
+          make vww_96_int8.o
         working-directory: kernels/mlperf_tiny_vww
-      - name: Keyword spotting
+      - name: Visual Wake Words (vanilla)
         run: |
           export PATH=/opt/python3.11/bin:$PATH
-          make kws_ref_model.snax-opt.mlir
+          make vww_96_int8.no-snax-opt.o
+        working-directory: kernels/mlperf_tiny_vww
+      - name: Keyword spotting (snax)
+        run: |
+          export PATH=/opt/python3.11/bin:$PATH
+          make kws_ref_model.o
+        working-directory: kernels/mlperf_tiny_kws
+      - name: Keyword spotting (vanilla)
+        run: |
+          export PATH=/opt/python3.11/bin:$PATH
+          make kws_ref_model.no-snax-opt.o
         working-directory: kernels/mlperf_tiny_kws

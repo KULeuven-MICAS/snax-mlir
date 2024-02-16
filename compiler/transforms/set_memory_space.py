@@ -83,7 +83,7 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
         )
 
         # create new get_global op
-        new_op = memref.GetGlobal.get(op.name, new_memref_type)
+        new_op = memref.GetGlobal.get(op.name_.root_reference.data, new_memref_type)
 
         # replace op
         rewriter.replace_matched_op(new_op)

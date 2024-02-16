@@ -112,23 +112,34 @@ SNAXOPTFLAGS = -p set-memory-space,realize-memory-space-casts,insert-sync-barrie
 %.snax-opt.mlir: %.preprocfinal.mlir
 	$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<
 
-# MLIR
+%.postproc.mlir: %.snax-opt.mlir
+	cat $< | sed 's/arith.maximumf/arith.maxf/g' | sed 's/arith.minimumf/arith.minf/g' > $@
+
+# Lower everithing to LLVM, loosely based on:
+# https://github.com/llvm/llvm-project/blob/main/mlir/test/lib/Dialect/LLVM/TestLowerToLLVM.cpp
 
 MLIROPTFLAGS =
 MLIROPTFLAGS += --convert-linalg-to-loops
 MLIROPTFLAGS += --convert-scf-to-cf
+MLIROPTFLAGS += --lower-affine
 MLIROPTFLAGS += --canonicalize
 MLIROPTFLAGS += --cse
 MLIROPTFLAGS += --convert-math-to-llvm
 MLIROPTFLAGS += --llvm-request-c-wrappers
-MLIROPTFLAGS += --finalize-memref-to-llvm='use-generic-functions index-bitwidth=32'
-MLIROPTFLAGS += --convert-func-to-llvm='index-bitwidth=32'
+MLIROPTFLAGS += --expand-strided-metadata
 MLIROPTFLAGS += --convert-index-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --convert-cf-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --convert-arith-to-llvm=index-bitwidth=32
+MLIROPTFLAGS += --convert-func-to-llvm='index-bitwidth=32'
+MLIROPTFLAGS += --finalize-memref-to-llvm='use-generic-functions index-bitwidth=32'
+MLIROPTFLAGS += --canonicalize
 MLIROPTFLAGS += --reconcile-unrealized-casts
 
-%.ll.mlir: %.snax-opt.mlir
+# Bypass snax-opt
+%.no-snax-opt.ll.mlir: %.preproc3.mlir
+	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
+
+%.ll.mlir: %.postproc.mlir
 	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
 
 %.ll: %.ll.mlir
