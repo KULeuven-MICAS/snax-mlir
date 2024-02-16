@@ -17,6 +17,13 @@ def is_cast_op(op: Operation) -> bool:
 
 
 class RealizeMemrefCasts(RewritePattern):
+    """
+    A rewrite pattern for realizing memref casts.
+
+    This pattern matches and rewrites MemorySpaceCast and LayoutCast operations
+    by performing casting through memref copies and allocations at the right time.
+    """
+
     @op_type_rewrite_pattern
     def match_and_rewrite(
         self, op: MemorySpaceCast | LayoutCast, rewriter: PatternRewriter
@@ -34,7 +41,7 @@ class RealizeMemrefCasts(RewritePattern):
         # keep track of ops to add
         ops_to_add = []
 
-        # if the source of the memref cast is another reshuffle op,
+        # if the source of the memref cast is another layout_cast op,
         # combine them all together
         source_op = op
         while isinstance(source_op.source, OpResult) and isinstance(
