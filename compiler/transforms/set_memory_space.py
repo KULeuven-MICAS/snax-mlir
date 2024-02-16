@@ -1,4 +1,4 @@
-from xdsl.dialects import arith, builtin, func, linalg, memref
+from xdsl.dialects import builtin, func, linalg, memref
 from xdsl.ir import MLContext, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -240,87 +240,6 @@ class HandleFuncReturns(RewritePattern):
         rewriter.replace_matched_op(new_op)
 
 
-class RealizeMemorySpaceCasts(RewritePattern):
-    """Realize the inserted memory space casts. In the snitch
-    cluster case, the different clusters can only access their own
-    local TCDM L1 memory, so memory space casts are handled by local
-    allocations and memref copies at the correct time.
-    """
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: memref.MemorySpaceCast, rewriter: PatternRewriter):
-        # check if result is memreftype to make pyright happy
-        if not isinstance(op.results[0].type, memref.MemRefType):
-            return
-
-        # create memref.dim operations for dynamic dimensions
-        shapes = [x.data for x in op.results[0].type.shape.data]
-        dyn_operands = []
-        for i in range(len(shapes)):
-            # Dynamic shapes are represented as -1
-            if shapes[i] == -1:
-                ## create dim op
-                index = arith.Constant.from_int_and_width(i, builtin.IndexType())
-                dim_op = memref.Dim.from_source_and_index(op.source, index.result)
-                rewriter.insert_op_before_matched_op([index, dim_op])
-                dyn_operands.append(dim_op)
-
-        # replace cast with allocation
-        alloc_op = memref.Alloc.get(
-            op.results[0].type.get_element_type(),
-            64,  # default 64 alignment (necessary ?)
-            op.results[0].type.get_shape(),
-            dynamic_sizes=dyn_operands,
-            layout=op.results[0].type.layout,
-            memory_space=op.results[0].type.memory_space,
-        )
-
-        # Insert copy ops if newly allocated memref is used as
-        # input or output, list to visit all uses of allocated memrefs:
-        uses = [x.operation for x in op.results[0].uses]
-
-        # insert "copy to" for first use as input
-        # walk parent op in order to find first use as input
-        for use_op in op.parent.walk():
-            if use_op not in uses:
-                continue
-            # check if input
-            is_input = False
-            if not isinstance(use_op, linalg.Generic):
-                # don't know if input or output, default to yes
-                is_input = True
-            else:
-                is_input = op.results[0] in use_op.inputs
-            if is_input:
-                # insert copy op
-                copy_op = memref.CopyOp(op.source, op.dest)
-                rewriter.insert_op_before(copy_op, use_op)
-                break
-
-        # insert "copy from" for last use as output
-        # walk parent op in reverse order to find last use as output
-        for use_op in op.parent.walk(reverse=True):
-            if use_op not in uses:
-                continue
-            # check if input
-            is_output = False
-            if isinstance(use_op, linalg.Generic):
-                is_output = op.results[0] in use_op.outputs
-            elif isinstance(use_op, func.Return):
-                is_output = False
-            else:
-                # don't know if input or output, default to yes
-                is_output = True
-            if is_output:
-                # insert copy op
-                copy_op = memref.CopyOp(op.dest, op.source)
-                rewriter.insert_op_after(copy_op, use_op)
-                break
-
-        # finally, replace the casting operation with the allocation
-        rewriter.replace_matched_op(alloc_op, new_results=[alloc_op.memref])
-
-
 class SetMemorySpace(ModulePass):
     name = "set-memory-space"
 
@@ -330,10 +249,3 @@ class SetMemorySpace(ModulePass):
         PatternRewriteWalker(InitMemRefAllocMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(InitLinalgMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(HandleFuncReturns()).rewrite_module(op)
-
-
-class RealizeMemorySpaceCastsPass(ModulePass):
-    name = "realize-memory-space-casts"
-
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(RealizeMemorySpaceCasts()).rewrite_module(op)
