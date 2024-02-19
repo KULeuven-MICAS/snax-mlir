@@ -83,51 +83,38 @@ class LLVMMemrefDescriptor:
             VerifyException: If the memref descriptor is invalid.
         """
 
+        def raise_exception(message: str) -> None:
+            raise VerifyException("Invalid Memref Descriptor: " + message)
+
         if not isinstance(self.descriptor.types, ArrayAttr):
             raise VerifyException("Expected result type to have an ArrayAttr")
 
         type_iter = iter(self.descriptor.types.data)
 
         if not isinstance(next(type_iter), LLVMPointerType):
-            raise VerifyException(
-                "Invalid Memref Descriptor: "
-                + "Expected first element to be LLVMPointerType"
-            )
+            raise_exception("Expected first element to be LLVMPointerType")
+
         if not isinstance(next(type_iter), LLVMPointerType):
-            raise VerifyException(
-                "Invalid Memref Descriptor: "
-                + "Expected second element to be LLVMPointerType"
-            )
+            raise_exception("Expected second element to be LLVMPointerType")
+
         if not isinstance(next(type_iter), IntegerType):
-            raise VerifyException(
-                "Invalid Memref Descriptor: "
-                + "Expected third element to be IntegerType"
-            )
+            raise_exception("Expected third element to be IntegerType")
+
         shape = next(type_iter)
         if not isinstance(shape, LLVMArrayType):
-            raise VerifyException(
-                "Invalid Memref Descriptor: "
-                + "Expected fourth element to be LLVMArrayType"
-            )
+            raise_exception("Expected fourth element to be LLVMArrayType")
+
         if not isinstance(shape.type, IntegerType):
-            raise VerifyException(
-                "Invalid Memref Descriptor: "
-                + "Expected fourth element to be LLVMArrayType of IntegerType"
-            )
-        strides = next(type_iter)
-        if not isinstance(strides, LLVMArrayType):
-            raise VerifyException(
-                "Invalid Memref Descriptor: "
-                + "Expected fifth element to be LLVMArrayType"
-            )
-        if not isinstance(strides.type, IntegerType):
-            raise VerifyException(
-                "Invalid Memref Descriptor: "
-                + "Expected fifth element to be LLVMArrayType of IntegerType"
+            raise_exception(
+                "Expected fourth element to be LLVMArrayType of IntegerType"
             )
 
+        strides = next(type_iter)
+        if not isinstance(strides, LLVMArrayType):
+            raise_exception("Expected fifth element to be LLVMArrayType")
+
+        if not isinstance(strides.type, IntegerType):
+            raise_exception("Expected fifth element to be LLVMArrayType of IntegerType")
+
         if not strides.size.data == shape.size.data:
-            raise VerifyException(
-                "Invalid Memref Descriptor: "
-                + "Expected shape and strides to have the same dimension"
-            )
+            raise_exception("Expected shape and strides to have the same dimension")
