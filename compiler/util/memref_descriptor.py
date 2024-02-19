@@ -14,6 +14,10 @@ from xdsl.utils.exceptions import VerifyException
 
 
 class LLVMMemrefDescriptor:
+    """A class to work with LLVM memref descriptors.
+    https://mlir.llvm.org/docs/TargetLLVMIR/#default-calling-convention-for-ranked-memref
+    """
+
     descriptor: LLVMStructType
 
     def __init__(self, descriptor: LLVMStructType):
