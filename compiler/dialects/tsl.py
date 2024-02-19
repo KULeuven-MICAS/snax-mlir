@@ -32,14 +32,17 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
         printer.print_string(f"<{self.data}>")
 
     def get_bound_ops(
-        self, memref: SSAValue | Operation
+        self, memref_op_or_shapes: SSAValue | Operation | list[Operation]
     ) -> tuple[list[Operation], dict[tuple[int, int], Operation]]:
         """Generate ops to get the bounds of the Strides in the TSL
         The function handles dynamic strides as well
 
         Args:
-            memref (SSAValue | Operation): The memref to which this
-            TSL is applied.
+            memref_op_or_shapes (SSAValue | Operation | list[SSAValue | Operation]):
+            The function needs to know the dynamic shapes of the memref to generate
+            all bound ops. For this, a list of ops producing the dynamic shapes can be
+            passed, or the op that produces the memref itself. If the memref op is
+            passed, this function will generate dim ops to get the dynamic shape sizes.
 
         Returns:
             Result (List[Operation]): the list of operations that must be inserted
@@ -50,6 +53,11 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
             and depth. This is used to keep track of which sequence of operations
             was made for which TSL Stride.
         """
+        if isinstance(memref_op_or_shapes, SSAValue | Operation):
+            memref = memref_op_or_shapes
+        else:
+            shapes = memref_op_or_shapes
+
         result: list[Operation] = []
         result_mapping: dict[(int, int), Operation] = {}
 
@@ -71,8 +79,13 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
                 # of all lower tile sizes
                 else:
                     # get the size of the memref
-                    dim_index_op = Constant.from_int_and_width(dim, IndexType())
-                    dim_op = Dim.from_source_and_index(memref, dim_index_op)
+                    if shapes:  # use shapes
+                        dim_op = shapes.pop(0)
+                        result.append(dim_op)
+                    else:
+                        dim_index_op = Constant.from_int_and_width(dim, IndexType())
+                        dim_op = Dim.from_source_and_index(memref, dim_index_op)
+                        result.extend([dim_index_op, dim_op])
 
                     # get the product of all lower tile sizes
                     product_tilebounds = prod(
@@ -90,14 +103,14 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
                     bound_op = DivUI(dim_op.result, div_op.result, IndexType())
 
                     # add the ops to result
-                    result.extend([dim_index_op, dim_op, div_op, bound_op])
+                    result.extend([div_op, bound_op])
                     result_mapping[(dim, depth)] = bound_op
 
         return result, result_mapping
 
     def get_step_ops(
         self, bound_ops: dict[(int, int), Operation]
-    ) -> (list[Operation], dict[(int, int), Operation]):
+    ) -> tuple[list[Operation], dict[(int, int), Operation]]:
         """Generate ops to get the steps of the Strides in the TSL
         The function handles dynamic strides as well
 
