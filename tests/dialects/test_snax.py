@@ -1,7 +1,7 @@
 import pytest
 from xdsl.dialects import builtin
-from xdsl.dialects.builtin import StridedLayoutAttr, i32, i64
-from xdsl.dialects.llvm import LLVMPointerType
+from xdsl.dialects.builtin import ArrayAttr, IntegerType, StridedLayoutAttr, i32, i64
+from xdsl.dialects.llvm import LLVMArrayType, LLVMPointerType, LLVMStructType
 from xdsl.dialects.memref import MemRefType
 from xdsl.utils.exceptions import VerifyException
 from xdsl.utils.test_value import TestSSAValue
@@ -67,8 +67,25 @@ def test_memref_memory_space_cast():
 
 def test_snax_alloc():
     size = TestSSAValue(i32)
-    alloc_a = Alloc(size, memory_space=builtin.IntegerAttr(1, i32))
+    dim = 2
+    alloc_a = Alloc(dim, size, memory_space=builtin.IntegerAttr(1, i32))
 
     assert alloc_a.size is size
     assert alloc_a.memory_space.value.data == 1
-    assert isinstance(alloc_a.result.type, LLVMPointerType)
+
+    assert isinstance(alloc_a.result.type, LLVMStructType)
+    assert isinstance(alloc_a.result.type.types, ArrayAttr)
+
+    type_iter = iter(alloc_a.result.type.types.data)
+
+    assert isinstance(next(type_iter), LLVMPointerType)
+    assert isinstance(next(type_iter), LLVMPointerType)
+    assert isinstance(next(type_iter), IntegerType)
+    shape = next(type_iter)
+    assert isinstance(shape, LLVMArrayType)
+    assert shape.size.data == dim
+    assert isinstance(shape.type, IntegerType)
+    strides = next(type_iter)
+    assert isinstance(strides, LLVMArrayType)
+    assert strides.size.data == dim
+    assert isinstance(strides.type, IntegerType)

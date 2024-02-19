@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import cast
 
-from xdsl.dialects.builtin import IntegerType, NoneAttr
-from xdsl.dialects.llvm import LLVMPointerType
+from xdsl.dialects.builtin import ArrayAttr, IntegerType, NoneAttr, i32
+from xdsl.dialects.llvm import LLVMArrayType, LLVMPointerType, LLVMStructType
 from xdsl.dialects.memref import MemRefType, UnrankedMemrefType
 from xdsl.ir import Attribute, Dialect, Operation, SSAValue
 from xdsl.irdl import (
@@ -79,31 +79,92 @@ class Alloc(IRDLOperation):
     """Alloc operation in a snax cluster.
 
     Contrary to a memref.alloc, this operation does not generate
-    a memref descriptor. Instead, it returns a pointer to the allocated
-    memory. (!llvm.ptr).
-
-    Contrary to a llvm alloc, the operation still holds information
-    about the memory space and the layout of the allocated memory,
-    such that the correct allocator can be called when allocating
-    the memory.
+    a memref. Instead, it returns an llvm struct memref descriptor.
+    When other operations get lowerd to llvm, the llvm structs will
+    match and the conversion casts can be realized.
     """
 
     name = "snax.alloc"
 
     size: Operand = operand_def(IntegerType)
-    result: OpResult = result_def(LLVMPointerType)
+    result: OpResult = result_def(LLVMStructType)
     memory_space: Attribute | None = opt_prop_def(Attribute)
 
     def __init__(
         self,
+        dim: int,
         size: SSAValue | Operation,
         memory_space: Attribute = NoneAttr(),
     ):
+        # output type is llvm struct memref descriptor
+        result_type = LLVMStructType.from_type_list(
+            [
+                LLVMPointerType.opaque(),
+                LLVMPointerType.opaque(),
+                i32,
+                LLVMArrayType.from_size_and_type(dim, i32),
+                LLVMArrayType.from_size_and_type(dim, i32),
+            ]
+        )
+
         super().__init__(
             operands=[size],
-            result_types=[LLVMPointerType.opaque()],
+            result_types=[result_type],
             properties={"memory_space": memory_space},
         )
+
+    def verify_(self) -> None:
+        # check for a correct output type
+        if not isinstance(self.result.type, LLVMStructType):
+            raise VerifyException("Expected result type to be LLVMStructType")
+        if not isinstance(self.result.type.types, ArrayAttr):
+            raise VerifyException("Expected result type to have an ArrayAttr")
+
+        type_iter = iter(self.result.type.types.data)
+
+        if not isinstance(next(type_iter), LLVMPointerType):
+            raise VerifyException(
+                "Invalid Memref Descriptor: "
+                + "Expected first element to be LLVMPointerType"
+            )
+        if not isinstance(next(type_iter), LLVMPointerType):
+            raise VerifyException(
+                "Invalid Memref Descriptor: "
+                + "Expected second element to be LLVMPointerType"
+            )
+        if not isinstance(next(type_iter), IntegerType):
+            raise VerifyException(
+                "Invalid Memref Descriptor: "
+                + "Expected third element to be IntegerType"
+            )
+        shape = next(type_iter)
+        if not isinstance(shape, LLVMArrayType):
+            raise VerifyException(
+                "Invalid Memref Descriptor: "
+                + "Expected fourth element to be LLVMArrayType"
+            )
+        if not isinstance(shape.type, IntegerType):
+            raise VerifyException(
+                "Invalid Memref Descriptor: "
+                + "Expected fourth element to be LLVMArrayType of IntegerType"
+            )
+        strides = next(type_iter)
+        if not isinstance(strides, LLVMArrayType):
+            raise VerifyException(
+                "Invalid Memref Descriptor: "
+                + "Expected fifth element to be LLVMArrayType"
+            )
+        if not isinstance(strides.type, IntegerType):
+            raise VerifyException(
+                "Invalid Memref Descriptor: "
+                + "Expected fifth element to be LLVMArrayType of IntegerType"
+            )
+
+        if not strides.size.data == shape.size.data:
+            raise VerifyException(
+                "Invalid Memref Descriptor: "
+                + "Expected shape and strides to have the same dimension"
+            )
 
 
 Snax = Dialect("snax", [ClusterSyncOp, LayoutCast, Alloc], [])
