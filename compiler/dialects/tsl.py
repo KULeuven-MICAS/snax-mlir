@@ -79,10 +79,9 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
                 # of all lower tile sizes
                 else:
                     # get the size of the memref
-                    if shapes:  # use shapes
+                    if shapes:  # use shapes if supplied
                         dim_op = shapes.pop(0)
-                        result.append(dim_op)
-                    else:
+                    else:  # else, create own dim op to calculate shape
                         dim_index_op = Constant.from_int_and_width(dim, IndexType())
                         dim_op = Dim.from_source_and_index(memref, dim_index_op)
                         result.extend([dim_index_op, dim_op])
