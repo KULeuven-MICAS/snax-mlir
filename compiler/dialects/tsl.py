@@ -55,8 +55,10 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
         """
         if isinstance(memref_op_or_shapes, SSAValue | Operation):
             memref = memref_op_or_shapes
+            shapes = None
         else:
             shapes = memref_op_or_shapes
+            memref = None
 
         result: list[Operation] = []
         result_mapping: dict[(int, int), Operation] = {}
