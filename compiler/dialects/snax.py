@@ -2,10 +2,22 @@ from __future__ import annotations
 
 from typing import cast
 
+from xdsl.dialects.builtin import IntegerType, NoneAttr, i32
+from xdsl.dialects.llvm import LLVMStructType
 from xdsl.dialects.memref import MemRefType, UnrankedMemrefType
 from xdsl.ir import Attribute, Dialect, Operation, SSAValue
-from xdsl.irdl import IRDLOperation, irdl_op_definition, operand_def, result_def
+from xdsl.irdl import (
+    IRDLOperation,
+    Operand,
+    OpResult,
+    irdl_op_definition,
+    operand_def,
+    opt_prop_def,
+    result_def,
+)
 from xdsl.utils.exceptions import VerifyException
+
+from compiler.util.memref_descriptor import LLVMMemrefDescriptor
 
 
 @irdl_op_definition
@@ -64,4 +76,45 @@ class LayoutCast(IRDLOperation):
             )
 
 
-Snax = Dialect("snax", [ClusterSyncOp, LayoutCast], [])
+@irdl_op_definition
+class Alloc(IRDLOperation):
+    """Alloc operation in a snax cluster.
+
+    Contrary to a memref.alloc, this operation does not generate
+    a memref. Instead, it returns an llvm struct memref descriptor.
+    When other operations get lowered to llvm, the llvm structs will
+    match and the conversion casts can be realized.
+    """
+
+    name = "snax.alloc"
+
+    size: Operand = operand_def(IntegerType)
+    result: OpResult = result_def(LLVMStructType)
+    memory_space: Attribute | None = opt_prop_def(Attribute)
+
+    def __init__(
+        self,
+        rank: int,
+        size: SSAValue | Operation,
+        memory_space: Attribute = NoneAttr(),
+        integer_type: IntegerType = i32,
+    ):
+        # output type is llvm struct memref descriptor
+        descriptor = LLVMMemrefDescriptor.from_rank_and_integer_type(rank, integer_type)
+
+        super().__init__(
+            operands=[size],
+            result_types=[descriptor.descriptor],
+            properties={"memory_space": memory_space},
+        )
+
+    def verify_(self) -> None:
+        # check for a correct result type
+        if not isinstance(self.result.type, LLVMStructType):
+            raise VerifyException("Expected result type to be LLVMStructType")
+
+        descriptor = LLVMMemrefDescriptor(self.result.type)
+        descriptor.verify()
+
+
+Snax = Dialect("snax", [ClusterSyncOp, LayoutCast, Alloc], [])

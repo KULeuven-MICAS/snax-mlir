@@ -1,11 +1,13 @@
 import pytest
 from xdsl.dialects import builtin
-from xdsl.dialects.builtin import StridedLayoutAttr, i32, i64
+from xdsl.dialects.builtin import ArrayAttr, StridedLayoutAttr, i32, i64
+from xdsl.dialects.llvm import LLVMStructType
 from xdsl.dialects.memref import MemRefType
 from xdsl.utils.exceptions import VerifyException
 from xdsl.utils.test_value import TestSSAValue
 
-from compiler.dialects.snax import LayoutCast
+from compiler.dialects.snax import Alloc, LayoutCast
+from compiler.util.memref_descriptor import LLVMMemrefDescriptor
 
 
 def test_memref_memory_space_cast():
@@ -62,3 +64,20 @@ def test_memref_memory_space_cast():
     assert memory_layout_cast.source is source_ssa
     assert isinstance(memory_layout_cast.dest.type, MemRefType)
     assert memory_layout_cast.dest.type.layout is layout_2
+
+
+def test_snax_alloc():
+    size = TestSSAValue(i32)
+    dim = 2
+    alloc_a = Alloc(dim, size, memory_space=builtin.IntegerAttr(1, i32))
+
+    assert alloc_a.size is size
+    assert alloc_a.memory_space.value.data == 1
+
+    assert isinstance(alloc_a.result.type, LLVMStructType)
+    assert isinstance(alloc_a.result.type.types, ArrayAttr)
+
+    iter(alloc_a.result.type.types.data)
+
+    descriptor = LLVMMemrefDescriptor(alloc_a.result.type)
+    descriptor.verify()
