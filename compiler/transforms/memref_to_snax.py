@@ -114,7 +114,11 @@ class AllocOpRewrite(RewritePattern):
 
         # create snax alloc op
         snax_alloc = snax.Alloc(
-            memref_type.get_num_dims(), total_size_op, memory_space, element_type
+            memref_type.get_num_dims(),
+            total_size_op,
+            memory_space,
+            alloc_op.alignment,
+            element_type,
         )
         conversion_cast_op = UnrealizedConversionCastOp.get([snax_alloc], memref_type)
         rewriter.replace_matched_op(
