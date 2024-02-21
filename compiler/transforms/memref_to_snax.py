@@ -31,7 +31,7 @@ class AllocOpRewrite(RewritePattern):
         # get the element type
         element_type = memref_type.get_element_type()
 
-        if not isinstance(element_type, builtin.IntegerType):
+        if not isinstance(element_type, builtin.IntegerType | builtin.AnyFloat):
             return
 
         # get the memory space
