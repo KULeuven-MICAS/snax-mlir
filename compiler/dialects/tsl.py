@@ -59,9 +59,9 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
 
         tsl = self.data
 
-        # if the argument passed is a memref, generate shape operation
-        # list by using the dim operation
         if isinstance(memref_op_or_shapes, SSAValue | Operation):
+            # if the argument passed is a memref, generate shape operation
+            # list by using the dim operation
             memref = memref_op_or_shapes
             shapes = []
             for dim in range(tsl.dimension()):
@@ -70,6 +70,7 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
                 result.extend([dim_index_op, dim_op])
                 shapes.append(dim_op)
         else:
+            # shape ops are already supplied, use them directly
             shapes = memref_op_or_shapes
 
         for dim in range(tsl.dimension()):
