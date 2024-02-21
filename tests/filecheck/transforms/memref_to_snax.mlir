@@ -81,7 +81,7 @@
 
 "builtin.module"() ({
   %0 = "test.op"() : () -> (index)
-  %1 = "memref.alloc"(%0) <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 1, 0>}> : (index) -> memref<8x?xi32, #tsl.tsl<[2, 4] -> (16, 4), [?, 4] -> (128, 32)>, 1 : i32>
+  %1 = "memref.alloc"(%0) <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 1, 0>}> : (index) -> memref<8x?xi32, #tsl.tsl<[2, 4] -> (16, 4), [?, 4] -> (?, 32)>, 1 : i32>
 }) : () -> ()
 
 // CHECK: "builtin.module"() ({
@@ -92,9 +92,9 @@
 // CHECK-NEXT:   %4 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 // CHECK-NEXT:   %5 = "arith.divui"(%0, %4) : (index, index) -> index
 // CHECK-NEXT:   %6 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-// CHECK-NEXT:   %7 = "arith.constant"() <{"value" = 128 : index}> : () -> index
+// CHECK-NEXT:   %7 = "arith.constant"() <{"value" = 32 : index}> : () -> index
 // CHECK-NEXT:   %8 = "arith.constant"() <{"value" = 32 : index}> : () -> index
-// CHECK-NEXT:   %9 = "arith.constant"() <{"value" = 128 : index}> : () -> index
+// CHECK-NEXT:   %9 = "arith.muli"(%6, %7) : (index, index) -> index
 // CHECK-NEXT:   %10 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 // CHECK-NEXT:   %11 = "arith.constant"() <{"value" = 16 : index}> : () -> index
 // CHECK-NEXT:   %12 = "arith.constant"() <{"value" = 4 : index}> : () -> index
@@ -109,5 +109,5 @@
 // CHECK-NEXT:   %21 = "arith.addi"(%19, %20) : (index, index) -> index
 // CHECK-NEXT:   %22 = "arith.muli"(%12, %21) : (index, index) -> index
 // CHECK-NEXT:   %23 = "snax.alloc"(%22) <{"memory_space" = 1 : i32}> : (index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
-// CHECK-NEXT:   %24 = "builtin.unrealized_conversion_cast"(%23) : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>) -> memref<8x?xi32, #tsl.tsl<[2, 4] -> (16, 4), [?, 4] -> (128, 32)>, 1 : i32>
+// CHECK-NEXT:   %24 = "builtin.unrealized_conversion_cast"(%23) : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>) -> memref<8x?xi32, #tsl.tsl<[2, 4] -> (16, 4), [?, 4] -> (?, 32)>, 1 : i32>
 // CHECK-NEXT: }) : () -> ()
