@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from xdsl.dialects.builtin import IntegerType, NoneAttr, i32
+from xdsl.dialects.builtin import IndexType, IntegerType, NoneAttr, i32
 from xdsl.dialects.llvm import LLVMStructType
 from xdsl.dialects.memref import MemRefType, UnrankedMemrefType
 from xdsl.ir import Attribute, Dialect, Operation, SSAValue
@@ -88,7 +88,7 @@ class Alloc(IRDLOperation):
 
     name = "snax.alloc"
 
-    size: Operand = operand_def(IntegerType)
+    size: Operand = operand_def(IntegerType | IndexType)
     result: OpResult = result_def(LLVMStructType)
     memory_space: Attribute | None = opt_prop_def(Attribute)
 

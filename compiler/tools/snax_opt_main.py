@@ -11,6 +11,7 @@ from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
+from compiler.transforms.memref_to_snax import MemrefToSNAX
 from compiler.transforms.realize_memref_casts import RealizeMemrefCastsPass
 from compiler.transforms.set_memory_layout import SetMemoryLayout
 from compiler.transforms.set_memory_space import SetMemorySpace
@@ -49,6 +50,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(
             RealizeMemrefCastsPass.name, lambda: RealizeMemrefCastsPass
         )
+        super().register_pass(MemrefToSNAX.name, lambda: MemrefToSNAX)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
