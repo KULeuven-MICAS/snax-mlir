@@ -53,59 +53,59 @@ class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
             and depth. This is used to keep track of which sequence of operations
             was made for which TSL Stride.
         """
-        if isinstance(memref_op_or_shapes, SSAValue | Operation):
-            memref = memref_op_or_shapes
-            shapes = None
-        else:
-            shapes = memref_op_or_shapes
-            memref = None
 
         result: list[Operation] = []
         result_mapping: dict[(int, int), Operation] = {}
 
         tsl = self.data
 
+        if isinstance(memref_op_or_shapes, SSAValue | Operation):
+            # if the argument passed is a memref, generate shape operation
+            # list by using the dim operation
+            memref = memref_op_or_shapes
+            shapes = []
+            for dim in range(tsl.dimension()):
+                dim_index_op = Constant.from_int_and_width(dim, IndexType())
+                dim_op = Dim.from_source_and_index(memref, dim_index_op)
+                result.extend([dim_index_op, dim_op])
+                shapes.append(dim_op)
+        else:
+            # shape ops are already supplied, use them directly
+            shapes = memref_op_or_shapes
+
         for dim in range(tsl.dimension()):
-            for depth in range(tsl.tstrides[dim].depth()):
+            depth = 0  # outermost tile
+            dim_op = shapes.pop(0)
+
+            # static case
+            stride = tsl.get_stride(dim, depth)
+            if stride.bound is not None:
+                bound_op = Constant.from_int_and_width(stride.bound, IndexType())
+                result.append(bound_op)
+                result_mapping[(dim, depth)] = bound_op
+
+            # dynamic case: use the dim_op and divide by product of
+            # all lower tile sizes
+            else:
+                # get the product of all lower tile sizes
+                product_tilebounds = prod(
+                    [stride.bound for _, stride in tsl.tstrides[dim] if stride.bound]
+                )
+                div_op = Constant.from_int_and_width(product_tilebounds, IndexType())
+
+                # divide the size of the memref by the product of all lower tiles
+                bound_op = DivUI(dim_op, div_op, IndexType())
+
+                # add the ops to result
+                result.extend([div_op, bound_op])
+                result_mapping[(dim, depth)] = bound_op
+
+            # inner tile depths are all static by definition of TSL
+            for depth in range(1, tsl.tstrides[dim].depth()):
                 stride = tsl.get_stride(dim, depth)
-
-                # static case
-                if stride.bound is not None:
-                    bound_op = Constant.from_int_and_width(stride.bound, IndexType())
-                    result.append(bound_op)
-                    result_mapping[(dim, depth)] = bound_op
-
-                # dynamic case
-                # to calculate the bound of a dynamic stride,
-                # we must divide the size of the memref by the product
-                # of all lower tile sizes
-                else:
-                    # get the size of the memref
-                    if shapes:  # use shapes if supplied
-                        dim_op = shapes.pop(0)
-                    else:  # else, create own dim op to calculate shape
-                        dim_index_op = Constant.from_int_and_width(dim, IndexType())
-                        dim_op = Dim.from_source_and_index(memref, dim_index_op)
-                        result.extend([dim_index_op, dim_op])
-
-                    # get the product of all lower tile sizes
-                    product_tilebounds = prod(
-                        [
-                            stride.bound
-                            for _, stride in tsl.tstrides[dim]
-                            if stride.bound
-                        ]
-                    )
-                    div_op = Constant.from_int_and_width(
-                        product_tilebounds, IndexType()
-                    )
-
-                    # divide the size of the memref by the product of all lower tiles
-                    bound_op = DivUI(dim_op.result, div_op.result, IndexType())
-
-                    # add the ops to result
-                    result.extend([div_op, bound_op])
-                    result_mapping[(dim, depth)] = bound_op
+                bound_op = Constant.from_int_and_width(stride.bound, IndexType())
+                result.append(bound_op)
+                result_mapping[(dim, depth)] = bound_op
 
         return result, result_mapping
 

@@ -20,11 +20,6 @@ class AllocOpRewrite(RewritePattern):
         """Swap memref.alloc op with snax.alloc, for now, we suppport
         NoneType layouts and TSL Layouts"""
 
-        # a (very) temporary constraint: only allow for static sizes
-        # i am already working on the dynamic case
-        if any([x.data == -1 for x in alloc_op.memref.type.shape.data]):
-            return
-
         # get the memref type
         memref_type: memref.MemRefType = alloc_op.memref.type
 
@@ -49,6 +44,23 @@ class AllocOpRewrite(RewritePattern):
         total_size_op = None
         ops_to_add = []
 
+        # generate the list of shape ops
+        # either these are constant and must be created,
+        # or they are already present in the memref.alloc
+        # operation arguments
+        shape_ops = []
+        alloc_args = [x.op for x in alloc_op.dynamic_sizes]
+
+        for shape in memref_type.shape.data:
+            if shape.data == -1:
+                # dynamic op
+                shape_ops.append(alloc_args.pop(0))
+            else:
+                # constant op
+                shape_op = Constant.from_int_and_width(shape.data, IndexType())
+                ops_to_add.append(shape_op)
+                shape_ops.append(shape_op)
+
         if isinstance(layout, NoneAttr):
             # get size based on shape
             shape = memref_type.shape
@@ -63,22 +75,14 @@ class AllocOpRewrite(RewritePattern):
 
             for dim in range(len(shape)):
                 # we can assume all shapes are static for now
-                dim_op = Constant.from_int_and_width(shape.data[dim].data, IndexType())
-                ops_to_add.append(dim_op)
-                total_size_op = Muli(dim_op, total_size_op)
+                shape_op = shape_ops.pop(0)
+                total_size_op = Muli(shape_op, total_size_op)
                 ops_to_add.append(total_size_op)
 
         if isinstance(layout, TiledStridedLayoutAttr):
             # to get the entire size needed for a TSL layout,
             # we need to take the sum of all bounds multiplied with
             # their respective strides
-
-            # create list of shape ops
-            shape_ops = [
-                Constant.from_int_and_width(x.data, IndexType())
-                for x in memref_type.shape.data
-            ]
-            ops_to_add.extend(shape_ops)
 
             # use shape ops to generate tsl bound ops
             insert_ops, bound_ops = layout.get_bound_ops(shape_ops)
