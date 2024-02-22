@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from typing import cast
 
-from xdsl.dialects.builtin import IndexType, IntegerType, NoneAttr, i32
+from xdsl.dialects.builtin import (
+    AnyIntegerAttr,
+    IndexType,
+    IntegerAttr,
+    IntegerType,
+    NoneAttr,
+    i32,
+)
 from xdsl.dialects.llvm import LLVMStructType
 from xdsl.dialects.memref import MemRefType, UnrankedMemrefType
 from xdsl.ir import Attribute, Dialect, Operation, SSAValue
@@ -91,21 +98,26 @@ class Alloc(IRDLOperation):
     size: Operand = operand_def(IntegerType | IndexType)
     result: OpResult = result_def(LLVMStructType)
     memory_space: Attribute | None = opt_prop_def(Attribute)
+    alignment: AnyIntegerAttr | None = opt_prop_def(AnyIntegerAttr)
 
     def __init__(
         self,
         rank: int,
         size: SSAValue | Operation,
         memory_space: Attribute = NoneAttr(),
+        alignment: AnyIntegerAttr = None,
         integer_type: IntegerType = i32,
     ):
         # output type is llvm struct memref descriptor
         descriptor = LLVMMemrefDescriptor.from_rank_and_integer_type(rank, integer_type)
 
+        if not alignment:
+            alignment = IntegerAttr(1, IntegerType(64))
+
         super().__init__(
             operands=[size],
             result_types=[descriptor.descriptor],
-            properties={"memory_space": memory_space},
+            properties={"memory_space": memory_space, "alignment": alignment},
         )
 
     def verify_(self) -> None:
