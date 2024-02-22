@@ -2,5 +2,5 @@ pre-commit
 filecheck
 lit
 numpy
-xdsl @ git+https://github.com/xdslproject/xdsl.git@9a4b28c6e31cc5e18dc36b632b0a00eff6fe15d7
+xdsl @ git+https://github.com/xdslproject/xdsl.git@ad8f2e0c1af9dedd267a1e3e75634ebefee12710
 tensorflow-cpu==2.14.0
