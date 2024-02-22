@@ -182,6 +182,7 @@ class InitLinalgMemorySpace(RewritePattern):
             rewriter.move_region_contents_to_new_regions(op.regions[0]),
             op.indexing_maps,
             op.iterator_types,
+            [],
             op.doc,
             op.library_call,
         )
