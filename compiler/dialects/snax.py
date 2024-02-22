@@ -112,7 +112,7 @@ class Alloc(IRDLOperation):
         descriptor = LLVMMemrefDescriptor.from_rank_and_integer_type(rank, integer_type)
 
         if not alignment:
-            alignment = IntegerAttr(1, IndexType())
+            alignment = IntegerAttr(1, IntegerType(64))
 
         super().__init__(
             operands=[size],
