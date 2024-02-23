@@ -68,8 +68,9 @@ def test_memref_memory_space_cast():
 
 def test_snax_alloc():
     size = TestSSAValue(i32)
+    shape = [TestSSAValue(i32), TestSSAValue(i32)]
     dim = 2
-    alloc_a = Alloc(dim, size, memory_space=builtin.IntegerAttr(1, i32))
+    alloc_a = Alloc(dim, size, shape, memory_space=builtin.IntegerAttr(1, i32))
 
     assert alloc_a.size is size
     assert alloc_a.memory_space.value.data == 1
