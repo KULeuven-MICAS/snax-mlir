@@ -121,7 +121,6 @@ class AllocOpRewrite(RewritePattern):
             shape_ops_arg,
             memory_space,
             alloc_op.alignment,
-            element_type,
         )
         conversion_cast_op = UnrealizedConversionCastOp.get([snax_alloc], memref_type)
         rewriter.replace_matched_op(
