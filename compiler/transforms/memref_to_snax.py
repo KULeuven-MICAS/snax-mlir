@@ -101,9 +101,6 @@ class AllocOpRewrite(RewritePattern):
             stride_max = Constant.from_int_and_width(0, IndexType())
             ops_to_add.append(stride_max)
 
-            cst_1 = Constant.from_int_and_width(1, IndexType())
-            ops_to_add.append(cst_1)
-
             # iterate over keys, values of bound_ops:
             # to calculate sum_i( (bound_i - 1) * step_i)
             for (dim, depth), bound_op in bound_ops.items():
@@ -113,9 +110,16 @@ class AllocOpRewrite(RewritePattern):
                 stride_max = Addi(stride_max, mul_op)
                 ops_to_add.extend([bound_op_min_1, mul_op, stride_max])
 
-            # add final +1
-            stride_max = Addi(stride_max, cst_1)
-            ops_to_add.append(stride_max)
+            # add final + element_width
+            if isinstance(element_type, builtin.AnyFloat):
+                element_width = element_type.get_bitwidth
+            else:
+                element_width = element_type.width.data
+            assert element_width % 8 == 0
+            element_size = element_width // 8
+            element_size_op = Constant.from_int_and_width(element_size, IndexType())
+            stride_max = Addi(stride_max, element_size_op)
+            ops_to_add.extend([element_size_op, stride_max])
 
             total_size_op = Muli(total_size_op, stride_max)
             ops_to_add.append(total_size_op)
