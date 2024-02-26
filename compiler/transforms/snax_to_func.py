@@ -117,3 +117,5 @@ class SNAXToFunc(ModulePass):
         if contains_sync:
             PatternRewriteWalker(InsertFunctionCall()).rewrite_module(module)
             PatternRewriteWalker(InsertFunctionDeclaration()).rewrite_module(module)
+
+        PatternRewriteWalker(AllocToFunc()).rewrite_module(module)
