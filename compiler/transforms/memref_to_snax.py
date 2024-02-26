@@ -70,11 +70,11 @@ class AllocOpRewrite(RewritePattern):
             # multiply all the dimensions with the element width
             # to get the size we need to allocate
             if isinstance(element_type, builtin.AnyFloat):
-                element_width = element_type.get_bitwidth()
+                element_width = element_type.get_bitwidth
             else:
-                element_width = element_type.width
-            assert element_width.data % 8 == 0
-            element_size = element_width.data // 8
+                element_width = element_type.width.data
+            assert element_width % 8 == 0
+            element_size = element_width // 8
             element_size_op = Constant.from_int_and_width(element_size, IndexType())
             total_size_op = element_size_op
             ops_to_add.append(element_size_op)
