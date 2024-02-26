@@ -61,6 +61,8 @@ class AllocOpRewrite(RewritePattern):
                 ops_to_add.append(shape_op)
                 shape_ops.append(shape_op)
 
+        shape_ops_arg = [x for x in shape_ops]
+
         if isinstance(layout, NoneAttr):
             # get size based on shape
             shape = memref_type.shape
@@ -116,6 +118,7 @@ class AllocOpRewrite(RewritePattern):
         snax_alloc = snax.Alloc(
             memref_type.get_num_dims(),
             total_size_op,
+            shape_ops_arg,
             memory_space,
             alloc_op.alignment,
             element_type,

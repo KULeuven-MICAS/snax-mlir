@@ -17,10 +17,12 @@ from xdsl.irdl import (
     IRDLOperation,
     Operand,
     OpResult,
+    VarOperand,
     irdl_op_definition,
     operand_def,
     opt_prop_def,
     result_def,
+    var_operand_def,
 )
 from xdsl.utils.exceptions import VerifyException
 
@@ -96,6 +98,7 @@ class Alloc(IRDLOperation):
     name = "snax.alloc"
 
     size: Operand = operand_def(IntegerType | IndexType)
+    shapes: VarOperand = var_operand_def(IntegerType | IndexType)
     result: OpResult = result_def(LLVMStructType)
     memory_space: Attribute | None = opt_prop_def(Attribute)
     alignment: AnyIntegerAttr | None = opt_prop_def(AnyIntegerAttr)
@@ -104,6 +107,7 @@ class Alloc(IRDLOperation):
         self,
         rank: int,
         size: SSAValue | Operation,
+        shapes: list[SSAValue | Operation],
         memory_space: Attribute = NoneAttr(),
         alignment: AnyIntegerAttr = None,
         integer_type: IntegerType = i32,
@@ -115,7 +119,7 @@ class Alloc(IRDLOperation):
             alignment = IntegerAttr(1, IntegerType(64))
 
         super().__init__(
-            operands=[size],
+            operands=[size, shapes],
             result_types=[descriptor.descriptor],
             properties={"memory_space": memory_space, "alignment": alignment},
         )
