@@ -1,5 +1,5 @@
 from xdsl.dialects import builtin, memref
-from xdsl.dialects.arith import Addi, Constant, Muli
+from xdsl.dialects.arith import Addi, Constant, Muli, Subi
 from xdsl.dialects.builtin import IndexType, NoneAttr, UnrealizedConversionCastOp
 from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
@@ -83,8 +83,8 @@ class AllocOpRewrite(RewritePattern):
 
         if isinstance(layout, TiledStridedLayoutAttr):
             # to get the entire size needed for a TSL layout,
-            # we need to take the sum of all bounds multiplied with
-            # their respective strides
+            # we need to compute the following for all strides:
+            # sum_i( (bound_i - 1) * step_i) + 1
 
             # use shape ops to generate tsl bound ops
             insert_ops, bound_ops = layout.get_bound_ops(shape_ops)
@@ -101,12 +101,21 @@ class AllocOpRewrite(RewritePattern):
             stride_max = Constant.from_int_and_width(0, IndexType())
             ops_to_add.append(stride_max)
 
+            cst_1 = Constant.from_int_and_width(1, IndexType())
+            ops_to_add.append(cst_1)
+
             # iterate over keys, values of bound_ops:
+            # to calculate sum_i( (bound_i - 1) * step_i)
             for (dim, depth), bound_op in bound_ops.items():
+                bound_op_min_1 = Subi(bound_op, cst_1)
                 stride_op = step_ops[(dim, depth)]
-                mul_op = Muli(bound_op, stride_op)
+                mul_op = Muli(bound_op_min_1, stride_op)
                 stride_max = Addi(stride_max, mul_op)
-                ops_to_add.extend([mul_op, stride_max])
+                ops_to_add.extend([bound_op_min_1, mul_op, stride_max])
+
+            # add final +1
+            stride_max = Addi(stride_max, cst_1)
+            ops_to_add.append(stride_max)
 
             total_size_op = Muli(total_size_op, stride_max)
             ops_to_add.append(total_size_op)
