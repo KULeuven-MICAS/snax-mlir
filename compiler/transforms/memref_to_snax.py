@@ -92,11 +92,11 @@ class AllocOpRewrite(RewritePattern):
             insert_ops, step_ops = layout.get_step_ops(bound_ops)
             ops_to_add.extend(insert_ops)
 
-            # start with the element size width
-            element_size = element_type.width.data // 8
-            element_size_op = Constant.from_int_and_width(element_size, IndexType())
-            total_size_op = element_size_op
-            ops_to_add.append(element_size_op)
+            # for tsl, element_size = 1 byte by definition,
+            # element width is encoded in the strides of the tsl
+            cst_1 = Constant.from_int_and_width(1, IndexType())
+            ops_to_add.append(cst_1)
+            total_size_op = cst_1
 
             stride_max = Constant.from_int_and_width(0, IndexType())
             ops_to_add.append(stride_max)

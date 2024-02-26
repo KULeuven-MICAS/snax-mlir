@@ -62,7 +62,7 @@
 // CHECK-NEXT:   %8 = "arith.constant"() <{"value" = 128 : index}> : () -> index
 // CHECK-NEXT:   %9 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 // CHECK-NEXT:   %10 = "arith.constant"() <{"value" = 16 : index}> : () -> index
-// CHECK-NEXT:   %11 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+// CHECK-NEXT:   %11 = "arith.constant"() <{"value" = 1 : index}> : () -> index
 // CHECK-NEXT:   %12 = "arith.constant"() <{"value" = 0 : index}> : () -> index
 // CHECK-NEXT:   %13 = "arith.constant"() <{"value" = 1 : index}> : () -> index
 // CHECK-NEXT:   %14 = "arith.subi"(%2, %13) : (index, index) -> index
@@ -103,7 +103,7 @@
 // CHECK-NEXT:   %9 = "arith.muli"(%6, %7) : (index, index) -> index
 // CHECK-NEXT:   %10 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 // CHECK-NEXT:   %11 = "arith.constant"() <{"value" = 16 : index}> : () -> index
-// CHECK-NEXT:   %12 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+// CHECK-NEXT:   %12 = "arith.constant"() <{"value" = 1 : index}> : () -> index
 // CHECK-NEXT:   %13 = "arith.constant"() <{"value" = 0 : index}> : () -> index
 // CHECK-NEXT:   %14 = "arith.constant"() <{"value" = 1 : index}> : () -> index
 // CHECK-NEXT:   %15 = "arith.subi"(%2, %14) : (index, index) -> index
