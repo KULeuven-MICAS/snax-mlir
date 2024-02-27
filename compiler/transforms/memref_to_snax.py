@@ -1,5 +1,5 @@
 from xdsl.dialects import builtin, memref
-from xdsl.dialects.arith import Addi, Constant, Muli
+from xdsl.dialects.arith import Addi, Constant, Muli, Subi
 from xdsl.dialects.builtin import IndexType, NoneAttr, UnrealizedConversionCastOp
 from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
@@ -83,8 +83,8 @@ class AllocOpRewrite(RewritePattern):
 
         if isinstance(layout, TiledStridedLayoutAttr):
             # to get the entire size needed for a TSL layout,
-            # we need to take the sum of all bounds multiplied with
-            # their respective strides
+            # we need to compute the following for all strides:
+            # sum_i( (bound_i - 1) * step_i) + 1
 
             # use shape ops to generate tsl bound ops
             insert_ops, bound_ops = layout.get_bound_ops(shape_ops)
@@ -92,21 +92,34 @@ class AllocOpRewrite(RewritePattern):
             insert_ops, step_ops = layout.get_step_ops(bound_ops)
             ops_to_add.extend(insert_ops)
 
-            # start with the element size width
-            element_size = element_type.width.data // 8
-            element_size_op = Constant.from_int_and_width(element_size, IndexType())
-            total_size_op = element_size_op
-            ops_to_add.append(element_size_op)
+            # for tsl, element_size = 1 byte by definition,
+            # element width is encoded in the strides of the tsl
+            cst_1 = Constant.from_int_and_width(1, IndexType())
+            ops_to_add.append(cst_1)
+            total_size_op = cst_1
 
             stride_max = Constant.from_int_and_width(0, IndexType())
             ops_to_add.append(stride_max)
 
             # iterate over keys, values of bound_ops:
+            # to calculate sum_i( (bound_i - 1) * step_i)
             for (dim, depth), bound_op in bound_ops.items():
+                bound_op_minus_1 = Subi(bound_op, cst_1)
                 stride_op = step_ops[(dim, depth)]
-                mul_op = Muli(bound_op, stride_op)
+                mul_op = Muli(bound_op_minus_1, stride_op)
                 stride_max = Addi(stride_max, mul_op)
-                ops_to_add.extend([mul_op, stride_max])
+                ops_to_add.extend([bound_op_minus_1, mul_op, stride_max])
+
+            # add final + element_width
+            if isinstance(element_type, builtin.AnyFloat):
+                element_width = element_type.get_bitwidth
+            else:
+                element_width = element_type.width.data
+            assert element_width % 8 == 0
+            element_size = element_width // 8
+            element_size_op = Constant.from_int_and_width(element_size, IndexType())
+            stride_max = Addi(stride_max, element_size_op)
+            ops_to_add.extend([element_size_op, stride_max])
 
             total_size_op = Muli(total_size_op, stride_max)
             ops_to_add.append(total_size_op)
