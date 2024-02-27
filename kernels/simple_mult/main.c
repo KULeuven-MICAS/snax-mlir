@@ -47,6 +47,8 @@ int main() {
   _mlir_ciface_simple_mult(&memrefA, &memrefB, &memrefD);
   (void)snrt_mcycle();
 
+  snrt_cluster_hw_barrier();
+
   // Correctness check -
   // from this point on only core 0 is required to be alive.
   int thiscore = snrt_cluster_core_idx();
