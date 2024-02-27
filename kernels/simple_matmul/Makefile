@@ -6,7 +6,7 @@ include ../../runtime/snax-gemm.rules
 include ../../runtime/Makefile.rules
 
 TESTS =
-TESTS += cpu.x
+TESTS += matmul.x
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
