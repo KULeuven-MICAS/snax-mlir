@@ -32,7 +32,7 @@ class InsertFunctionDeclaration(RewritePattern):
 class AllocToFunc(RewritePattern):
     """Swap snax.alloc with function call
 
-    Awaiting an llvm.inline_asm snitch runtime, implement the snax.allocs
+    This function implements the snax.allocs
     through C interfacing with function calls. The function call returns a
     pointer to the allocated memory. Aligned allocation is not supported yet,
     and the argument will be ignored. The pass is only implemented for L1 (TCDM)
@@ -40,12 +40,12 @@ class AllocToFunc(RewritePattern):
 
     In this pass we must also initialize the llvm struct with the correct contents
     for now we only populate pointer, aligned_pointer, offset and shapes.
-    The strides are not pupulated because they are not used, and often not available.
+    The strides are not populated because they are not used, and often not available.
     """
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, alloc_op: snax.Alloc, rewriter: PatternRewriter):
-        ## only supoorting L1 allocation for now
+        ## only supporting L1 allocation for now
         if not (
             isinstance(alloc_op.memory_space, builtin.IntegerAttr)
             and alloc_op.memory_space.value.data == 1
@@ -65,16 +65,19 @@ class AllocToFunc(RewritePattern):
         llvm_struct = llvm.UndefOp(alloc_op.result.type)
         ops_to_insert.append(llvm_struct)
 
+        # insert pointer
         llvm_struct = llvm.InsertValueOp(
             dense_array([0]), llvm_struct.res, func_call.res[0]
         )
         ops_to_insert.append(llvm_struct)
 
+        # insert aligned pointer
         llvm_struct = llvm.InsertValueOp(
             dense_array([1]), llvm_struct.res, func_call.res[0]
         )
         ops_to_insert.append(llvm_struct)
 
+        # insert offset
         cst_zero = arith.Constant.from_int_and_width(0, builtin.i32)
         llvm_struct = llvm.InsertValueOp(dense_array([2]), llvm_struct.res, cst_zero)
         ops_to_insert.extend([cst_zero, llvm_struct])
