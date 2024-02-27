@@ -104,11 +104,11 @@ class AllocOpRewrite(RewritePattern):
             # iterate over keys, values of bound_ops:
             # to calculate sum_i( (bound_i - 1) * step_i)
             for (dim, depth), bound_op in bound_ops.items():
-                bound_op_min_1 = Subi(bound_op, cst_1)
+                bound_op_minus_1 = Subi(bound_op, cst_1)
                 stride_op = step_ops[(dim, depth)]
-                mul_op = Muli(bound_op_min_1, stride_op)
+                mul_op = Muli(bound_op_minus_1, stride_op)
                 stride_max = Addi(stride_max, mul_op)
-                ops_to_add.extend([bound_op_min_1, mul_op, stride_max])
+                ops_to_add.extend([bound_op_minus_1, mul_op, stride_max])
 
             # add final + element_width
             if isinstance(element_type, builtin.AnyFloat):
