@@ -19,7 +19,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.traits import SymbolTable
 
 from compiler.dialects.tsl import TiledStridedLayoutAttr
-from compiler.ir.tsl import TiledStridedLayout
+from compiler.ir.tsl import Stride, TiledStridedLayout
 
 
 class MatchSimpleCopy(RewritePattern):
@@ -192,12 +192,12 @@ class TransformDMA(RewritePattern):
         if tsl_source.data.offset:
             offset = Constant.from_int_and_width(tsl_source.data.offset, IndexType())
             pointer_src = Addi(pointer_src, offset, IndexType())
-            ops_to_insert.append(offset)
+            ops_to_insert.extend([offset, pointer_src])
 
         if tsl_dest.data.offset:
             offset = Constant.from_int_and_width(tsl_dest.data.offset, IndexType())
             pointer_dst = Addi(pointer_dst, offset, IndexType())
-            ops_to_insert.append(offset)
+            ops_to_insert.extend([offset, pointer_dst])
 
         # step 2: find largest common contiguous block, to be used for dma transfers
 
@@ -275,6 +275,10 @@ class TransformDMA(RewritePattern):
             }
         else:
             dma_loop = remaining_strides.pop(0)
+
+        # if lcb is empty, create init lcb with step 1, bound 1
+        if not lcb:
+            lcb = [Stride(1, 1)]
 
         dma_size = Constant.from_int_and_width(
             lcb[-1].bound * lcb[-1].step, IndexType()

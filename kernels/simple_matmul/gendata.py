@@ -48,8 +48,14 @@ if __name__ == "__main__":
     np.random.seed(0)
 
     # C = A.B
-    A = np.random.randint(low_bound, high_bound, size=A_size, dtype=np.dtype("int8"))
-    B = np.random.randint(low_bound, high_bound, size=B_size, dtype=np.dtype("int8"))
+    # A = np.random.randint(low_bound, high_bound, size=A_size, dtype=np.dtype("int8"))
+    # B = np.random.randint(low_bound, high_bound, size=B_size, dtype=np.dtype("int8"))
+    A = np.arange(A_size[0] * A_size[1], dtype=np.dtype("int8")).reshape(
+        A_size[0], A_size[1]
+    )
+    B = np.arange(B_size[0] * B_size[1], dtype=np.dtype("int8")).reshape(
+        B_size[0], B_size[1]
+    )
     # Make sure the product is possible!
     assert A.shape[1] == B.shape[0]
     C_golden = np.matmul(A.astype(np.dtype("int32")), B.astype(np.dtype("int32")))
@@ -59,26 +65,14 @@ if __name__ == "__main__":
 
     # Perform layout transformations before writing to memory
 
-    # convert from row-major to block row-major
-    A_new_layout = np.reshape(A, [2, 8, 2, 8])
-    # convert to [2,2,8,8]
-    A_new_layout = np.swapaxes(A_new_layout, 1, 2)
-
+    # only thing necessary: transform B from row-major to column-major
     B_new_layout = np.transpose(B)
-    # convert from column-major to block column-major
-    B_new_layout = np.reshape(B_new_layout, [2, 8, 2, 8])
-    # convert to [2,2,8,8]
-    B_new_layout = np.swapaxes(B_new_layout, 1, 2)
-    # convert from row-major to block row-major
-    C_golden_new_layout = np.reshape(C_golden, [2, 8, 2, 8])
-    # convert to [2,2,8,8]
-    C_golden_new_layout = np.swapaxes(C_golden_new_layout, 1, 2)
 
     # C are just all zeros, so layout not important
     variables = {
-        "A": A_new_layout,
+        "A": A,
         "B": B_new_layout,
-        "C_golden": C_golden_new_layout,
+        "C_golden": C_golden,
         "C": C,
     }
 
