@@ -19,7 +19,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.traits import SymbolTable
 
 from compiler.dialects.tsl import TiledStridedLayoutAttr
-from compiler.ir.tsl import Stride, TiledStridedLayout
+from compiler.ir.tsl import TiledStridedLayout
 
 
 class MatchSimpleCopy(RewritePattern):
