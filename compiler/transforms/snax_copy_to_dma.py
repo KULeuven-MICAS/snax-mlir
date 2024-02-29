@@ -276,10 +276,6 @@ class TransformDMA(RewritePattern):
         else:
             dma_loop = remaining_strides.pop(0)
 
-        # if lcb is empty, create init lcb with step 1, bound 1
-        if not lcb:
-            lcb = [Stride(1, 1)]
-
         dma_size = Constant.from_int_and_width(
             lcb[-1].bound * lcb[-1].step, IndexType()
         )

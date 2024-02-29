@@ -78,7 +78,7 @@ int main() {
   memrefB.aligned_data = memrefB.data;
   memrefB.offset = 0;
 
-  TwoDMemrefI8_t memrefC;
+  TwoDMemrefI32_t memrefC;
   memrefC.data = &C;
   memrefC.aligned_data = memrefC.data;
   memrefC.offset = 0;
@@ -99,7 +99,7 @@ int main() {
 
   int nerr = 0;
   for (int i = 0; i < M_size * N_size; i++) {
-    int32_t error = C[i] - C_golden[i];
+    int32_t error = memrefC.aligned_data[i] - C_golden[i];
     if (error != 0)
       nerr += 1;
   }

@@ -146,6 +146,10 @@ class TiledStridedLayout:
         """
         result: list[Stride] = []
 
+        # provide default result of single element common
+        # contiguous block if none larger is found
+        default_result: list[Stride] = [Stride(1, 1)]
+
         # find largest contiguous block
         current_stride = starting_stride
         while True:
@@ -161,10 +165,10 @@ class TiledStridedLayout:
 
             # check if contiguous block is found
             if next_stride is None:
-                return result
+                return result or default_result
             # return if dynamic
             if next_stride[2].is_dynamic():
-                return result
+                return result or default_result
             else:
                 dim, depth, stride_self = next_stride
 
@@ -175,4 +179,4 @@ class TiledStridedLayout:
                 current_stride = stride_self.step * stride_self.bound
 
             else:
-                return result
+                return result or default_result
