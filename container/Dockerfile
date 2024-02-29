@@ -111,7 +111,7 @@ RUN apt-get -y update \
     && apt-get -y install make \
     ## python3
     && add-apt-repository ppa:deadsnakes/ppa -y \
-    && apt-get install -y python3.11 python3.11-distutils \
+    && apt-get install -y python3.11-full \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 10 \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 10 \
     && apt-get install -y curl git \
