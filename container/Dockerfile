@@ -63,7 +63,7 @@ RUN  cd /src && \
  make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
  CFG_OVERRIDE=cfg/snax-gemm.hjson
 
-FROM ubuntu:18.04 as toolchain
+FROM ubuntu:20.04 as toolchain
 # shared dependencies
 # libc for memset from old toolchain
 COPY --from=deps /opt/snitch-llvm/riscv32-unknown-elf/lib /opt/snitch-llvm/riscv32-unknown-elf/lib
@@ -102,34 +102,21 @@ COPY --from=snax-gemm /src/sw/deps/riscv-opcodes /opt/snax-gemm/sw/deps/riscv-op
 COPY --from=snax-gemm /src/sw/deps/printf /opt/snax-gemm/sw/deps/printf
 
 RUN apt-get -y update \
- && apt-get -y upgrade \
- # python runtime dependencies
- && apt-get -y install \
-      wget \
-      zlib1g \
-      libncurses5 \
-      libgdbm5 \
-      libnss3 \
-      libssl1.1 \
-      libreadline7 \
-      libffi6 \
-      libsqlite3-0 \
-      bzip2 \
-# make pip able to install via git
- && apt-get -y install git \
-# mlir and clang
- && apt-get -y install wget lsb-release software-properties-common gnupg \
- && wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 17 && rm llvm.sh \
- && apt-get -y install mlir-17-tools \
-# make
- && apt-get -y install make
+    && apt-get -y upgrade \
+    && apt-get install -y software-properties-common \
+    && apt-get -y install wget lsb-release gnupg \
+    ## llvm & mlir
+    && wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 17 && rm llvm.sh \
+    && apt-get -y install mlir-17-tools \
+    && apt-get -y install make \
+    ## python3
+    && add-apt-repository ppa:deadsnakes/ppa -y \
+    && apt-get install -y python3.11 python3.11-distutils \
+    && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 10 \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 10 \
+    && apt-get install curl git \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11
 
-# add python3.11 to path in bashrc
-RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
-
-
-# install python requirements
-RUN export PATH=/opt/python3.11/bin:$PATH \
- && git clone https://github.com/kuleuven-micas/snax-mlir.git \
+RUN git clone https://github.com/kuleuven-micas/snax-mlir.git \
  && cd snax-mlir \
- && pip3 install -r requirements.txt
+ && python3 -m pip install -r requirements.txt
