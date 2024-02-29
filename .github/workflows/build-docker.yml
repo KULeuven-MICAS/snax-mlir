@@ -3,7 +3,6 @@ on:
   pull_request:
     paths:
       - 'container/Dockerfile'
-      - 'container/dev/Dockerfile'
       - 'requirements.txt'
   push:
     branches: [main]
