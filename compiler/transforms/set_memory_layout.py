@@ -44,22 +44,23 @@ class AddMemoryLayout(RewritePattern):
                 )
             )
 
-            ## tsl b has an offset of 64 to not collide with the banks of a
+            ## tsl b has an offset of 64 to not collide with the banks of
+            ### a (not yet - need aligned allocation for this)
             tsl_input_b = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
                         TiledStride([Stride(256, None), Stride(1, 8)]),
                         TiledStride([Stride(None, None), Stride(8, 8)]),
                     ],
-                    offset=64,
+                    # offset=64,
                 )
             )
 
             tsl_output = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
-                        TiledStride([Stride(256, None), Stride(4, 8)]),
                         TiledStride([Stride(None, None), Stride(32, 8)]),
+                        TiledStride([Stride(256, None), Stride(4, 8)]),
                     ]
                 )
             )

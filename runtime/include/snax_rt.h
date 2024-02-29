@@ -20,8 +20,8 @@ int8_t *_mlir_memref_to_llvm_alloc(uint32_t size) {
 
 int8_t *_mlir_ciface_snax_alloc_l1(uint32_t size) {
   if (snrt_is_dm_core()) {
-    // printf("Allocating %d bytes\n", size);
     allocated_pointer = (int8_t *)snrt_l1alloc(size);
+    // printf("Allocating %d bytes: %p\n", size, allocated_pointer);
   }
   snrt_cluster_hw_barrier();
   return allocated_pointer;

@@ -59,26 +59,14 @@ if __name__ == "__main__":
 
     # Perform layout transformations before writing to memory
 
-    # convert from row-major to block row-major
-    A_new_layout = np.reshape(A, [2, 8, 2, 8])
-    # convert to [2,2,8,8]
-    A_new_layout = np.swapaxes(A_new_layout, 1, 2)
-
+    # only thing necessary: transform B from row-major to column-major
     B_new_layout = np.transpose(B)
-    # convert from column-major to block column-major
-    B_new_layout = np.reshape(B_new_layout, [2, 8, 2, 8])
-    # convert to [2,2,8,8]
-    B_new_layout = np.swapaxes(B_new_layout, 1, 2)
-    # convert from row-major to block row-major
-    C_golden_new_layout = np.reshape(C_golden, [2, 8, 2, 8])
-    # convert to [2,2,8,8]
-    C_golden_new_layout = np.swapaxes(C_golden_new_layout, 1, 2)
 
     # C are just all zeros, so layout not important
     variables = {
-        "A": A_new_layout,
+        "A": A,
         "B": B_new_layout,
-        "C_golden": C_golden_new_layout,
+        "C_golden": C_golden,
         "C": C,
     }
 
