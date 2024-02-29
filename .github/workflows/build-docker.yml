@@ -39,13 +39,3 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |-
             SNITCH_LLVM_VERSION=latest
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: container/Dockerfile
-          push: true
-          labels: ${{ steps.meta.outputs.labels }}
-          tags: snax-mlir-dev
-          build-args: |-
-            SNITCH_LLVM_VERSION=latest
