@@ -39,7 +39,7 @@ class AddMemoryLayout(RewritePattern):
                 TiledStridedLayout(
                     [
                         TiledStride([Stride(None, None), Stride(8, 8)]),
-                        TiledStride([Stride(256, None), Stride(1, 8)]),
+                        TiledStride([Stride(None, None), Stride(1, 8)]),
                     ]
                 )
             )
@@ -49,7 +49,7 @@ class AddMemoryLayout(RewritePattern):
             tsl_input_b = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
-                        TiledStride([Stride(256, None), Stride(1, 8)]),
+                        TiledStride([Stride(None, None), Stride(1, 8)]),
                         TiledStride([Stride(None, None), Stride(8, 8)]),
                     ],
                     # offset=64,
@@ -60,7 +60,7 @@ class AddMemoryLayout(RewritePattern):
                 TiledStridedLayout(
                     [
                         TiledStride([Stride(None, None), Stride(32, 8)]),
-                        TiledStride([Stride(256, None), Stride(4, 8)]),
+                        TiledStride([Stride(None, None), Stride(4, 8)]),
                     ]
                 )
             )
@@ -94,8 +94,8 @@ class AddMemoryLayout(RewritePattern):
         pass
 
 
-class SetMemoryLayout(ModulePass):
-    name = "set-memory-layout"
+class SetMemoryLayoutRobin(ModulePass):
+    name = "set-memory-layout-robin"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(AddMemoryLayout(), apply_recursively=False).rewrite_module(

@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p set-memory-layout --print-op-generic | filecheck %s
+// RUN: ./compiler/snax-opt --split-input-file %s -p set-memory-layout-tiled --print-op-generic | filecheck %s
 
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "mnist", "function_type" = (memref<?x128xi8, 1 : i32>, memref<128x128xi8, 1 : i32>, memref<?x128xi32, 1 : i32>) -> memref<?x128xi32, 1 : i32>}> ({
