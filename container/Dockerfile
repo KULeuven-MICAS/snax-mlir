@@ -95,7 +95,7 @@ COPY --from=deps /opt/snitch-llvm/riscv32-unknown-elf/lib /opt/snitch-llvm/riscv
 COPY --from=deps /opt/snitch-llvm/lib/clang/12.0.1/lib /opt/snitch-llvm/lib/clang/12.0.1/lib
 COPY --from=deps /opt/python3.11 /opt/python3.11
 COPY --from=deps /src/util/trace /opt/snitch_cluster/util/trace
-COPY --from=snax-mac /opt/snitch-spike /opt/snitch-spike
+COPY --from=snax-streamer-gemm /opt/snitch-spike /opt/snitch-spike
 
 # # SNAX-MAC dependencies
 # COPY --from=snax-mac /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-mac-rtl/bin/snitch_cluster.vlt
