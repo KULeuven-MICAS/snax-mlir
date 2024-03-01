@@ -37,4 +37,4 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |-
-            SNITCH_BRANCH=fifo-1
+            SNITCH_BRANCH=fifo-0
