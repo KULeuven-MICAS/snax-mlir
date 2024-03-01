@@ -3,7 +3,7 @@ FROM ghcr.io/kuleuven-micas/snax:latest as deps
 
 RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
  && cd /src \
- && git reset --hard d87720fdf66b15325b37391494b990ac606503ab \
+ && git checkout xyi/quick-streamer-integration \
  && git submodule update --init
 
 # Snitch-specific version for libc and clang runtime libraries
@@ -33,35 +33,59 @@ RUN apt update -y \
     tar xz --strip-components=1 -C /tmp/python-src \
  && cd /tmp/python-src \
  && ./configure --prefix=/opt/python3.11 \
- && make install
+ && make install -j $(nproc)
 
-FROM deps as snax-mac
-# snitch runtime
-RUN cd /src/target/snitch_cluster \
- && make DEBUG=ON sw  -j$(nproc) \
- CFG_OVERRIDE=cfg/snax-mac.hjson \
- SELECT_TOOLCHAIN=llvm-generic \
- SELECT_RUNTIME=rtl-generic
-# verilator model
-RUN  cd /src && \
-make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
- CFG_OVERRIDE=cfg/snax-mac.hjson
-# spike-dasm
-RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
- && ./configure --prefix=/opt/snitch-spike \
- && make install
+# FROM deps as snax-mac
+# # snitch runtime
+# RUN cd /src/target/snitch_cluster \
+#  && make DEBUG=ON sw  -j$(nproc) \
+#  CFG_OVERRIDE=cfg/snax-mac.hjson \
+#  SELECT_TOOLCHAIN=llvm-generic \
+#  SELECT_RUNTIME=rtl-generic
+# # verilator model
+# RUN  cd /src && \
+# make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
+#  CFG_OVERRIDE=cfg/snax-mac.hjson
+# # spike-dasm
+# RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
+#  && ./configure --prefix=/opt/snitch-spike \
+#  && make install
 
-FROM deps as snax-gemm
+# FROM deps as snax-gemm
+# # snitch runtime
+# RUN cd /src/target/snitch_cluster \
+#  && make DEBUG=ON sw  -j$(nproc) \
+#  SELECT_TOOLCHAIN=llvm-generic \
+#  SELECT_RUNTIME=rtl-generic \
+#  CFG_OVERRIDE=cfg/snax-gemm.hjson
+# # verilator model
+# RUN  cd /src && \
+#  make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
+#  CFG_OVERRIDE=cfg/snax-gemm.hjson
+
+FROM deps as snax-streamer-gemm
 # snitch runtime
 RUN cd /src/target/snitch_cluster \
  && make DEBUG=ON sw  -j$(nproc) \
  SELECT_TOOLCHAIN=llvm-generic \
  SELECT_RUNTIME=rtl-generic \
- CFG_OVERRIDE=cfg/snax-gemm.hjson
+ CFG_OVERRIDE=cfg/snax-streamer-gemm.hjson
 # verilator model
 RUN  cd /src && \
- make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
- CFG_OVERRIDE=cfg/snax-gemm.hjson
+
+ # hacky hacky stuff to fix snitch cluster mess
+ export SNAX_DEV_PATH=$(find /src/.bender/git/checkouts/ -type d -name "snax-dev*" -print -quit) && \
+ bender update && \
+ cd $SNAX_DEV_PATH && \
+ make `pwd`/rtl/streamer_gem_wrapper.sv && \
+ 
+ cd /src && \ 
+ make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)  CFG_OVERRIDE=cfg/snax-streamer-gemm.hjson
+
+ # spike-dasm
+RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
+ && ./configure --prefix=/opt/snitch-spike \
+ && make install
 
 FROM ubuntu:18.04 as toolchain
 # shared dependencies
@@ -73,33 +97,47 @@ COPY --from=deps /opt/python3.11 /opt/python3.11
 COPY --from=deps /src/util/trace /opt/snitch_cluster/util/trace
 COPY --from=snax-mac /opt/snitch-spike /opt/snitch-spike
 
-# SNAX-MAC dependencies
-COPY --from=snax-mac /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-mac-rtl/bin/snitch_cluster.vlt
-# Compile and link time dependencies
-COPY --from=snax-mac /src/sw/snRuntime /opt/snax-mac/sw/snRuntime
-# rtl-generic includes from rtl, so we also need rtl, even if we don't build it
-COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/rtl /opt/snax-mac/target/snitch_cluster/sw/runtime/rtl
-COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/rtl-generic /opt/snax-mac/target/snitch_cluster/sw/runtime/rtl-generic
-COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/common /opt/snax-mac/target/snitch_cluster/sw/runtime/common
-COPY --from=snax-mac /src/target/snitch_cluster/sw/snax/ /opt/snax-mac/target/snitch_cluster/sw/snax
-COPY --from=snax-mac /src/sw/math/ /opt/snax-mac/sw/math/
-# Transitive deps, this stuff must go at some point
-COPY --from=snax-mac /src/sw/deps/riscv-opcodes /opt/snax-mac/sw/deps/riscv-opcodes
-COPY --from=snax-mac /src/sw/deps/printf /opt/snax-mac/sw/deps/printf
+# # SNAX-MAC dependencies
+# COPY --from=snax-mac /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-mac-rtl/bin/snitch_cluster.vlt
+# # Compile and link time dependencies
+# COPY --from=snax-mac /src/sw/snRuntime /opt/snax-mac/sw/snRuntime
+# # rtl-generic includes from rtl, so we also need rtl, even if we don't build it
+# COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/rtl /opt/snax-mac/target/snitch_cluster/sw/runtime/rtl
+# COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/rtl-generic /opt/snax-mac/target/snitch_cluster/sw/runtime/rtl-generic
+# COPY --from=snax-mac /src/target/snitch_cluster/sw/runtime/common /opt/snax-mac/target/snitch_cluster/sw/runtime/common
+# COPY --from=snax-mac /src/target/snitch_cluster/sw/snax/ /opt/snax-mac/target/snitch_cluster/sw/snax
+# COPY --from=snax-mac /src/sw/math/ /opt/snax-mac/sw/math/
+# # Transitive deps, this stuff must go at some point
+# COPY --from=snax-mac /src/sw/deps/riscv-opcodes /opt/snax-mac/sw/deps/riscv-opcodes
+# COPY --from=snax-mac /src/sw/deps/printf /opt/snax-mac/sw/deps/printf
+
+# # SNAX-GEMM dependencies
+# COPY --from=snax-gemm /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-gemm-rtl/bin/snitch_cluster.vlt
+# # Compile and link time dependencies
+# COPY --from=snax-gemm /src/sw/snRuntime /opt/snax-gemm/sw/snRuntime
+# # rtl-generic includes from rtl, so we also need rtl, even if we don't build it
+# COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/rtl /opt/snax-gemm/target/snitch_cluster/sw/runtime/rtl
+# COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/rtl-generic /opt/snax-gemm/target/snitch_cluster/sw/runtime/rtl-generic
+# COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/common /opt/snax-gemm/target/snitch_cluster/sw/runtime/common
+# COPY --from=snax-gemm /src/target/snitch_cluster/sw/snax/ /opt/snax-gemm/target/snitch_cluster/sw/snax
+# COPY --from=snax-gemm /src/sw/math/ /opt/snax-gemm/sw/math/
+# # Transitive deps, this stuff must go at some point
+# COPY --from=snax-gemm /src/sw/deps/riscv-opcodes /opt/snax-gemm/sw/deps/riscv-opcodes
+# COPY --from=snax-gemm /src/sw/deps/printf /opt/snax-gemm/sw/deps/printf
 
 # SNAX-GEMM dependencies
-COPY --from=snax-gemm /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-gemm-rtl/bin/snitch_cluster.vlt
+COPY --from=snax-streamer-gemm /src/target/snitch_cluster/bin/snitch_cluster.vlt /opt/snax-streamer-gemm-rtl/bin/snitch_cluster.vlt
 # Compile and link time dependencies
-COPY --from=snax-gemm /src/sw/snRuntime /opt/snax-gemm/sw/snRuntime
+COPY --from=snax-streamer-gemm /src/sw/snRuntime /opt/snax-streamer-gemm/sw/snRuntime
 # rtl-generic includes from rtl, so we also need rtl, even if we don't build it
-COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/rtl /opt/snax-gemm/target/snitch_cluster/sw/runtime/rtl
-COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/rtl-generic /opt/snax-gemm/target/snitch_cluster/sw/runtime/rtl-generic
-COPY --from=snax-gemm /src/target/snitch_cluster/sw/runtime/common /opt/snax-gemm/target/snitch_cluster/sw/runtime/common
-COPY --from=snax-gemm /src/target/snitch_cluster/sw/snax/ /opt/snax-gemm/target/snitch_cluster/sw/snax
-COPY --from=snax-gemm /src/sw/math/ /opt/snax-gemm/sw/math/
+COPY --from=snax-streamer-gemm /src/target/snitch_cluster/sw/runtime/rtl /opt/snax-streamer-gemm/target/snitch_cluster/sw/runtime/rtl
+COPY --from=snax-streamer-gemm /src/target/snitch_cluster/sw/runtime/rtl-generic /opt/snax-streamer-gemm/target/snitch_cluster/sw/runtime/rtl-generic
+COPY --from=snax-streamer-gemm /src/target/snitch_cluster/sw/runtime/common /opt/snax-streamer-gemm/target/snitch_cluster/sw/runtime/common
+COPY --from=snax-streamer-gemm /src/target/snitch_cluster/sw/snax/ /opt/snax-streamer-gemm/target/snitch_cluster/sw/snax
+COPY --from=snax-streamer-gemm /src/sw/math/ /opt/snax-streamer-gemm/sw/math/
 # Transitive deps, this stuff must go at some point
-COPY --from=snax-gemm /src/sw/deps/riscv-opcodes /opt/snax-gemm/sw/deps/riscv-opcodes
-COPY --from=snax-gemm /src/sw/deps/printf /opt/snax-gemm/sw/deps/printf
+COPY --from=snax-streamer-gemm /src/sw/deps/riscv-opcodes /opt/snax-streamer-gemm/sw/deps/riscv-opcodes
+COPY --from=snax-streamer-gemm /src/sw/deps/printf /opt/snax-streamer-gemm/sw/deps/printf
 
 RUN apt-get -y update \
  && apt-get -y upgrade \
