@@ -1,6 +1,8 @@
 # Courtesy of Federico Ficarelli
 FROM ghcr.io/kuleuven-micas/snax:latest as deps
 
+ARG SNITCH_BRANCH=fifo-2
+
 RUN git clone https://github.com/jorendumoulin/pact24_snitch_cluster.git /src \
  && cd /src \
  && git checkout ${SNITCH_BRANCH} \
