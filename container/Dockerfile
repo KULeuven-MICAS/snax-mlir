@@ -1,9 +1,9 @@
 # Courtesy of Federico Ficarelli
 FROM ghcr.io/kuleuven-micas/snax:latest as deps
 
-RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
+RUN git clone https://github.com/jorendumoulin/pact24_snitch_cluster.git /src \
  && cd /src \
- && git checkout xyi/quick-streamer-integration \
+ && git checkout ${SNITCH_BRANCH} \
  && git submodule update --init
 
 # Snitch-specific version for libc and clang runtime libraries
