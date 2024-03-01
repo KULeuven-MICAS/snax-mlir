@@ -25,7 +25,7 @@ def get_state_before(op: acc.SetupOp) -> dict[str, SSAValue]:
         if not isinstance(parent, acc.SetupOp):
             raise RuntimeError("We can't handle this yet")
 
-        for name, val in op.iter_params():
+        for name, val in parent.iter_params():
             if name not in state:
                 state[name] = val
 
@@ -47,10 +47,14 @@ class YeetSetupStuff(RewritePattern):
         # Step 3: If no new params remain, yeet the whole op
         if not new_params:
             op.out_state.replace_by(op.in_state)
+            print("about to erase")
+            print(prev_state)
+            print(op)
+            print(new_params)
             rewriter.erase_matched_op()
             return
 
-        # Step 4: If no parameters change, we are a no-op
+        # Step 4: If all parameters change, we are a no-op
         if len(new_params) == len(op.param_names):
             return
 
