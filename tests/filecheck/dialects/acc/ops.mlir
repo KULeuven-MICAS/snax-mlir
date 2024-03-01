@@ -11,14 +11,11 @@ func.func @test() {
 
     %token = "acc.launch"() <{accelerator = "acc1"}>: () -> !acc.token
 
-    %state2 = "acc.setup"(%one, %one, %state) <{
+    %state2 = "acc.setup"(%one, %two, %state) <{
         param_names = ["A", "B"],
         accelerator = "acc1",
         operandSegmentSizes = array<i32: 2, 1>
     }> : (i32, i32, !acc.state<"acc1">) -> !acc.state<"acc1">
-
-
-    "acc.setup"(..., %state2)
 
     "acc.await"(%token) : (!acc.token) -> ()
 

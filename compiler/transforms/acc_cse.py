@@ -47,10 +47,6 @@ class YeetSetupStuff(RewritePattern):
         # Step 3: If no new params remain, yeet the whole op
         if not new_params:
             op.out_state.replace_by(op.in_state)
-            print("about to erase")
-            print(prev_state)
-            print(op)
-            print(new_params)
             rewriter.erase_matched_op()
             return
 
