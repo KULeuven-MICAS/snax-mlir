@@ -1,6 +1,8 @@
 # Courtesy of Federico Ficarelli
 ARG TAGS=ghcr.io/kuleuven-micas/snax:main
 
+RUN echo "Building with TAGS=${TAGS}"
+
 FROM ${TAGS}-fifo-1 as deps-fifo-1
 FROM ${TAGS}-fifo-2 as deps-fifo-2
 FROM ${TAGS}-fifo-3 as deps-fifo-3
