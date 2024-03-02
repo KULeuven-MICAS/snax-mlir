@@ -34,8 +34,8 @@ jobs:
           context: .
           file: container/Dockerfile
           push: true
-          labels: pact-snax-1
-          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}-fifo-1
           build-args: |-
             SNITCH_BRANCH=fifo-1
   build-docker-2:
@@ -61,8 +61,8 @@ jobs:
           context: .
           file: container/Dockerfile
           push: true
-          labels: pact-snax-2
-          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}-fifo-2
           build-args: |-
             SNITCH_BRANCH=fifo-2
   build-docker-3:
@@ -88,8 +88,8 @@ jobs:
           context: .
           file: container/Dockerfile
           push: true
-          labels: pact-snax-3
-          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}-fifo-3
           build-args: |-
             SNITCH_BRANCH=fifo-3
   build-docker-4:
@@ -115,7 +115,35 @@ jobs:
           context: .
           file: container/Dockerfile
           push: true
-          labels: pact-snax-4
-          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}-fifo-4
           build-args: |-
             SNITCH_BRANCH=fifo-4
+  build-docker-full:
+    name: Deploy Docker image
+    runs-on: ubuntu-22.04
+    needs: [build-docker-1, build-docker-2, build-docker-3, build-docker-4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: GHCR Log-in
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: container/DockerfileFull
+          push: true
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}-fifo-full
+          build-args: |-
+            TAGS=${{ steps.build-docker-1.outputs.tags }}
