@@ -1,7 +1,6 @@
 # Courtesy of Federico Ficarelli
 ARG TAGS=ghcr.io/kuleuven-micas/snax:main
 
-RUN echo "Building with TAGS=${TAGS}"
 
 FROM ${TAGS}-fifo-1 as deps-fifo-1
 FROM ${TAGS}-fifo-2 as deps-fifo-2
@@ -9,6 +8,8 @@ FROM ${TAGS}-fifo-3 as deps-fifo-3
 FROM ${TAGS}-fifo-4 as deps-fifo-4
 
 FROM ubuntu:18.04 as toolchain
+
+RUN echo "Building with TAGS=${TAGS}"
 
 # shared dependencies
 COPY --from=deps-fifo-2 /opt /opt
