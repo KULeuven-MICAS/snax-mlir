@@ -95,7 +95,7 @@ FROM ubuntu:18.04 as toolchain
 COPY --from=deps /opt/snitch-llvm/riscv32-unknown-elf/lib /opt/snitch-llvm/riscv32-unknown-elf/lib
 # libclang_rt.builtins_riscv32 from old toolchain
 COPY --from=deps /opt/snitch-llvm/lib/clang/12.0.1/lib /opt/snitch-llvm/lib/clang/12.0.1/lib
-COPY --from=deps /opt/python3.11 /opt/python3.11
+# COPY --from=deps /opt/python3.11 /opt/python3.11
 COPY --from=deps /src/util/trace /opt/snitch_cluster/util/trace
 COPY --from=snax-streamer-gemm /opt/snitch-spike /opt/snitch-spike
 
@@ -165,11 +165,11 @@ RUN apt-get -y update \
  && apt-get -y install make
 
 # add python3.11 to path in bashrc
-RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
+# RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
 
 
-# install python requirements
-RUN export PATH=/opt/python3.11/bin:$PATH \
- && git clone https://github.com/kuleuven-micas/snax-mlir.git \
- && cd snax-mlir \
- && pip3 install -r requirements.txt
+# # install python requirements
+# RUN export PATH=/opt/python3.11/bin:$PATH \
+#  && git clone https://github.com/kuleuven-micas/snax-mlir.git \
+#  && cd snax-mlir \
+#  && pip3 install -r requirements.txt
