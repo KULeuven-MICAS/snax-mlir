@@ -54,11 +54,18 @@ class LaunchOp(IRDLOperation):
 
     name = "acc.launch"
 
+    state = operand_def(StateType)
+
     accelerator = prop_def(StringAttr)
 
     token = result_def()
 
     def verify_(self) -> None:
+        # that the state and my accelerator match
+        assert isinstance(self.state.type, StateType)
+        if self.state.type.accelerator != self.accelerator:
+            raise VerifyException("The state's accelerator does not match the launch accelerator!")
+
         # that the token is used
         if len(self.token.uses) != 1 or not isinstance(
             next(iter(self.token.uses)).operation, AwaitOp
@@ -69,6 +76,9 @@ class LaunchOp(IRDLOperation):
 
 @irdl_op_definition
 class AwaitOp(IRDLOperation):
+    """
+    Blocks until the launched operation finishes.
+    """
     name = "acc.await"
 
     token = operand_def(TokenType)
@@ -156,10 +166,6 @@ class SetupOp(IRDLOperation):
             raise ValueError(
                 "Must have received same number of values as parameter names"
             )
-
-        # that a state is not used twice
-        if len(self.out_state.uses) > 1:
-            raise VerifyException("States must be used at most once")
 
 
 ACC = Dialect(
