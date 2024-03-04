@@ -22,6 +22,7 @@ from xdsl.irdl import (
     result_def,
     var_operand_def,
 )
+from xdsl.utils.hints import isa
 
 
 @irdl_attr_definition
@@ -76,6 +77,13 @@ class AwaitOp(IRDLOperation):
 
 @irdl_op_definition
 class SetupOp(IRDLOperation):
+    """
+    acc.setup writes values to a specific accelerators configuration and returns
+    a value representing the currently known state of that accelerator's config.
+
+    If acc.setup is called without any parameters, the resulting state is the
+    "empty" state, that represents a state without known values.
+    """
     name = "acc.setup"
 
     values = var_operand_def(Attribute)  # TODO: make more precise?
@@ -108,17 +116,21 @@ class SetupOp(IRDLOperation):
     def __init__(
         self,
         vals: Sequence[SSAValue],
-        param_names: Sequence[str],
+        param_names: Sequence[str] | Sequence[StringAttr],
         accelerator: str | StringAttr,
         in_state: SSAValue | Operation | None = None,
     ):
         if not isinstance(accelerator, StringAttr):
             accelerator = StringAttr(accelerator)
 
+        param_names_tuple: tuple[StringAttr, ...] = tuple(
+            StringAttr(name) if isinstance(name, str) else name for name in param_names
+        )
+
         super().__init__(
             operands=[vals, in_state],
             properties={
-                "param_names": ArrayAttr([StringAttr(x) for x in param_names]),
+                "param_names": ArrayAttr(param_names_tuple),
                 "accelerator": accelerator,
             },
             result_types=[StateType((accelerator,))],
@@ -132,6 +144,7 @@ class SetupOp(IRDLOperation):
         if self.in_state is not None:
             if self.in_state.type != self.out_state.type:
                 raise VerifyException("Input and output state accelerators must match")
+        assert isinstance(self.out_state.type, StateType)
         if self.accelerator != self.out_state.type.accelerator:
             raise VerifyException(
                 "Output state accelerator and accelerator the "

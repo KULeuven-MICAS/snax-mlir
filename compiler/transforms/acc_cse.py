@@ -46,6 +46,15 @@ class SimplifyRedundantSetupCalls(RewritePattern):
 
         # Step 3: If no new params remain, elide the whole op
         if not new_params:
+            # This only happens when:
+            #  1) The operation has no input state, and
+            #  2) The operation has no parameters it sets
+            if op.in_state is None:
+                # in this case, we can't elide the operation if it's output state is used
+                # otherwise we would break stuff. So we just assume that a setup without
+                # parameters returns an "empty" state that assumes nothing.
+                return
+
             op.out_state.replace_by(op.in_state)
             rewriter.erase_matched_op()
             return
