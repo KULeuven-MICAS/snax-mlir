@@ -1,7 +1,7 @@
 {
-  "image": "ghcr.io/kuleuven-micas/snax-mlir:main",
+  "image": "ghcr.io/kuleuven-micas/snax-mlir:pr-98",
   "features": {
-    "ghcr.io/meaningful-ooo/devcontainer-features/fish:1": {}
+    "ghcr.io/devcontainers/features/git:1": {}
   },
   "customizations": {
     "vscode": {
