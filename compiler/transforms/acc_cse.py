@@ -33,18 +33,18 @@ def get_state_before(op: acc.SetupOp) -> dict[str, SSAValue]:
     return state
 
 
-class YeetSetupStuff(RewritePattern):
+class SimplifyRedundantSetupCalls(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
         # Step 1: Figure out previous state
         prev_state = get_state_before(op)
 
-        # Step 2: Yeet out redundant stuff
+        # Step 2: Filter setup parameters to remove calls that set the same value again
         new_params: list[tuple[str, SSAValue]] = [
             (name, val) for name, val in op.iter_params() if prev_state.get(name) != val
         ]
 
-        # Step 3: If no parameters change, the whole op can be erased
+        # Step 3: If no new params remain, elide the whole op
         if not new_params:
             op.out_state.replace_by(op.in_state)
             rewriter.erase_matched_op()
@@ -69,10 +69,11 @@ class AccCse(ModulePass):
     """
     Common subexpression elimination for the `acc` (accelerator) dialect.
 
-    This pass analyzes the accelerator
+    This pass rewrites acc dialect operations to find and simplify redundant
+    setup calls.
     """
 
     name = "acc-cse"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(YeetSetupStuff()).rewrite_module(op)
+        PatternRewriteWalker(SimplifyRedundantSetupCalls()).rewrite_module(op)
