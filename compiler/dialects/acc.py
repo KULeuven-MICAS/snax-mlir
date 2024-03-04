@@ -22,7 +22,6 @@ from xdsl.irdl import (
     result_def,
     var_operand_def,
 )
-from xdsl.utils.hints import isa
 
 
 @irdl_attr_definition
@@ -84,6 +83,7 @@ class SetupOp(IRDLOperation):
     If acc.setup is called without any parameters, the resulting state is the
     "empty" state, that represents a state without known values.
     """
+
     name = "acc.setup"
 
     values = var_operand_def(Attribute)  # TODO: make more precise?
