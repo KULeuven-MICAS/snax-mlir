@@ -64,7 +64,9 @@ class LaunchOp(IRDLOperation):
         # that the state and my accelerator match
         assert isinstance(self.state.type, StateType)
         if self.state.type.accelerator != self.accelerator:
-            raise VerifyException("The state's accelerator does not match the launch accelerator!")
+            raise VerifyException(
+                "The state's accelerator does not match the launch accelerator!"
+            )
 
         # that the token is used
         if len(self.token.uses) != 1 or not isinstance(
@@ -79,6 +81,7 @@ class AwaitOp(IRDLOperation):
     """
     Blocks until the launched operation finishes.
     """
+
     name = "acc.await"
 
     token = operand_def(TokenType)
