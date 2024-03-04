@@ -50,7 +50,7 @@ class YeetSetupStuff(RewritePattern):
             rewriter.erase_matched_op()
             return
 
-        # Step 4: If all parameters change, we are a no-op
+        # Step 4: If all parameters change, do nothing
         if len(new_params) == len(op.param_names):
             return
 
