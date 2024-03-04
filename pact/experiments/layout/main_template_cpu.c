@@ -41,7 +41,7 @@ uint32_t strideB = 0;
 uint32_t strideC = 0;
 
 // Kernel provided via external definition
-void _mlir_ciface_simple_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
+void _mlir_ciface_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
                                 TwoDMemrefI32_t *c);
 
 void _mlir_ciface_snax_qgemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
@@ -52,15 +52,9 @@ void _mlir_ciface_snax_qgemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
   int32_t *c_ptr = c->aligned_data;
   printf("Executing snax_qgemm with a=%p, b=%p, c=%p \n", a_ptr, b_ptr, c_ptr);
 
-  uint32_t size_setting = gen_size_config(Batch, M_param, K_param, N_param);
-
-  set_batch_gemm(size_setting, a_ptr, b_ptr, 0, c_ptr, strideInnermostA,
+  batch_gemm_cpu(Batch, M_param, K_param, N_param, a_ptr, b_ptr, 0, 0, c_ptr, strideInnermostA,
                  strideInnermostB, strideInnermostC, ldA, ldB, ldC, strideA,
                  strideB, strideC);
-
-  start_batch_gemm();
-
-  wait_batch_gemm();
 
   printf("Finished executing snax_qgemm\n");
 }}
@@ -85,7 +79,7 @@ int main() {{
 
   (void)snrt_mcycle();
 
-  _mlir_ciface_simple_matmul(&memrefA, &memrefB, &memrefC);
+  _mlir_ciface_matmul(&memrefA, &memrefB, &memrefC);
 
   snrt_cluster_hw_barrier();
 
