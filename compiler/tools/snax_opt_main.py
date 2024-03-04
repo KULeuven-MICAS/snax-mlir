@@ -4,8 +4,10 @@ from collections.abc import Sequence
 from xdsl.ir import MLContext
 from xdsl.xdsl_opt_main import xDSLOptMain
 
+from compiler.dialects.acc import ACC
 from compiler.dialects.snax import Snax
 from compiler.dialects.tsl import TSL
+from compiler.transforms.acc_cse import AccCse
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
@@ -38,6 +40,7 @@ class SNAXOptMain(xDSLOptMain):
         ## Add custom dialects & passes
         self.ctx.load_dialect(Snax)
         self.ctx.load_dialect(TSL)
+        self.ctx.load_dialect(ACC)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
@@ -51,6 +54,7 @@ class SNAXOptMain(xDSLOptMain):
             RealizeMemrefCastsPass.name, lambda: RealizeMemrefCastsPass
         )
         super().register_pass(MemrefToSNAX.name, lambda: MemrefToSNAX)
+        super().register_pass(AccCse.name, lambda: AccCse)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
