@@ -1,4 +1,4 @@
-from xdsl.dialects import builtin
+from xdsl.dialects import builtin, scf
 from xdsl.ir import MLContext, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -20,6 +20,10 @@ def get_state_before(op: acc.SetupOp) -> dict[str, SSAValue]:
 
     while op.in_state is not None:
         parent = op.in_state.owner
+
+        if isinstance(parent, scf.If):
+            # TODO: implement
+            return {}
 
         # TODO: handle more stuff here later
         if not isinstance(parent, acc.SetupOp):

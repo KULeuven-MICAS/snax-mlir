@@ -1,6 +1,11 @@
-from collections.abc import Iterable, Sequence
+from __future__ import annotations
 
-from xdsl.dialects.builtin import ArrayAttr, StringAttr
+from collections.abc import Iterable, Sequence
+from xdsl.parser import Parser
+from xdsl.printer import Printer
+
+from xdsl.traits import SymbolOpInterface
+from xdsl.dialects.builtin import ArrayAttr, StringAttr, SymbolRefAttr, DictionaryAttr, IntegerAttr, i32
 from xdsl.ir import (
     Attribute,
     Dialect,
@@ -30,7 +35,7 @@ class TokenType(ParametrizedAttribute, TypeAttribute):
     Async token type for launched accelerator requests.
     """
 
-    name = "acc.token"
+    name = "acc2.token"
 
 
 @irdl_attr_definition
@@ -39,7 +44,7 @@ class StateType(ParametrizedAttribute, TypeAttribute):
     Used to trace an accelerators CSR state through def-use chain
     """
 
-    name = "acc.state"
+    name = "acc2.state"
 
     accelerator: ParameterDef[StringAttr]
 
@@ -52,13 +57,23 @@ class LaunchOp(IRDLOperation):
     interfering with the Accelerator.
     """
 
-    name = "acc.launch"
+    name = "acc2.launch"
 
     state = operand_def(StateType)
 
     accelerator = prop_def(StringAttr)
 
     token = result_def()
+
+    def __init__(self, state: SSAValue | Operation):
+        state_val: SSAValue = SSAValue.get(state)
+        if not isinstance(state_val.type, StateType):
+            raise ValueError("`state` SSA Value must be of type `acc2.state`!")
+        super().__init__(
+            operands=[state],
+            properties={"accelerator": state_val.type.accelerator},
+            result_types=[TokenType()]
+        )
 
     def verify_(self) -> None:
         # that the state and my accelerator match
@@ -82,22 +97,25 @@ class AwaitOp(IRDLOperation):
     Blocks until the launched operation finishes.
     """
 
-    name = "acc.await"
+    name = "acc2.await"
 
     token = operand_def(TokenType)
+
+    def __init__(self, token: SSAValue | Operation):
+        super().__init__(operands=[token])
 
 
 @irdl_op_definition
 class SetupOp(IRDLOperation):
     """
-    acc.setup writes values to a specific accelerators configuration and returns
+    acc2.setup writes values to a specific accelerators configuration and returns
     a value representing the currently known state of that accelerator's config.
 
-    If acc.setup is called without any parameters, the resulting state is the
+    If acc2.setup is called without any parameters, the resulting state is the
     "empty" state, that represents a state without known values.
     """
 
-    name = "acc.setup"
+    name = "acc2.setup"
 
     values = var_operand_def(Attribute)  # TODO: make more precise?
     """
@@ -106,7 +124,7 @@ class SetupOp(IRDLOperation):
 
     in_state = opt_operand_def(StateType)
     """
-    The state produced by a previous acc.setup
+    The state produced by a previous acc2.setup
     """
 
     out_state = result_def(StateType)
@@ -128,7 +146,7 @@ class SetupOp(IRDLOperation):
 
     def __init__(
         self,
-        vals: Sequence[SSAValue],
+        vals: Sequence[SSAValue | Operation],
         param_names: Sequence[str] | Sequence[StringAttr],
         accelerator: str | StringAttr,
         in_state: SSAValue | Operation | None = None,
@@ -171,12 +189,92 @@ class SetupOp(IRDLOperation):
             )
 
 
+class AcceleratorSymbolOpTrait(SymbolOpInterface):
+    def get_sym_attr_name(self, op: Operation) -> StringAttr | None:
+        assert isinstance(op, AcceleratorOp)
+        return StringAttr(op.name_prop.string_value())
+
+
+@irdl_op_definition
+class AcceleratorOp(IRDLOperation):
+    """
+    Declares an accelerator that can be configures, launched, etc.
+
+    `fields` is a dictionary mapping accelerator configuration names to
+    CSR addresses.
+    """
+
+    name = "acc2.accelerator"
+
+    traits = frozenset([AcceleratorSymbolOpTrait()])
+
+    name_prop = prop_def(SymbolRefAttr, prop_name="name")
+
+    fields = prop_def(DictionaryAttr)
+
+    def __init__(self, name: str | StringAttr | SymbolRefAttr, fields : dict[str, int] | DictionaryAttr):
+        if not isinstance(fields, DictionaryAttr):
+            fields = DictionaryAttr({
+                name: IntegerAttr(val, i32) for name, val in fields.items()
+            })
+
+        super().__init__(
+            properties={
+                "name": SymbolRefAttr(name) if not isinstance(name, SymbolRefAttr) else name,
+                "fields": fields
+            }
+        )
+
+    def verify_(self) -> None:
+        for name, val in self.fields.data.items():
+            if not isinstance(val, IntegerAttr):
+                raise VerifyException("fields must only contain IntegerAttr!")
+
+    def field_names(self) -> tuple[str, ...]:
+        return tuple(self.fields.data.keys())
+
+    def field_items(self) -> Iterable[tuple[str, int]]:
+        for name, val in self.fields.data.items():
+            yield name, val.value.data
+
+
+    def print(self, printer: Printer):
+        printer.print_string(" ")
+        printer.print_attribute(self.name_prop)
+
+        printer.print_string(" ")
+        printer.print_attribute(self.fields)
+
+        if self.attributes:
+            printer.print(" attributes ")
+            printer.print_op_attributes(self.attributes)
+
+    @classmethod
+    def parse(cls, parser: Parser) -> AcceleratorOp:
+        name = parser.parse_symbol_name()
+
+        fields = parser.parse_optional_attr_dict()
+        if fields is None:
+            parser.raise_error("Expected accelerator fields dict!")
+
+        op = AcceleratorOp(name, DictionaryAttr(fields))
+
+        # parse optional attribute dict
+        if parser.parse_optional_keyword("attributes") is not None:
+            attrs = parser.parse_optional_attr_dict()
+            if attrs is None:
+                parser.raise_error("Expected attribute dict to follow the `attributes` literal!")
+            op.attributes.update(attrs)
+
+        return op
+
 ACC = Dialect(
-    "acc",
+    "acc2",
     [
         SetupOp,
         LaunchOp,
         AwaitOp,
+        AcceleratorOp,
     ],
     [
         StateType,

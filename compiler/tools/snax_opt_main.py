@@ -8,6 +8,7 @@ from compiler.dialects.acc import ACC
 from compiler.dialects.snax import Snax
 from compiler.dialects.tsl import TSL
 from compiler.transforms.acc_cse import AccCse
+from compiler.transforms.convert_linalg_to_acc import ConvertLinalgToAccPass
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
@@ -55,6 +56,7 @@ class SNAXOptMain(xDSLOptMain):
         )
         super().register_pass(MemrefToSNAX.name, lambda: MemrefToSNAX)
         super().register_pass(AccCse.name, lambda: AccCse)
+        super().register_pass(ConvertLinalgToAccPass.name, lambda: ConvertLinalgToAccPass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
