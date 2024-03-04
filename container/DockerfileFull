@@ -42,6 +42,30 @@ RUN apt-get -y update \
 # make
  && apt-get -y install make
 
+ # python 3.11
+RUN apt update -y \
+ && apt install -y \
+      build-essential \
+      zlib1g-dev \
+      libncurses5-dev \
+      libgdbm-dev \
+      libnss3-dev \
+      libssl-dev \
+      libreadline-dev \
+      libffi-dev \
+      libsqlite3-dev \
+      wget \
+      libbz2-dev \
+      lzma \
+      liblzma-dev \
+      libbz2-dev \
+ && mkdir -p /tmp/python-src \
+ && wget -qO- https://www.python.org/ftp/python/3.11.5/Python-3.11.5.tgz | \
+    tar xz --strip-components=1 -C /tmp/python-src \
+ && cd /tmp/python-src \
+ && ./configure --prefix=/opt/python3.11 \
+ && make install -j $(nproc)
+
 # add python3.11 to path in bashrc
 RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
 
