@@ -44,7 +44,7 @@ class YeetSetupStuff(RewritePattern):
             (name, val) for name, val in op.iter_params() if prev_state.get(name) != val
         ]
 
-        # Step 3: If no new params remain, yeet the whole op
+        # Step 3: If no parameters change, the whole op can be erased
         if not new_params:
             op.out_state.replace_by(op.in_state)
             rewriter.erase_matched_op()
