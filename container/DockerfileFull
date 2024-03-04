@@ -1,7 +1,7 @@
 # Courtesy of Federico Ficarelli
 ARG TAGS=ghcr.io/kuleuven-micas/snax:main
 
-
+FROM ${TAGS}-base as deps-base
 FROM ${TAGS}-fifo-1 as deps-fifo-1
 FROM ${TAGS}-fifo-2 as deps-fifo-2
 FROM ${TAGS}-fifo-3 as deps-fifo-3
@@ -12,8 +12,9 @@ FROM ubuntu:18.04 as toolchain
 RUN echo "Building with TAGS=${TAGS}"
 
 # shared dependencies
-COPY --from=deps-fifo-2 /opt /opt
+COPY --from=deps-base /opt /opt
 
+COPY --from=deps-base /opt /opt-base
 COPY --from=deps-fifo-1 /opt /opt-fifo-1
 COPY --from=deps-fifo-2 /opt /opt-fifo-2
 COPY --from=deps-fifo-3 /opt /opt-fifo-3
