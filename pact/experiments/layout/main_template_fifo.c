@@ -118,16 +118,20 @@ void _mlir_ciface_snax_qgemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
     int8_t *a_ptr = a->aligned_data;
     int8_t *b_ptr = b->aligned_data;
     int32_t *c_ptr = c->aligned_data;
-    printf("Executing snax_qgemm with a=%p, b=%p, c=%p \n", a_ptr, b_ptr, c_ptr);
+    // printf("Executing snax_qgemm with a=%p, b=%p, c=%p \n", a_ptr, b_ptr, c_ptr);
 
     set_streamer_csr(a_ptr, b_ptr, c_ptr);
     set_streamer_start();
     set_block_gemm_csr();
+
+    snrt_mcycle();
+
     set_block_gemm_start();
     wait_streamer_gemm();
 
+    snrt_mcycle();
 
-    printf("Finished executing snax_qgemm\n");
+    // printf("Finished executing snax_qgemm\n");
 }}
 
 int main() {{
