@@ -1,5 +1,7 @@
 // RUN: XDSL_ROUNDTRIP
 
+acc2.accelerator @acc1 {A=0x3c0, B=0x3c1}
+
 func.func @test() {
     %one, %two = "test.op"() : () -> (i32, i32)
 
@@ -24,6 +26,7 @@ func.func @test() {
 
 
 // CHECK-NEXT: "builtin.module"() ({
+// CHECK-NEXT:   "acc2.accelerator"() <{"name" = @acc1, "fields" = {"A" = 960 : i64, "B" = 961 : i64}}> : () -> ()
 // CHECK-NEXT:   "func.func"() <{"sym_name" = "test", "function_type" = () -> ()}> ({
 // CHECK-NEXT:     %one, %two = "test.op"() : () -> (i32, i32)
 // CHECK-NEXT:     %state = "acc2.setup"(%one, %two) <{"param_names" = ["A", "B"], "accelerator" = "acc1", "operandSegmentSizes" = array<i32: 2, 0>}> : (i32, i32) -> !acc2.state<"acc1">

@@ -1,6 +1,13 @@
 from collections.abc import Iterable
 
-from xdsl.dialects.builtin import ArrayAttr, StringAttr
+from xdsl.dialects.builtin import (
+    ArrayAttr,
+    DictionaryAttr,
+    IntegerAttr,
+    StringAttr,
+    SymbolRefAttr,
+    i32,
+)
 from xdsl.ir import (
     Attribute,
     Dialect,
@@ -22,6 +29,9 @@ from xdsl.irdl import (
     result_def,
     var_operand_def,
 )
+from xdsl.parser import Parser
+from xdsl.printer import Printer
+from xdsl.traits import SymbolOpInterface
 
 
 @irdl_attr_definition
@@ -189,12 +199,99 @@ class SetupOp(IRDLOperation):
             )
 
 
+class AcceleratorSymbolOpTrait(SymbolOpInterface):
+    def get_sym_attr_name(self, op: Operation) -> StringAttr | None:
+        assert isinstance(op, AcceleratorOp)
+        return StringAttr(op.name_prop.string_value())
+
+
+@irdl_op_definition
+class AcceleratorOp(IRDLOperation):
+    """
+    Declares an accelerator that can be configures, launched, etc.
+    `fields` is a dictionary mapping accelerator configuration names to
+    CSR addresses.
+    """
+
+    name = "acc2.accelerator"
+
+    traits = frozenset([AcceleratorSymbolOpTrait()])
+
+    name_prop = prop_def(SymbolRefAttr, prop_name="name")
+
+    fields = prop_def(DictionaryAttr)
+
+    def __init__(
+        self,
+        name: str | StringAttr | SymbolRefAttr,
+        fields: dict[str, int] | DictionaryAttr,
+    ):
+        if not isinstance(fields, DictionaryAttr):
+            fields = DictionaryAttr(
+                {name: IntegerAttr(val, i32) for name, val in fields.items()}
+            )
+
+        super().__init__(
+            properties={
+                "name": (
+                    SymbolRefAttr(name) if not isinstance(name, SymbolRefAttr) else name
+                ),
+                "fields": fields,
+            }
+        )
+
+    def verify_(self) -> None:
+        for name, val in self.fields.data.items():
+            if not isinstance(val, IntegerAttr):
+                raise VerifyException("fields must only contain IntegerAttr!")
+
+    def field_names(self) -> tuple[str, ...]:
+        return tuple(self.fields.data.keys())
+
+    def field_items(self) -> Iterable[tuple[str, int]]:
+        for name, val in self.fields.data.items():
+            yield name, val.value.data
+
+    def print(self, printer: Printer):
+        printer.print_string(" ")
+        printer.print_attribute(self.name_prop)
+
+        printer.print_string(" ")
+        printer.print_attribute(self.fields)
+
+        if self.attributes:
+            printer.print(" attributes ")
+            printer.print_op_attributes(self.attributes)
+
+    @classmethod
+    def parse(cls, parser: Parser) -> AcceleratorOp:
+        name = parser.parse_symbol_name()
+
+        fields = parser.parse_optional_attr_dict()
+        if fields is None:
+            parser.raise_error("Expected accelerator fields dict!")
+
+        op = AcceleratorOp(name, DictionaryAttr(fields))
+
+        # parse optional attribute dict
+        if parser.parse_optional_keyword("attributes") is not None:
+            attrs = parser.parse_optional_attr_dict()
+            if attrs is None:
+                parser.raise_error(
+                    "Expected attribute dict to follow the `attributes` literal!"
+                )
+            op.attributes.update(attrs)
+
+        return op
+
+
 ACC = Dialect(
     "acc2",
     [
         SetupOp,
         LaunchOp,
         AwaitOp,
+        AcceleratorOp,
     ],
     [
         StateType,
