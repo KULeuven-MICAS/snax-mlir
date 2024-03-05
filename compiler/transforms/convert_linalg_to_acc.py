@@ -175,7 +175,7 @@ def _walk(
                 # calling another function invalidates all states
                 elif isinstance(op, func.Call):
                     state.clear()
-                elif isinstance(op, (func.Return, scf.Yield)):
+                elif isinstance(op, func.Return | scf.Yield):
                     continue
                 else:
                     raise RuntimeError(f"What is a {op}?")
