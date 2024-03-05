@@ -1,32 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from xdsl.parser import Parser
-from xdsl.printer import Printer
 
-from xdsl.traits import SymbolOpInterface
-from xdsl.dialects.builtin import ArrayAttr, StringAttr, SymbolRefAttr, DictionaryAttr, IntegerAttr, i32
-from xdsl.ir import (
-    Attribute,
-    Dialect,
-    Operation,
-    ParametrizedAttribute,
-    SSAValue,
-    TypeAttribute,
-)
-from xdsl.irdl import (
-    AttrSizedOperandSegments,
-    IRDLOperation,
-    ParameterDef,
-    VerifyException,
-    irdl_attr_definition,
-    irdl_op_definition,
-    operand_def,
-    opt_operand_def,
-    prop_def,
-    result_def,
-    var_operand_def,
-)
+from xdsl.dialects.builtin import ArrayAttr, StringAttr
+from xdsl.ir import (Attribute, Dialect, Operation, ParametrizedAttribute,
+                     SSAValue, TypeAttribute)
+from xdsl.irdl import (AttrSizedOperandSegments, IRDLOperation, ParameterDef,
+                       VerifyException, irdl_attr_definition,
+                       irdl_op_definition, operand_def, opt_operand_def,
+                       prop_def, result_def, var_operand_def)
 
 
 @irdl_attr_definition
@@ -47,6 +29,11 @@ class StateType(ParametrizedAttribute, TypeAttribute):
     name = "acc2.state"
 
     accelerator: ParameterDef[StringAttr]
+
+    def __init__(self, accelerator: str | StringAttr):
+        if not isinstance(accelerator, StringAttr):
+            accelerator = StringAttr(accelerator)
+        return super().__init__([accelerator])
 
 
 @irdl_op_definition
@@ -72,7 +59,7 @@ class LaunchOp(IRDLOperation):
         super().__init__(
             operands=[state],
             properties={"accelerator": state_val.type.accelerator},
-            result_types=[TokenType()]
+            result_types=[TokenType()],
         )
 
     def verify_(self) -> None:
@@ -164,7 +151,7 @@ class SetupOp(IRDLOperation):
                 "param_names": ArrayAttr(param_names_tuple),
                 "accelerator": accelerator,
             },
-            result_types=[StateType((accelerator,))],
+            result_types=[StateType(accelerator)],
         )
 
     def iter_params(self) -> Iterable[tuple[str, SSAValue]]:
@@ -189,92 +176,12 @@ class SetupOp(IRDLOperation):
             )
 
 
-class AcceleratorSymbolOpTrait(SymbolOpInterface):
-    def get_sym_attr_name(self, op: Operation) -> StringAttr | None:
-        assert isinstance(op, AcceleratorOp)
-        return StringAttr(op.name_prop.string_value())
-
-
-@irdl_op_definition
-class AcceleratorOp(IRDLOperation):
-    """
-    Declares an accelerator that can be configures, launched, etc.
-
-    `fields` is a dictionary mapping accelerator configuration names to
-    CSR addresses.
-    """
-
-    name = "acc2.accelerator"
-
-    traits = frozenset([AcceleratorSymbolOpTrait()])
-
-    name_prop = prop_def(SymbolRefAttr, prop_name="name")
-
-    fields = prop_def(DictionaryAttr)
-
-    def __init__(self, name: str | StringAttr | SymbolRefAttr, fields : dict[str, int] | DictionaryAttr):
-        if not isinstance(fields, DictionaryAttr):
-            fields = DictionaryAttr({
-                name: IntegerAttr(val, i32) for name, val in fields.items()
-            })
-
-        super().__init__(
-            properties={
-                "name": SymbolRefAttr(name) if not isinstance(name, SymbolRefAttr) else name,
-                "fields": fields
-            }
-        )
-
-    def verify_(self) -> None:
-        for name, val in self.fields.data.items():
-            if not isinstance(val, IntegerAttr):
-                raise VerifyException("fields must only contain IntegerAttr!")
-
-    def field_names(self) -> tuple[str, ...]:
-        return tuple(self.fields.data.keys())
-
-    def field_items(self) -> Iterable[tuple[str, int]]:
-        for name, val in self.fields.data.items():
-            yield name, val.value.data
-
-
-    def print(self, printer: Printer):
-        printer.print_string(" ")
-        printer.print_attribute(self.name_prop)
-
-        printer.print_string(" ")
-        printer.print_attribute(self.fields)
-
-        if self.attributes:
-            printer.print(" attributes ")
-            printer.print_op_attributes(self.attributes)
-
-    @classmethod
-    def parse(cls, parser: Parser) -> AcceleratorOp:
-        name = parser.parse_symbol_name()
-
-        fields = parser.parse_optional_attr_dict()
-        if fields is None:
-            parser.raise_error("Expected accelerator fields dict!")
-
-        op = AcceleratorOp(name, DictionaryAttr(fields))
-
-        # parse optional attribute dict
-        if parser.parse_optional_keyword("attributes") is not None:
-            attrs = parser.parse_optional_attr_dict()
-            if attrs is None:
-                parser.raise_error("Expected attribute dict to follow the `attributes` literal!")
-            op.attributes.update(attrs)
-
-        return op
-
 ACC = Dialect(
     "acc2",
     [
         SetupOp,
         LaunchOp,
         AwaitOp,
-        AcceleratorOp,
     ],
     [
         StateType,

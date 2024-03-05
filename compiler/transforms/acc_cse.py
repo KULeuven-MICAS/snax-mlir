@@ -1,47 +1,18 @@
-from xdsl.dialects import builtin, scf
+from xdsl.dialects import builtin
 from xdsl.ir import MLContext, SSAValue
 from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import (
-    PatternRewriter,
-    PatternRewriteWalker,
-    RewritePattern,
-    op_type_rewrite_pattern,
-)
+from xdsl.pattern_rewriter import (PatternRewriter, PatternRewriteWalker,
+                                   RewritePattern, op_type_rewrite_pattern)
 
 from compiler.dialects import acc
-
-
-def get_state_before(op: acc.SetupOp) -> dict[str, SSAValue]:
-    """
-    Walk the def-use chain up and return a dictionary representing which
-    parameter is currently set to which value before `op` is encountered.
-    """
-    state: dict[str, SSAValue] = {}
-
-    while op.in_state is not None:
-        parent = op.in_state.owner
-
-        if isinstance(parent, scf.If):
-            # TODO: implement
-            return {}
-
-        # TODO: handle more stuff here later
-        if not isinstance(parent, acc.SetupOp):
-            raise RuntimeError("We can't handle this yet")
-
-        for name, val in parent.iter_params():
-            if name not in state:
-                state[name] = val
-
-        op = parent
-    return state
+from compiler.inference.trace_acc_state import infer_state_of
 
 
 class SimplifyRedundantSetupCalls(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
         # Step 1: Figure out previous state
-        prev_state = get_state_before(op)
+        prev_state = infer_state_of(op.in_state) if op.in_state else {}
 
         # Step 2: Filter setup parameters to remove calls that set the same value again
         new_params: list[tuple[str, SSAValue]] = [
