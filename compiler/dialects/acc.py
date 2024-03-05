@@ -1,4 +1,6 @@
-from collections.abc import Iterable, Sequence
+from __future__ import annotations
+
+from collections.abc import Iterable
 
 from xdsl.dialects.builtin import ArrayAttr, StringAttr
 from xdsl.ir import (
@@ -30,7 +32,7 @@ class TokenType(ParametrizedAttribute, TypeAttribute):
     Async token type for launched accelerator requests.
     """
 
-    name = "acc.token"
+    name = "acc2.token"
 
 
 @irdl_attr_definition
@@ -39,9 +41,14 @@ class StateType(ParametrizedAttribute, TypeAttribute):
     Used to trace an accelerators CSR state through def-use chain
     """
 
-    name = "acc.state"
+    name = "acc2.state"
 
     accelerator: ParameterDef[StringAttr]
+
+    def __init__(self, accelerator: str | StringAttr):
+        if not isinstance(accelerator, StringAttr):
+            accelerator = StringAttr(accelerator)
+        return super().__init__([accelerator])
 
 
 @irdl_op_definition
@@ -52,13 +59,23 @@ class LaunchOp(IRDLOperation):
     interfering with the Accelerator.
     """
 
-    name = "acc.launch"
+    name = "acc2.launch"
 
     state = operand_def(StateType)
 
     accelerator = prop_def(StringAttr)
 
     token = result_def()
+
+    def __init__(self, state: SSAValue | Operation):
+        state_val: SSAValue = SSAValue.get(state)
+        if not isinstance(state_val.type, StateType):
+            raise ValueError("`state` SSA Value must be of type `acc2.state`!")
+        super().__init__(
+            operands=[state],
+            properties={"accelerator": state_val.type.accelerator},
+            result_types=[TokenType()],
+        )
 
     def verify_(self) -> None:
         # that the state and my accelerator match
@@ -82,22 +99,25 @@ class AwaitOp(IRDLOperation):
     Blocks until the launched operation finishes.
     """
 
-    name = "acc.await"
+    name = "acc2.await"
 
     token = operand_def(TokenType)
+
+    def __init__(self, token: SSAValue | Operation):
+        super().__init__(operands=[token])
 
 
 @irdl_op_definition
 class SetupOp(IRDLOperation):
     """
-    acc.setup writes values to a specific accelerators configuration and returns
+    acc2.setup writes values to a specific accelerators configuration and returns
     a value representing the currently known state of that accelerator's config.
 
-    If acc.setup is called without any parameters, the resulting state is the
+    If acc2.setup is called without any parameters, the resulting state is the
     "empty" state, that represents a state without known values.
     """
 
-    name = "acc.setup"
+    name = "acc2.setup"
 
     values = var_operand_def(Attribute)  # TODO: make more precise?
     """
@@ -106,7 +126,7 @@ class SetupOp(IRDLOperation):
 
     in_state = opt_operand_def(StateType)
     """
-    The state produced by a previous acc.setup
+    The state produced by a previous acc2.setup
     """
 
     out_state = result_def(StateType)
@@ -128,8 +148,8 @@ class SetupOp(IRDLOperation):
 
     def __init__(
         self,
-        vals: Sequence[SSAValue],
-        param_names: Sequence[str] | Sequence[StringAttr],
+        vals: Iterable[SSAValue | Operation],
+        param_names: Iterable[str] | Iterable[StringAttr],
         accelerator: str | StringAttr,
         in_state: SSAValue | Operation | None = None,
     ):
@@ -146,7 +166,7 @@ class SetupOp(IRDLOperation):
                 "param_names": ArrayAttr(param_names_tuple),
                 "accelerator": accelerator,
             },
-            result_types=[StateType((accelerator,))],
+            result_types=[StateType(accelerator)],
         )
 
     def iter_params(self) -> Iterable[tuple[str, SSAValue]]:
@@ -172,7 +192,7 @@ class SetupOp(IRDLOperation):
 
 
 ACC = Dialect(
-    "acc",
+    "acc2",
     [
         SetupOp,
         LaunchOp,

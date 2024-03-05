@@ -14,7 +14,7 @@ GENTRACE      = /opt/snitch_cluster/util/trace/gen_trace.py
 MLIROPT       = mlir-opt-17
 MLIRTRANSLATE = mlir-translate-17
 SNAXOPT       = $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
-PYTHON        = /opt/python3.11/bin/python3
+PYTHON        = python3
 TFLITE_TO_TOSA = $(MAKEFILE_RULES_DIRNAME)/tflite_to_tosa.py
 
 # Mixing .c and .ll files makes some flags, useful for the former,
