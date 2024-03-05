@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from xdsl.dialects import builtin, scf
 from xdsl.ir import MLContext, OpResult, SSAValue
 from xdsl.passes import ModulePass
@@ -123,12 +124,10 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
         rewriter.erase_matched_op()
 
 
-class AccCse(ModulePass):
+class AccDeduplicate(ModulePass):
     """
-    Common subexpression elimination for the `acc` (accelerator) dialect.
-
-    This pass rewrites acc dialect operations to find and simplify redundant
-    setup calls.
+    Reduce the number of parameters in setup calls by inferring previously
+    set up values and carefully moving setup calls around.
     """
 
     name = "acc-dedup"
