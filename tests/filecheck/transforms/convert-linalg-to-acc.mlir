@@ -2,84 +2,56 @@
 // RUN: ./compiler/snax-opt -p convert-linalg-to-acc,mlir-opt[cse,canonicalize],acc-cse %s | filecheck %s
 
 "builtin.module"() ({
-    func.func public @simple_mult(%A: memref<?xi32>,
-                                 %B: memref<?xi32>,
-                                 %D: memref<?xi32>) -> () {
-      linalg.generic {
-          indexing_maps = [
-            affine_map<(n) -> (n)>,
-            affine_map<(n) -> (n)>,
-            affine_map<(n) -> (n)>
-          ],
-          iterator_types = ["parallel"],
-          library_call = "snax_hwpe_mult"
-      } ins(%A, %B: memref<?xi32>, memref<?xi32>)
-        outs(%D: memref<?xi32>) {
-      ^bb0(%a: i32, %b: i32, %d: i32):
-        %r0 = arith.muli %a, %b : i32
-        linalg.yield %r0 : i32
-      }
-
-      %i1 = "test.op"() : () -> i1
-
-      %v_final = "scf.if"(%i1) ({
-        linalg.generic {
-          indexing_maps = [
-            affine_map<(n) -> (n)>,
-            affine_map<(n) -> (n)>,
-            affine_map<(n) -> (n)>
-          ],
-          iterator_types = ["parallel"],
-          library_call = "snax_hwpe_mult"
-        } ins(%A, %B: memref<?xi32>, memref<?xi32>)
-          outs(%D: memref<?xi32>) {
-        ^bb0(%a: i32, %b: i32, %d: i32):
-            %r0 = arith.muli %a, %b : i32
-            linalg.yield %r0 : i32
-        }
-        %v1 = "test.op"() : () -> i32
-
-        scf.yield %v1 : i32
-      }, {
-        %v2 = "test.op"() : () -> i32
-
-        linalg.generic {
-          indexing_maps = [
-            affine_map<(n) -> (n)>,
-            affine_map<(n) -> (n)>,
-            affine_map<(n) -> (n)>
-          ],
-          iterator_types = ["parallel"],
-          library_call = "snax_hwpe_mult"
-        } ins(%A, %B: memref<?xi32>, memref<?xi32>)
-          outs(%D: memref<?xi32>) {
-        ^bb0(%a: i32, %b: i32, %d: i32):
-            %r0 = arith.muli %a, %b : i32
-            linalg.yield %r0 : i32
-        }
-
-        scf.yield %v2 : i32
-      }) : (i1) -> i32
-
-      "test.op"(%v_final) : (i32) -> ()
-
-      linalg.generic {
-          indexing_maps = [
-            affine_map<(n) -> (n)>,
-            affine_map<(n) -> (n)>,
-            affine_map<(n) -> (n)>
-          ],
-          iterator_types = ["parallel"],
-          library_call = "snax_hwpe_mult"
-      } ins(%A, %D: memref<?xi32>, memref<?xi32>)
-        outs(%B: memref<?xi32>) {
-      ^bb0(%a: i32, %b: i32, %d: i32):
-        %r0 = arith.muli %a, %b : i32
-        linalg.yield %r0 : i32
-      }
-
-      return
+  func.func public @simple_mult(
+    %A: memref<?xi32>,
+    %B: memref<?xi32>,
+    %D: memref<?xi32>
+  ) -> () {
+    linalg.generic { indexing_maps = [], iterator_types = ["parallel"], library_call = "snax_hwpe_mult" }
+    ins(%A, %B: memref<?xi32>, memref<?xi32>)
+      outs(%D: memref<?xi32>) {
+    ^bb0(%a: i32, %b: i32, %d: i32):
+      %r0 = arith.muli %a, %b : i32
+      linalg.yield %r0 : i32
     }
+
+    %i1 = "test.op"() : () -> i1
+
+    %v_final = "scf.if"(%i1) ({
+
+      linalg.generic { indexing_maps = [], iterator_types = ["parallel"], library_call = "snax_hwpe_mult" }
+      ins(%A, %B: memref<?xi32>, memref<?xi32>) outs(%D: memref<?xi32>) {
+      ^bb0(%a: i32, %b: i32, %d: i32):
+          %r0 = arith.muli %a, %b : i32
+          linalg.yield %r0 : i32
+      }
+      %v1 = "test.op"() : () -> i32
+
+      scf.yield %v1 : i32
+    }, {
+      %v2 = "test.op"() : () -> i32
+
+      linalg.generic { indexing_maps = [], iterator_types = ["parallel"], library_call = "snax_hwpe_mult" }
+      ins(%A, %B: memref<?xi32>, memref<?xi32>) outs(%D: memref<?xi32>) {
+      ^bb0(%a: i32, %b: i32, %d: i32):
+          %r0 = arith.muli %a, %b : i32
+          linalg.yield %r0 : i32
+      }
+
+      scf.yield %v2 : i32
+    }) : (i1) -> i32
+
+    "test.op"(%v_final) : (i32) -> ()
+
+    linalg.generic { indexing_maps = [], iterator_types = ["parallel"], library_call = "snax_hwpe_mult" }
+    ins(%A, %D: memref<?xi32>, memref<?xi32>) outs(%B: memref<?xi32>) {
+    ^bb0(%a: i32, %b: i32, %d: i32):
+      %r0 = arith.muli %a, %b : i32
+      linalg.yield %r0 : i32
+    }
+
+    func.return
+  }
 }): () -> ()
 
 

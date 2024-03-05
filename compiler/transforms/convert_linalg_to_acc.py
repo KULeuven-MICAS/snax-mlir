@@ -192,7 +192,7 @@ def _walk(
                     state.clear()
                 # arith, memref, linalg and test ops are not relevant to
                 # accelerator setup, so we can skip them
-                elif op.dialect_name() in ("arith", "memref", "linalg", "test"):
+                elif op.dialect_name() in ("arith", "memref", "linalg", "test", "acc2"):
                     continue
                 # these ops are specifically whitelisted:
                 elif isinstance(op, func.Return | scf.Yield):
