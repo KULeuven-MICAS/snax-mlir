@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from xdsl.dialects import builtin, scf
 from xdsl.ir import MLContext, OpResult, SSAValue
 from xdsl.passes import ModulePass

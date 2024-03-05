@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt %s -p acc-cse | filecheck %s
+// RUN: ./compiler/snax-opt %s -p acc-dedup | filecheck %s
 
 func.func @test() {
     %one, %two = "test.op"() : () -> (i32, i32)
