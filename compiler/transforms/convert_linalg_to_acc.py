@@ -1,22 +1,27 @@
-import itertools
-
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Sequence
-from xdsl.ir import Operation, MLContext, SSAValue, Region, Block
+
+from xdsl.dialects import arith, builtin, func, linalg, memref, scf
+from xdsl.ir import Block, MLContext, Operation, Region, SSAValue
 from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import PatternRewriter, RewritePattern, op_type_rewrite_pattern, PatternRewriteWalker
+from xdsl.pattern_rewriter import (
+    PatternRewriter,
+    PatternRewriteWalker,
+    RewritePattern,
+    op_type_rewrite_pattern,
+)
+
 from compiler.dialects import acc
-from xdsl.dialects import linalg, builtin, arith, memref, func, scf
 
 
 class AcceleratorConfig:
     name = "snax_hwpe_mult"
 
-    fields = (
-        'A', 'B', 'O', 'size'
-    )
+    fields = ("A", "B", "O", "size")
 
-    def generate_vals(self, op: linalg.Generic) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def generate_vals(
+        self, op: linalg.Generic
+    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         """
         Produce a `Sequence[Operation], SSAValue` tuple for each field that contains:
 
@@ -32,8 +37,9 @@ class AcceleratorConfig:
         ptrs = [
             (
                 [ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref)],
-                ptr.aligned_pointer
-            ) for ref in (a, b, c)
+                ptr.aligned_pointer,
+            )
+            for ref in (a, b, c)
         ]
 
         return ptrs + [size]
@@ -48,7 +54,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
         if op.library_call is None:
             return
 
-        if op.library_call.data != 'snax_hwpe_mult':
+        if op.library_call.data != "snax_hwpe_mult":
             return
 
         # grab accelerator
@@ -63,22 +69,22 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
 
         # instantiate setup call
         rewriter.insert_op_before_matched_op(
-            setup := acc.SetupOp([val for _, val in args], accelerator.fields, accelerator.name)
+            setup := acc.SetupOp(
+                [val for _, val in args], accelerator.fields, accelerator.name
+            )
         )
 
         # launch
-        rewriter.insert_op_before_matched_op(
-            token := acc.LaunchOp(setup)
-        )
+        rewriter.insert_op_before_matched_op(token := acc.LaunchOp(setup))
 
         # await
-        rewriter.replace_matched_op(
-            acc.AwaitOp(token)
-        )
+        rewriter.replace_matched_op(acc.AwaitOp(token))
+
 
 @dataclass
 class ConnectStatesThroughControlFlowPattern(RewritePattern):
     walked_funcs: set[str] = field(default_factory=set)
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter, /):
         if func_op.sym_name.data in self.walked_funcs:
@@ -87,7 +93,9 @@ class ConnectStatesThroughControlFlowPattern(RewritePattern):
         _walk(func_op, {}, rewriter)
 
 
-def _walk(container: Region | Operation, state: dict[str, SSAValue], rewriter: PatternRewriter) -> dict[str, SSAValue]:
+def _walk(
+    container: Region | Operation, state: dict[str, SSAValue], rewriter: PatternRewriter
+) -> dict[str, SSAValue]:
     if isinstance(container, Operation):
         regions = container.regions
     else:
@@ -96,11 +104,12 @@ def _walk(container: Region | Operation, state: dict[str, SSAValue], rewriter: P
     for region in regions:
         for block in region.blocks:
             for op in block.ops:
-                # arith, memref, linalg and test ops are not relevant to accelerator setup
-                if op.name.split('.')[0] in ('arith', 'memref', 'linalg', 'test'):
+                # arith, memref, linalg and test ops are not relevant to
+                # accelerator setup
+                if op.name.split(".")[0] in ("arith", "memref", "linalg", "test"):
                     continue
                 # handle acc2 dialect ops:
-                elif op.name.startswith('acc2.'):
+                elif op.name.startswith("acc2."):
                     # the setup op is the only relevant one for now:
                     if isinstance(op, acc.SetupOp):
                         accel = op.accelerator.data
@@ -117,42 +126,50 @@ def _walk(container: Region | Operation, state: dict[str, SSAValue], rewriter: P
                     else:
                         pass
                 elif isinstance(op, scf.If):
+                    # grab the computed state for both sides:
                     if_state = _walk(op.true_region, state.copy(), rewriter)
                     else_state = _walk(op.false_region, state.copy(), rewriter)
 
+                    # calculate the delta:
                     delta = calc_if_state_delta(state, if_state, else_state)
+                    # no delta = nothing to do
                     if not delta:
                         continue
-                    # grab a list of added return vals for both if branch and else branch
+
+                    # grab a list of added return vals for both branches
                     new_vals: tuple[tuple[SSAValue, ...], ...] = (
-                        tuple(if_val   for if_val, _   in delta.values()),
+                        tuple(if_val for if_val, _ in delta.values()),
                         tuple(else_val for _, else_val in delta.values()),
                     )
-                    # somehow rewrite this fucker
+                    # for each branch, rewrite the yield to return the new state
                     for branch, added_vals in zip(op.regions, new_vals):
                         assert isinstance(branch, Region)
                         if not branch.blocks:
                             branch.add_block(Block([scf.Yield(*added_vals)]))
                         else:
+                            assert (
+                                branch.block.last_op is not None
+                            )  # we know there is a yield op
                             rewriter.replace_op(
                                 branch.block.last_op,
-                                scf.Yield(*branch.block.last_op.operands, *added_vals)
+                                scf.Yield(*branch.block.last_op.operands, *added_vals),
                             )
-
+                    # then, insert a new if with additional return values:
                     num_scf_results = len(op.results)
                     rewriter.replace_op(
-                        op, new_if := scf.If(
+                        op,
+                        new_if := scf.If(
                             op.cond,
                             [val.type for val in (*op.results, *new_vals[0])],
                             op.detach_region(op.regions[0]),
-                            # trust me, this is correct. The previous line removes
-                            # the block from the list
-                            op.detach_region(op.regions[0])
+                            # is fine because previous line removes a region
+                            op.detach_region(op.regions[0]),
                         ),
-                        [new_if.results[i] for i in range(num_scf_results)]
+                        [new_if.results[i] for i in range(num_scf_results)],
                     )
                     # update state:
                     for res in new_if.results[num_scf_results:]:
+                        assert isinstance(res.type, acc.StateType)
                         state[res.type.accelerator.data] = res
 
                 # calling another function invalidates all states
@@ -165,7 +182,11 @@ def _walk(container: Region | Operation, state: dict[str, SSAValue], rewriter: P
     return state
 
 
-def calc_if_state_delta(old_state: dict[str, SSAValue], if_state: dict[str, SSAValue], else_state: dict[str, SSAValue]) -> dict[str, tuple[SSAValue, SSAValue]]:
+def calc_if_state_delta(
+    old_state: dict[str, SSAValue],
+    if_state: dict[str, SSAValue],
+    else_state: dict[str, SSAValue],
+) -> dict[str, tuple[SSAValue, SSAValue]]:
     """
     Given three state dictionaries (mapping accelerator names
     to SSA vals containing their state, return a new dict that:
@@ -192,7 +213,8 @@ def calc_if_state_delta(old_state: dict[str, SSAValue], if_state: dict[str, SSAV
         # if no val changed
         if all(v == old_state[k] for v in new_vals):
             continue
-        new_state[k] = new_vals
+        # pyright can't infer that we actually checked the argument type:
+        new_state[k] = new_vals  # pyright: ignore[reportArgumentType]
 
     # check for states that are present in both branches
     for k in if_state:
@@ -204,17 +226,12 @@ def calc_if_state_delta(old_state: dict[str, SSAValue], if_state: dict[str, SSAV
     return new_state
 
 
-
-
 class ConvertLinalgToAccPass(ModulePass):
     name = "convert-linalg-to-acc"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(ConvertLinalgToAcceleratorPattern(op)).rewrite_module(op)
         # run these strictly sequentially, otherwise stuff breaks
-        PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(op)
-
-
-
-
-
+        PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
+            op
+        )

@@ -1,14 +1,29 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 
 from xdsl.dialects.builtin import ArrayAttr, StringAttr
-from xdsl.ir import (Attribute, Dialect, Operation, ParametrizedAttribute,
-                     SSAValue, TypeAttribute)
-from xdsl.irdl import (AttrSizedOperandSegments, IRDLOperation, ParameterDef,
-                       VerifyException, irdl_attr_definition,
-                       irdl_op_definition, operand_def, opt_operand_def,
-                       prop_def, result_def, var_operand_def)
+from xdsl.ir import (
+    Attribute,
+    Dialect,
+    Operation,
+    ParametrizedAttribute,
+    SSAValue,
+    TypeAttribute,
+)
+from xdsl.irdl import (
+    AttrSizedOperandSegments,
+    IRDLOperation,
+    ParameterDef,
+    VerifyException,
+    irdl_attr_definition,
+    irdl_op_definition,
+    operand_def,
+    opt_operand_def,
+    prop_def,
+    result_def,
+    var_operand_def,
+)
 
 
 @irdl_attr_definition
@@ -133,8 +148,8 @@ class SetupOp(IRDLOperation):
 
     def __init__(
         self,
-        vals: Sequence[SSAValue | Operation],
-        param_names: Sequence[str] | Sequence[StringAttr],
+        vals: Iterable[SSAValue | Operation],
+        param_names: Iterable[str] | Iterable[StringAttr],
         accelerator: str | StringAttr,
         in_state: SSAValue | Operation | None = None,
     ):
