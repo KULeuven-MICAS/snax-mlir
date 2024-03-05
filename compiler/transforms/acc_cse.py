@@ -1,12 +1,8 @@
 from xdsl.dialects import builtin
 from xdsl.ir import MLContext, SSAValue
 from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import (
-    PatternRewriter,
-    PatternRewriteWalker,
-    RewritePattern,
-    op_type_rewrite_pattern,
-)
+from xdsl.pattern_rewriter import (PatternRewriter, PatternRewriteWalker,
+                                   RewritePattern, op_type_rewrite_pattern)
 
 from compiler.dialects import acc
 from compiler.inference.trace_acc_state import infer_state_of
