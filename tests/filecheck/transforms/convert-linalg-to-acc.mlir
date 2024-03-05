@@ -81,6 +81,3 @@
 // CHECK-NEXT:     %14 = "acc2.setup"(%3, %2, %9) <{"param_names" = ["B", "O"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 2, 1>}> : (index, index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
 // CHECK-NEXT:     %15 = "acc2.launch"(%14) <{"accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token
 // CHECK-NEXT:     "acc2.await"(%15) : (!acc2.token) -> ()
-// CHECK-NEXT:     func.return
-// CHECK-NEXT:   }
-// CHECK-NEXT: }

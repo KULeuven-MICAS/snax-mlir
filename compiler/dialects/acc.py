@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
 from xdsl.dialects.builtin import ArrayAttr, StringAttr
 from xdsl.ir import (
