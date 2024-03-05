@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -14,7 +15,7 @@ from xdsl.pattern_rewriter import (
 from compiler.dialects import acc
 
 
-class AcceleratorConfig:
+class HWPEAcceleratorInfo:
     name = "snax_hwpe_mult"
 
     fields = ("A", "B", "O", "size")
@@ -47,18 +48,23 @@ class AcceleratorConfig:
 
 @dataclass
 class ConvertLinalgToAcceleratorPattern(RewritePattern):
+    """
+    This pattern converts linalg generic ops that have been annotated
+    with library_call.data = "snax_hwpe_mult" to the acc2 dialect.
+
+    Eventually it should be converted to a generic pattern that handles
+    all the different accelerators that snax has to offer. But not yet.
+    """
+
     module: builtin.ModuleOp
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter, /):
-        if op.library_call is None:
-            return
-
         if op.library_call.data != "snax_hwpe_mult":
             return
 
         # grab accelerator
-        accelerator = AcceleratorConfig()
+        accelerator = HWPEAcceleratorInfo()
 
         # grab arguments
         args = accelerator.generate_vals(op)
@@ -83,6 +89,14 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
 
 @dataclass
 class ConnectStatesThroughControlFlowPattern(RewritePattern):
+    """
+    This pass walks the control flow path of a function body and connects
+    all the `acc2.setup()` ops together so that later analysis passes
+    can infer where the state comes from.
+
+    It currently handles scf.for, but not more.
+    """
+
     walked_funcs: set[str] = field(default_factory=set)
 
     @op_type_rewrite_pattern
@@ -96,6 +110,12 @@ class ConnectStatesThroughControlFlowPattern(RewritePattern):
 def _walk(
     container: Region | Operation, state: dict[str, SSAValue], rewriter: PatternRewriter
 ) -> dict[str, SSAValue]:
+    """
+    Walks over a region or operation to "weave" accelerator setup states
+    together.
+
+    Takes an input state, and returns an output state.
+    """
     if isinstance(container, Operation):
         regions = container.regions
     else:
@@ -104,27 +124,20 @@ def _walk(
     for region in regions:
         for block in region.blocks:
             for op in block.ops:
-                # arith, memref, linalg and test ops are not relevant to
-                # accelerator setup
-                if op.name.split(".")[0] in ("arith", "memref", "linalg", "test"):
-                    continue
-                # handle acc2 dialect ops:
-                elif op.name.startswith("acc2."):
-                    # the setup op is the only relevant one for now:
-                    if isinstance(op, acc.SetupOp):
-                        accel = op.accelerator.data
-                        if accel in state and op.in_state != state[accel]:
-                            new_op = acc.SetupOp(
-                                op.values,
-                                op.param_names,
-                                op.accelerator,
-                                state[accel],
-                            )
-                            rewriter.replace_op(op, new_op)
-                            op = new_op
-                        state[accel] = op.out_state
-                    else:
-                        pass
+                # handle acc.setup ops:
+                if isinstance(op, acc.SetupOp):
+                    accel = op.accelerator.data
+                    if accel in state and op.in_state != state[accel]:
+                        new_op = acc.SetupOp(
+                            op.values,
+                            op.param_names,
+                            op.accelerator,
+                            state[accel],
+                        )
+                        rewriter.replace_op(op, new_op)
+                        op = new_op
+                    state[accel] = op.out_state
+                # special case for scf.if ops
                 elif isinstance(op, scf.If):
                     # grab the computed state for both sides:
                     if_state = _walk(op.true_region, state.copy(), rewriter)
@@ -173,12 +186,25 @@ def _walk(
                         state[res.type.accelerator.data] = res
 
                 # calling another function invalidates all states
+                # we can't reason about other functions as of now, and
+                # adding support for that is out of scope for now.
                 elif isinstance(op, func.Call):
                     state.clear()
+                # arith, memref, linalg and test ops are not relevant to
+                # accelerator setup, so we can skip them
+                elif op.dialect_name() in ("arith", "memref", "linalg", "test"):
+                    continue
+                # these ops are specifically whitelisted:
                 elif isinstance(op, func.Return | scf.Yield):
                     continue
+                # for every other operation, raise a warning and just assume the worst
                 else:
-                    raise RuntimeError(f"What is a {op}?")
+                    state.clear()
+                    print(
+                        f'[convert-linalg-to-acc] Unknown operation "{op.name}", '
+                        f"assuming all side effects and resetting states.",
+                        file=sys.stderr,
+                    )
     return state
 
 
@@ -196,7 +222,6 @@ def calc_if_state_delta(
       one* of the branches
     - And for all accelerator states that got introduced in *both*
       branches
-
     """
     new_state: dict[str, tuple[SSAValue, SSAValue]] = {}
 
