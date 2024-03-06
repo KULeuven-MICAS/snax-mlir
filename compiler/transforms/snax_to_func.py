@@ -57,23 +57,55 @@ class AllocToFunc(RewritePattern):
 
         ops_to_insert = []
 
+        # create constant alignment op to pass on to the allocation function
+        alignment_op = arith.Constant.from_int_and_width(
+            alloc_op.alignment.value.data, builtin.IndexType()
+        )
+        ops_to_insert.append(alignment_op)
+
+        # call allocation function with size and alignment operations
         func_call = func.Call(
-            "snax_alloc_l1", [alloc_op.size], [llvm.LLVMPointerType.opaque()]
+            "snax_alloc_l1",
+            [alloc_op.size, alignment_op],
+            [llvm.LLVMPointerType.opaque()],
         )
         ops_to_insert.append(func_call)
 
+        # the result of the function points to a struct containing 2 pointers:
+        # the allocated pointer and the aligned pointer
+        func_result_type = llvm.LLVMStructType.from_type_list(
+            [
+                llvm.LLVMPointerType.opaque(),  # pointer
+                llvm.LLVMPointerType.opaque(),  # aligned_pointer
+            ]
+        )
+
+        # load this struct
+        func_result = llvm.LoadOp(func_call.res[0], func_result_type)
+        ops_to_insert.append(func_result)
+
+        # extract the allocated pointer and aligned pointer from alloc function call
+        pointer_op = llvm.ExtractValueOp(
+            dense_array([0]), func_result.results[0], llvm.LLVMPointerType.opaque()
+        )
+        aligned_pointer_op = llvm.ExtractValueOp(
+            dense_array([1]), func_result.results[0], llvm.LLVMPointerType.opaque()
+        )
+        ops_to_insert.extend([pointer_op, aligned_pointer_op])
+
+        # create the memref descriptor struct
         llvm_struct = llvm.UndefOp(alloc_op.result.type)
         ops_to_insert.append(llvm_struct)
 
         # insert pointer
         llvm_struct = llvm.InsertValueOp(
-            dense_array([0]), llvm_struct.res, func_call.res[0]
+            dense_array([0]), llvm_struct.res, pointer_op.res
         )
         ops_to_insert.append(llvm_struct)
 
         # insert aligned pointer
         llvm_struct = llvm.InsertValueOp(
-            dense_array([1]), llvm_struct.res, func_call.res[0]
+            dense_array([1]), llvm_struct.res, aligned_pointer_op.res
         )
         ops_to_insert.append(llvm_struct)
 
@@ -101,7 +133,7 @@ class AllocToFunc(RewritePattern):
 
         func_op = func.FuncOp.external(
             "snax_alloc_l1",
-            [builtin.IndexType()],
+            [builtin.IndexType()] * 2,
             [llvm.LLVMPointerType.opaque()],
         )
 

@@ -18,13 +18,30 @@ int8_t *_mlir_memref_to_llvm_alloc(uint32_t size) {
   return allocated_pointer;
 };
 
-int8_t *_mlir_ciface_snax_alloc_l1(uint32_t size) {
+typedef struct alloc_result {
+  void *pointer;
+  void *aligned_pointer;
+} alloc_result_t;
+
+alloc_result_t *allocated_result;
+
+alloc_result_t *_mlir_ciface_snax_alloc_l1(uint32_t size, uint32_t alignment) {
+
   if (snrt_is_dm_core()) {
-    allocated_pointer = (int8_t *)snrt_l1alloc(size);
-    // printf("Allocating %d bytes: %p\n", size, allocated_pointer);
+    // printf("Allocating %d bytes with alignment %d\n", size, alignment);
+
+    void *next_ptr = snrt_l1_next();
+    // calculate extra size needed to allocate for correct alignment
+    uint32_t extra_size = alignment - ((int32_t)next_ptr % alignment);
+    void *allocated_pointer = snrt_l1alloc(size + extra_size);
+    void *aligned_pointer = (void *)((int32_t)allocated_pointer + extra_size);
+
+    allocated_result->pointer = allocated_pointer;
+    allocated_result->aligned_pointer = aligned_pointer;
   }
+
   snrt_cluster_hw_barrier();
-  return allocated_pointer;
+  return allocated_result;
 }
 
 void _mlir_ciface_snax_cluster_hw_barrier() {

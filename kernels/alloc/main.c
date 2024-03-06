@@ -26,8 +26,8 @@ int main() {
   for (uint32_t i = 0; i < snrt_cluster_core_num(); i++) {
     // print one by one to avoid printing errors
     if (snrt_cluster_core_idx() == i) {
-      printf("Core %d: Allocated a pointer to memrefA @ 0x%x\n", core_id,
-             memrefA.data);
+      printf("Core %d: Allocated a pointer to memrefA @ 0x%p, aligned @ 0x%p\n",
+             core_id, memrefA.data, memrefA.aligned_data);
     }
     snrt_cluster_hw_barrier();
   }
@@ -35,13 +35,18 @@ int main() {
   if (memrefA.shape[0] != 10) {
     return 420;
   }
+  // Assert that the alloc is alligned correctly to 256 bytes
+  if (((int32_t)memrefA.aligned_data) % 256) {
+    return 421;
+  }
+
   uint32_t test_data[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   // core 0's return value is reported in CI, hence it needs to be
   // used for the final check
   if (snrt_cluster_core_idx() == 1) {
     // memcpy stack data into allocated pointer on heap
     for (size_t i = 0; i < memrefA.shape[0]; i++) {
-      memrefA.data[i] = test_data[i];
+      memrefA.aligned_data[i] = test_data[i];
     }
   }
   snrt_cluster_hw_barrier();
@@ -49,7 +54,7 @@ int main() {
   int nerr = 0;
   if (snrt_cluster_core_idx() != 1) {
     for (size_t i = 0; i < memrefA.shape[0]; i++) {
-      nerr += test_data[i] - memrefA.data[i];
+      nerr += test_data[i] - memrefA.aligned_data[i];
     }
   }
   return nerr;
