@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from xdsl.dialects import builtin, scf
 from xdsl.ir import MLContext, OpResult, SSAValue
 from xdsl.passes import ModulePass
@@ -129,6 +130,7 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
         rewriter.erase_matched_op()
 
 
+@dataclass
 class AccDeduplicate(ModulePass):
     """
     Reduce the number of parameters in setup calls by inferring previously
@@ -137,13 +139,17 @@ class AccDeduplicate(ModulePass):
 
     name = "acc-dedup"
 
+    hoist: bool = True
+
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+        patterns = [
+            SimplifyRedundantSetupCalls(),
+        ]
+
+        if self.hoist:
+            patterns.append(HoistSetupCallsIntoConditionals())
+
         PatternRewriteWalker(
-            GreedyRewritePatternApplier(
-                [
-                    HoistSetupCallsIntoConditionals(),
-                    SimplifyRedundantSetupCalls(),
-                ]
-            ),
+            GreedyRewritePatternApplier(patterns),
             walk_reverse=True,
         ).rewrite_module(op)

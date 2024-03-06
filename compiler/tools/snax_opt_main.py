@@ -7,7 +7,7 @@ from xdsl.xdsl_opt_main import xDSLOptMain
 from compiler.dialects.acc import ACC
 from compiler.dialects.snax import Snax
 from compiler.dialects.tsl import TSL
-from compiler.transforms.acc_cse import AccDeduplicate
+from compiler.transforms.acc_dedup import AccDeduplicate
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_linalg_to_acc import ConvertLinalgToAccPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
