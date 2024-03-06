@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 
 from xdsl.dialects.builtin import ArrayAttr, StringAttr
 from xdsl.ir import (
