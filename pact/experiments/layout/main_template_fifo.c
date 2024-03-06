@@ -65,15 +65,15 @@ void set_streamer_csr(int8_t* a_ptr, int8_t* b_ptr, int32_t* c_ptr) {{
 
     // spatial strides for A
     write_csr(972, 1);
-    write_csr(973, 8);
+    write_csr(973, {rowStrideA});
 
     // spatial strides for B
     write_csr(974, 1);
-    write_csr(975, 8);
+    write_csr(975, {rowStrideB});
 
     // spatial strides for C
     write_csr(976, 4);
-    write_csr(977, 32);
+    write_csr(977, {rowStrideC});
 
     // base ptr for A
     write_csr(978, (uint32_t)(a_ptr));
@@ -172,5 +172,9 @@ int main() {{
     if (error != 0)
       nerr += 1;
   }}
+
+  // insert mcycle to show fault in trace
+  if (nerr != 0) snrt_mcycle();
+
   return nerr;
 }}

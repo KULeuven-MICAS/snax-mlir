@@ -101,5 +101,9 @@ int main() {{
     if (error != 0)
       nerr += 1;
   }}
+
+  // insert mcycle to show fault in trace
+  if (nerr != 0) snrt_mcycle();
+
   return nerr;
 }}

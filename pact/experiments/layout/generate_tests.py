@@ -3,13 +3,16 @@ import numpy as np
 import numpy.typing as npt
 import itertools
 
+class UnsupportedCombinationException(Exception):
+    pass
+
 directory = os.path.dirname(__file__)
 
 # size is defined as [M, N, K]
 # A is MxN, B is NxK, C is MxK
 sizes = [
     [16, 16, 16], # ops = 16*16*16 = 4096
-    # [16, 16, 32], # ops = 16*16*32 = 8192
+    [16, 16, 32], # ops = 16*16*32 = 8192
     # [16, 32, 32], # ops = 16*32*32 = 16384
     # [32, 32, 32], # ops = 32*32*32 = 32768
     # [32, 32, 64], # ops = 32*32*64 = 65536
@@ -21,8 +24,9 @@ sizes = [
 ]
 
 layouts = [
-    # 'default',
-    'tiled'
+    'default',
+    'tiled',
+    # 'round-robin',
 ]
 
 backends = [
@@ -42,14 +46,21 @@ def generate_mlir(size):
 
 def generate_main(size, layout, backend):
 
+    
+
     if layout == 'default':
-        raise ValueError('Not yet implemented')
-        strideInnermostA = 1,
-        strideInnermostB = 1,
-        strideInnermostC = 1,
-        ldA = 1,
-        ldB = 1,
-        ldC = 1,
+        if backend in ['cpu', 'base']:
+            raise UnsupportedCombinationException()
+        # raise ValueError('Not yet implemented')
+        strideInnermostA = 8
+        strideInnermostB = 8
+        strideInnermostC = 32
+        ldA = 8 * size[1]
+        ldB = 8 * size[1]
+        ldC = 4 * 8 * size[2]
+        rowStrideA = size[1]
+        rowStrideB = size[1]
+        rowStrideC = size[2] * 4
     elif layout == 'tiled':
         strideInnermostA = 256
         strideInnermostB = 256
@@ -57,6 +68,9 @@ def generate_main(size, layout, backend):
         ldA = round(256 * size[1] // 8)
         ldB = round(256 * size[1] // 8)
         ldC = round(256 * size[2] // 8)
+        rowStrideA = 8
+        rowStrideB = 8
+        rowStrideC = 32
     else:
         raise ValueError(f'Unknown layout: {layout}')
 
@@ -77,10 +91,20 @@ def generate_main(size, layout, backend):
         ldA = ldA,
         ldB = ldB,
         ldC = ldC,
+        rowStrideA = rowStrideA,
+        rowStrideB = rowStrideB,
+        rowStrideC = rowStrideC
     )
     
     
-def generate_makefile(backend):
+def generate_makefile(layout, backend):
+
+    if layout == 'default':
+        layout_pass = 'set-memory-layout-default'
+    elif layout == 'tiled':
+        layout_pass = 'set-memory-layout'
+    elif layout == 'round-robin':
+        layout_pass = 'set-memory-layout-round-robin'
 
     if backend in ['cpu', 'base']:
         runtime_backend = 'snax-gemm'
@@ -93,6 +117,7 @@ def generate_makefile(backend):
     template = open(template_path).read()
     return template.format(
         backend = runtime_backend,
+        layout_pass = layout_pass
     )
 
 def create_header(sizes: dict[str, int], variables: dict[str, npt.NDArray]) -> None:
@@ -137,7 +162,7 @@ def generate_data(size):
     C_golden = np.matmul(A.astype(np.dtype("int32")), B.astype(np.dtype("int32")))
     C = np.zeros(C_golden.shape, np.dtype("int32"))
 
-    sizes = {"N_size": A.shape[0], "K_size": A.shape[1], "M_size": B.shape[1]}
+    sizes = {"N_size": size[2], "K_size": size[1], "M_size": size[0]}
 
     # Perform layout transformations before writing to memory
 
@@ -164,27 +189,32 @@ def main():
 
     for i, testcase in enumerate(test_cases):
 
-        size, layout, backend = testcase
+        try:
+            size, layout, backend = testcase
 
-        mlir = generate_mlir(size)
-        main = generate_main(size, layout, backend)
-        makefile = generate_makefile(backend)
-        header, data = generate_data(size)
+            mlir = generate_mlir(size)
+            main = generate_main(size, layout, backend)
+            makefile = generate_makefile(layout, backend)
+            header, data = generate_data(size)
 
-        test_dir = os.path.join(directory, f'test_{i}_{layout}_{backend}_{"_".join(map(str, size))}')
-        os.makedirs(test_dir, exist_ok=True)
+            test_dir = os.path.join(directory, f'test_{i}_{layout}_{backend}_{"_".join(map(str, size))}')
+            os.makedirs(test_dir, exist_ok=True)
 
-        # write all the files
-        with open(os.path.join(test_dir, 'matmul.mlir'), 'w') as f:
-            f.write(mlir)
-        with open(os.path.join(test_dir, 'main.c'), 'w') as f:
-            f.write(main)
-        with open(os.path.join(test_dir, 'Makefile'), 'w') as f:
-            f.write(makefile)
-        with open(os.path.join(test_dir, 'data.h'), 'w') as f:
-            f.write(header)
-        with open(os.path.join(test_dir, 'data.c'), 'w') as f:
-            f.write(data)
+            # write all the files
+            with open(os.path.join(test_dir, 'matmul.mlir'), 'w') as f:
+                f.write(mlir)
+            with open(os.path.join(test_dir, 'main.c'), 'w') as f:
+                f.write(main)
+            with open(os.path.join(test_dir, 'Makefile'), 'w') as f:
+                f.write(makefile)
+            with open(os.path.join(test_dir, 'data.h'), 'w') as f:
+                f.write(header)
+            with open(os.path.join(test_dir, 'data.c'), 'w') as f:
+                f.write(data)
+
+        except UnsupportedCombinationException:
+            print(f'Unsupported combination: {testcase}')
+
 
 if __name__ == "__main__":
     main()

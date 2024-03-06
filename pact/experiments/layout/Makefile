@@ -14,11 +14,11 @@ traces_%: %
 
 traces: $(addprefix traces_, $(TESTS))
 
-
-parse_logs_%: %
-	python3 parse_logs.py -i $</matmul.x.logs/trace_hart_00000000.trace.txt -o $</results.py
 parse_logs:
-	$(addprefix parse_logs_, $(TESTS))
+	python3 parse_logs.py
+
+summary:
+	python3 create_summary.py	
 
 all: $(addprefix run_, $(TESTS))
 

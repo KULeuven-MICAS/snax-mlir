@@ -1,57 +1,30 @@
-import argparse
-import re
-from pprint import pformat
+import os
+import json
 
+file_path = "/workspaces/snax-mlir/pact/experiments/layout/parse_logs.py"
+directory = os.path.dirname(file_path)
 
+dirs = [d for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d)) and d.startswith("test_")]
 
-def process_content(content):
-    # Example regex pattern (modify this based on your needs)
-    # This pattern is just an example, it matches email addresses
-    pattern = r'Performance metrics for section 2([^.\n]+(?:\n(?!\n).+)*)'
-    # Find all matches and return them
-    text = re.findall(pattern, content)[0]
+results = []
 
-    pattern = r'(\w+(?:_\w+)*)\s+((0x[0-9A-Fa-f]+)|(\d+\.\d+)|(\d+))'
+for d in dirs:
+    file_to_open = os.path.join(directory, d, "matmul.x.logs", "trace_hart_00000000.trace.json")
+    with open(file_to_open, "r") as file:
+        file = json.load(file)
+        result = file[2]
+        name_split = d.split("_")
+        layout = name_split[2]
+        backend = name_split[3]
+        size = "x".join(name_split[4:])
+        result['test'] = d
+        result['layout'] = layout
+        result['backend'] = backend
+        result['size'] = size
+        result['success'] = len(file) == 5
+        results.append(result)
 
-    matches = re.findall(pattern, text)
-
-    data = {}
-
-    for match in matches:
-        key = match[0]
-        # Determine the type of value and convert accordingly
-        if match[2]:  # Hexadecimal
-            value = int(match[2], 16)
-        elif match[3]:  # Floating-point
-            value = float(match[3])
-        else:  # Integer
-            value = int(match[4])
-        
-        # Add to dictionary
-        data[key] = value
+# Store results in results.json
+with open("test_results.json", "w") as outfile:
+    json.dump(results, outfile)
     
-    return data
-
-def main(input_file, output_file):
-    # Read the input file
-    with open(input_file, 'r', encoding='utf-8') as file:
-        content = file.read()
-
-    # Process the content with regex
-    processed_content = process_content(content)
-
-    # Write the processed content to the output file
-    with open(output_file, 'w', encoding='utf-8') as file:
-        file.write(pformat(processed_content))
-
-if __name__ == "__main__":
-    # Set up the argument parser
-    parser = argparse.ArgumentParser(description='Process log files.')
-    parser.add_argument('-i', '--input', required=True, help='Input file path')
-    parser.add_argument('-o', '--output', required=True, help='Output file path')
-
-    # Parse arguments
-    args = parser.parse_args()
-
-    # Call the main function with the input and output file paths
-    main(args.input, args.output)
