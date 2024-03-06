@@ -131,7 +131,7 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
         rewriter.erase_matched_op()
 
 
-@dataclass
+@dataclass(frozen=True)
 class AccDeduplicate(ModulePass):
     """
     Reduce the number of parameters in setup calls by inferring previously
