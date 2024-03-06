@@ -11,6 +11,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.traits import SymbolTable
 
 from compiler.dialects import acc
 
@@ -33,17 +34,41 @@ class HWPEAcceleratorInfo:
 
         zero = arith.Constant.from_int_and_width(0, builtin.IndexType())
         dim = memref.Dim.from_source_and_index(a, zero)
-        size = [zero, dim], dim.result
+        dim_i32 = arith.IndexCastOp(dim, builtin.i32)
+        size = [zero, dim, dim_i32], dim_i32.result
 
         ptrs = [
             (
-                [ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref)],
-                ptr.aligned_pointer,
+                [
+                    ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref),
+                    ptr_i32 := arith.IndexCastOp(ptr, builtin.i32),
+                ],
+                ptr_i32.result,
             )
             for ref in (a, b, c)
         ]
 
         return ptrs + [size]
+
+    def generate_acc_op(self) -> acc.AcceleratorOp:
+        """
+        Return this accelerator op:
+
+        "acc2.accelerator"() <{
+            name            = @snax_hwpe_mult,
+            fields          = {A=0x3c0, B=0x3c1, O=0x3c2, size=0x3c3},
+            launch_addr     = 0x3cf,
+            barrier_enable  = 0x7c3,
+            barrier_trigger = 0x7c4
+        }> : () -> ()
+        """
+        return acc.AcceleratorOp(
+            self.name,
+            {"A": 0x3C0, "B": 0x3C1, "O": 0x3C2, "size": 0x3C3},
+            0x3CF,
+            0x7C3,
+            0x7C4,
+        )
 
 
 @dataclass
@@ -60,11 +85,15 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter, /):
-        if op.library_call.data != "snax_hwpe_mult":
+        if op.library_call and op.library_call.data != "snax_hwpe_mult":
             return
 
         # grab accelerator
         accelerator = HWPEAcceleratorInfo()
+
+        t = self.module.get_trait(SymbolTable)
+        assert t is not None
+        t.insert_or_update(self.module, accelerator.generate_acc_op())
 
         # grab arguments
         args = accelerator.generate_vals(op)

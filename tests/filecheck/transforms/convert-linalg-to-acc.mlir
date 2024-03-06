@@ -85,4 +85,5 @@
 // CHECK-NEXT:     "acc2.await"(%17) : (!acc2.token) -> ()
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
+// CHECK-NEXT:   "acc2.accelerator"() <{"name" = @snax_hwpe_mult, "fields" = {"A" = 960 : i32, "B" = 961 : i32, "O" = 962 : i32, "size" = 963 : i32}, "launch_addr" = 975 : i32, "barrier_enable" = 1987 : i32, "barrier_trigger" = 1988 : i32}> : () -> ()
 // CHECK-NEXT: }

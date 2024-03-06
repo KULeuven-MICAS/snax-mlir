@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Iterable
 
 from xdsl.dialects.builtin import (
@@ -29,8 +31,6 @@ from xdsl.irdl import (
     result_def,
     var_operand_def,
 )
-from xdsl.parser import Parser
-from xdsl.printer import Printer
 from xdsl.traits import SymbolOpInterface
 
 
@@ -41,6 +41,13 @@ class TokenType(ParametrizedAttribute, TypeAttribute):
     """
 
     name = "acc2.token"
+
+    accelerator: ParameterDef[StringAttr]
+
+    def __init__(self, accelerator: str | StringAttr):
+        if not isinstance(accelerator, StringAttr):
+            accelerator = StringAttr(accelerator)
+        return super().__init__([accelerator])
 
 
 @irdl_attr_definition
@@ -82,7 +89,7 @@ class LaunchOp(IRDLOperation):
         super().__init__(
             operands=[state],
             properties={"accelerator": state_val.type.accelerator},
-            result_types=[TokenType()],
+            result_types=[TokenType(state_val.type.accelerator)],
         )
 
     def verify_(self) -> None:
@@ -91,6 +98,12 @@ class LaunchOp(IRDLOperation):
         if self.state.type.accelerator != self.accelerator:
             raise VerifyException(
                 "The state's accelerator does not match the launch accelerator!"
+            )
+        # that the token and my accelerator match
+        assert isinstance(self.token.type, TokenType)
+        if self.token.type.accelerator != self.accelerator:
+            raise VerifyException(
+                "The token's accelerator does not match the launch accelerator!"
             )
 
         # that the token is used
@@ -221,10 +234,25 @@ class AcceleratorOp(IRDLOperation):
 
     fields = prop_def(DictionaryAttr)
 
+    launch_addr = prop_def(IntegerAttr)
+
+    barrier_enable = prop_def(
+        IntegerAttr
+    )  # TODO: this will be reworked in a later version
+
+    barrier_trigger = prop_def(
+        IntegerAttr
+    )  # TODO: this will be reworked in a later version
+
+    # TODO: handle the await/poll stuff
+
     def __init__(
         self,
         name: str | StringAttr | SymbolRefAttr,
         fields: dict[str, int] | DictionaryAttr,
+        launch: int | IntegerAttr,
+        barrier_enable: int | IntegerAttr,
+        barrier_trigger: int | IntegerAttr,
     ):
         if not isinstance(fields, DictionaryAttr):
             fields = DictionaryAttr(
@@ -237,6 +265,21 @@ class AcceleratorOp(IRDLOperation):
                     SymbolRefAttr(name) if not isinstance(name, SymbolRefAttr) else name
                 ),
                 "fields": fields,
+                "launch_addr": (
+                    IntegerAttr(launch, i32)
+                    if not isinstance(launch, IntegerAttr)
+                    else launch
+                ),
+                "barrier_enable": (
+                    IntegerAttr(barrier_enable, i32)
+                    if not isinstance(barrier_enable, IntegerAttr)
+                    else barrier_enable
+                ),
+                "barrier_trigger": (
+                    IntegerAttr(barrier_trigger, i32)
+                    if not isinstance(barrier_trigger, IntegerAttr)
+                    else barrier_trigger
+                ),
             }
         )
 
@@ -248,41 +291,10 @@ class AcceleratorOp(IRDLOperation):
     def field_names(self) -> tuple[str, ...]:
         return tuple(self.fields.data.keys())
 
-    def field_items(self) -> Iterable[tuple[str, int]]:
+    def field_items(self) -> Iterable[tuple[str, IntegerAttr]]:
         for name, val in self.fields.data.items():
-            yield name, val.value.data
-
-    def print(self, printer: Printer):
-        printer.print_string(" ")
-        printer.print_attribute(self.name_prop)
-
-        printer.print_string(" ")
-        printer.print_attribute(self.fields)
-
-        if self.attributes:
-            printer.print(" attributes ")
-            printer.print_op_attributes(self.attributes)
-
-    @classmethod
-    def parse(cls, parser: Parser) -> AcceleratorOp:
-        name = parser.parse_symbol_name()
-
-        fields = parser.parse_optional_attr_dict()
-        if fields is None:
-            parser.raise_error("Expected accelerator fields dict!")
-
-        op = AcceleratorOp(name, DictionaryAttr(fields))
-
-        # parse optional attribute dict
-        if parser.parse_optional_keyword("attributes") is not None:
-            attrs = parser.parse_optional_attr_dict()
-            if attrs is None:
-                parser.raise_error(
-                    "Expected attribute dict to follow the `attributes` literal!"
-                )
-            op.attributes.update(attrs)
-
-        return op
+            assert isinstance(val, IntegerAttr)
+            yield name, val
 
 
 ACC = Dialect(
