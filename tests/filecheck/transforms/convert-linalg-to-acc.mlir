@@ -1,5 +1,5 @@
 // XFAIL: *
-// RUN: ./compiler/snax-opt -p convert-linalg-to-acc,mlir-opt[cse,canonicalize],acc-cse %s | filecheck %s
+// RUN: ./compiler/snax-opt -p convert-linalg-to-acc,mlir-opt[cse,canonicalize] %s | filecheck %s
 
 "builtin.module"() ({
   func.func public @simple_mult(
@@ -67,21 +67,21 @@
 // CHECK-NEXT:     "acc2.await"(%6) : (!acc2.token) -> ()
 // CHECK-NEXT:     %7 = "test.op"() : () -> i1
 // CHECK-NEXT:     %8, %9 = "scf.if"(%7) ({
-// CHECK-NEXT:       %10 = "acc2.setup"(%3, %5) <{"param_names" = ["B"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 1, 1>}> : (index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
+// CHECK-NEXT:       %10 = "acc2.setup"(%1, %3, %3, %4, %5) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 1>, "param_names" = ["A", "B", "O", "size"]}> : (index, index, index, index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
 // CHECK-NEXT:       %11 = "acc2.launch"(%10) <{"accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token
 // CHECK-NEXT:       "acc2.await"(%11) : (!acc2.token) -> ()
 // CHECK-NEXT:       %12 = "test.op"() : () -> i32
-// CHECK-NEXT:       %13 = "acc2.setup"(%2, %10) <{"param_names" = ["O"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 1, 1>}> : (index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
-// CHECK-NEXT:       scf.yield %12, %13 : i32, !acc2.state<"snax_hwpe_mult">
+// CHECK-NEXT:       scf.yield %12, %10 : i32, !acc2.state<"snax_hwpe_mult">
 // CHECK-NEXT:     }, {
-// CHECK-NEXT:       %14 = "test.op"() : () -> i32
-// CHECK-NEXT:       %15 = "acc2.launch"(%5) <{"accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token
+// CHECK-NEXT:       %13 = "test.op"() : () -> i32
+// CHECK-NEXT:       %14 = "acc2.setup"(%1, %2, %3, %4, %5) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 1>, "param_names" = ["A", "B", "O", "size"]}> : (index, index, index, index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
+// CHECK-NEXT:       %15 = "acc2.launch"(%14) <{"accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token
 // CHECK-NEXT:       "acc2.await"(%15) : (!acc2.token) -> ()
-// CHECK-NEXT:       %16 = "acc2.setup"(%3, %2, %5) <{"param_names" = ["B", "O"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 2, 1>}> : (index, index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
-// CHECK-NEXT:       scf.yield %14, %16 : i32, !acc2.state<"snax_hwpe_mult">
+// CHECK-NEXT:       scf.yield %13, %14 : i32, !acc2.state<"snax_hwpe_mult">
 // CHECK-NEXT:     }) : (i1) -> (i32, !acc2.state<"snax_hwpe_mult">)
 // CHECK-NEXT:     "test.op"(%8) : (i32) -> ()
-// CHECK-NEXT:     %17 = "acc2.launch"(%9) <{"accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token
+// CHECK-NEXT:     %16 = "acc2.setup"(%1, %3, %2, %4, %9) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 1>, "param_names" = ["A", "B", "O", "size"]}> : (index, index, index, index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
+// CHECK-NEXT:     %17 = "acc2.launch"(%16) <{"accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token
 // CHECK-NEXT:     "acc2.await"(%17) : (!acc2.token) -> ()
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
