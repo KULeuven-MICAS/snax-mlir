@@ -56,7 +56,7 @@ class SimplifyRedundantSetupCalls(RewritePattern):
 
 class HoistSetupCallsIntoConditionals(RewritePattern):
     """
-    Hoists setup calls into scf.if blocks.
+    Hoists setup calls into preceeding scf.if blocks if possible.
 
     This will never result in additional setup calls and only
     reduced the number of fields that are set up.
@@ -64,8 +64,7 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
 
     Things we need to worry about:
 
-    - not inserting a setup op before the originally produced state
-      is launched.
+    - we can't insert a setup op before the originally produced state.
     """
 
     @op_type_rewrite_pattern
@@ -78,18 +77,25 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
         assert isinstance(old_in_state, OpResult)
 
         # Step 1: Check that it's legal to move:
+        # grab all launch op uses of the SSA value produced by the scf.if
+        # this will only find things that happen *after* the scf.if, so nothing
+        # inside the scf.if regions.
         uses = tuple(
             use for use in op.in_state.uses if isinstance(use.operation, acc.LaunchOp)
         )
         # if we have some launch ops, we need to investigate further:
-        if len(uses) > 0:
-            # if there is a launch outside the scf.if
-            launch_op = uses[0].operation
+        for use in uses:
+            # grab the launch operation
+            launch_op = use.operation
             # check that it is in the same block (if not bail out)
+            # if it is not in the same block, it means that the launch is nested:
+            #   scf.if -> some_op { launch } -> setup
+            # properly inferring where the launch op is, is out of scope for now.
+            # we always bail out in this case so that we don't break things.
             # TODO: better check this case?
             if launch_op.parent_block() is not op.parent_block():
                 return
-            # if we share a block, figure out index and compare:
+            # if we share a block, figure out positions and compare:
             block = launch_op.parent_block()
             assert block is not None
             # launch op index < our index => we have a launch between us and the if
