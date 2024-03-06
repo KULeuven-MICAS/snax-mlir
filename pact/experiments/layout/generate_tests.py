@@ -26,7 +26,7 @@ sizes = [
 layouts = [
     'default',
     'tiled',
-    # 'round-robin',
+    'round-robin',
 ]
 
 backends = [
@@ -49,7 +49,7 @@ def generate_main(size, layout, backend):
     
 
     if layout == 'default':
-        if backend in ['cpu', 'base']:
+        if backend in ['base']:
             raise UnsupportedCombinationException()
         # raise ValueError('Not yet implemented')
         strideInnermostA = 8
@@ -67,6 +67,18 @@ def generate_main(size, layout, backend):
         strideInnermostC = 256
         ldA = round(256 * size[1] // 8)
         ldB = round(256 * size[1] // 8)
+        ldC = round(256 * size[2] // 8)
+        rowStrideA = 8
+        rowStrideB = 8
+        rowStrideC = 32
+    elif layout == 'round-robin':
+        if backend in ['base']:
+            raise UnsupportedCombinationException()
+        strideInnermostA = 64
+        strideInnermostB = round(64 * size[1] // 8)
+        strideInnermostC = 256
+        ldA = round(64 * size[1] // 8)
+        ldB = 64
         ldC = round(256 * size[2] // 8)
         rowStrideA = 8
         rowStrideB = 8
