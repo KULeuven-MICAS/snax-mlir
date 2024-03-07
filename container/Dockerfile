@@ -77,13 +77,13 @@ RUN cd /src/target/snitch_cluster \
 RUN  cd /src && \
 
  # hacky hacky stuff to fix snitch cluster mess
- export SNAX_DEV_PATH=$(find /src/.bender/git/checkouts/ -type d -name "snax-dev*" -print -quit) && \
- bender update && \
- cd $SNAX_DEV_PATH && \
- make `pwd`/rtl/streamer_gemm_wrapper.sv && \
+ #export SNAX_DEV_PATH=$(find /src/.bender/git/checkouts/ -type d -name "snax-dev*" -print -quit) && \
+# bender update && \
+# cd $SNAX_DEV_PATH && \
+# make `pwd`/rtl/streamer_gemm_wrapper.sv && \
  
- cd /src && \ 
- make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)  CFG_OVERRIDE=cfg/snax-streamer-gemm.hjson
+# cd /src && \ 
+# make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)  CFG_OVERRIDE=cfg/snax-streamer-gemm.hjson
 
  # spike-dasm
 RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
