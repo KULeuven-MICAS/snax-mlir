@@ -46,7 +46,10 @@ class LowerAccPattern(RewritePattern, ABC):
 
 class LowerAccSetupToCsr(LowerAccPattern):
     """
-    Convert setup ops to a series of CSR sets:
+    Convert setup ops to a series of CSR sets that set each field to the given value.
+
+    Looks up the csr addresses of the value fields by getting the `acc2.accelerator`
+    operation from the module op.
     """
 
     @op_type_rewrite_pattern
@@ -75,7 +78,7 @@ class LowerAccSetupToCsr(LowerAccPattern):
 
 class LowerAccLaunchToCsr(LowerAccPattern):
     """
-    Convert launch ops to a single csr set (1)
+    Convert launch ops to a single `csr_set $launch_addr, 1`
     """
 
     @op_type_rewrite_pattern
@@ -108,8 +111,8 @@ class LowerAccAwaitToCsr(LowerAccPattern):
     """
     Lower await ops to a series of CSR sets:
 
-    1: enable barriers
-    2: trigger barrier
+    1: `csr_set $enable_barriers, 1`
+    2: `csr_set $trigger_barrier, 0`
     """
 
     @op_type_rewrite_pattern
@@ -152,8 +155,25 @@ class LowerAccAwaitToCsr(LowerAccPattern):
 
 
 class DeleteAllStates(RewritePattern):
+    """
+    This pattern deletes all remaining SSA values that are of `acc.state` type
+    from any remaining operations.
+
+    This is done to un-weave the `acc2.state` variables that were inserted into
+    control flow operations.
+    """
+
     def match_and_rewrite(self, op: Operation, rewriter: PatternRewriter, /):
+        """
+        This  method is implemented in two parts, because it felt easier to argue
+        about operands separately from results. This shouldn't be a big problem,
+        as most operations should have either arguments *or* results of the chosen
+        type but rarely both.
+        """
+        # first rewrite operands:
         if any(isinstance(operand.type, acc.StateType) for operand in op.operands):
+            # use the generic creation interface to clone the op but with fewer
+            # operands:
             new_op = op.__class__.create(
                 operands=[
                     operand
@@ -166,10 +186,13 @@ class DeleteAllStates(RewritePattern):
                 successors=op.successors,
                 regions=[reg.clone() for reg in op.regions],
             )
+            # replace the op
             rewriter.replace_op(op, new_op)
             op = new_op
 
+        # then we check if any of the results are of the offending type
         if any(isinstance(result.type, acc.StateType) for result in op.results):
+            # and again, clone the op but remove the results of the offending type
             new_op = op.__class__.create(
                 operands=op.operands,
                 result_types=[
@@ -182,11 +205,23 @@ class DeleteAllStates(RewritePattern):
                 successors=op.successors,
                 regions=[op.detach_region(reg) for reg in tuple(op.regions)],
             )
-            new_ops_results = list(new_op.results)[::-1]
+            # now we need to tell the rewriter which results to "drop" from the
+            # operation. In order to do that it expects a list[SSAValue | None]
+            #  that maps the old results to either:
+            #  - a new result to replace it, or
+            #  - `None` to signify the erasure of the result var.
+            # So we construct a new list that has that structure:
+
+            # first we create a list of reverse-order results from the new op
+            new_ops_results = list(new_op.results)
+            # now we iterate the old results and use either:
+            #  - `None` if the old result was erased, or
+            #  - `new_results.pop(0)`, which is the next result of the new results
             replace_results_by = [
-                None if isinstance(res.type, acc.StateType) else new_ops_results.pop()
+                None if isinstance(res.type, acc.StateType) else new_ops_results.pop(0)
                 for res in op.results
             ]
+            # and then we replace the offending operation
             rewriter.replace_op(op, new_op, new_results=replace_results_by)
 
 
@@ -208,6 +243,7 @@ class ConvertAccToCsrPass(ModulePass):
     name = "convert-acc-to-csr"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+        # first lower all acc2 ops and erase old SSA values
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
                 [
@@ -220,4 +256,5 @@ class ConvertAccToCsrPass(ModulePass):
             walk_reverse=True,
         ).rewrite_module(op)
 
+        # then we remove all the top-level acc2.accelerator operations from the module
         PatternRewriteWalker(RemoveAcceleratorOps()).rewrite_module(op)

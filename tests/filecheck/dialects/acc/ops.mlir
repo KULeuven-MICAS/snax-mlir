@@ -17,7 +17,9 @@ func.func @test() {
         operandSegmentSizes = array<i32: 2, 0>
     }> : (i32, i32) -> !acc2.state<"acc1">
 
-    %token = "acc2.launch"(%state) <{accelerator = "acc1"}>: (!acc2.state<"acc1">) -> !acc2.token
+    %token = "acc2.launch"(%state) <{accelerator = "acc1"}>: (!acc2.state<"acc1">) -> !acc2.token<"acc1">
+
+    "acc2.await"(%token) : (!acc2.token<"acc1">) -> ()
 
     %state2 = "acc2.setup"(%one, %two, %state) <{
         param_names = ["A", "B"],
@@ -25,7 +27,7 @@ func.func @test() {
         operandSegmentSizes = array<i32: 2, 1>
     }> : (i32, i32, !acc2.state<"acc1">) -> !acc2.state<"acc1">
 
-    "acc2.await"(%token) : (!acc2.token) -> ()
+    "acc2.await"(%token) : (!acc2.token<"acc1">) -> ()
 
     func.return
 }
@@ -36,9 +38,9 @@ func.func @test() {
 // CHECK-NEXT:   "func.func"() <{"sym_name" = "test", "function_type" = () -> ()}> ({
 // CHECK-NEXT:     %one, %two = "test.op"() : () -> (i32, i32)
 // CHECK-NEXT:     %state = "acc2.setup"(%one, %two) <{"param_names" = ["A", "B"], "accelerator" = "acc1", "operandSegmentSizes" = array<i32: 2, 0>}> : (i32, i32) -> !acc2.state<"acc1">
-// CHECK-NEXT:     %token = "acc2.launch"(%state) <{"accelerator" = "acc1"}> : (!acc2.state<"acc1">) -> !acc2.token
+// CHECK-NEXT:     %token = "acc2.launch"(%state) <{"accelerator" = "acc1"}> : (!acc2.state<"acc1">) -> !acc2.token<"acc1">
 // CHECK-NEXT:     %state2 = "acc2.setup"(%one, %two, %state) <{"param_names" = ["A", "B"], "accelerator" = "acc1", "operandSegmentSizes" = array<i32: 2, 1>}> : (i32, i32, !acc2.state<"acc1">) -> !acc2.state<"acc1">
-// CHECK-NEXT:     "acc2.await"(%token) : (!acc2.token) -> ()
+// CHECK-NEXT:     "acc2.await"(%token) : (!acc2.token<"acc1">) -> ()
 // CHECK-NEXT:     "func.return"() : () -> ()
 // CHECK-NEXT:   }) : () -> ()
 // CHECK-NEXT: }) : () -> ()
