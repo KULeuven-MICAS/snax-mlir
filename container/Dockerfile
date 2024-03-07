@@ -7,6 +7,7 @@ RUN git clone https://github.com/jorendumoulin/pact24_snitch_cluster.git /src \
  && cd /src \
  && git checkout ${SNITCH_BRANCH} \
  && git submodule update --init
+ 
 
 # Snitch-specific version for libc and clang runtime libraries
 # LLVM 17 is already installed in base image
