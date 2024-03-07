@@ -19,8 +19,6 @@ func.func @test() {
 
     %token = "acc2.launch"(%state) <{accelerator = "acc1"}>: (!acc2.state<"acc1">) -> !acc2.token<"acc1">
 
-    "acc2.await"(%token) : (!acc2.token<"acc1">) -> ()
-
     %state2 = "acc2.setup"(%one, %two, %state) <{
         param_names = ["A", "B"],
         accelerator = "acc1",
