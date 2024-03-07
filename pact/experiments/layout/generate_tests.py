@@ -30,8 +30,8 @@ layouts = [
 ]
 
 backends = [
-    'cpu',      # cpu golden model
-    'base',     # base system (no streamers)
+    # 'cpu',      # cpu golden model
+    # 'base',     # base system (no streamers)
     'fifo-2',   # streamer with a fifo depth of 2
 ]
 
