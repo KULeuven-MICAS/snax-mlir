@@ -3,9 +3,14 @@ FROM ghcr.io/kuleuven-micas/snax:latest as deps
 
 ARG SNITCH_BRANCH=fifo-2
 
-RUN git clone https://github.com/jorendumoulin/pact24_snitch_cluster.git /src \
+# RUN git clone https://github.com/jorendumoulin/pact24_snitch_cluster.git /src \
+#  && cd /src \
+#  && git checkout ${SNITCH_BRANCH} \
+#  && git submodule update --init
+
+RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
  && cd /src \
- && git checkout ${SNITCH_BRANCH} \
+ && git checkout xyi/quick-streamer-integration \
  && git submodule update --init
  
 
@@ -38,33 +43,6 @@ RUN apt update -y \
  && ./configure --prefix=/opt/python3.11 \
  && make install -j $(nproc)
 
-# FROM deps as snax-mac
-# # snitch runtime
-# RUN cd /src/target/snitch_cluster \
-#  && make DEBUG=ON sw  -j$(nproc) \
-#  CFG_OVERRIDE=cfg/snax-mac.hjson \
-#  SELECT_TOOLCHAIN=llvm-generic \
-#  SELECT_RUNTIME=rtl-generic
-# # verilator model
-# RUN  cd /src && \
-# make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
-#  CFG_OVERRIDE=cfg/snax-mac.hjson
-# # spike-dasm
-# RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
-#  && ./configure --prefix=/opt/snitch-spike \
-#  && make install
-
-# FROM deps as snax-gemm
-# # snitch runtime
-# RUN cd /src/target/snitch_cluster \
-#  && make DEBUG=ON sw  -j$(nproc) \
-#  SELECT_TOOLCHAIN=llvm-generic \
-#  SELECT_RUNTIME=rtl-generic \
-#  CFG_OVERRIDE=cfg/snax-gemm.hjson
-# # verilator model
-# RUN  cd /src && \
-#  make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
-#  CFG_OVERRIDE=cfg/snax-gemm.hjson
 
 FROM deps as snax-streamer-gemm
 # snitch runtime
