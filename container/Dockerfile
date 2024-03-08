@@ -69,21 +69,15 @@ RUN apt update -y \
 FROM deps as snax-streamer-gemm
 # snitch runtime
 RUN cd /src/target/snitch_cluster \
+ && bender update \
  && make DEBUG=ON sw  -j$(nproc) \
  SELECT_TOOLCHAIN=llvm-generic \
  SELECT_RUNTIME=rtl-generic \
  CFG_OVERRIDE=cfg/snax-streamer-gemm.hjson
 # verilator model
-RUN  cd /src && \
-
- # hacky hacky stuff to fix snitch cluster mess
- #export SNAX_DEV_PATH=$(find /src/.bender/git/checkouts/ -type d -name "snax-dev*" -print -quit) && \
-# bender update && \
-# cd $SNAX_DEV_PATH && \
-# make `pwd`/rtl/streamer_gemm_wrapper.sv && \
- 
-# cd /src && \ 
- make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)  CFG_OVERRIDE=cfg/snax-streamer-gemm.hjson
+RUN  cd /src && \ 
+      bender update && \
+     make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)  CFG_OVERRIDE=cfg/snax-streamer-gemm.hjson
 
  # spike-dasm
 RUN cd /src/target/snitch_cluster/work-vlt/riscv-isa-sim \
