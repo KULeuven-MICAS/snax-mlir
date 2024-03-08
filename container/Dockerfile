@@ -11,32 +11,32 @@ RUN git clone https://github.com/jorendumoulin/pact24_snitch_cluster.git /src \
 
 # Snitch-specific version for libc and clang runtime libraries
 # LLVM 17 is already installed in base image
-# RUN mkdir -p /opt/snitch-llvm \
-#  && wget -qO- https://github.com/pulp-platform/llvm-project/releases/download/0.12.0/riscv32-pulp-llvm-ubuntu1804-0.12.0.tar.gz | \
-#     tar xz --strip-components=1 -C /opt/snitch-llvm
-# # python 3.11
-# RUN apt update -y \
-#  && apt install -y \
-#       build-essential \
-#       zlib1g-dev \
-#       libncurses5-dev \
-#       libgdbm-dev \
-#       libnss3-dev \
-#       libssl-dev \
-#       libreadline-dev \
-#       libffi-dev \
-#       libsqlite3-dev \
-#       wget \
-#       libbz2-dev \
-#       lzma \
-#       liblzma-dev \
-#       libbz2-dev \
-#  && mkdir -p /tmp/python-src \
-#  && wget -qO- https://www.python.org/ftp/python/3.11.5/Python-3.11.5.tgz | \
-#     tar xz --strip-components=1 -C /tmp/python-src \
-#  && cd /tmp/python-src \
-#  && ./configure --prefix=/opt/python3.11 \
-#  && make install -j $(nproc)
+RUN mkdir -p /opt/snitch-llvm \
+ && wget -qO- https://github.com/pulp-platform/llvm-project/releases/download/0.12.0/riscv32-pulp-llvm-ubuntu1804-0.12.0.tar.gz | \
+    tar xz --strip-components=1 -C /opt/snitch-llvm
+# python 3.11
+RUN apt update -y \
+ && apt install -y \
+      build-essential \
+      zlib1g-dev \
+      libncurses5-dev \
+      libgdbm-dev \
+      libnss3-dev \
+      libssl-dev \
+      libreadline-dev \
+      libffi-dev \
+      libsqlite3-dev \
+      wget \
+      libbz2-dev \
+      lzma \
+      liblzma-dev \
+      libbz2-dev \
+ && mkdir -p /tmp/python-src \
+ && wget -qO- https://www.python.org/ftp/python/3.11.5/Python-3.11.5.tgz | \
+    tar xz --strip-components=1 -C /tmp/python-src \
+ && cd /tmp/python-src \
+ && ./configure --prefix=/opt/python3.11 \
+ && make install -j $(nproc)
 
 # FROM deps as snax-mac
 # # snitch runtime
