@@ -3,6 +3,10 @@ FROM ghcr.io/kuleuven-micas/snax:latest as deps
 
 ARG SNITCH_BRANCH=fifo-2
 
+RUN apt-get update && apt-get install -y curl
+
+RUN sbt package
+
 RUN git clone https://github.com/jorendumoulin/pact24_snitch_cluster.git /src \
  && cd /src \
  && git checkout ${SNITCH_BRANCH} \
