@@ -1,18 +1,21 @@
+import itertools
 import os
+
 import numpy as np
 import numpy.typing as npt
-import itertools
+
 
 class UnsupportedCombinationException(Exception):
     pass
+
 
 directory = os.path.dirname(__file__)
 
 # size is defined as [M, N, K]
 # A is MxN, B is NxK, C is MxK
 sizes = [
-    [16, 16, 16], # ops = 16*16*16 = 4096
-    [16, 16, 32], # ops = 16*16*32 = 8192
+    [16, 16, 16],  # ops = 16*16*16 = 4096
+    [16, 16, 32],  # ops = 16*16*32 = 8192
     # [16, 32, 32], # ops = 16*32*32 = 16384
     # [32, 32, 32], # ops = 32*32*32 = 32768
     # [32, 32, 64], # ops = 32*32*64 = 65536
@@ -24,32 +27,31 @@ sizes = [
 ]
 
 layouts = [
-    'default',
-    'tiled',
-    'round-robin',
+    "default",
+    "tiled",
+    "round-robin",
 ]
 
 backends = [
     # 'cpu',      # cpu golden model
     # 'base',     # base system (no streamers)
-    'fifo-2',   # streamer with a fifo depth of 2
+    "fifo-2",  # streamer with a fifo depth of 2
 ]
 
-def generate_mlir(size):
-    memref_a = f'memref<{size[0]}x{size[1]}xi8>'
-    memref_b = f'memref<{size[1]}x{size[2]}xi8, strided<[1, {size[1]}], offset:0>>'
-    memref_c = f'memref<{size[0]}x{size[2]}xi32>'
 
-    template_path = os.path.join(directory, 'mlir_template.mlir')
+def generate_mlir(size):
+    memref_a = f"memref<{size[0]}x{size[1]}xi8>"
+    memref_b = f"memref<{size[1]}x{size[2]}xi8, strided<[1, {size[1]}], offset:0>>"
+    memref_c = f"memref<{size[0]}x{size[2]}xi32>"
+
+    template_path = os.path.join(directory, "mlir_template.mlir")
     template = open(template_path).read()
     return template.format(memref_a=memref_a, memref_b=memref_b, memref_c=memref_c)
 
+
 def generate_main(size, layout, backend):
-
-    
-
-    if layout == 'default':
-        if backend in ['base']:
+    if layout == "default":
+        if backend in ["base"]:
             raise UnsupportedCombinationException()
         # raise ValueError('Not yet implemented')
         strideInnermostA = 8
@@ -61,7 +63,7 @@ def generate_main(size, layout, backend):
         rowStrideA = size[1]
         rowStrideB = size[1]
         rowStrideC = size[2] * 4
-    elif layout == 'tiled':
+    elif layout == "tiled":
         strideInnermostA = 256
         strideInnermostB = 256
         strideInnermostC = 256
@@ -71,8 +73,8 @@ def generate_main(size, layout, backend):
         rowStrideA = 8
         rowStrideB = 8
         rowStrideC = 32
-    elif layout == 'round-robin':
-        if backend in ['base']:
+    elif layout == "round-robin":
+        if backend in ["base"]:
             raise UnsupportedCombinationException()
         strideInnermostA = 64
         strideInnermostB = round(64 * size[1] // 8)
@@ -84,53 +86,50 @@ def generate_main(size, layout, backend):
         rowStrideB = 8
         rowStrideC = 32
     else:
-        raise ValueError(f'Unknown layout: {layout}')
+        raise ValueError(f"Unknown layout: {layout}")
 
-    if backend == 'cpu':
-        template_path = os.path.join(directory, 'main_template_cpu.c')
-    elif backend == 'base':
-        template_path = os.path.join(directory, 'main_template_base.c')
-    elif backend == 'fifo-2':
-        template_path = os.path.join(directory, 'main_template_fifo.c')
+    if backend == "cpu":
+        template_path = os.path.join(directory, "main_template_cpu.c")
+    elif backend == "base":
+        template_path = os.path.join(directory, "main_template_base.c")
+    elif backend == "fifo-2":
+        template_path = os.path.join(directory, "main_template_fifo.c")
     else:
-        raise ValueError(f'Unsupported backend: {backend}')
-    
+        raise ValueError(f"Unsupported backend: {backend}")
+
     template = open(template_path).read()
     return template.format(
-        strideInnermostA = strideInnermostA,
-        strideInnermostB = strideInnermostB,
-        strideInnermostC = strideInnermostC,
-        ldA = ldA,
-        ldB = ldB,
-        ldC = ldC,
-        rowStrideA = rowStrideA,
-        rowStrideB = rowStrideB,
-        rowStrideC = rowStrideC
+        strideInnermostA=strideInnermostA,
+        strideInnermostB=strideInnermostB,
+        strideInnermostC=strideInnermostC,
+        ldA=ldA,
+        ldB=ldB,
+        ldC=ldC,
+        rowStrideA=rowStrideA,
+        rowStrideB=rowStrideB,
+        rowStrideC=rowStrideC,
     )
-    
-    
+
+
 def generate_makefile(layout, backend):
+    if layout == "default":
+        layout_pass = "set-memory-layout-default"
+    elif layout == "tiled":
+        layout_pass = "set-memory-layout"
+    elif layout == "round-robin":
+        layout_pass = "set-memory-layout-round-robin"
 
-    if layout == 'default':
-        layout_pass = 'set-memory-layout-default'
-    elif layout == 'tiled':
-        layout_pass = 'set-memory-layout'
-    elif layout == 'round-robin':
-        layout_pass = 'set-memory-layout-round-robin'
-
-    if backend in ['cpu', 'base']:
-        runtime_backend = 'snax-gemm'
-    elif backend == 'fifo-2':
-        runtime_backend = 'snax-streamer-gemm-fifo-2'
+    if backend in ["cpu", "base"]:
+        runtime_backend = "snax-gemm"
+    elif backend == "fifo-2":
+        runtime_backend = "snax-streamer-gemm-fifo-2"
     else:
-        raise ValueError(f'Unsupported backend: {backend}')
+        raise ValueError(f"Unsupported backend: {backend}")
 
-    template_path = os.path.join(directory, 'makefile_template')
+    template_path = os.path.join(directory, "makefile_template")
     template = open(template_path).read()
-    return template.format(
-        backend = runtime_backend,
-        layout_pass = layout_pass
-    )
+    return template.format(backend=runtime_backend, layout_pass=layout_pass)
+
 
 def create_header(sizes: dict[str, int], variables: dict[str, npt.NDArray]) -> None:
     includes = ["#include <stdint.h>", "#pragma once", ""]
@@ -151,15 +150,19 @@ def create_data(variables: dict[str, npt.NDArray]):
     variables = {i: np.reshape(j, j.size) for i, j in variables.items()}
 
     for variable_name, variable_value in variables.items():
-        result += f"const {variable_value.dtype}_t {variable_name}" + f"[{variable_value.size}] = " + "{\n"
+        result += (
+            f"const {variable_value.dtype}_t {variable_name}"
+            + f"[{variable_value.size}] = "
+            + "{\n"
+        )
         variable_str = ["\t" + str(i) for i in variable_value]
         result += ",\n".join(variable_str)
         result += "\n};\n\n"
 
     return result
-    
-def generate_data(size):
 
+
+def generate_data(size):
     low_bound = -128
     high_bound = 127
     A_size = [size[0], size[1]]
@@ -196,11 +199,9 @@ def generate_data(size):
 
 
 def main():
-
     test_cases = list(itertools.product(sizes, layouts, backends))
 
     for i, testcase in enumerate(test_cases):
-
         try:
             size, layout, backend = testcase
 
@@ -209,25 +210,28 @@ def main():
             makefile = generate_makefile(layout, backend)
             header, data = generate_data(size)
 
-            test_dir = os.path.join(directory, f'test_{i}_{layout}_{backend}_{"_".join(map(str, size))}')
+            test_dir = os.path.join(
+                directory, f'test_{i}_{layout}_{backend}_{"_".join(map(str, size))}'
+            )
             os.makedirs(test_dir, exist_ok=True)
 
             # write all the files
-            with open(os.path.join(test_dir, 'matmul.mlir'), 'w') as f:
+            with open(os.path.join(test_dir, "matmul.mlir"), "w") as f:
                 f.write(mlir)
-            with open(os.path.join(test_dir, 'main.c'), 'w') as f:
+            with open(os.path.join(test_dir, "main.c"), "w") as f:
                 f.write(main)
-            with open(os.path.join(test_dir, 'Makefile'), 'w') as f:
+            with open(os.path.join(test_dir, "Makefile"), "w") as f:
                 f.write(makefile)
-            with open(os.path.join(test_dir, 'data.h'), 'w') as f:
+            with open(os.path.join(test_dir, "data.h"), "w") as f:
                 f.write(header)
-            with open(os.path.join(test_dir, 'data.c'), 'w') as f:
+            with open(os.path.join(test_dir, "data.c"), "w") as f:
                 f.write(data)
+            with open(os.path.join(test_dir, ".gitignore"), "w") as f:
+                f.write("*")
 
         except UnsupportedCombinationException:
-            print(f'Unsupported combination: {testcase}')
+            print(f"Unsupported combination: {testcase}")
 
 
 if __name__ == "__main__":
     main()
-
