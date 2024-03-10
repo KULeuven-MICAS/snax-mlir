@@ -18,7 +18,7 @@ FROM deps as snax-streamer-gemm
 RUN  cd /src && \ 
      make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc)  CFG_OVERRIDE=cfg/snax-streamer-gemm.hjson
 
-# runtime
+# runtime and apps
 RUN cd /src/target/snitch_cluster \
  && make DEBUG=ON sw  -j$(nproc) \
  SELECT_TOOLCHAIN=llvm-generic \
@@ -33,4 +33,6 @@ COPY --from=snax-streamer-gemm /src/target/snitch_cluster/sw/runtime/rtl /opt/sn
 COPY --from=snax-streamer-gemm /src/target/snitch_cluster/sw/runtime/rtl-generic /opt/snax-streamer-gemm/target/snitch_cluster/sw/runtime/rtl-generic
 COPY --from=snax-streamer-gemm /src/target/snitch_cluster/sw/runtime/common /opt/snax-streamer-gemm/target/snitch_cluster/sw/runtime/common
 COPY --from=snax-streamer-gemm /src/target/snitch_cluster/sw/snax/ /opt/snax-streamer-gemm/target/snitch_cluster/sw/snax
+COPY --from=snax-streamer-gemm /src/target/snitch_cluster/sw/apps/ /opt/snax-streamer-gemm/target/snitch_cluster/sw/apps
+
 COPY --from=snax-streamer-gemm /src/sw/math/ /opt/snax-streamer-gemm/sw/math/
