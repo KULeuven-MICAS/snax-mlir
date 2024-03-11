@@ -19,8 +19,10 @@ from compiler.dialects import acc
 
 
 @dataclass
-class LowerAccPattern(RewritePattern, ABC):
+class LowerAccBasePattern(RewritePattern, ABC):
     """
+    Base class for the acc2 dialect lowerings.
+
     Wraps some common logic to get handles to accelerator ops inside the module.
     """
 
@@ -44,7 +46,7 @@ class LowerAccPattern(RewritePattern, ABC):
         return id(self)
 
 
-class LowerAccSetupToCsr(LowerAccPattern):
+class LowerAccSetupToCsr(LowerAccBasePattern):
     """
     Convert setup ops to a series of CSR sets that set each field to the given value.
 
@@ -64,10 +66,9 @@ class LowerAccSetupToCsr(LowerAccPattern):
                 [
                     addr_val := arith.Constant(addr),
                     llvm.InlineAsmOp(
-                        [[addr_val, val]],
-                        [[]],
                         "csrw $0, $1",
                         "I, r",
+                        [addr_val, val],
                         has_side_effects=True,
                     ),
                 ]
@@ -76,7 +77,7 @@ class LowerAccSetupToCsr(LowerAccPattern):
         rewriter.erase_matched_op(safe_erase=False)
 
 
-class LowerAccLaunchToCsr(LowerAccPattern):
+class LowerAccLaunchToCsr(LowerAccBasePattern):
     """
     Convert launch ops to a single `csr_set $launch_addr, 1`
     """
@@ -92,13 +93,12 @@ class LowerAccLaunchToCsr(LowerAccPattern):
                 addr_val := arith.Constant(acc_op.launch_addr),
                 val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
                 llvm.InlineAsmOp(
-                    [[addr_val, val]],
-                    [[]],
                     "csrw $0, $1",
                     # I = any 12 bit immediate, K = any 5 bit immediate
                     # The K allows LLVM to emit an `csrrwi` instruction,
                     # which has room for one 5 bit immediate only.
                     "I, K",
+                    [addr_val, val],
                     has_side_effects=True,
                 ),
             ],
@@ -107,7 +107,7 @@ class LowerAccLaunchToCsr(LowerAccPattern):
         )
 
 
-class LowerAccAwaitToCsr(LowerAccPattern):
+class LowerAccAwaitToCsr(LowerAccBasePattern):
     """
     Lower await ops to a series of CSR sets:
 
@@ -130,23 +130,21 @@ class LowerAccAwaitToCsr(LowerAccPattern):
                 one := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
                 zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
                 llvm.InlineAsmOp(
-                    [[barrier_enable, one]],
-                    [[]],
                     "csrw $0, $1",
                     # I = any 12 bit immediate, K = any 5 bit immediate
                     # The K allows LLVM to emit an `csrrwi` instruction,
                     # which has room for one 5 bit immediate only.
                     "I, K",
+                    [barrier_enable, one],
                     has_side_effects=True,
                 ),
                 llvm.InlineAsmOp(
-                    [[barrier_trigger, zero]],
-                    [[]],
                     "csrw $0, $1",
                     # I = any 12 bit immediate, K = any 5 bit immediate
                     # The K allows LLVM to emit an `csrrwi` instruction,
                     # which has room for one 5 bit immediate only.
                     "I, K",
+                    [barrier_trigger, zero],
                     has_side_effects=True,
                 ),
             ],
