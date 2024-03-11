@@ -3,7 +3,7 @@ ARG TAGS=ghcr.io/kuleuven-micas/snax:main
 FROM ${TAGS} as deps
 
 # Install Zsh
-RUN apt-get update && apt-get install -y zsh
+RUN apt-get update && apt-get install -y zsh curl
 
 # Install Oh-My-Zsh
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
