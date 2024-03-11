@@ -1,0 +1,26 @@
+ARG TAGS=ghcr.io/kuleuven-micas/snax:main
+
+FROM ${TAGS} as deps
+
+# Install Zsh
+RUN apt-get update && apt-get install -y zsh
+
+# Install Oh-My-Zsh
+RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
+# Set Zsh as the default shell
+SHELL ["/bin/zsh", "-c"]
+
+# Set the Robby Russell theme
+RUN sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="robbyrussell"/g' ~/.zshrc
+
+# Install autocomplete plugin
+RUN git clone https://github.com/zsh-users/zsh-autosuggestions.git $ZSH_CUSTOM/plugins/zsh-autosuggestions
+
+# Enable autocomplete plugin
+RUN sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions)/g' ~/.zshrc
+
+# Install Vim and Nano
+RUN apt-get install -y vim nano
+
+

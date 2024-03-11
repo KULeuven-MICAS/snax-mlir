@@ -172,3 +172,31 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |-
             TAGS=${{ steps.meta.outputs.tags }}
+  build-docker-dev:
+    name: Build and Deploy Development image
+    runs-on: ubuntu-22.04
+    needs: [build-docker-full]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: GHCR Log-in
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: container/DockerfileDev
+          push: true
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}-dev
+          build-args: |-
+            TAGS=${{ steps.meta.outputs.tags }}
