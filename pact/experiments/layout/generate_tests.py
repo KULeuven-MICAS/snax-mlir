@@ -27,7 +27,7 @@ sizes = [
 ]
 
 layouts = [
-    # "default",
+    "default",
     "tiled",
     # "round-robin",
 ]
@@ -89,11 +89,11 @@ def generate_main(size, layout, backend):
         raise ValueError(f"Unknown layout: {layout}")
 
     if backend == "cpu":
-        template_path = os.path.join(directory, "main_template_cpu.c")
+        template_path = os.path.join(directory, "main_template_cpu.c_template")
     elif backend == "base":
-        template_path = os.path.join(directory, "main_template_base.c")
+        template_path = os.path.join(directory, "main_template_base.c_template")
     elif backend == "fifo-2":
-        template_path = os.path.join(directory, "main_template_fifo.c")
+        template_path = os.path.join(directory, "main_template_fifo.c_template")
     else:
         raise ValueError(f"Unsupported backend: {backend}")
 

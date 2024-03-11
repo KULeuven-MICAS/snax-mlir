@@ -40,9 +40,9 @@ uint32_t strideA = 0;
 uint32_t strideB = 0;
 uint32_t strideC = 0;
 
+
 // Set STREAMER configuration CSR
-void set_streamer_csr(int8_t *a_ptr, int8_t *b_ptr, int32_t *c_ptr) {
-  {
+void set_streamer_csr(int8_t* a_ptr, int8_t* b_ptr, int32_t* c_ptr) {{
     // loop bounds, from innermost to outermost
     write_csr(960, K_param);
     write_csr(961, N_param);
@@ -83,58 +83,47 @@ void set_streamer_csr(int8_t *a_ptr, int8_t *b_ptr, int32_t *c_ptr) {
 
     // base ptr for C
     write_csr(980, (uint32_t)(c_ptr));
-  }
-}
+}}
 
 // Set CSR to start STREAMER
-void set_streamer_start() {
-  { write_csr(981, 1); }
-}
+void set_streamer_start() {{ write_csr(981, 1); }}
 
 // Set GEMM configuration CSR
-void set_block_gemm_csr() {
-  {
+void set_block_gemm_csr() {{
     // set loop bounds, from M to K to N
-    write_csr(982, M_param);
-    write_csr(983, K_param);
+    write_csr(982, K_param);
+    write_csr(983, M_param);
     write_csr(984, N_param);
 
     // set subtraction a and b
     write_csr(985, 0);
-  }
-}
+}}
 
 // Set CSR to start GEMM
-void set_block_gemm_start() {
-  { write_csr(986, 1); }
-}
+void set_block_gemm_start() {{ write_csr(986, 1); }}
 
 // Poll until Streamer and GEMM accelerator finish
-void wait_streamer_gemm() {
-  {
+void wait_streamer_gemm() {{
     write_csr(981, 0);
     write_csr(986, 0);
 
-    // // implement some artificial delay
-    // for (int i = 0; i < 1000; i++) {{
-    //     asm volatile("nop");
-    // }}
-  }
-}
+    // implement some artificial delay
+    for (int i = 0; i < 1000; i++) {{
+        asm volatile("nop");
+    }}
+}}
 
 // Kernel provided via external definition
 void _mlir_ciface_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
-                         TwoDMemrefI32_t *c);
+                                TwoDMemrefI32_t *c);
 
 void _mlir_ciface_snax_qgemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
-                             int32_t zpb, TwoDMemrefI32_t *c) {
-  {
+                             int32_t zpb, TwoDMemrefI32_t *c) {{
 
     int8_t *a_ptr = a->aligned_data;
     int8_t *b_ptr = b->aligned_data;
     int32_t *c_ptr = c->aligned_data;
-    // printf("Executing snax_qgemm with a=%p, b=%p, c=%p \n", a_ptr, b_ptr,
-    // c_ptr);
+    // printf("Executing snax_qgemm with a=%p, b=%p, c=%p \n", a_ptr, b_ptr, c_ptr);
 
     set_streamer_csr(a_ptr, b_ptr, c_ptr);
     set_streamer_start();
@@ -148,55 +137,49 @@ void _mlir_ciface_snax_qgemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
     snrt_mcycle();
 
     // printf("Finished executing snax_qgemm\n");
-  }
-}
+}}
 
-int main() {
-  {
+int main() {{
 
-    // Create memref objects for data stored in L3
-    TwoDMemrefI8_t memrefA;
-    memrefA.data = &A;
-    memrefA.aligned_data = memrefA.data;
-    memrefA.offset = 0;
+  // Create memref objects for data stored in L3
+  TwoDMemrefI8_t memrefA;
+  memrefA.data = &A;
+  memrefA.aligned_data = memrefA.data;
+  memrefA.offset = 0;
 
-    TwoDMemrefI8_t memrefB;
-    memrefB.data = &B;
-    memrefB.aligned_data = memrefB.data;
-    memrefB.offset = 0;
+  TwoDMemrefI8_t memrefB;
+  memrefB.data = &B;
+  memrefB.aligned_data = memrefB.data;
+  memrefB.offset = 0;
 
-    TwoDMemrefI32_t memrefC;
-    memrefC.data = &C;
-    memrefC.aligned_data = memrefC.data;
-    memrefC.offset = 0;
+  TwoDMemrefI32_t memrefC;
+  memrefC.data = &C;
+  memrefC.aligned_data = memrefC.data;
+  memrefC.offset = 0;
 
-    (void)snrt_mcycle();
+  (void)snrt_mcycle();
 
-    _mlir_ciface_matmul(&memrefA, &memrefB, &memrefC);
+  _mlir_ciface_matmul(&memrefA, &memrefB, &memrefC);
 
-    snrt_cluster_hw_barrier();
+  snrt_cluster_hw_barrier();
 
-    (void)snrt_mcycle();
+  (void)snrt_mcycle();
 
-    // Correctness check -
-    // from this point on only core 0 is required to be alive.
-    int thiscore = snrt_cluster_core_idx();
-    if (thiscore != 0)
-      return 0;
+  // Correctness check -
+  // from this point on only core 0 is required to be alive.
+  int thiscore = snrt_cluster_core_idx();
+  if (thiscore != 0)
+    return 0;
 
-    int nerr = 0;
-    for (int i = 0; i < M_size * N_size; i++) {
-      {
-        int32_t error = memrefC.aligned_data[i] - C_golden[i];
-        if (error != 0)
-          nerr += 1;
-      }
-    }
+  int nerr = 0;
+  for (int i = 0; i < M_size * N_size; i++) {{
+    int32_t error = memrefC.aligned_data[i] - C_golden[i];
+    if (error != 0)
+      nerr += 1;
+  }}
 
-    // insert mcycle to show fault in trace
-    if (nerr != 0)
-      snrt_mcycle();
+  // insert mcycle to show fault in trace
+  if (nerr != 0) snrt_mcycle();
 
-    return nerr;
-  }
-}
+  return nerr;
+}}
