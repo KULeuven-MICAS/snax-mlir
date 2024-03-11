@@ -18,23 +18,23 @@ sizes = [
     [16, 16, 32],  # ops = 16*16*32 = 8192
     [16, 32, 32],  # ops = 16*32*32 = 16384
     [32, 32, 32],  # ops = 32*32*32 = 32768
-    # [32, 32, 64], # ops = 32*32*64 = 65536
-    # [32, 64, 64], # ops = 32*64*64 = 131072
-    # [64, 64, 64], # ops = 64*64*64 = 262144
+    [32, 32, 64],  # ops = 32*32*64 = 65536
+    [32, 64, 64],  # ops = 32*64*64 = 131072
+    [64, 64, 64],  # ops = 64*64*64 = 262144
     # [64, 64, 128], # ops = 64*64*128 = 524288
     # [64, 128, 128], # ops = 64*128*128 = 1048576
     # [128, 128, 128], # ops = 128*128*128 = 2097152
 ]
 
 layouts = [
-    "default",
+    # "default",
     "tiled",
     # "round-robin",
 ]
 
 backends = [
-    # 'cpu',      # cpu golden model
-    # 'base',     # base system (no streamers)
+    "cpu",  # cpu golden model
+    "base",  # base system (no streamers)
     "fifo-2",  # streamer with a fifo depth of 2
 ]
 
