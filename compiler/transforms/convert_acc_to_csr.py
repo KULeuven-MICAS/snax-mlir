@@ -109,10 +109,7 @@ class LowerAccLaunchToCsr(LowerAccBasePattern):
 
 class LowerAccAwaitToCsr(LowerAccBasePattern):
     """
-    Lower await ops to a series of CSR sets:
-
-    1: `csr_set $enable_barriers, 1`
-    2: `csr_set $trigger_barrier, 0`
+    Lower await ops to a set of assembly that lowers to a buffer.
     """
 
     @op_type_rewrite_pattern
@@ -122,29 +119,28 @@ class LowerAccAwaitToCsr(LowerAccBasePattern):
 
         # TODO: this is a temporary solution that will be reworked eventually
 
-        # emit a barrier_enable, and then a barrier_trigger:
+        # emit a snax_hwpe-style barrier
         rewriter.replace_matched_op(
             [
-                barrier_enable := arith.Constant(acc_op.barrier_enable),
-                barrier_trigger := arith.Constant(acc_op.barrier_trigger),
-                one := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
+                barrier_sw_barrier := arith.Constant(acc_op.barrier_sw_barrier),
                 zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
+                # FIXME: How to clobber a0?
                 llvm.InlineAsmOp(
-                    "csrw $0, $1",
+                    (
+                        "\n"
+                        "  csrr a0, $0\n"
+                        "1:\n"
+                        "  bnez a0, 1b\n"
+                        "  csrwi 0x3c5, $1\n"  # Weird clear routine
+                        "  nop\n"
+                        "  nop\n"
+                        "  nop\n"
+                    ),
                     # I = any 12 bit immediate, K = any 5 bit immediate
                     # The K allows LLVM to emit an `csrrwi` instruction,
                     # which has room for one 5 bit immediate only.
-                    "I, K",
-                    [barrier_enable, one],
-                    has_side_effects=True,
-                ),
-                llvm.InlineAsmOp(
-                    "csrw $0, $1",
-                    # I = any 12 bit immediate, K = any 5 bit immediate
-                    # The K allows LLVM to emit an `csrrwi` instruction,
-                    # which has room for one 5 bit immediate only.
-                    "I, K",
-                    [barrier_trigger, zero],
+                    "I,K",
+                    [barrier_sw_barrier, zero],
                     has_side_effects=True,
                 ),
             ],

@@ -19,7 +19,7 @@ from compiler.dialects import acc
 class HWPEAcceleratorInfo:
     name = "snax_hwpe_mult"
 
-    fields = ("A", "B", "O", "size")
+    fields = ("A", "B", "O", "vector_length", "nr_iters", "mode")
 
     def generate_vals(
         self, op: linalg.Generic
@@ -33,9 +33,13 @@ class HWPEAcceleratorInfo:
         a, b, c = op.operands
 
         zero = arith.Constant.from_int_and_width(0, builtin.IndexType())
+        one = arith.Constant.from_int_and_width(1, builtin.IndexType())
         dim = memref.Dim.from_source_and_index(a, zero)
         dim_i32 = arith.IndexCastOp(dim, builtin.i32)
-        size = [zero, dim, dim_i32], dim_i32.result
+        vector_length = [zero, dim, dim_i32], dim_i32.result
+
+        nr_iters = [one], one.result
+        mode = [one], one.result
 
         ptrs = [
             (
@@ -48,7 +52,7 @@ class HWPEAcceleratorInfo:
             for ref in (a, b, c)
         ]
 
-        return ptrs + [size]
+        return ptrs + [nr_iters] + [vector_length] + [mode]
 
     def generate_acc_op(self) -> acc.AcceleratorOp:
         """
@@ -56,18 +60,24 @@ class HWPEAcceleratorInfo:
 
         "acc2.accelerator"() <{
             name            = @snax_hwpe_mult,
-            fields          = {A=0x3c0, B=0x3c1, O=0x3c2, size=0x3c3},
-            launch_addr     = 0x3cf,
-            barrier_enable  = 0x7c3,
-            barrier_trigger = 0x7c4
+            fields          = {A=0x3d0, B=0x3d1, O=0x3d3, n_iters=0x3d4,
+                               vector_length=0x3d5, mode=0x3d6},
+            launch_addr     = 0x3c0,
+            barrier_sw_barrier = 0x3c3,
         }> : () -> ()
         """
         return acc.AcceleratorOp(
             self.name,
-            {"A": 0x3C0, "B": 0x3C1, "O": 0x3C2, "size": 0x3C3},
-            0x3CF,
-            0x7C3,
-            0x7C4,
+            {
+                "A": 0x3D0,
+                "B": 0x3D1,
+                "O": 0x3D3,
+                "nr_iters": 0x3D4,
+                "vector_length": 0x3D5,
+                "mode": 0x3D6,
+            },
+            0x3C0,
+            0x3C3,
         )
 
 

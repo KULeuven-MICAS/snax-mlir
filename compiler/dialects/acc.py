@@ -236,23 +236,16 @@ class AcceleratorOp(IRDLOperation):
 
     launch_addr = prop_def(IntegerAttr)
 
-    barrier_enable = prop_def(
+    barrier_sw_barrier = prop_def(
         IntegerAttr
     )  # TODO: this will be reworked in a later version
-
-    barrier_trigger = prop_def(
-        IntegerAttr
-    )  # TODO: this will be reworked in a later version
-
-    # TODO: handle the await/poll stuff
 
     def __init__(
         self,
         name: str | StringAttr | SymbolRefAttr,
         fields: dict[str, int] | DictionaryAttr,
         launch: int | IntegerAttr,
-        barrier_enable: int | IntegerAttr,
-        barrier_trigger: int | IntegerAttr,
+        barrier_sw_barrier: int | IntegerAttr,
     ):
         if not isinstance(fields, DictionaryAttr):
             fields = DictionaryAttr(
@@ -270,15 +263,10 @@ class AcceleratorOp(IRDLOperation):
                     if not isinstance(launch, IntegerAttr)
                     else launch
                 ),
-                "barrier_enable": (
-                    IntegerAttr(barrier_enable, i32)
-                    if not isinstance(barrier_enable, IntegerAttr)
-                    else barrier_enable
-                ),
-                "barrier_trigger": (
-                    IntegerAttr(barrier_trigger, i32)
-                    if not isinstance(barrier_trigger, IntegerAttr)
-                    else barrier_trigger
+                "barrier_sw_barrier": (
+                    IntegerAttr(barrier_sw_barrier, i32)
+                    if not isinstance(barrier_sw_barrier, IntegerAttr)
+                    else barrier_sw_barrier
                 ),
             }
         )
