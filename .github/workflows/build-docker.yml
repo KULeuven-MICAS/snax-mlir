@@ -174,7 +174,7 @@ jobs:
   build-docker-full:
     name: Build and Deploy Docker image
     runs-on: ubuntu-22.04
-    needs: [build-docker-base, build-docker-1, build-docker-2, build-docker-3, build-docker-4]
+    needs: [build-docker-base, build-docker-0, build-docker-1, build-docker-2, build-docker-3, build-docker-4]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
