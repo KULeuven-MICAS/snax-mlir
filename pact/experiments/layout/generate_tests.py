@@ -18,9 +18,9 @@ sizes = [
     [16, 16, 32],  # ops = 16*16*32 = 8192
     [16, 32, 32],  # ops = 16*32*32 = 16384
     [32, 32, 32],  # ops = 32*32*32 = 32768
-    # [32, 32, 64], # ops = 32*32*64 = 65536
-    # [32, 64, 64], # ops = 32*64*64 = 131072
-    # [64, 64, 64], # ops = 64*64*64 = 262144
+    [32, 32, 64],  # ops = 32*32*64 = 65536
+    [32, 64, 64],  # ops = 32*64*64 = 131072
+    [64, 64, 64],  # ops = 64*64*64 = 262144
     # [64, 64, 128], # ops = 64*64*128 = 524288
     # [64, 128, 128], # ops = 64*128*128 = 1048576
     # [128, 128, 128], # ops = 128*128*128 = 2097152
@@ -35,7 +35,11 @@ layouts = [
 backends = [
     # 'cpu',      # cpu golden model
     # 'base',     # base system (no streamers)
+    "fifo-0",  # streamer with a fifo depth of 0
+    "fifo-1",  # streamer with a fifo depth of 1
     "fifo-2",  # streamer with a fifo depth of 2
+    "fifo-3",  # streamer with a fifo depth of 3
+    "fifo-4",  # streamer with a fifo depth of 4
 ]
 
 
@@ -77,10 +81,12 @@ def generate_main(size, layout, backend):
         if backend in ["base"]:
             raise UnsupportedCombinationException()
         strideInnermostA = 64
-        strideInnermostB = round(64 * size[2] // 8)
+        # strideInnermostB = round(64 * size[2] // 8)
+        strideInnermostB = 64
         strideInnermostC = 256
         ldA = round(64 * size[1] // 8)
-        ldB = 64
+        # ldB = 64
+        ldB = round(64 * size[1] // 8)
         ldC = round(256 * size[2] // 8)
         rowStrideA = 8
         rowStrideB = 8
@@ -92,7 +98,7 @@ def generate_main(size, layout, backend):
         template_path = os.path.join(directory, "main_template_cpu.c_template")
     elif backend == "base":
         template_path = os.path.join(directory, "main_template_base.c_template")
-    elif backend == "fifo-2":
+    elif backend.startswith("fifo-"):
         template_path = os.path.join(directory, "main_template_fifo.c_template")
     else:
         raise ValueError(f"Unsupported backend: {backend}")
@@ -121,8 +127,16 @@ def generate_makefile(layout, backend):
 
     if backend in ["cpu", "base"]:
         runtime_backend = "snax-gemm"
+    elif backend == "fifo-0":
+        runtime_backend = "snax-streamer-gemm-fifo-0"
+    elif backend == "fifo-1":
+        runtime_backend = "snax-streamer-gemm-fifo-1"
     elif backend == "fifo-2":
         runtime_backend = "snax-streamer-gemm-fifo-2"
+    elif backend == "fifo-3":
+        runtime_backend = "snax-streamer-gemm-fifo-3"
+    elif backend == "fifo-4":
+        runtime_backend = "snax-streamer-gemm-fifo-4"
     else:
         raise ValueError(f"Unsupported backend: {backend}")
 

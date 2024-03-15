@@ -24,5 +24,6 @@ df["utilization"] = df["expected"] / df["cycles"]
 
 # order the data by layout, backend, and size
 df = df.sort_values(by=["layout", "backend", "size"])
+df.to_csv("summary.csv")
 
-print(df)
+print(df.head(150))

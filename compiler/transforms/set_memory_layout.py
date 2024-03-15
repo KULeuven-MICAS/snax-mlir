@@ -102,6 +102,7 @@ class SetMemoryLayout(ModulePass):
             op
         )
 
+
 class AddMemoryLayoutDefault(RewritePattern):
     """
     This class represents a rewrite pattern for adding memory layout to a
@@ -182,13 +183,15 @@ class AddMemoryLayoutDefault(RewritePattern):
 
         pass
 
+
 class SetMemoryLayoutDefault(ModulePass):
     name = "set-memory-layout-default"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(AddMemoryLayoutDefault(), apply_recursively=False).rewrite_module(
-            op
-        )
+        PatternRewriteWalker(
+            AddMemoryLayoutDefault(), apply_recursively=False
+        ).rewrite_module(op)
+
 
 class AddMemoryLayoutRoundRobin(RewritePattern):
     """
@@ -226,7 +229,7 @@ class AddMemoryLayoutRoundRobin(RewritePattern):
             tsl_input_b = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
-                        TiledStride([Stride(None, None), Stride(1, 8)]),
+                        TiledStride([Stride(64, None), Stride(1, 8)]),
                         TiledStride([Stride(None, None), Stride(8, 8)]),
                     ],
                     # offset=64,
@@ -270,10 +273,11 @@ class AddMemoryLayoutRoundRobin(RewritePattern):
 
         pass
 
+
 class SetMemoryLayoutRoundRobin(ModulePass):
     name = "set-memory-layout-round-robin"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(AddMemoryLayoutRoundRobin(), apply_recursively=False).rewrite_module(
-            op
-        )
+        PatternRewriteWalker(
+            AddMemoryLayoutRoundRobin(), apply_recursively=False
+        ).rewrite_module(op)
