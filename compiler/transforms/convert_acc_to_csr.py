@@ -3,7 +3,8 @@ from dataclasses import dataclass
 from functools import cache
 
 from xdsl.dialects import arith, builtin, llvm
-from xdsl.dialects.builtin import StringAttr
+from xdsl.dialects.builtin import StringAttr, i32
+from xdsl.dialects.scf import Condition, While, Yield
 from xdsl.ir import MLContext, Operation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -122,27 +123,45 @@ class LowerAccAwaitToCsr(LowerAccBasePattern):
         # emit a snax_hwpe-style barrier
         rewriter.replace_matched_op(
             [
-                barrier_sw_barrier := arith.Constant(acc_op.barrier_sw_barrier),
+                # Infinite while loop that unbreaks whenever
+                While(
+                    [],
+                    [],
+                    [
+                        barrier_sw_barrier := arith.Constant(acc_op.barrier_sw_barrier),
+                        zero := arith.Constant(
+                            builtin.IntegerAttr.from_int_and_width(0, 32)
+                        ),
+                        status := llvm.InlineAsmOp(
+                            "csrr $0, $1",
+                            # I = any 12 bit immediate
+                            # =r = store result in A 32- or 64-bit
+                            # general-purpose register (depending on the platform XLEN)
+                            "=r, I",
+                            [barrier_sw_barrier],
+                            [i32],
+                            has_side_effects=True,
+                        ),
+                        # check if not equal to zero
+                        comparison := arith.Cmpi(status, zero, "ne"),
+                        Condition(comparison.results[0]),
+                    ],
+                    [
+                        Yield(),
+                    ],
+                ),
+                addr_val := arith.Constant(builtin.IntegerAttr(965, 12)),  # 0x3c5 = 965
                 zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
-                # FIXME: How to clobber a0?
                 llvm.InlineAsmOp(
-                    (
-                        "\n"
-                        "  csrr a0, $0\n"
-                        "1:\n"
-                        "  bnez a0, 1b\n"
-                        "  csrwi 0x3c5, $1\n"  # Weird clear routine
-                        "  nop\n"
-                        "  nop\n"
-                        "  nop\n"
-                    ),
-                    # I = any 12 bit immediate, K = any 5 bit immediate
-                    # The K allows LLVM to emit an `csrrwi` instruction,
-                    # which has room for one 5 bit immediate only.
-                    "I,K",
-                    [barrier_sw_barrier, zero],
+                    "csrw $0, $1",
+                    "I, r",
+                    [addr_val, zero],
                     has_side_effects=True,
                 ),
+                # Three nops for random but important reasons
+                llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
+                llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
+                llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
             ],
             safe_erase=False,
         )
