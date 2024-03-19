@@ -33,13 +33,14 @@ class HWPEAcceleratorInfo:
         a, b, c = op.operands
 
         zero = arith.Constant.from_int_and_width(0, builtin.IndexType())
-        one = arith.Constant.from_int_and_width(1, builtin.IndexType())
+        iters_one = arith.Constant.from_int_and_width(1, 32)
+        mode_one = arith.Constant.from_int_and_width(1, 32)
         dim = memref.Dim.from_source_and_index(a, zero)
         dim_i32 = arith.IndexCastOp(dim, builtin.i32)
         vector_length = [zero, dim, dim_i32], dim_i32.result
 
-        nr_iters = [one], one.result
-        mode = [one], one.result
+        nr_iters = [iters_one], iters_one.result
+        mode = [mode_one], mode_one.result
 
         ptrs = [
             (
