@@ -92,7 +92,7 @@ class LowerAccLaunchToCsr(LowerAccBasePattern):
         rewriter.replace_matched_op(
             [
                 addr_val := arith.Constant(acc_op.launch_addr),
-                val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
+                val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
                 llvm.InlineAsmOp(
                     "csrw $0, $1",
                     # I = any 12 bit immediate, K = any 5 bit immediate
