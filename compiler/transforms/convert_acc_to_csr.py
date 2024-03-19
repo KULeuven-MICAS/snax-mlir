@@ -128,7 +128,7 @@ class LowerAccAwaitToCsr(LowerAccBasePattern):
                     [],
                     [],
                     [
-                        barrier_sw_barrier := arith.Constant(acc_op.barrier_sw_barrier),
+                        barrier := arith.Constant(acc_op.barrier),
                         zero := arith.Constant(
                             builtin.IntegerAttr.from_int_and_width(0, 32)
                         ),
@@ -138,7 +138,7 @@ class LowerAccAwaitToCsr(LowerAccBasePattern):
                             # =r = store result in A 32- or 64-bit
                             # general-purpose register (depending on the platform XLEN)
                             "=r, I",
-                            [barrier_sw_barrier],
+                            [barrier],
                             [i32],
                             has_side_effects=True,
                         ),

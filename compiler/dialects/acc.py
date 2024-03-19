@@ -236,16 +236,14 @@ class AcceleratorOp(IRDLOperation):
 
     launch_addr = prop_def(IntegerAttr)
 
-    barrier_sw_barrier = prop_def(
-        IntegerAttr
-    )  # TODO: this will be reworked in a later version
+    barrier = prop_def(IntegerAttr)  # TODO: this will be reworked in a later version
 
     def __init__(
         self,
         name: str | StringAttr | SymbolRefAttr,
         fields: dict[str, int] | DictionaryAttr,
         launch: int | IntegerAttr,
-        barrier_sw_barrier: int | IntegerAttr,
+        barrier: int | IntegerAttr,
     ):
         if not isinstance(fields, DictionaryAttr):
             fields = DictionaryAttr(
@@ -263,10 +261,10 @@ class AcceleratorOp(IRDLOperation):
                     if not isinstance(launch, IntegerAttr)
                     else launch
                 ),
-                "barrier_sw_barrier": (
-                    IntegerAttr(barrier_sw_barrier, i32)
-                    if not isinstance(barrier_sw_barrier, IntegerAttr)
-                    else barrier_sw_barrier
+                "barrier": (
+                    IntegerAttr(barrier, i32)
+                    if not isinstance(barrier, IntegerAttr)
+                    else barrier
                 ),
             }
         )

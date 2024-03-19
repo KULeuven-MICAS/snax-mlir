@@ -6,7 +6,7 @@ builtin.module {
       name            = @snax_hwpe_mult,
       fields          = {A=0x3d0, B=0x3d1, O=0x3d3, nr_iters=0x3d4, vector_length=0x3d5, mode=0x3d6},
       launch_addr     = 0x3c0,
-      barrier_sw_barrier  = 0x3c3
+      barrier         = 0x3c3
   }> : () -> ()
 
   func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg2 : memref<?xi32>, %i1 : i1) {
