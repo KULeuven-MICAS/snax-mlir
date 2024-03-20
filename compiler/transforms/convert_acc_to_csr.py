@@ -68,7 +68,7 @@ class LowerAccSetupToCsr(LowerAccBasePattern):
                     addr_val := arith.Constant(addr),
                     llvm.InlineAsmOp(
                         "csrw $0, $1",
-                        "I, r",
+                        "I, rK",
                         [addr_val, val],
                         has_side_effects=True,
                     ),
@@ -154,7 +154,7 @@ class LowerAccAwaitToCsr(LowerAccBasePattern):
                 zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
                 llvm.InlineAsmOp(
                     "csrw $0, $1",
-                    "I, r",
+                    "I, K",
                     [addr_val, zero],
                     has_side_effects=True,
                 ),

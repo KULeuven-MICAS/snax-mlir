@@ -169,7 +169,7 @@ class SetupOp(IRDLOperation):
 
     def __init__(
         self,
-        vals: Iterable[SSAValue | Operation],
+        vals: list[SSAValue | Operation],
         param_names: Iterable[str] | Iterable[StringAttr],
         accelerator: str | StringAttr,
         in_state: SSAValue | Operation | None = None,
