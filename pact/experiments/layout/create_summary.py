@@ -23,7 +23,11 @@ df["expected"] = df["size"].apply(calculate_expected)
 df["utilization"] = df["expected"] / df["cycles"]
 
 # order the data by layout, backend, and size
-df = df.sort_values(by=["layout", "backend", "size"])
+df = df.sort_values(by=["success", "layout", "backend", "size"])
 df.to_csv("summary.csv")
 
-print(df.head(150))
+print(df.head(30))
+
+# Calculate the success rate
+success_rate = df["success"].sum() / len(df)
+print("Success Rate:", success_rate)

@@ -15,12 +15,16 @@ directory = os.path.dirname(__file__)
 # A is MxN, B is NxK, C is MxK
 sizes = [
     [16, 16, 16],  # ops = 16*16*16 = 4096
+    [16, 16, 24],
+    [16, 24, 16],
     [16, 16, 32],  # ops = 16*16*32 = 8192
     [16, 32, 32],  # ops = 16*32*32 = 16384
     [32, 32, 32],  # ops = 32*32*32 = 32768
-    [32, 32, 64],  # ops = 32*32*64 = 65536
-    [32, 64, 64],  # ops = 32*64*64 = 131072
-    [64, 64, 64],  # ops = 64*64*64 = 262144
+    # [64, 24, 16],
+    # [64, 24, 48],
+    # [32, 32, 64],  # ops = 32*32*64 = 65536
+    # [32, 64, 64],  # ops = 32*64*64 = 131072
+    # [64, 64, 64],  # ops = 64*64*64 = 262144
     # [64, 64, 128], # ops = 64*64*128 = 524288
     # [64, 128, 128], # ops = 64*128*128 = 1048576
     # [128, 128, 128], # ops = 128*128*128 = 2097152
@@ -213,6 +217,15 @@ def generate_data(size):
 
 
 def main():
+    # # make custom sizes:
+    # sizes = []
+    # a = range(16, 64+1, 8)
+    # for i in a:
+    #     for j in a:
+    #         sizes.append([64, i, j])
+
+    # print(sizes)
+
     test_cases = list(itertools.product(sizes, layouts, backends))
 
     for i, testcase in enumerate(test_cases):
