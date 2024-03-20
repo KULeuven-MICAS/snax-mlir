@@ -11,6 +11,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.traits import SymbolTable
 
 from compiler.dialects import acc
 
@@ -18,7 +19,7 @@ from compiler.dialects import acc
 class HWPEAcceleratorInfo:
     name = "snax_hwpe_mult"
 
-    fields = ("A", "B", "O", "size")
+    fields = ("A", "B", "O", "vector_length", "nr_iters", "mode")
 
     def generate_vals(
         self, op: linalg.Generic
@@ -32,18 +33,53 @@ class HWPEAcceleratorInfo:
         a, b, c = op.operands
 
         zero = arith.Constant.from_int_and_width(0, builtin.IndexType())
+        iters_one = arith.Constant.from_int_and_width(1, 32)
+        mode_one = arith.Constant.from_int_and_width(1, 32)
         dim = memref.Dim.from_source_and_index(a, zero)
-        size = [zero, dim], dim.result
+        dim_i32 = arith.IndexCastOp(dim, builtin.i32)
+        vector_length = [zero, dim, dim_i32], dim_i32.result
+
+        nr_iters = [iters_one], iters_one.result
+        mode = [mode_one], mode_one.result
 
         ptrs = [
             (
-                [ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref)],
-                ptr.aligned_pointer,
+                [
+                    ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref),
+                    ptr_i32 := arith.IndexCastOp(ptr, builtin.i32),
+                ],
+                ptr_i32.result,
             )
             for ref in (a, b, c)
         ]
 
-        return ptrs + [size]
+        return ptrs + [nr_iters] + [vector_length] + [mode]
+
+    def generate_acc_op(self) -> acc.AcceleratorOp:
+        """
+        Return this accelerator op:
+
+        "acc2.accelerator"() <{
+            name            = @snax_hwpe_mult,
+            fields          = {A=0x3d0, B=0x3d1, O=0x3d3, n_iters=0x3d4,
+                               vector_length=0x3d5, mode=0x3d6},
+            launch_addr     = 0x3c0,
+            barrier = 0x3c3,
+        }> : () -> ()
+        """
+        return acc.AcceleratorOp(
+            self.name,
+            {
+                "A": 0x3D0,
+                "B": 0x3D1,
+                "O": 0x3D3,
+                "nr_iters": 0x3D4,
+                "vector_length": 0x3D5,
+                "mode": 0x3D6,
+            },
+            0x3C0,
+            0x3C3,
+        )
 
 
 @dataclass
@@ -60,11 +96,15 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter, /):
-        if op.library_call.data != "snax_hwpe_mult":
+        if op.library_call and op.library_call.data != "snax_hwpe_mult":
             return
 
         # grab accelerator
         accelerator = HWPEAcceleratorInfo()
+
+        t = self.module.get_trait(SymbolTable)
+        assert t is not None
+        t.insert_or_update(self.module, accelerator.generate_acc_op())
 
         # grab arguments
         args = accelerator.generate_vals(op)
@@ -192,7 +232,14 @@ def _walk(
                     state.clear()
                 # arith, memref, linalg and test ops are not relevant to
                 # accelerator setup, so we can skip them
-                elif op.dialect_name() in ("arith", "memref", "linalg", "test", "acc2"):
+                elif op.dialect_name() in (
+                    "arith",
+                    "memref",
+                    "linalg",
+                    "test",
+                    "acc2",
+                    "snax",
+                ):
                     continue
                 # these ops are specifically whitelisted:
                 elif isinstance(op, func.Return | scf.Yield):

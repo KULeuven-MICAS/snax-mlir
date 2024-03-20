@@ -1,6 +1,15 @@
+from __future__ import annotations
+
 from collections.abc import Iterable
 
-from xdsl.dialects.builtin import ArrayAttr, StringAttr
+from xdsl.dialects.builtin import (
+    ArrayAttr,
+    DictionaryAttr,
+    IntegerAttr,
+    StringAttr,
+    SymbolRefAttr,
+    i32,
+)
 from xdsl.ir import (
     Attribute,
     Dialect,
@@ -22,6 +31,7 @@ from xdsl.irdl import (
     result_def,
     var_operand_def,
 )
+from xdsl.traits import SymbolOpInterface
 
 
 @irdl_attr_definition
@@ -31,6 +41,13 @@ class TokenType(ParametrizedAttribute, TypeAttribute):
     """
 
     name = "acc2.token"
+
+    accelerator: ParameterDef[StringAttr]
+
+    def __init__(self, accelerator: str | StringAttr):
+        if not isinstance(accelerator, StringAttr):
+            accelerator = StringAttr(accelerator)
+        return super().__init__([accelerator])
 
 
 @irdl_attr_definition
@@ -72,7 +89,7 @@ class LaunchOp(IRDLOperation):
         super().__init__(
             operands=[state],
             properties={"accelerator": state_val.type.accelerator},
-            result_types=[TokenType()],
+            result_types=[TokenType(state_val.type.accelerator)],
         )
 
     def verify_(self) -> None:
@@ -81,6 +98,12 @@ class LaunchOp(IRDLOperation):
         if self.state.type.accelerator != self.accelerator:
             raise VerifyException(
                 "The state's accelerator does not match the launch accelerator!"
+            )
+        # that the token and my accelerator match
+        assert isinstance(self.token.type, TokenType)
+        if self.token.type.accelerator != self.accelerator:
+            raise VerifyException(
+                "The token's accelerator does not match the launch accelerator!"
             )
 
         # that the token is used
@@ -146,7 +169,7 @@ class SetupOp(IRDLOperation):
 
     def __init__(
         self,
-        vals: Iterable[SSAValue | Operation],
+        vals: list[SSAValue | Operation],
         param_names: Iterable[str] | Iterable[StringAttr],
         accelerator: str | StringAttr,
         in_state: SSAValue | Operation | None = None,
@@ -189,12 +212,84 @@ class SetupOp(IRDLOperation):
             )
 
 
+class AcceleratorSymbolOpTrait(SymbolOpInterface):
+    def get_sym_attr_name(self, op: Operation) -> StringAttr | None:
+        assert isinstance(op, AcceleratorOp)
+        return StringAttr(op.name_prop.string_value())
+
+
+@irdl_op_definition
+class AcceleratorOp(IRDLOperation):
+    """
+    Declares an accelerator that can be configures, launched, etc.
+    `fields` is a dictionary mapping accelerator configuration names to
+    CSR addresses.
+    """
+
+    name = "acc2.accelerator"
+
+    traits = frozenset([AcceleratorSymbolOpTrait()])
+
+    name_prop = prop_def(SymbolRefAttr, prop_name="name")
+
+    fields = prop_def(DictionaryAttr)
+
+    launch_addr = prop_def(IntegerAttr)
+
+    barrier = prop_def(IntegerAttr)  # TODO: this will be reworked in a later version
+
+    def __init__(
+        self,
+        name: str | StringAttr | SymbolRefAttr,
+        fields: dict[str, int] | DictionaryAttr,
+        launch: int | IntegerAttr,
+        barrier: int | IntegerAttr,
+    ):
+        if not isinstance(fields, DictionaryAttr):
+            fields = DictionaryAttr(
+                {name: IntegerAttr(val, i32) for name, val in fields.items()}
+            )
+
+        super().__init__(
+            properties={
+                "name": (
+                    SymbolRefAttr(name) if not isinstance(name, SymbolRefAttr) else name
+                ),
+                "fields": fields,
+                "launch_addr": (
+                    IntegerAttr(launch, i32)
+                    if not isinstance(launch, IntegerAttr)
+                    else launch
+                ),
+                "barrier": (
+                    IntegerAttr(barrier, i32)
+                    if not isinstance(barrier, IntegerAttr)
+                    else barrier
+                ),
+            }
+        )
+
+    def verify_(self) -> None:
+        for name, val in self.fields.data.items():
+            if not isinstance(val, IntegerAttr):
+                raise VerifyException("fields must only contain IntegerAttr!")
+
+    def field_names(self) -> tuple[str, ...]:
+        return tuple(self.fields.data.keys())
+
+    def field_items(self) -> Iterable[tuple[str, IntegerAttr]]:
+        for name, val in self.fields.data.items():
+            assert isinstance(val, IntegerAttr)
+            yield name, val
+
+
 ACC = Dialect(
     "acc2",
     [
         SetupOp,
         LaunchOp,
         AwaitOp,
+        AcceleratorOp,
     ],
     [
         StateType,
