@@ -16,18 +16,29 @@ for d in dirs:
     file_to_open = os.path.join(
         directory, d, "matmul.x.logs", "trace_hart_00000000.trace.json"
     )
-    with open(file_to_open) as file:
-        file = json.load(file)
-        result = file[2]
-        name_split = d.split("_")
-        layout = name_split[2]
-        backend = name_split[3]
-        size = "x".join(name_split[4:])
+    name_split = d.split("_")
+    layout = name_split[2]
+    backend = name_split[3]
+    size = "x".join(name_split[4:])
+    try:
+        with open(file_to_open) as file:
+            file = json.load(file)
+            result = file[2]
+
+            result["test"] = d
+            result["layout"] = layout
+            result["backend"] = backend
+            result["size"] = size
+            result["success"] = len(file) == 5
+            results.append(result)
+    except Exception as e:
+        print(f"Error: {e}")
+        result = {}
         result["test"] = d
         result["layout"] = layout
         result["backend"] = backend
         result["size"] = size
-        result["success"] = len(file) == 5
+        result["success"] = False
         results.append(result)
 
 # Store results in results.json
