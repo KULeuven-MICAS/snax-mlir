@@ -4,7 +4,7 @@ builtin.module {
 
   "acc2.accelerator"() <{
       name            = @snax_hwpe_mult,
-      fields          = {A=0x3d0, B=0x3d1, O=0x3d3, nr_iters=0x3d4, vector_length=0x3d5, mode=0x3d6},
+      fields          = {A=0x3d0, B=0x3d1, O=0x3d3, vector_length=0x3d4, nr_iters=0x3d5, mode=0x3d6},
       launch_addr     = 0x3c0,
       barrier         = 0x3c3
   }> : () -> ()
@@ -40,7 +40,6 @@ builtin.module {
   }
 }
 
-
 // CHECK-NEXT: builtin.module {
 // CHECK-NEXT:   func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg2 : memref<?xi32>, %i1 : i1) {
 // CHECK-NEXT:     %0 = arith.constant 0 : index
@@ -58,10 +57,10 @@ builtin.module {
 // CHECK-NEXT:     "llvm.inline_asm"(%10, %4) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
 // CHECK-NEXT:     %11 = arith.constant 979 : i64
 // CHECK-NEXT:     "llvm.inline_asm"(%11, %6) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
-// CHECK-NEXT:     %12 = arith.constant 980 : i64
+// CHECK-NEXT:     %12 = arith.constant 981 : i64
 // CHECK-NEXT:     "llvm.inline_asm"(%12, %8) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
 // CHECK-NEXT:     %13 = arith.constant 960 : i64
-// CHECK-NEXT:     %14 = arith.constant 1 : i5
+// CHECK-NEXT:     %14 = arith.constant 0 : i5
 // CHECK-NEXT:     "llvm.inline_asm"(%13, %14) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
 // CHECK-NEXT:     scf.while () : () -> () {
 // CHECK-NEXT:       %15 = arith.constant 963 : i64
@@ -82,7 +81,7 @@ builtin.module {
 // CHECK-NEXT:       %21 = arith.constant 977 : i64
 // CHECK-NEXT:       "llvm.inline_asm"(%21, %6) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
 // CHECK-NEXT:       %22 = arith.constant 960 : i64
-// CHECK-NEXT:       %23 = arith.constant 1 : i5
+// CHECK-NEXT:       %23 = arith.constant 0 : i5
 // CHECK-NEXT:       "llvm.inline_asm"(%22, %23) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
 // CHECK-NEXT:       scf.while () : () -> () {
 // CHECK-NEXT:         %24 = arith.constant 963 : i64
@@ -104,7 +103,7 @@ builtin.module {
 // CHECK-NEXT:       scf.yield
 // CHECK-NEXT:     }, {
 // CHECK-NEXT:       %31 = arith.constant 960 : i64
-// CHECK-NEXT:       %32 = arith.constant 1 : i5
+// CHECK-NEXT:       %32 = arith.constant 0 : i5
 // CHECK-NEXT:       "llvm.inline_asm"(%31, %32) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
 // CHECK-NEXT:       scf.while () : () -> () {
 // CHECK-NEXT:         %33 = arith.constant 963 : i64
@@ -128,7 +127,7 @@ builtin.module {
 // CHECK-NEXT:       scf.yield
 // CHECK-NEXT:     }) : (i1) -> ()
 // CHECK-NEXT:     %41 = arith.constant 960 : i64
-// CHECK-NEXT:     %42 = arith.constant 1 : i5
+// CHECK-NEXT:     %42 = arith.constant 0 : i5
 // CHECK-NEXT:     "llvm.inline_asm"(%41, %42) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
 // CHECK-NEXT:     scf.while () : () -> () {
 // CHECK-NEXT:       %43 = arith.constant 963 : i64
@@ -148,5 +147,3 @@ builtin.module {
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
-
-

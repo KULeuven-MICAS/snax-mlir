@@ -8,9 +8,17 @@ include ../../runtime/Makefile.rules
 TESTS =
 TESTS += baseline.x
 TESTS += linalg.x
+TESTS += linalg.acc_dialect.x
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
+
+
+# Override snax-opt rules to avoid linalg-to-library-call pass
+SNAXOPTACCFLAGS = -p dispatch-kernels,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions,convert-linalg-to-acc,convert-acc-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
+
+%.acc_dialect.snax-opt.mlir: %.preprocfinal.mlir
+	$(SNAXOPT) $(SNAXOPTACCFLAGS) -o $@ $<
 
 data.c data.h:
 	$(PYTHON) gendata.py
