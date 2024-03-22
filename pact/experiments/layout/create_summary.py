@@ -22,6 +22,12 @@ df["expected"] = df["size"].apply(calculate_expected)
 # add a new column to the DataFrame with the speedup
 df["utilization"] = df["expected"] / df["cycles"]
 
+df["M"] = df["size"].apply(lambda x: int(x.split("x")[0]))
+df["K"] = df["size"].apply(lambda x: int(x.split("x")[1]))
+df["N"] = df["size"].apply(lambda x: int(x.split("x")[2]))
+
+df["ops"] = df["M"] * df["K"] * df["N"]
+
 # order the data by layout, backend, and size
 df = df.sort_values(by=["success", "layout", "backend", "size"])
 df.to_csv("summary.csv")
