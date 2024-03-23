@@ -6,11 +6,13 @@ generate:
 
 run_%: %
 	cd $< && make allrun
+	@echo "$< trace done at `date`" >> log.txt
 
 run: $(addprefix run_, $(TESTS))
 
 traces_%: %
 	cd $< && make traces
+	@echo "$< trace done at `date`" >> log.txt
 
 traces: $(addprefix traces_, $(TESTS))
 
