@@ -37,8 +37,8 @@ sizes = [
 layouts = [
     "default",
     "strided",
-    # "tiled",
-    # "round-robin",
+    "tiled",
+    "round-robin",
 ]
 
 backends = [
@@ -47,9 +47,9 @@ backends = [
     # "fifo-0",  # streamer with a fifo depth of 0
     "fifo-1-slow",
     "fifo-1",  # streamer with a fifo depth of 1
-    # "fifo-2",  # streamer with a fifo depth of 2
-    # "fifo-3",  # streamer with a fifo depth of 3
-    # "fifo-4",  # streamer with a fifo depth of 4
+    "fifo-2",  # streamer with a fifo depth of 2
+    "fifo-3",  # streamer with a fifo depth of 3
+    "fifo-4",  # streamer with a fifo depth of 4
 ]
 
 
@@ -262,13 +262,16 @@ def generate_data(size):
 
 def main():
     # # make custom sizes:
-    # sizes = []
-    # a = range(16, 64+1, 8)
-    # for i in a:
-    #     for j in a:
-    #         sizes.append([64, i, j])
+    sizes = []
+    sizes_M = [56, 64, 72]
+    sizes_K = [32, 40, 48, 56, 64, 72]
+    sizes_N = [32, 40, 48, 56, 64, 72]
+    for M in sizes_M:
+        for K in sizes_K:
+            for N in sizes_N:
+                sizes.append([M, K, N])
 
-    # print(sizes)
+    print(len(sizes))
 
     test_cases = list(itertools.product(sizes, layouts, backends))
 
