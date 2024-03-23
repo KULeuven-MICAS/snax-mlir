@@ -1,0 +1,34 @@
+name: Run PACT Experiments
+
+on:
+  # push:
+  #   branches:
+  #     - main
+  # pull_request:
+  workflow_dispatch:
+    inputs:
+      container-tag:
+        description: 'Container tag'
+        required: true
+        default: 'main'
+
+jobs:
+  build-and-run-kernels:
+    runs-on: ubuntu-latest
+    container: 
+      image: ghcr.io/kuleuven-micas/snax-mlir:${{ github.event.inputs.container-tag || 'pr-98' }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install snax compiler
+        run: |
+          /opt/python3.11/bin/python3 -m pip install -e .
+      - name: Reinstall pip modules from requirements
+        run: |
+          /opt/python3.11/bin/python3 -m pip install -r requirements.txt
+      - name: Run layout tests
+        run: |
+          export PATH=/opt/python3.11/bin:$PATH
+          make clean
+          make generate
+          make all
+        working-directory: pact/experiments/layout

@@ -4,3 +4,4 @@ lit
 numpy
 xdsl @ git+https://github.com/xdslproject/xdsl.git@ad8f2e0c1af9dedd267a1e3e75634ebefee12710
 tensorflow-cpu==2.14.0
+pandas
