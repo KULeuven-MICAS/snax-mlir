@@ -21,6 +21,7 @@ from compiler.transforms.set_memory_layout import (
     SetMemoryLayout,
     SetMemoryLayoutDefault,
     SetMemoryLayoutRoundRobin,
+    SetMemoryLayoutStrided,
 )
 from compiler.transforms.set_memory_space import SetMemorySpace
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
@@ -56,6 +57,9 @@ class SNAXOptMain(xDSLOptMain):
         )
         super().register_pass(
             SetMemoryLayoutRoundRobin.name, lambda: SetMemoryLayoutRoundRobin
+        )
+        super().register_pass(
+            SetMemoryLayoutStrided.name, lambda: SetMemoryLayoutStrided
         )
 
         super().register_pass(InsertSyncBarrier.name, lambda: InsertSyncBarrier)

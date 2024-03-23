@@ -1,5 +1,6 @@
 import itertools
 import os
+from math import gcd
 
 import numpy as np
 import numpy.typing as npt
@@ -14,16 +15,16 @@ directory = os.path.dirname(__file__)
 # size is defined as [M, N, K]
 # A is MxN, B is NxK, C is MxK
 sizes = [
-    # [16, 16, 16],  # ops = 16*16*16 = 4096
+    [16, 16, 16],  # ops = 16*16*16 = 4096
     # [16, 16, 24],
     # [16, 24, 16],
-    # [16, 16, 32],  # ops = 16*16*32 = 8192
-    # [16, 32, 32],  # ops = 16*32*32 = 16384
-    # [32, 32, 32],  # ops = 32*32*32 = 32768
+    [16, 16, 32],  # ops = 16*16*32 = 8192
+    [16, 32, 32],  # ops = 16*32*32 = 16384
+    [32, 32, 32],  # ops = 32*32*32 = 32768
     # [64, 24, 16],
-    # [64, 24, 48],
-    # [32, 32, 64],  # ops = 32*32*64 = 65536
-    # [32, 64, 64],  # ops = 32*64*64 = 131072
+    [64, 24, 48],
+    [32, 32, 64],  # ops = 32*32*64 = 65536
+    [32, 64, 64],  # ops = 32*64*64 = 131072
     [64, 72, 72],
     [64, 72, 64],  # ops = 64*64*64 = 262144
     [64, 64, 72],
@@ -35,8 +36,9 @@ sizes = [
 
 layouts = [
     "default",
-    "tiled",
-    "round-robin",
+    "strided",
+    # "tiled",
+    # "round-robin",
 ]
 
 backends = [
@@ -45,9 +47,9 @@ backends = [
     # "fifo-0",  # streamer with a fifo depth of 0
     "fifo-1-slow",
     "fifo-1",  # streamer with a fifo depth of 1
-    "fifo-2",  # streamer with a fifo depth of 2
-    "fifo-3",  # streamer with a fifo depth of 3
-    "fifo-4",  # streamer with a fifo depth of 4
+    # "fifo-2",  # streamer with a fifo depth of 2
+    # "fifo-3",  # streamer with a fifo depth of 3
+    # "fifo-4",  # streamer with a fifo depth of 4
 ]
 
 
@@ -62,10 +64,13 @@ def generate_mlir(size):
 
 
 def generate_main(size, layout, backend):
+    offset_a = 0
+    offset_b = 0
+    offset_c = 0
+
     if layout == "default":
         if backend in ["base"]:
             raise UnsupportedCombinationException()
-        # raise ValueError('Not yet implemented')
         strideInnermostA = 8
         strideInnermostB = 8
         strideInnermostC = 32
@@ -99,6 +104,34 @@ def generate_main(size, layout, backend):
         rowStrideA = 8
         rowStrideB = 8
         rowStrideC = 32
+    elif layout == "strided":
+        if backend in ["base"]:
+            raise UnsupportedCombinationException()
+
+        def get_next_one_gcd(a, b):
+            while gcd(a, b) != 1:
+                a += 1
+            return a
+
+        K_param = size[1]
+        K_param = round(K_param // 8)
+        K_param_strided = get_next_one_gcd(K_param, 32)
+
+        N_param = size[2]
+        N_param = round(N_param // 8)
+        N_param_strided = get_next_one_gcd(N_param, 8)
+
+        strideInnermostA = 8
+        strideInnermostB = 8
+        strideInnermostC = 32
+        ldA = 8 * K_param_strided * 8
+        ldB = 8 * K_param_strided * 8
+        ldC = 4 * 8 * N_param_strided * 8
+        rowStrideA = K_param_strided * 8
+        rowStrideB = K_param_strided * 8
+        rowStrideC = N_param_strided * 8 * 4
+
+        offset_b = (K_param_strided - K_param) * 8
     else:
         raise ValueError(f"Unknown layout: {layout}")
 
@@ -122,6 +155,9 @@ def generate_main(size, layout, backend):
         rowStrideA=rowStrideA,
         rowStrideB=rowStrideB,
         rowStrideC=rowStrideC,
+        offset_a=offset_a,
+        offset_b=offset_b,
+        offset_c=offset_c,
     )
 
 
@@ -132,6 +168,8 @@ def generate_makefile(layout, backend):
         layout_pass = "set-memory-layout"
     elif layout == "round-robin":
         layout_pass = "set-memory-layout-round-robin"
+    elif layout == "strided":
+        layout_pass = "set-memory-layout-strided"
 
     if backend in ["cpu", "base"]:
         runtime_backend = "snax-gemm"
