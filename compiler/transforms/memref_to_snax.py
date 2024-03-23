@@ -128,6 +128,12 @@ class AllocOpRewrite(RewritePattern):
             total_size_op = Muli(total_size_op, stride_max)
             ops_to_add.append(total_size_op)
 
+            # add offset
+            offset_op = Constant.from_int_and_width(layout.data.offset, IndexType())
+            offset_bytes_op = Muli(offset_op, element_size_op)
+            total_size_op = Addi(total_size_op, offset_bytes_op)
+            ops_to_add.extend([offset_op, offset_bytes_op, total_size_op])
+
         if total_size_op is None:
             return
 

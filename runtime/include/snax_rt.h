@@ -32,9 +32,17 @@ alloc_result_t *_mlir_ciface_snax_alloc_l1(uint32_t size, uint32_t alignment) {
 
     void *next_ptr = snrt_l1_next();
     // calculate extra size needed to allocate for correct alignment
-    uint32_t extra_size = alignment - ((int32_t)next_ptr % alignment);
+    uint32_t extra_size = 0;
+    uint32_t overshoot = ((int32_t)next_ptr % alignment);
+    if (overshoot > 0) {
+      extra_size = alignment - overshoot;
+    }
+
+    // printf("Extra size needed: %d\n", extra_size);
     void *allocated_pointer = snrt_l1alloc(size + extra_size);
     void *aligned_pointer = (void *)((int32_t)allocated_pointer + extra_size);
+
+    // printf("Allocated %p, aligned %p\n", allocated_pointer, aligned_pointer);
 
     allocated_result->pointer = allocated_pointer;
     allocated_result->aligned_pointer = aligned_pointer;

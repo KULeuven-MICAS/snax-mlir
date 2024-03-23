@@ -74,7 +74,7 @@ class RealizeMemrefCasts(RewritePattern):
         # create alloc op
         alloc_op = memref.Alloc.get(
             dest_type.get_element_type(),
-            64,  # default 64 alignment
+            8,  # default 8 alignment
             dest_type.get_shape(),
             dynamic_sizes=dyn_operands,
             layout=dest_type.layout,
