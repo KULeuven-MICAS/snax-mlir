@@ -7,7 +7,9 @@ with open("test_results.json") as file:
     data = json.load(file)
 
 # Convert the data into a pandas DataFrame
-df = pd.DataFrame(data, columns=["layout", "backend", "size", "success", "cycles"])
+df = pd.DataFrame(
+    data, columns=["test", "layout", "backend", "size", "success", "cycles"]
+)
 
 
 def calculate_expected(size):
@@ -15,6 +17,8 @@ def calculate_expected(size):
     sizes = [round(int(x) / 8) for x in sizes]
     return sizes[0] * sizes[1] * sizes[2]
 
+
+df["test"] = df["test"].apply(lambda x: x.split("_")[1])
 
 # Add a new column to the DataFrame with the expected number of cycles
 df["expected"] = df["size"].apply(calculate_expected)
