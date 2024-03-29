@@ -32,7 +32,7 @@ def plot_experiment_1a(df):
     filtered_df = df[
         (df["backend"] == "fifo-1-slow")
         & (df["layout"].isin(["default", "tiled", "strided", "round-robin"]))
-        & (df["success"] is True)
+        & (df["success"] == True)
     ]
 
     # Sort values by 'ops' and 'utilization'
@@ -151,6 +151,8 @@ def plot_experiment_1a(df):
 
     ax[1].set_ylabel("Average Utilization", fontproperties=axis_font)
 
+    ax[1].set_ylim(ax[0].get_ylim())
+
     plt.tight_layout()
     plt.savefig(os.path.join(directory, "plots", "experiment_1a.png"), dpi=300)
 
@@ -160,7 +162,7 @@ def plot_experiment_1b(df):
     filtered_df = df[
         (df["backend"] == "fifo-1-slow")
         & (df["layout"].isin(["default", "strided"]))
-        & (df["success"] is True)
+        & (df["success"] == True)
     ]
 
     layouts = ["default", "strided"]
@@ -211,7 +213,7 @@ def plot_experiment_1b(df):
 def plot_experiment_2a(df):
     # Filter the dataframe
     filtered_df = df[
-        (df["layout"].isin(["default", "tiled"])) & (df["success"] is True)
+        (df["layout"].isin(["default", "tiled"])) & (df["success"] == True)
     ]
 
     # Sort values by 'ops' and 'utilization'
@@ -401,7 +403,7 @@ def plot_experiment_2a(df):
 def plot_experiment_3a(df):
     # Filter the dataframe
     filtered_df = df[
-        (df["layout"].isin(["round-robin", "tiled"])) & (df["success"] is True)
+        (df["layout"].isin(["round-robin", "tiled"])) & (df["success"] == True)
     ]
 
     # Sort values by 'ops' and 'utilization'
