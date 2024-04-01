@@ -24,9 +24,9 @@ sizes = [
     # [64, 24, 48],
     # [32, 32, 64],  # ops = 32*32*64 = 65536
     # [32, 64, 64],  # ops = 32*64*64 = 131072
-    [64, 72, 72],
-    [64, 72, 64],  # ops = 64*64*64 = 262144
-    [64, 64, 72],
+    # [64, 72, 72],
+    # [64, 72, 64],  # ops = 64*64*64 = 262144
+    # [64, 64, 72],
     [64, 64, 64],  # ops = 64*64*64 = 262144
     # [64, 64, 128], # ops = 64*64*128 = 524288
     # [64, 128, 128], # ops = 64*128*128 = 1048576
@@ -44,9 +44,9 @@ backends = [
     # 'base',     # base system (no streamers)
     # "fifo-0",  # streamer with a fifo depth of 0
     "fifo-1-slow",
-    "fifo-1",  # streamer with a fifo depth of 1
-    "fifo-2",  # streamer with a fifo depth of 2
-    "fifo-3",  # streamer with a fifo depth of 3
+    # "fifo-1",  # streamer with a fifo depth of 1
+    # "fifo-2",  # streamer with a fifo depth of 2
+    # "fifo-3",  # streamer with a fifo depth of 3
     "fifo-4",  # streamer with a fifo depth of 4
 ]
 

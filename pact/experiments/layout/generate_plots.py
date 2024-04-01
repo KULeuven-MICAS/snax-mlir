@@ -32,7 +32,7 @@ def plot_experiment_1a(df):
     filtered_df = df[
         (df["backend"] == "fifo-1-slow")
         & (df["layout"].isin(["default", "tiled", "strided", "round-robin"]))
-        & (df["success"] == True)
+        & (df["success"] is True)
     ]
 
     # Sort values by 'ops' and 'utilization'
@@ -138,7 +138,7 @@ def plot_experiment_1a(df):
     violin_parts["cbars"].set_colors(colors[0:4])
 
     # reverse y axis
-    ax[1].invert_xaxis()
+    # ax[1].invert_xaxis()
     # set y axis labels
     # ax[1].set_yticks(range(1, 5))
     # disable y axis
@@ -162,7 +162,7 @@ def plot_experiment_1b(df):
     filtered_df = df[
         (df["backend"] == "fifo-1-slow")
         & (df["layout"].isin(["default", "strided"]))
-        & (df["success"] == True)
+        & (df["success"] is True)
     ]
 
     layouts = ["default", "strided"]
@@ -213,7 +213,7 @@ def plot_experiment_1b(df):
 def plot_experiment_2a(df):
     # Filter the dataframe
     filtered_df = df[
-        (df["layout"].isin(["default", "tiled"])) & (df["success"] == True)
+        (df["layout"].isin(["default", "tiled"])) & (df["success"] is True)
     ]
 
     # Sort values by 'ops' and 'utilization'
@@ -403,7 +403,7 @@ def plot_experiment_2a(df):
 def plot_experiment_3a(df):
     # Filter the dataframe
     filtered_df = df[
-        (df["layout"].isin(["round-robin", "tiled"])) & (df["success"] == True)
+        (df["layout"].isin(["round-robin", "tiled"])) & (df["success"] is True)
     ]
 
     # Sort values by 'ops' and 'utilization'
