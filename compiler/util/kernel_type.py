@@ -59,7 +59,7 @@ class KernelType(Enum):
         """
 
         # check if op is a multiplication
-        if not isinstance(op, arith.Muli):
+        if not isinstance(op, arith.Muli | arith.Mulf):
             raise KernelException("not a multiplication")
 
         # get operands
@@ -84,7 +84,7 @@ class KernelType(Enum):
         """
 
         # check if op is a multiplication
-        if not isinstance(op, arith.Addi):
+        if not isinstance(op, arith.Addi | arith.Addf):
             raise KernelException("not an addition")
 
         # get operands
