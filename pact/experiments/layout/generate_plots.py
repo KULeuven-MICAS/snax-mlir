@@ -170,6 +170,9 @@ def plot_experiment_1b(df):
 
     fig, axs = plt.subplots(1, 2, figsize=(8, 4))
 
+    vmin = filtered_df["utilization"].min()
+    vmax = filtered_df["utilization"].max()
+
     for i, layout in enumerate(layouts):
         layout_df = filtered_df[filtered_df["layout"] == layout]
         data = layout_df.groupby(["K", "N"])["utilization"].mean()
@@ -177,7 +180,9 @@ def plot_experiment_1b(df):
         index = data.unstack().index
 
         # plot a heatmap with the array_data
-        axs[i].imshow(array_data, cmap="cividis", interpolation="nearest")
+        axs[i].imshow(
+            array_data, cmap="RdYlGn", interpolation="nearest", vmin=vmin, vmax=vmax
+        )
         axs[i].set_xticks(range(len(index)))
         axs[i].set_yticks(range(len(index)))
         axs[i].set_xticklabels(
@@ -594,7 +599,7 @@ if __name__ == "__main__":
     # Load the data
     data = pd.read_csv(os.path.join(directory, "summary.csv"))
 
-    plot_experiment_1a(data)
+    # plot_experiment_1a(data)
     plot_experiment_1b(data)
-    plot_experiment_2a(data)
-    plot_experiment_3a(data)
+    # plot_experiment_2a(data)
+    # plot_experiment_3a(data)
