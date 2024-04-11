@@ -74,7 +74,8 @@ class HWPEAcceleratorInfo(AcceleratorInfo):
             0x3C3,
         )
 
-    def lower_acc_barrier(self, acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
+    @staticmethod
+    def lower_acc_barrier(acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
         return [
             While(
                 [],
@@ -116,7 +117,8 @@ class HWPEAcceleratorInfo(AcceleratorInfo):
             llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
         ]
 
-    def lower_acc_launch(self, acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
+    @staticmethod
+    def lower_acc_launch(acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
         return [
             addr_val := arith.Constant(acc_op.launch_addr),
             val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
@@ -131,8 +133,9 @@ class HWPEAcceleratorInfo(AcceleratorInfo):
             ),
         ]
 
+    @staticmethod
     def lower_setup_op(
-        self, setup_op: acc.SetupOp, acc_op: acc.AcceleratorOp
+        setup_op: acc.SetupOp, acc_op: acc.AcceleratorOp
     ) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.field_items())
         ops: Sequence[Operation] = []
