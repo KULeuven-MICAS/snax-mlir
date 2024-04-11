@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, linalg, llvm, memref
-from xdsl.dialects.builtin import IntegerAttr, i32
+from xdsl.dialects.builtin import i32
 from xdsl.dialects.scf import Condition, While, Yield
 from xdsl.ir import Operation, SSAValue
 
@@ -131,13 +131,22 @@ class HWPEAcceleratorInfo(AcceleratorInfo):
             ),
         ]
 
-    def lower_setup_op(self, addr: IntegerAttr, val: SSAValue) -> Sequence[Operation]:
-        return [
-            addr_val := arith.Constant(addr),
-            llvm.InlineAsmOp(
-                "csrw $0, $1",
-                "I, rK",
-                [addr_val, val],
-                has_side_effects=True,
-            ),
-        ]
+    def lower_setup_op(
+        self, setup_op: acc.SetupOp, acc_op: acc.AcceleratorOp
+    ) -> Sequence[Operation]:
+        field_to_csr = dict(acc_op.field_items())
+        ops: Sequence[Operation] = []
+        for field, val in setup_op.iter_params():
+            addr = field_to_csr[field]
+            ops.extend(
+                [
+                    addr_val := arith.Constant(addr),
+                    llvm.InlineAsmOp(
+                        "csrw $0, $1",
+                        "I, rK",
+                        [addr_val, val],
+                        has_side_effects=True,
+                    ),
+                ]
+            )
+        return ops

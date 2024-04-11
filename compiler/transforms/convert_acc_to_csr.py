@@ -58,13 +58,11 @@ class LowerAccSetupToCsr(LowerAccBasePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
         # grab a dict that translates field names to CSR addresses:
-        field_to_csr = dict(self.get_acc(op.accelerator).field_items())
         acc_info = HWPEAcceleratorInfo()
-
         # emit the llvm assembly code to set csr values:
-        for field, val in op.iter_params():
-            addr = field_to_csr[field]
-            rewriter.insert_op_before_matched_op(acc_info.lower_setup_op(addr, val))
+        rewriter.insert_op_before_matched_op(
+            acc_info.lower_setup_op(op, self.get_acc(op.accelerator))
+        )
         # delete the old setup op
         rewriter.erase_matched_op(safe_erase=False)
 
