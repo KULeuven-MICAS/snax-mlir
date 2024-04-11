@@ -1,6 +1,8 @@
 from collections.abc import Sequence
 
-from xdsl.dialects import arith, builtin, linalg, memref
+from xdsl.dialects import arith, builtin, linalg, llvm, memref
+from xdsl.dialects.builtin import i32
+from xdsl.dialects.scf import Condition, While, Yield
 from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.accelerator import AcceleratorInfo
@@ -71,3 +73,45 @@ class HWPEAcceleratorInfo(AcceleratorInfo):
             0x3C0,
             0x3C3,
         )
+
+    def lower_acc_barrier(self, acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
+        return [
+            While(
+                [],
+                [],
+                [
+                    barrier := arith.Constant(acc_op.barrier),
+                    zero := arith.Constant(
+                        builtin.IntegerAttr.from_int_and_width(0, 32)
+                    ),
+                    status := llvm.InlineAsmOp(
+                        "csrr $0, $1",
+                        # I = any 12 bit immediate
+                        # =r = store result in A 32- or 64-bit
+                        # general-purpose register (depending on the platform XLEN)
+                        "=r, I",
+                        [barrier],
+                        [i32],
+                        has_side_effects=True,
+                    ),
+                    # check if not equal to zero
+                    comparison := arith.Cmpi(status, zero, "ne"),
+                    Condition(comparison.results[0]),
+                ],
+                [
+                    Yield(),
+                ],
+            ),
+            addr_val := arith.Constant(builtin.IntegerAttr(965, 12)),  # 0x3c5 = 965
+            zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_val, zero],
+                has_side_effects=True,
+            ),
+            # Three nops for random but important reasons
+            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
+            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
+            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
+        ]

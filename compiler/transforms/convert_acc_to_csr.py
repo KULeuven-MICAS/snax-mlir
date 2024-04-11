@@ -3,8 +3,7 @@ from dataclasses import dataclass
 from functools import cache
 
 from xdsl.dialects import arith, builtin, llvm
-from xdsl.dialects.builtin import StringAttr, i32
-from xdsl.dialects.scf import Condition, While, Yield
+from xdsl.dialects.builtin import StringAttr
 from xdsl.ir import MLContext, Operation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -16,6 +15,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.traits import SymbolTable
 
+from compiler.accelerators.snax_hwpe_mult import HWPEAcceleratorInfo
 from compiler.dialects import acc
 
 
@@ -116,53 +116,12 @@ class LowerAccAwaitToCsr(LowerAccBasePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: acc.AwaitOp, rewriter: PatternRewriter, /):
         assert isinstance(op.token.type, acc.StateType | acc.TokenType)
+        acc_info = HWPEAcceleratorInfo()
         acc_op = self.get_acc(op.token.type.accelerator)
-
-        # TODO: this is a temporary solution that will be reworked eventually
 
         # emit a snax_hwpe-style barrier
         rewriter.replace_matched_op(
-            [
-                # Infinite while loop that unbreaks whenever
-                While(
-                    [],
-                    [],
-                    [
-                        barrier := arith.Constant(acc_op.barrier),
-                        zero := arith.Constant(
-                            builtin.IntegerAttr.from_int_and_width(0, 32)
-                        ),
-                        status := llvm.InlineAsmOp(
-                            "csrr $0, $1",
-                            # I = any 12 bit immediate
-                            # =r = store result in A 32- or 64-bit
-                            # general-purpose register (depending on the platform XLEN)
-                            "=r, I",
-                            [barrier],
-                            [i32],
-                            has_side_effects=True,
-                        ),
-                        # check if not equal to zero
-                        comparison := arith.Cmpi(status, zero, "ne"),
-                        Condition(comparison.results[0]),
-                    ],
-                    [
-                        Yield(),
-                    ],
-                ),
-                addr_val := arith.Constant(builtin.IntegerAttr(965, 12)),  # 0x3c5 = 965
-                zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
-                llvm.InlineAsmOp(
-                    "csrw $0, $1",
-                    "I, K",
-                    [addr_val, zero],
-                    has_side_effects=True,
-                ),
-                # Three nops for random but important reasons
-                llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
-                llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
-                llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
-            ],
+            acc_info.lower_acc_barrier(acc_op),
             safe_erase=False,
         )
 
