@@ -2,7 +2,7 @@ from abc import ABC
 from dataclasses import dataclass
 from functools import cache
 
-from xdsl.dialects import arith, builtin, llvm
+from xdsl.dialects import builtin
 from xdsl.dialects.builtin import StringAttr
 from xdsl.ir import MLContext, Operation
 from xdsl.passes import ModulePass
@@ -59,21 +59,12 @@ class LowerAccSetupToCsr(LowerAccBasePattern):
     def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
         # grab a dict that translates field names to CSR addresses:
         field_to_csr = dict(self.get_acc(op.accelerator).field_items())
+        acc_info = HWPEAcceleratorInfo()
 
         # emit the llvm assembly code to set csr values:
         for field, val in op.iter_params():
             addr = field_to_csr[field]
-            rewriter.insert_op_before_matched_op(
-                [
-                    addr_val := arith.Constant(addr),
-                    llvm.InlineAsmOp(
-                        "csrw $0, $1",
-                        "I, rK",
-                        [addr_val, val],
-                        has_side_effects=True,
-                    ),
-                ]
-            )
+            rewriter.insert_op_before_matched_op(acc_info.lower_setup_op(addr, val))
         # delete the old setup op
         rewriter.erase_matched_op(safe_erase=False)
 

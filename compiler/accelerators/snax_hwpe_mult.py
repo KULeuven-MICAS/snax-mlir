@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, linalg, llvm, memref
-from xdsl.dialects.builtin import i32
+from xdsl.dialects.builtin import IntegerAttr, i32
 from xdsl.dialects.scf import Condition, While, Yield
 from xdsl.ir import Operation, SSAValue
 
@@ -126,6 +126,17 @@ class HWPEAcceleratorInfo(AcceleratorInfo):
                 # The K allows LLVM to emit an `csrrwi` instruction,
                 # which has room for one 5 bit immediate only.
                 "I, K",
+                [addr_val, val],
+                has_side_effects=True,
+            ),
+        ]
+
+    def lower_setup_op(self, addr: IntegerAttr, val: SSAValue) -> Sequence[Operation]:
+        return [
+            addr_val := arith.Constant(addr),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, rK",
                 [addr_val, val],
                 has_side_effects=True,
             ),
