@@ -5,11 +5,11 @@ from xdsl.dialects.builtin import i32
 from xdsl.dialects.scf import Condition, While, Yield
 from xdsl.ir import Operation, SSAValue
 
-from compiler.accelerators.accelerator import AcceleratorInfo
+from compiler.accelerators.accelerator import AcceleratorInterface
 from compiler.dialects import acc
 
 
-class HWPEAcceleratorInfo(AcceleratorInfo):
+class HWPEAcceleratorInfo(AcceleratorInterface):
     name = "snax_hwpe_mult"
 
     fields = ("A", "B", "O", "vector_length", "nr_iters", "mode")
@@ -17,12 +17,6 @@ class HWPEAcceleratorInfo(AcceleratorInfo):
     def generate_setup_vals(
         self, op: linalg.Generic
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
-        """
-        Produce a `Sequence[Operation], SSAValue` tuple for each field that contains:
-
-        - a list of operations that calculate the field value
-        - a reference to the SSAValue containing the calculated field value
-        """
         a, b, c = op.operands
 
         zero = arith.Constant.from_int_and_width(0, builtin.IndexType())
