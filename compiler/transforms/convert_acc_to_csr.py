@@ -87,22 +87,11 @@ class LowerAccLaunchToCsr(LowerAccBasePattern):
     def match_and_rewrite(self, op: acc.LaunchOp, rewriter: PatternRewriter, /):
         assert isinstance(op.state.type, acc.StateType)
         acc_op = self.get_acc(op.state.type.accelerator)
+        acc_info = HWPEAcceleratorInfo()
 
         # insert an op that sets the launch CSR to 1
         rewriter.replace_matched_op(
-            [
-                addr_val := arith.Constant(acc_op.launch_addr),
-                val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
-                llvm.InlineAsmOp(
-                    "csrw $0, $1",
-                    # I = any 12 bit immediate, K = any 5 bit immediate
-                    # The K allows LLVM to emit an `csrrwi` instruction,
-                    # which has room for one 5 bit immediate only.
-                    "I, K",
-                    [addr_val, val],
-                    has_side_effects=True,
-                ),
-            ],
+            acc_info.lower_acc_launch(acc_op),
             [op.state],
             safe_erase=False,
         )

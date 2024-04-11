@@ -115,3 +115,18 @@ class HWPEAcceleratorInfo(AcceleratorInfo):
             llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
             llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
         ]
+
+    def lower_acc_launch(self, acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
+        return [
+            addr_val := arith.Constant(acc_op.launch_addr),
+            val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                # I = any 12 bit immediate, K = any 5 bit immediate
+                # The K allows LLVM to emit an `csrrwi` instruction,
+                # which has room for one 5 bit immediate only.
+                "I, K",
+                [addr_val, val],
+                has_side_effects=True,
+            ),
+        ]
