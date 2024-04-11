@@ -1,5 +1,4 @@
 import sys
-from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -14,19 +13,8 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.traits import SymbolTable
 
+from compiler.accelerators.accelerator import AcceleratorInfo
 from compiler.dialects import acc
-
-
-class AcceleratorInfo(ABC):
-    @abstractmethod
-    def generate_setup_vals(
-        self, op: Operation
-    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
-        pass
-
-    @abstractmethod
-    def generate_acc_op(self) -> acc.AcceleratorOp:
-        pass
 
 
 class HWPEAcceleratorInfo(AcceleratorInfo):
