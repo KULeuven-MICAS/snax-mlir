@@ -1,4 +1,5 @@
 import sys
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -16,12 +17,24 @@ from xdsl.traits import SymbolTable
 from compiler.dialects import acc
 
 
-class HWPEAcceleratorInfo:
+class AcceleratorInfo(ABC):
+    @abstractmethod
+    def generate_setup_vals(
+        self, op: Operation
+    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+        pass
+
+    @abstractmethod
+    def generate_acc_op(self) -> acc.AcceleratorOp:
+        pass
+
+
+class HWPEAcceleratorInfo(AcceleratorInfo):
     name = "snax_hwpe_mult"
 
     fields = ("A", "B", "O", "vector_length", "nr_iters", "mode")
 
-    def generate_vals(
+    def generate_setup_vals(
         self, op: linalg.Generic
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         """
