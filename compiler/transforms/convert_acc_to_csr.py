@@ -2,9 +2,8 @@ from abc import ABC
 from dataclasses import dataclass
 from functools import cache
 
-from xdsl.dialects import arith, builtin, llvm
-from xdsl.dialects.builtin import StringAttr, i32
-from xdsl.dialects.scf import Condition, While, Yield
+from xdsl.dialects import builtin
+from xdsl.dialects.builtin import StringAttr
 from xdsl.ir import MLContext, Operation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -16,6 +15,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.traits import SymbolTable
 
+from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
 from compiler.dialects import acc
 
 
@@ -58,22 +58,11 @@ class LowerAccSetupToCsr(LowerAccBasePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
         # grab a dict that translates field names to CSR addresses:
-        field_to_csr = dict(self.get_acc(op.accelerator).field_items())
-
+        acc_info = SNAXHWPEMultAccelerator()
         # emit the llvm assembly code to set csr values:
-        for field, val in op.iter_params():
-            addr = field_to_csr[field]
-            rewriter.insert_op_before_matched_op(
-                [
-                    addr_val := arith.Constant(addr),
-                    llvm.InlineAsmOp(
-                        "csrw $0, $1",
-                        "I, rK",
-                        [addr_val, val],
-                        has_side_effects=True,
-                    ),
-                ]
-            )
+        rewriter.insert_op_before_matched_op(
+            acc_info.lower_acc_setup(op, self.get_acc(op.accelerator))
+        )
         # delete the old setup op
         rewriter.erase_matched_op(safe_erase=False)
 
@@ -87,22 +76,11 @@ class LowerAccLaunchToCsr(LowerAccBasePattern):
     def match_and_rewrite(self, op: acc.LaunchOp, rewriter: PatternRewriter, /):
         assert isinstance(op.state.type, acc.StateType)
         acc_op = self.get_acc(op.state.type.accelerator)
+        acc_info = SNAXHWPEMultAccelerator()
 
         # insert an op that sets the launch CSR to 1
         rewriter.replace_matched_op(
-            [
-                addr_val := arith.Constant(acc_op.launch_addr),
-                val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
-                llvm.InlineAsmOp(
-                    "csrw $0, $1",
-                    # I = any 12 bit immediate, K = any 5 bit immediate
-                    # The K allows LLVM to emit an `csrrwi` instruction,
-                    # which has room for one 5 bit immediate only.
-                    "I, K",
-                    [addr_val, val],
-                    has_side_effects=True,
-                ),
-            ],
+            acc_info.lower_acc_launch(acc_op),
             [op.state],
             safe_erase=False,
         )
@@ -116,53 +94,12 @@ class LowerAccAwaitToCsr(LowerAccBasePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: acc.AwaitOp, rewriter: PatternRewriter, /):
         assert isinstance(op.token.type, acc.StateType | acc.TokenType)
+        acc_info = SNAXHWPEMultAccelerator()
         acc_op = self.get_acc(op.token.type.accelerator)
-
-        # TODO: this is a temporary solution that will be reworked eventually
 
         # emit a snax_hwpe-style barrier
         rewriter.replace_matched_op(
-            [
-                # Infinite while loop that unbreaks whenever
-                While(
-                    [],
-                    [],
-                    [
-                        barrier := arith.Constant(acc_op.barrier),
-                        zero := arith.Constant(
-                            builtin.IntegerAttr.from_int_and_width(0, 32)
-                        ),
-                        status := llvm.InlineAsmOp(
-                            "csrr $0, $1",
-                            # I = any 12 bit immediate
-                            # =r = store result in A 32- or 64-bit
-                            # general-purpose register (depending on the platform XLEN)
-                            "=r, I",
-                            [barrier],
-                            [i32],
-                            has_side_effects=True,
-                        ),
-                        # check if not equal to zero
-                        comparison := arith.Cmpi(status, zero, "ne"),
-                        Condition(comparison.results[0]),
-                    ],
-                    [
-                        Yield(),
-                    ],
-                ),
-                addr_val := arith.Constant(builtin.IntegerAttr(965, 12)),  # 0x3c5 = 965
-                zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
-                llvm.InlineAsmOp(
-                    "csrw $0, $1",
-                    "I, K",
-                    [addr_val, zero],
-                    has_side_effects=True,
-                ),
-                # Three nops for random but important reasons
-                llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
-                llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
-                llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
-            ],
+            acc_info.lower_acc_await(acc_op),
             safe_erase=False,
         )
 
