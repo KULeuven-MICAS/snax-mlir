@@ -6,7 +6,7 @@ from xdsl.ir import Operation, SSAValue
 from compiler.dialects import acc
 
 
-class AcceleratorInterface(ABC):
+class Accelerator(ABC):
     """
     Interface to lower to and from acc2 dialect.
     """
@@ -40,7 +40,7 @@ class AcceleratorInterface(ABC):
 
     @staticmethod
     @abstractmethod
-    def lower_acc_barrier(acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_await(acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
         """
         Based on the acc2.accelerator op, return the necessary sequence of
         lower-level operations to perform
@@ -60,7 +60,7 @@ class AcceleratorInterface(ABC):
 
     @staticmethod
     @abstractmethod
-    def lower_setup_op(
+    def lower_acc_setup(
         setup_op: acc.SetupOp, acc_op: acc.AcceleratorOp
     ) -> Sequence[Operation]:
         """

@@ -3,11 +3,11 @@ from collections.abc import Sequence
 from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.ir import Operation, SSAValue
 
-from compiler.accelerators.snax import SNAXAcceleratorInterface
+from compiler.accelerators.snax import SNAXAccelerator
 from compiler.dialects import acc
 
 
-class SNAXHWPEMultAcceleratorInterface(SNAXAcceleratorInterface):
+class SNAXHWPEMultAccelerator(SNAXAccelerator):
     """
     Accelerator Interface class for SNAX HWPE multiplier accelerator
     CSR lowerings are inherited from SNAXAcceleratorInterface.

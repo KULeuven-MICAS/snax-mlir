@@ -6,18 +6,18 @@ from xdsl.dialects.builtin import i32
 from xdsl.dialects.scf import Condition, While, Yield
 from xdsl.ir import Operation
 
-from compiler.accelerators.accelerator import AcceleratorInterface
+from compiler.accelerators.accelerator import Accelerator
 from compiler.dialects import acc
 
 
-class SNAXAcceleratorInterface(AcceleratorInterface, ABC):
+class SNAXAccelerator(Accelerator, ABC):
     """
     Abstract base class for extending AcceleratorInterfaces
     with common SNAX lowerings.
     """
 
     @staticmethod
-    def lower_acc_barrier(acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_await(acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
         return [
             While(
                 [],
@@ -76,7 +76,7 @@ class SNAXAcceleratorInterface(AcceleratorInterface, ABC):
         ]
 
     @staticmethod
-    def lower_setup_op(
+    def lower_acc_setup(
         setup_op: acc.SetupOp, acc_op: acc.AcceleratorOp
     ) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.field_items())

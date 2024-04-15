@@ -15,7 +15,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.traits import SymbolTable
 
-from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAcceleratorInterface
+from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
 from compiler.dialects import acc
 
 
@@ -58,10 +58,10 @@ class LowerAccSetupToCsr(LowerAccBasePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
         # grab a dict that translates field names to CSR addresses:
-        acc_info = SNAXHWPEMultAcceleratorInterface()
+        acc_info = SNAXHWPEMultAccelerator()
         # emit the llvm assembly code to set csr values:
         rewriter.insert_op_before_matched_op(
-            acc_info.lower_setup_op(op, self.get_acc(op.accelerator))
+            acc_info.lower_acc_setup(op, self.get_acc(op.accelerator))
         )
         # delete the old setup op
         rewriter.erase_matched_op(safe_erase=False)
@@ -76,7 +76,7 @@ class LowerAccLaunchToCsr(LowerAccBasePattern):
     def match_and_rewrite(self, op: acc.LaunchOp, rewriter: PatternRewriter, /):
         assert isinstance(op.state.type, acc.StateType)
         acc_op = self.get_acc(op.state.type.accelerator)
-        acc_info = SNAXHWPEMultAcceleratorInterface()
+        acc_info = SNAXHWPEMultAccelerator()
 
         # insert an op that sets the launch CSR to 1
         rewriter.replace_matched_op(
@@ -94,12 +94,12 @@ class LowerAccAwaitToCsr(LowerAccBasePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: acc.AwaitOp, rewriter: PatternRewriter, /):
         assert isinstance(op.token.type, acc.StateType | acc.TokenType)
-        acc_info = SNAXHWPEMultAcceleratorInterface()
+        acc_info = SNAXHWPEMultAccelerator()
         acc_op = self.get_acc(op.token.type.accelerator)
 
         # emit a snax_hwpe-style barrier
         rewriter.replace_matched_op(
-            acc_info.lower_acc_barrier(acc_op),
+            acc_info.lower_acc_await(acc_op),
             safe_erase=False,
         )
 

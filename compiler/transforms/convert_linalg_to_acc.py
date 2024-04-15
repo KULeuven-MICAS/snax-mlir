@@ -12,7 +12,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.traits import SymbolTable
 
-from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAcceleratorInterface
+from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
 from compiler.dialects import acc
 
 
@@ -34,7 +34,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
             return
 
         # grab accelerator
-        accelerator = SNAXHWPEMultAcceleratorInterface()
+        accelerator = SNAXHWPEMultAccelerator()
 
         t = self.module.get_trait(SymbolTable)
         assert t is not None
