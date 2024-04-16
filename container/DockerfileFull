@@ -1,0 +1,82 @@
+# Courtesy of Federico Ficarelli
+ARG TAGS=ghcr.io/kuleuven-micas/snax:main
+
+FROM ${TAGS}-base as deps-base
+FROM ${TAGS}-fifo-0 as deps-fifo-0
+FROM ${TAGS}-fifo-1-slow as deps-fifo-1-slow
+FROM ${TAGS}-fifo-1 as deps-fifo-1
+FROM ${TAGS}-fifo-2 as deps-fifo-2
+FROM ${TAGS}-fifo-3 as deps-fifo-3
+FROM ${TAGS}-fifo-4 as deps-fifo-4
+
+FROM ubuntu:18.04 as toolchain
+
+RUN echo "Building with TAGS=${TAGS}"
+
+# shared dependencies
+COPY --from=deps-base /opt /opt
+
+COPY --from=deps-base /opt /opt-base
+COPY --from=deps-fifo-0 /opt /opt-fifo-0
+COPY --from=deps-fifo-1-slow /opt /opt-fifo-1-slow
+COPY --from=deps-fifo-1 /opt /opt-fifo-1
+COPY --from=deps-fifo-2 /opt /opt-fifo-2
+COPY --from=deps-fifo-3 /opt /opt-fifo-3
+COPY --from=deps-fifo-4 /opt /opt-fifo-4
+
+RUN apt-get -y update \
+ && apt-get -y upgrade \
+ # python runtime dependencies
+ && apt-get -y install \
+      wget \
+      zlib1g \
+      libncurses5 \
+      libgdbm5 \
+      libnss3 \
+      libssl1.1 \
+      libreadline7 \
+      libffi6 \
+      libsqlite3-0 \
+      bzip2 \
+# make pip able to install via git
+ && apt-get -y install git \
+# mlir and clang
+ && apt-get -y install wget lsb-release software-properties-common gnupg \
+ && wget https://apt.llvm.org/llvm.sh && chmod +x llvm.sh && ./llvm.sh 17 && rm llvm.sh \
+ && apt-get -y install mlir-17-tools \
+# make
+ && apt-get -y install make
+
+ # python 3.11
+RUN apt update -y \
+ && apt install -y \
+      build-essential \
+      zlib1g-dev \
+      libncurses5-dev \
+      libgdbm-dev \
+      libnss3-dev \
+      libssl-dev \
+      libreadline-dev \
+      libffi-dev \
+      libsqlite3-dev \
+      wget \
+      libbz2-dev \
+      lzma \
+      liblzma-dev \
+      libbz2-dev \
+ && mkdir -p /tmp/python-src \
+ && wget -qO- https://www.python.org/ftp/python/3.11.5/Python-3.11.5.tgz | \
+    tar xz --strip-components=1 -C /tmp/python-src \
+ && cd /tmp/python-src \
+ && ./configure --prefix=/opt/python3.11 \
+ && make install -j $(nproc)
+
+# add python3.11 to path in bashrc
+RUN echo "export PATH=/opt/python3.11/bin:$PATH" >> ~/.bashrc
+
+
+# install python requirements
+RUN export PATH=/opt/python3.11/bin:$PATH \
+ && git clone https://github.com/kuleuven-micas/snax-mlir.git \
+ && cd snax-mlir \
+ && pip3 install -r requirements.txt
