@@ -15,7 +15,8 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.traits import SymbolTable
 
-from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
+from compiler.accelerators.accelerator import Accelerator
+from compiler.accelerators.registry import get_registered_accelerators
 from compiler.dialects import acc
 
 
@@ -30,7 +31,9 @@ class LowerAccBasePattern(RewritePattern, ABC):
     module: builtin.ModuleOp
 
     @cache
-    def get_acc(self, accelerator: StringAttr) -> acc.AcceleratorOp:
+    def get_acc(
+        self, accelerator: StringAttr
+    ) -> tuple[acc.AcceleratorOp, type[Accelerator]]:
         """
         Get a reference to the accelerator
         """
@@ -39,9 +42,14 @@ class LowerAccBasePattern(RewritePattern, ABC):
         acc_op = trait.lookup_symbol(self.module, accelerator)
         if not isinstance(acc_op, acc.AcceleratorOp):
             raise RuntimeError(
-                f"Invalid IR: no accelerator op for @{accelerator.data} found in module"
+                f"Invalid IR: Lowering acc2 for accelerator '{accelerator.data}'"
+                " requires an acc2.accelerator op to declare a symbol for "
+                f"@{accelerator.data}, but no such symbol was found"
+                " in the current module."
             )
-        return acc_op
+        # Use the retrieved acc_op to retrieve information from the registry
+        acc_info = get_registered_accelerators()[acc_op.name_prop.string_value()]
+        return acc_op, acc_info
 
     def __hash__(self):
         return id(self)
@@ -57,14 +65,13 @@ class LowerAccSetupToCsr(LowerAccBasePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
+        acc_op, acc_info = self.get_acc(op.accelerator)
         # grab a dict that translates field names to CSR addresses:
-        acc_info = SNAXHWPEMultAccelerator()
         # emit the llvm assembly code to set csr values:
-        rewriter.insert_op_before_matched_op(
-            acc_info.lower_acc_setup(op, self.get_acc(op.accelerator))
+        rewriter.replace_matched_op(
+            acc_info.lower_acc_setup(op, acc_op),
+            safe_erase=False,
         )
-        # delete the old setup op
-        rewriter.erase_matched_op(safe_erase=False)
 
 
 class LowerAccLaunchToCsr(LowerAccBasePattern):
@@ -75,8 +82,7 @@ class LowerAccLaunchToCsr(LowerAccBasePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: acc.LaunchOp, rewriter: PatternRewriter, /):
         assert isinstance(op.state.type, acc.StateType)
-        acc_op = self.get_acc(op.state.type.accelerator)
-        acc_info = SNAXHWPEMultAccelerator()
+        acc_op, acc_info = self.get_acc(op.state.type.accelerator)
 
         # insert an op that sets the launch CSR to 1
         rewriter.replace_matched_op(
@@ -94,8 +100,7 @@ class LowerAccAwaitToCsr(LowerAccBasePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: acc.AwaitOp, rewriter: PatternRewriter, /):
         assert isinstance(op.token.type, acc.StateType | acc.TokenType)
-        acc_info = SNAXHWPEMultAccelerator()
-        acc_op = self.get_acc(op.token.type.accelerator)
+        acc_op, acc_info = self.get_acc(op.token.type.accelerator)
 
         # emit a snax_hwpe-style barrier
         rewriter.replace_matched_op(
