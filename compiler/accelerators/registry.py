@@ -36,12 +36,20 @@ class AcceleratorRegistry:
         else:
             return acc_op, self.get_acc_info(acc_op)
 
-    def get_acc_info(self, acc_op: AcceleratorOp) -> type[Accelerator]:
+    def get_acc_info(
+        self, acc_op: AcceleratorOp | StringAttr | str
+    ) -> type[Accelerator]:
         """
-        Get a reference to an Accelerator interface based on a symbol name
+        Get a reference to an Accelerator interface based on an AcceleratorOp,
+        string or StringAttr.
         If the requested symbol name is not available, throw a RuntimeError
         """
-        acc_name = acc_op.name_prop.string_value()
+        if isinstance(acc_op, str):
+            acc_name = acc_op
+        elif isinstance(acc_op, StringAttr):
+            acc_name = acc_op.data
+        else:
+            acc_name = acc_op.name_prop.string_value()
         try:
             acc_info = self.registered_accelerators[acc_name]
         except KeyError:
