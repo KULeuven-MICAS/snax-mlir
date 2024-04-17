@@ -43,10 +43,13 @@ class LowerAccBasePattern(RewritePattern, ABC):
         acc_op = trait.lookup_symbol(self.module, accelerator)
         if not isinstance(acc_op, acc.AcceleratorOp):
             raise RuntimeError(
-                f"Invalid IR: no accelerator op for @{accelerator.data} found in module"
+                f"Invalid IR: Lowering acc2 for accelerator '{accelerator.data}'"
+                " requires an acc2.accelerator op to declare a symbol for "
+                f"@{accelerator.data}, but no such symbol was found"
+                " in the current module."
             )
-        # Get accelerator interface with symbolref without @
-        acc_info = get_registered_accelerators()[str(acc_op.name_prop)[1:]]
+        # Use the retrieved acc_op to retrieve information from the registry
+        acc_info = get_registered_accelerators()[acc_op.name_prop.string_value()]
         return acc_op, acc_info
 
     def __hash__(self):
@@ -66,9 +69,10 @@ class LowerAccSetupToCsr(LowerAccBasePattern):
         acc_op, acc_info = self.get_acc(op.accelerator)
         # grab a dict that translates field names to CSR addresses:
         # emit the llvm assembly code to set csr values:
-        rewriter.insert_op_before_matched_op(acc_info.lower_acc_setup(op, acc_op))
-        # delete the old setup op
-        rewriter.erase_matched_op(safe_erase=False)
+        rewriter.replace_matched_op(
+            acc_info.lower_acc_setup(op, acc_op),
+            safe_erase=False,
+        )
 
 
 class LowerAccLaunchToCsr(LowerAccBasePattern):
