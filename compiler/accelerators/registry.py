@@ -1,7 +1,8 @@
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
+from compiler.dialects.acc import AcceleratorOp
 
 
 class AcceleratorRegistry:
@@ -12,11 +13,20 @@ class AcceleratorRegistry:
 
     registered_accelerators = {"snax_hwpe_mult": SNAXHWPEMultAccelerator}
 
-    def get_registry(self) -> Mapping[str, type[Accelerator]]:
+    def get_acc_info(self, acc_op: AcceleratorOp) -> type[Accelerator]:
         """
         Get a reference to an Accelerator interface based on a symbol name
+        If the requested symbol name is not available, throw a RuntimeError
         """
-        return self.registered_accelerators
+        acc_name = acc_op.name_prop.string_value()
+        try:
+            acc_info = self.registered_accelerators[acc_name]
+        except KeyError:
+            raise RuntimeError(
+                f"'{acc_name}' is not a registered accelerator."
+                f"Registered accelerators: {','.join(self.get_names())}"
+            )
+        return acc_info
 
     def get_names(self) -> Iterable[str]:
         """

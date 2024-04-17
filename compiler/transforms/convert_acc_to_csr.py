@@ -48,7 +48,7 @@ class LowerAccBasePattern(RewritePattern, ABC):
                 " in the current module."
             )
         # Use the retrieved acc_op to retrieve information from the registry
-        acc_info = AcceleratorRegistry().get_registry()[acc_op.name_prop.string_value()]
+        acc_info = AcceleratorRegistry().get_acc_info(acc_op)
         return acc_op, acc_info
 
     def __hash__(self):

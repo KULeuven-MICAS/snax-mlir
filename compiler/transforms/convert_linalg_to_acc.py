@@ -36,7 +36,8 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
 
         library_call_name = op.library_call.data
 
-        acc_names = AcceleratorRegistry().get_names()
+        acc_reg = AcceleratorRegistry()
+        acc_names = acc_reg.get_names()
         if library_call_name not in acc_names:
             return
 
@@ -53,12 +54,10 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
                 " in the current module."
             )
         # Use the retrieved acc_op to retrieve information from the registry
-        accelerator = AcceleratorRegistry().get_registry()[
-            acc_op.name_prop.string_value()
-        ]
+        acc_info = acc_reg.get_acc_info(acc_op)()
 
         # grab arguments
-        args = accelerator().generate_setup_vals(op)
+        args = acc_info.generate_setup_vals(op)
 
         # insert ops to calculate arguments
         for new_ops, _ in args:
@@ -67,7 +66,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
         # instantiate setup call
         rewriter.insert_op_before_matched_op(
             setup := acc.SetupOp(
-                [val for _, val in args], accelerator.fields, accelerator.name
+                [val for _, val in args], acc_info.fields, acc_info.name
             )
         )
 
