@@ -17,7 +17,6 @@ from xdsl.traits import SymbolTable
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.registry import get_registered_accelerators
-from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
 from compiler.dialects import acc
 
 
@@ -191,15 +190,12 @@ class RemoveAcceleratorOps(RewritePattern):
         rewriter.erase_matched_op()
 
 
-@dataclass(frozen=True)
 class ConvertAccToCsrPass(ModulePass):
     """
     Converts acc2 dialect ops to series of SNAX-like csr sets.
     """
 
     name = "convert-acc-to-csr"
-
-    accelerator: type[Accelerator] = SNAXHWPEMultAccelerator
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         # first lower all acc2 ops and erase old SSA values
