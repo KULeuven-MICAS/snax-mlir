@@ -11,7 +11,6 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.traits import SymbolTable
 
 from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.dialects import acc
@@ -41,23 +40,13 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
         if library_call_name not in acc_names:
             return
 
-        # Lookup the accelerator symbol in the module based on the library_call
-        trait = self.module.get_trait(SymbolTable)
-        assert trait is not None
-        acc_op = trait.lookup_symbol(self.module, StringAttr(library_call_name))
-        if not isinstance(acc_op, acc.AcceleratorOp):
-            raise RuntimeError(
-                f"Invalid IR: converting to acc2 for library_call "
-                f"'{library_call_name}'"
-                " requires an acc2.accelerator op to declare a symbol for "
-                f"@{library_call_name}, but no such symbol was found"
-                " in the current module."
-            )
-        # Use the retrieved acc_op to retrieve information from the registry
-        acc_info = acc_reg.get_acc_info(acc_op)()
+        # Lookup the accelerator interface based on the library_call
+        _, acc_info = acc_reg.lookup_acc_info(
+            StringAttr(library_call_name), self.module
+        )
 
         # grab arguments
-        args = acc_info.generate_setup_vals(op)
+        args = acc_info().generate_setup_vals(op)
 
         # insert ops to calculate arguments
         for new_ops, _ in args:

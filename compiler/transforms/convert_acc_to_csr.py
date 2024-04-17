@@ -13,7 +13,6 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.traits import SymbolTable
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.registry import AcceleratorRegistry
@@ -34,21 +33,9 @@ class LowerAccBasePattern(RewritePattern, ABC):
     def get_acc(
         self, accelerator: StringAttr
     ) -> tuple[acc.AcceleratorOp, type[Accelerator]]:
-        """
-        Get a reference to the accelerator
-        """
-        trait = self.module.get_trait(SymbolTable)
-        assert trait is not None
-        acc_op = trait.lookup_symbol(self.module, accelerator)
-        if not isinstance(acc_op, acc.AcceleratorOp):
-            raise RuntimeError(
-                f"Invalid IR: Lowering acc2 for accelerator '{accelerator.data}'"
-                " requires an acc2.accelerator op to declare a symbol for "
-                f"@{accelerator.data}, but no such symbol was found"
-                " in the current module."
-            )
-        # Use the retrieved acc_op to retrieve information from the registry
-        acc_info = AcceleratorRegistry().get_acc_info(acc_op)
+        acc_op, acc_info = AcceleratorRegistry().lookup_acc_info(
+            accelerator, self.module
+        )
         return acc_op, acc_info
 
     def __hash__(self):
