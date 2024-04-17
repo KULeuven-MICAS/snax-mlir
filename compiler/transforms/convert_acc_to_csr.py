@@ -16,7 +16,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.traits import SymbolTable
 
 from compiler.accelerators.accelerator import Accelerator
-from compiler.accelerators.registry import get_registered_accelerators
+from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.dialects import acc
 
 
@@ -48,7 +48,7 @@ class LowerAccBasePattern(RewritePattern, ABC):
                 " in the current module."
             )
         # Use the retrieved acc_op to retrieve information from the registry
-        acc_info = get_registered_accelerators()[acc_op.name_prop.string_value()]
+        acc_info = AcceleratorRegistry().get_registry()[acc_op.name_prop.string_value()]
         return acc_op, acc_info
 
     def __hash__(self):

@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 from xdsl.dialects import builtin, func, linalg, scf
 from xdsl.ir import Block, MLContext, Operation, Region, SSAValue
+from xdsl.parser import StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -12,7 +13,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.traits import SymbolTable
 
-from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
+from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.dialects import acc
 
 
@@ -30,18 +31,34 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter, /):
-        if op.library_call and op.library_call.data != "snax_hwpe_mult":
+        if op.library_call is None:
             return
 
-        # grab accelerator
-        accelerator = SNAXHWPEMultAccelerator()
+        library_call_name = op.library_call.data
 
-        t = self.module.get_trait(SymbolTable)
-        assert t is not None
-        t.insert_or_update(self.module, accelerator.generate_acc_op())
+        acc_names = AcceleratorRegistry().get_names()
+        if library_call_name not in acc_names:
+            return
+
+        # Lookup the accelerator symbol in the module based on the library_call
+        trait = self.module.get_trait(SymbolTable)
+        assert trait is not None
+        acc_op = trait.lookup_symbol(self.module, StringAttr(library_call_name))
+        if not isinstance(acc_op, acc.AcceleratorOp):
+            raise RuntimeError(
+                f"Invalid IR: converting to acc2 for library_call "
+                f"'{library_call_name}'"
+                " requires an acc2.accelerator op to declare a symbol for "
+                f"@{library_call_name}, but no such symbol was found"
+                " in the current module."
+            )
+        # Use the retrieved acc_op to retrieve information from the registry
+        accelerator = AcceleratorRegistry().get_registry()[
+            acc_op.name_prop.string_value()
+        ]
 
         # grab arguments
-        args = accelerator.generate_setup_vals(op)
+        args = accelerator().generate_setup_vals(op)
 
         # insert ops to calculate arguments
         for new_ops, _ in args:
