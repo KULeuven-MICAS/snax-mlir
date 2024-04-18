@@ -11,6 +11,9 @@ class Accelerator(ABC):
     Interface to lower to and from acc2 dialect.
     """
 
+    name: str
+    fields: tuple[str]
+
     @abstractmethod
     def generate_setup_vals(
         self, op: Operation

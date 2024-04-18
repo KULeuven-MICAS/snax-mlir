@@ -15,7 +15,7 @@ CFLAGS += -Wall -Wextra
 
 
 # Override snax-opt rules to avoid linalg-to-library-call pass
-SNAXOPTACCFLAGS = -p dispatch-kernels,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions,convert-linalg-to-acc,convert-acc-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
+SNAXOPTACCFLAGS = -p dispatch-kernels,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions,insert-acc-op{accelerator=snax_hwpe_mult},convert-linalg-to-acc,convert-acc-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
 
 %.acc_dialect.snax-opt.mlir: %.preprocfinal.mlir
 	$(SNAXOPT) $(SNAXOPTACCFLAGS) -o $@ $<

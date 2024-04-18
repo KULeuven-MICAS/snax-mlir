@@ -1,6 +1,14 @@
 // RUN: ./compiler/snax-opt -p convert-linalg-to-acc,mlir-opt{executable=mlir-opt-17\ generic=true\ arguments='-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic'} %s | filecheck %s
 
 "builtin.module"() ({
+
+  "acc2.accelerator"() <{
+      name            = @snax_hwpe_mult,
+      fields          = {A=0x3d0, B=0x3d1, O=0x3d3, vector_length=0x3d4, nr_iters=0x3d5, mode=0x3d6},
+      launch_addr     = 0x3c0,
+      barrier         = 0x3c3
+  }> : () -> ()
+
   func.func public @simple_mult(
     %A: memref<?xi32>,
     %B: memref<?xi32>,
@@ -54,6 +62,7 @@
 }): () -> ()
 
 // CHECK-NEXT: builtin.module {
+// CHECK-NEXT:   "acc2.accelerator"() <{"barrier" = 963 : i64, "fields" = {"A" = 976 : i64, "B" = 977 : i64, "O" = 979 : i64, "mode" = 982 : i64, "nr_iters" = 981 : i64, "vector_length" = 980 : i64}, "launch_addr" = 960 : i64, "name" = @snax_hwpe_mult}> : () -> ()
 // CHECK-NEXT:   func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg2 : memref<?xi32>) {
 // CHECK-NEXT:     %0 = arith.constant 0 : index
 // CHECK-NEXT:     %1 = arith.constant 1 : i32
@@ -88,5 +97,4 @@
 // CHECK-NEXT:     "acc2.await"(%22) : (!acc2.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
-// CHECK-NEXT:   "acc2.accelerator"() <{"barrier" = 963 : i32, "fields" = {"A" = 976 : i32, "B" = 977 : i32, "O" = 979 : i32, "mode" = 982 : i32, "nr_iters" = 981 : i32, "vector_length" = 980 : i32}, "launch_addr" = 960 : i32, "name" = @snax_hwpe_mult}> : () -> ()
 // CHECK-NEXT: } 

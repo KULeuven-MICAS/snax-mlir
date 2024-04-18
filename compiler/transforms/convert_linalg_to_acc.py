@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 from xdsl.dialects import builtin, func, linalg, scf
 from xdsl.ir import Block, MLContext, Operation, Region, SSAValue
+from xdsl.parser import StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -10,9 +11,8 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.traits import SymbolTable
 
-from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
+from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.dialects import acc
 
 
@@ -30,18 +30,23 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter, /):
-        if op.library_call and op.library_call.data != "snax_hwpe_mult":
+        if op.library_call is None:
             return
 
-        # grab accelerator
-        accelerator = SNAXHWPEMultAccelerator()
+        library_call_name = op.library_call.data
 
-        t = self.module.get_trait(SymbolTable)
-        assert t is not None
-        t.insert_or_update(self.module, accelerator.generate_acc_op())
+        acc_reg = AcceleratorRegistry()
+        acc_names = acc_reg.get_names()
+        if library_call_name not in acc_names:
+            return
+
+        # Lookup the accelerator interface based on the library_call
+        _, acc_info = acc_reg.lookup_acc_info(
+            StringAttr(library_call_name), self.module
+        )
 
         # grab arguments
-        args = accelerator.generate_setup_vals(op)
+        args = acc_info().generate_setup_vals(op)
 
         # insert ops to calculate arguments
         for new_ops, _ in args:
@@ -50,7 +55,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
         # instantiate setup call
         rewriter.insert_op_before_matched_op(
             setup := acc.SetupOp(
-                [val for _, val in args], accelerator.fields, accelerator.name
+                [val for _, val in args], acc_info.fields, acc_info.name
             )
         )
 

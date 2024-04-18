@@ -13,6 +13,7 @@ from compiler.transforms.convert_acc_to_csr import ConvertAccToCsrPass
 from compiler.transforms.convert_linalg_to_acc import ConvertLinalgToAccPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
+from compiler.transforms.insert_acc_op import InsertAccOp
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.memref_to_snax import MemrefToSNAX
@@ -47,6 +48,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
         super().register_pass(SetMemoryLayout.name, lambda: SetMemoryLayout)
+        super().register_pass(InsertAccOp.name, lambda: InsertAccOp)
         super().register_pass(InsertSyncBarrier.name, lambda: InsertSyncBarrier)
         super().register_pass(DispatchRegions.name, lambda: DispatchRegions)
         super().register_pass(SNAXCopyToDMA.name, lambda: SNAXCopyToDMA)
