@@ -4,6 +4,7 @@ from xdsl.dialects.builtin import ModuleOp, StringAttr
 from xdsl.traits import SymbolTable
 
 from compiler.accelerators.accelerator import Accelerator
+from compiler.accelerators.gemmini import GemminiAccelerator
 from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
 from compiler.dialects.acc import AcceleratorOp
 
@@ -14,7 +15,10 @@ class AcceleratorRegistry:
     a query based on an acc2.acceleratorop.
     """
 
-    registered_accelerators = {"snax_hwpe_mult": SNAXHWPEMultAccelerator}
+    registered_accelerators = {
+        "snax_hwpe_mult": SNAXHWPEMultAccelerator,
+        "gemmini": GemminiAccelerator,
+    }
 
     def lookup_acc_info(
         self, acc_query: StringAttr, module: ModuleOp
