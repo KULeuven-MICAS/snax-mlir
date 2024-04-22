@@ -12,7 +12,6 @@ class Accelerator(ABC):
     """
 
     name: str
-    fields: tuple[str]
 
     @abstractmethod
     def convert_to_acc_ops(self, op: type[Operation]) -> Sequence[Operation]:
