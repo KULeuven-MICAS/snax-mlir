@@ -47,12 +47,12 @@ builtin.module {
 // CHECK: builtin.module {
 // CHECK-NEXT:   func.func public @test() {
 // CHECK-NEXT:     %t = arith.constant 32 : i32
-// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3 0x3, 9 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
-// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3 0x3, 10 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
-// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3 0x3, 11 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
-// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3 0x3, 12 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
-// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3 0x3, 13 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
-// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3 0x3, 8 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
+// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3, 0x3, 9 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
+// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3, 0x3, 10 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
+// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3, 0x3, 11 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
+// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3, 0x3, 12 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
+// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3, 0x3, 13 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
+// CHECK-NEXT:     "llvm.inline_asm"(%t, %t) <{"asm_string" = ".insn r CUSTOM_3, 0x3, 8 ,x0, $0, $1", "constraints" = "r, r", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i32, i32) -> ()
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
