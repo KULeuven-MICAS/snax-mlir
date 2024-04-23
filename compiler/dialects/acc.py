@@ -76,19 +76,42 @@ class LaunchOp(IRDLOperation):
 
     name = "acc2.launch"
 
+    values = var_operand_def(Attribute)  # TODO: make more precise?
+    """
+    The actual values used to set up registers linked to launch
+    """
+
     state = operand_def(StateType)
+
+    param_names = prop_def(ArrayAttr[StringAttr])
+    """
+    Maps the SSA values in `values` to accelerator launch parameters
+    """
 
     accelerator = prop_def(StringAttr)
 
     token = result_def()
 
-    def __init__(self, state: SSAValue | Operation):
+    def __init__(
+        self,
+        vals: list[SSAValue | Operation],
+        param_names: Iterable[str] | Iterable[StringAttr],
+        state: SSAValue | Operation,
+    ):
         state_val: SSAValue = SSAValue.get(state)
+
         if not isinstance(state_val.type, StateType):
             raise ValueError("`state` SSA Value must be of type `acc2.state`!")
+
+        param_names_tuple: tuple[StringAttr, ...] = tuple(
+            StringAttr(name) if isinstance(name, str) else name for name in param_names
+        )
         super().__init__(
-            operands=[state],
-            properties={"accelerator": state_val.type.accelerator},
+            operands=[vals, state],
+            properties={
+                "param_names": ArrayAttr(param_names_tuple),
+                "accelerator": state_val.type.accelerator,
+            },
             result_types=[TokenType(state_val.type.accelerator)],
         )
 
@@ -111,6 +134,12 @@ class LaunchOp(IRDLOperation):
             next(iter(self.token.uses)).operation, AwaitOp
         ):
             raise VerifyException("Launch token must be used by exactly one await op")
+
+        # that len(values) == len(param_names)
+        if len(self.values) != len(self.param_names):
+            raise ValueError(
+                "Must have received same number of values as parameter names"
+            )
         # TODO: allow use in control flow
 
 

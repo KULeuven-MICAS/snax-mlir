@@ -15,6 +15,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
 
     name = "snax_hwpe_mult"
     fields = ("A", "B", "O", "vector_length", "nr_iters", "mode")
+    launch_fields = ("launch",)
 
     def convert_to_acc_ops(self, op: linalg.Generic) -> Sequence[Operation]:
         """
@@ -37,7 +38,8 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
         return [
             *ops_to_insert,
             setup := acc.SetupOp([val for _, val in args], self.fields, self.name),
-            token := acc.LaunchOp(setup),
+            launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
+            token := acc.LaunchOp([launch_val], self.launch_fields, setup),
             acc.AwaitOp(token),
         ]
 
