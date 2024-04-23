@@ -234,7 +234,7 @@ class AcceleratorOp(IRDLOperation):
 
     fields = prop_def(DictionaryAttr)
 
-    launch_addr = prop_def(IntegerAttr)
+    launch_fields = prop_def(DictionaryAttr)
 
     barrier = prop_def(IntegerAttr)  # TODO: this will be reworked in a later version
 
@@ -242,12 +242,17 @@ class AcceleratorOp(IRDLOperation):
         self,
         name: str | StringAttr | SymbolRefAttr,
         fields: dict[str, int] | DictionaryAttr,
-        launch: int | IntegerAttr,
+        launch_fields: dict[str, int] | DictionaryAttr,
         barrier: int | IntegerAttr,
     ):
         if not isinstance(fields, DictionaryAttr):
             fields = DictionaryAttr(
                 {name: IntegerAttr(val, i32) for name, val in fields.items()}
+            )
+
+        if not isinstance(launch_fields, DictionaryAttr):
+            launch_fields = DictionaryAttr(
+                {name: IntegerAttr(val, i32) for name, val in launch_fields.items()}
             )
 
         super().__init__(
@@ -256,11 +261,7 @@ class AcceleratorOp(IRDLOperation):
                     SymbolRefAttr(name) if not isinstance(name, SymbolRefAttr) else name
                 ),
                 "fields": fields,
-                "launch_addr": (
-                    IntegerAttr(launch, i32)
-                    if not isinstance(launch, IntegerAttr)
-                    else launch
-                ),
+                "launch_fields": launch_fields,
                 "barrier": (
                     IntegerAttr(barrier, i32)
                     if not isinstance(barrier, IntegerAttr)
@@ -270,7 +271,7 @@ class AcceleratorOp(IRDLOperation):
         )
 
     def verify_(self) -> None:
-        for name, val in self.fields.data.items():
+        for _, val in self.fields.data.items():
             if not isinstance(val, IntegerAttr):
                 raise VerifyException("fields must only contain IntegerAttr!")
 
@@ -281,6 +282,12 @@ class AcceleratorOp(IRDLOperation):
         for name, val in self.fields.data.items():
             assert isinstance(val, IntegerAttr)
             yield name, val
+
+    def get_launch_fields(self) -> dict[str, IntegerAttr]:
+        dictionary = self.launch_fields.data
+        for _, val in dictionary.items():
+            assert isinstance(val, IntegerAttr)
+        return dictionary
 
 
 ACC = Dialect(

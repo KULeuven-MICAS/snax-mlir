@@ -5,7 +5,7 @@
   "acc2.accelerator"() <{
       name            = @snax_hwpe_mult,
       fields          = {A=0x3d0, B=0x3d1, O=0x3d3, vector_length=0x3d4, nr_iters=0x3d5, mode=0x3d6},
-      launch_addr     = 0x3c0,
+      launch_fields   = {launch=0x3c0},
       barrier         = 0x3c3
   }> : () -> ()
 
@@ -62,7 +62,7 @@
 }): () -> ()
 
 // CHECK-NEXT: builtin.module {
-// CHECK-NEXT:   "acc2.accelerator"() <{"barrier" = 963 : i64, "fields" = {"A" = 976 : i64, "B" = 977 : i64, "O" = 979 : i64, "mode" = 982 : i64, "nr_iters" = 981 : i64, "vector_length" = 980 : i64}, "launch_addr" = 960 : i64, "name" = @snax_hwpe_mult}> : () -> ()
+// CHECK-NEXT:   "acc2.accelerator"() <{"barrier" = 963 : i64, "fields" = {"A" = 976 : i64, "B" = 977 : i64, "O" = 979 : i64, "mode" = 982 : i64, "nr_iters" = 981 : i64, "vector_length" = 980 : i64}, "launch_fields" = {"launch" = 960 : i64}, "name" = @snax_hwpe_mult}> : () -> ()
 // CHECK-NEXT:   func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg2 : memref<?xi32>) {
 // CHECK-NEXT:     %0 = arith.constant 0 : index
 // CHECK-NEXT:     %1 = arith.constant 1 : i32

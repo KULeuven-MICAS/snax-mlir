@@ -61,8 +61,12 @@ class SNAXAccelerator(Accelerator, ABC):
 
     @staticmethod
     def lower_acc_launch(acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
+        launch_fields = acc_op.get_launch_fields()
+        # SNAX only has a single launch field
+        assert "launch" in launch_fields
+        assert len(launch_fields) == 1
         return [
-            addr_val := arith.Constant(acc_op.launch_addr),
+            addr_val := arith.Constant(launch_fields["launch"]),
             val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
             llvm.InlineAsmOp(
                 "csrw $0, $1",

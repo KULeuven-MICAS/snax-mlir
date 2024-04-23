@@ -35,7 +35,7 @@ class Accelerator(ABC):
         "acc2.accelerator"() <{
             name            = @name_of_the_accelerator,
             fields          = {field_1=address_1, field_2=address2},
-            launch_addr     = launch_address,
+            launch_fields   = {launch_field_1=address_1,
             barrier         = barrier_address,
         }> : () -> ()
         """

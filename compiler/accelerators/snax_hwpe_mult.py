@@ -52,7 +52,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
             name            = @snax_hwpe_mult,
             fields          = {A=0x3d0, B=0x3d1, O=0x3d3, n_iters=0x3d4,
                                vector_length=0x3d5, mode=0x3d6},
-            launch_addr     = 0x3c0,
+            launch_fields   = {"launch"=0x3c0},
             barrier = 0x3c3,
         }> : () -> ()
         """
@@ -66,6 +66,6 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
                 "nr_iters": 0x3D5,
                 "mode": 0x3D6,
             },
-            0x3C0,
+            {"launch": 0x3C0},
             0x3C3,
         )
