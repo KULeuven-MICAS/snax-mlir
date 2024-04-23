@@ -46,24 +46,25 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
         )
 
         # grab arguments
-        args = acc_info().generate_setup_vals(op)
+        def get_lowering(op):
+            args = acc_info().generate_setup_vals(op)
 
-        # insert ops to calculate arguments
-        for new_ops, _ in args:
-            rewriter.insert_op_before_matched_op(new_ops)
+            ops_to_insert = []
+            # insert ops to calculate arguments
+            for new_ops, _ in args:
+                ops_to_insert.extend(new_ops)
 
-        # instantiate setup call
-        rewriter.insert_op_before_matched_op(
-            setup := acc.SetupOp(
-                [val for _, val in args], acc_info.fields, acc_info.name
-            )
-        )
+            return [
+                *ops_to_insert,
+                setup := acc.SetupOp(
+                    [val for _, val in args], acc_info.fields, acc_info.name
+                ),
+                token := acc.LaunchOp(setup),
+                acc.AwaitOp(token),
+            ]
 
-        # launch
-        rewriter.insert_op_before_matched_op(token := acc.LaunchOp(setup))
-
-        # await
-        rewriter.replace_matched_op(acc.AwaitOp(token))
+        # Insert SSAValue generating ops, link them to Setup, Launch and Await
+        rewriter.replace_matched_op(get_lowering(op))
 
 
 @dataclass
