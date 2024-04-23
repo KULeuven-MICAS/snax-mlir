@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
-from xdsl.ir import Operation, SSAValue
+from xdsl.ir import Operation
 
 from compiler.dialects import acc
 
@@ -15,15 +15,16 @@ class Accelerator(ABC):
     fields: tuple[str]
 
     @abstractmethod
-    def generate_setup_vals(
-        self, op: Operation
-    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def convert_to_acc_ops(self, op: type[Operation]) -> Sequence[Operation]:
         """
-        Produce a `Sequence[Operation], SSAValue` tuple
-        for each field that contains:
-
-        - a list of operations that calculate the field value
-        - a reference to the SSAValue containing the calculated field value
+        Lowers the operation op to a sequence of acc_ops.
+        acc_ops are:
+            - *.op that generates SSAValues consumed by acc2.setup
+            - acc2.setup
+            - acc2.launch
+            - acc2.await
+        These ops can further be lowered by specific instances of the
+        Accelerator interface
         """
         pass
 

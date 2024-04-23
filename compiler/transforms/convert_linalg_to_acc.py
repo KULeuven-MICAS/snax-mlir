@@ -44,27 +44,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
         _, acc_info = acc_reg.lookup_acc_info(
             StringAttr(library_call_name), self.module
         )
-
-        # grab arguments
-        def get_lowering(op):
-            args = acc_info().generate_setup_vals(op)
-
-            ops_to_insert = []
-            # insert ops to calculate arguments
-            for new_ops, _ in args:
-                ops_to_insert.extend(new_ops)
-
-            return [
-                *ops_to_insert,
-                setup := acc.SetupOp(
-                    [val for _, val in args], acc_info.fields, acc_info.name
-                ),
-                token := acc.LaunchOp(setup),
-                acc.AwaitOp(token),
-            ]
-
-        # Insert SSAValue generating ops, link them to Setup, Launch and Await
-        rewriter.replace_matched_op(get_lowering(op))
+        rewriter.replace_matched_op(acc_info().convert_to_acc_ops(op))
 
 
 @dataclass

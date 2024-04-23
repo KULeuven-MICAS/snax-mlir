@@ -16,9 +16,41 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
     name = "snax_hwpe_mult"
     fields = ("A", "B", "O", "vector_length", "nr_iters", "mode")
 
-    def generate_setup_vals(
+    def convert_to_acc_ops(self, op: linalg.Generic) -> Sequence[Operation]:
+        """
+        Lowers the operation op to a sequence of acc_ops.
+        acc_ops are:
+            - *.op that generates SSAValues consumed by acc2.setup
+            - acc2.setup
+            - acc2.launch
+            - acc2.await
+        These ops can further be lowered by specific instances of the
+        Accelerator interface
+        """
+        args = self._generate_setup_vals(op)
+
+        ops_to_insert = []
+        # insert ops to calculate arguments
+        for new_ops, _ in args:
+            ops_to_insert.extend(new_ops)
+
+        return [
+            *ops_to_insert,
+            setup := acc.SetupOp([val for _, val in args], self.fields, self.name),
+            token := acc.LaunchOp(setup),
+            acc.AwaitOp(token),
+        ]
+
+    def _generate_setup_vals(
         self, op: linalg.Generic
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+        """
+        Produce a `Sequence[Operation], SSAValue` tuple
+        for each field that contains:
+
+        - a list of operations that calculate the field value
+        - a reference to the SSAValue containing the calculated field value
+        """
         a, b, c = op.operands
 
         zero = arith.Constant.from_int_and_width(0, builtin.IndexType())
