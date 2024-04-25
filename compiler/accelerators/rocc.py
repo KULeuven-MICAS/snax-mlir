@@ -33,25 +33,7 @@ class RoCCAccelerator(Accelerator, ABC):
         setup_op: acc.SetupOp, acc_op: acc.AcceleratorOp
     ) -> Sequence[Operation]:
         xcustom_acc = 3  # hardcoded to 3 for now
-        setup_dict = dict(setup_op.iter_params())
-
-        # Assert that pairs exist for each item in the setup op
-        # Starting from rs1 ops
-        for name in [name for name in acc_op.field_names() if name.endswith(".rs1")]:
-            if name in setup_dict:
-                assert name[:-4:] + ".rs2" in setup_dict
-        # Starting from rs2 ops
-        for name in [name for name in acc_op.field_names() if name.endswith(".rs2")]:
-            if name in setup_dict:
-                assert name[:-4:] + ".rs1" in setup_dict
-
-        # Create a dictionary that contains the two vals associated
-        # to each single RoCC instruction
-        vals: dict[str, list[SSAValue]] = {}
-        for field, val in setup_op.iter_params():
-            # Strip .rs1 or .rs2 off of the name
-            vals.setdefault(field[:-4], []).append(val)
-
+        vals = create_pairs(setup_op, acc_op)
         # Create the sequence of all operations that need to be emitted
         ops: Sequence[Operation] = []
         for name, func7 in [
@@ -72,7 +54,30 @@ class RoCCAccelerator(Accelerator, ABC):
         return ops
 
 
-def get_rocc_inline_asm(xcustom: str, func7: str, val1: SSAValue, val2: SSAValue):
+def create_pairs(setup_op, acc_op):
+    setup_dict = dict(setup_op.iter_params())
+    # Assert that pairs exist for each item in the setup op
+    # Starting from rs1 ops
+    for name in [name for name in acc_op.field_names() if name.endswith(".rs1")]:
+        if name in setup_dict:
+            assert name[:-4:] + ".rs2" in setup_dict
+    # Starting from rs2 ops
+    for name in [name for name in acc_op.field_names() if name.endswith(".rs2")]:
+        if name in setup_dict:
+            assert name[:-4:] + ".rs1" in setup_dict
+    # Create a dictionary that contains the two vals associated
+    # to each single RoCC instruction
+    vals: dict[str, list[SSAValue]] = {}
+    for field, val in setup_op.iter_params():
+        # Strip .rs1 or .rs2 off of the name
+        vals.setdefault(field[:-4], []).append(val)
+
+    return vals
+
+
+def get_rocc_inline_asm(
+    xcustom: str, func7: str, val1: SSAValue, val2: SSAValue
+) -> llvm.InlineAsmOp:
     """
     This will emit a custom RoCC op with 2 source registers.
     As per the sources in:
