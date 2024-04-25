@@ -32,26 +32,6 @@ class RoCCAccelerator(Accelerator, ABC):
     def lower_acc_setup(
         setup_op: acc.SetupOp, acc_op: acc.AcceleratorOp
     ) -> Sequence[Operation]:
-        """
-        This will emit a custom RoCC op with 2 source registers.
-        As per the sources in:
-
-        https://github.com/ucb-bar/gemmini-rocc-tests/blob/dev/include/gemmini.h
-
-        #define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct)
-            ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct)
-
-        https://github.com/IBM/rocc-software/blob/master/src/xcustom.h
-
-        #define ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, func7)
-        {
-          asm volatile(
-              ".insn r " STR(CAT(CUSTOM_, x)) ",
-              " STR(0x3) ", " STR(func7) ", x0, %0, %1"
-              :
-              : "r"(rs1), "r"(rs2));
-        }
-        """
         xcustom_acc = 3  # hardcoded to 3 for now
         setup_dict = dict(setup_op.iter_params())
 
@@ -81,15 +61,41 @@ class RoCCAccelerator(Accelerator, ABC):
         ]:
             ops.extend(
                 [
-                    llvm.InlineAsmOp(
-                        (
-                            f".insn r {'CUSTOM_'+str(xcustom_acc)}, 0x3, "
-                            f"{str(func7)} ,x0, $0, $1"
-                        ),
-                        "r, r",
-                        [vals[name[:-4]][0], vals[name[:-4]][1]],
-                        has_side_effects=True,
+                    get_rocc_inline_asm(
+                        str(xcustom_acc),
+                        str(func7),
+                        vals[name[:-4]][0],
+                        vals[name[:-4]][1],
                     ),
                 ]
             )
         return ops
+
+
+def get_rocc_inline_asm(xcustom: str, func7: str, val1: SSAValue, val2: SSAValue):
+    """
+    This will emit a custom RoCC op with 2 source registers.
+    As per the sources in:
+
+    https://github.com/ucb-bar/gemmini-rocc-tests/blob/dev/include/gemmini.h
+
+    #define ROCC_INSTRUCTION_RS1_RS2(x, rs1, rs2, funct)
+        ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, funct)
+
+    https://github.com/IBM/rocc-software/blob/master/src/xcustom.h
+
+    #define ROCC_INSTRUCTION_0_R_R(x, rs1, rs2, func7)
+    {
+      asm volatile(
+          ".insn r " STR(CAT(CUSTOM_, x)) ",
+          " STR(0x3) ", " STR(func7) ", x0, %0, %1"
+          :
+          : "r"(rs1), "r"(rs2));
+    }
+    """
+    return llvm.InlineAsmOp(
+        (f".insn r CUSTOM_{xcustom}, 0x3, " f"{func7} ,x0, $0, $1"),
+        "r, r",
+        [val1, val2],
+        has_side_effects=True,
+    )

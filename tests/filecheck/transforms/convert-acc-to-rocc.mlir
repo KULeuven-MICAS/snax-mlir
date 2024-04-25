@@ -8,37 +8,37 @@ builtin.module {
         k_LOOP_WS_CONFIG_ADDRS_DC.rs1=11,
         k_LOOP_WS_CONFIG_STRIDES_AB.rs1=12,
         k_LOOP_WS_CONFIG_STRIDES_DC.rs1=13,
-        k_LOOP_WS.rs1=8,
         k_LOOP_WS_CONFIG_BOUNDS.rs2=9,
         k_LOOP_WS_CONFIG_ADDRS_AB.rs2=10,
         k_LOOP_WS_CONFIG_ADDRS_DC.rs2=11,
         k_LOOP_WS_CONFIG_STRIDES_AB.rs2=12,
-        k_LOOP_WS_CONFIG_STRIDES_DC.rs2=13,
-        k_LOOP_WS.rs2=8
+        k_LOOP_WS_CONFIG_STRIDES_DC.rs2=13
         },
-      launch_addr     = 0x3c0,
+      launch_fields   = {
+        k_LOOP_WS.rs1=8,
+        k_LOOP_WS.rs2=8},
       barrier         = 0x3c3
   }> : () -> ()
 
 
   func.func public @test() {
     %t = arith.constant 32 : i32
-    %9 = "acc2.setup"(%t,%t,%t,%t,%t,%t,%t,%t,%t,%t,%t,%t) <{"accelerator" = "gemmini", "operandSegmentSizes" = array<i32: 12, 0>, 
+    %9 = "acc2.setup"(%t,%t,%t,%t,%t,%t,%t,%t,%t,%t) <{"accelerator" = "gemmini", "operandSegmentSizes" = array<i32: 10, 0>, 
     "param_names" = [ "k_LOOP_WS_CONFIG_BOUNDS.rs1",
         "k_LOOP_WS_CONFIG_ADDRS_AB.rs1",
         "k_LOOP_WS_CONFIG_ADDRS_DC.rs1",
         "k_LOOP_WS_CONFIG_STRIDES_AB.rs1",
         "k_LOOP_WS_CONFIG_STRIDES_DC.rs1",
-        "k_LOOP_WS.rs1",
         "k_LOOP_WS_CONFIG_BOUNDS.rs2",
         "k_LOOP_WS_CONFIG_ADDRS_AB.rs2",
         "k_LOOP_WS_CONFIG_ADDRS_DC.rs2",
         "k_LOOP_WS_CONFIG_STRIDES_AB.rs2",
-        "k_LOOP_WS_CONFIG_STRIDES_DC.rs2",
-        "k_LOOP_WS.rs2"
-        ]}> : (i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32) -> !acc2.state<"gemmini">
+        "k_LOOP_WS_CONFIG_STRIDES_DC.rs2"
+        ]}> : (i32, i32, i32, i32, i32, i32, i32, i32, i32, i32) -> !acc2.state<"gemmini">
 
-    %10 = "acc2.launch"(%9) <{"accelerator" = "gemmini"}> : (!acc2.state<"gemmini">) -> !acc2.token<"gemmini">
+    %10 = "acc2.launch"(%t,%t,%9) <{
+    "param_names" = ["k_LOOP_WS.rs1", "k_LOOP_WS.rs2"],
+    "accelerator" = "gemmini"}> : (i32, i32, !acc2.state<"gemmini">) -> !acc2.token<"gemmini">
       "acc2.await"(%10) : (!acc2.token<"gemmini">) -> ()
     func.return
   }
