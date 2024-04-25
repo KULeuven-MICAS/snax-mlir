@@ -1,39 +1,10 @@
 # Courtesy of Federico Ficarelli
-FROM ghcr.io/kuleuven-micas/snax:latest as deps
+FROM ghcr.io/kuleuven-micas/snax:pr-96 as deps
 
 RUN git clone https://github.com/kuleuven-micas/snitch_cluster.git /src \
  && cd /src \
  && git reset --hard d87720fdf66b15325b37391494b990ac606503ab \
  && git submodule update --init
-
-# Snitch-specific version for libc and clang runtime libraries
-# LLVM 17 is already installed in base image
-RUN mkdir -p /opt/snitch-llvm \
- && wget -qO- https://github.com/pulp-platform/llvm-project/releases/download/0.12.0/riscv32-pulp-llvm-ubuntu1804-0.12.0.tar.gz | \
-    tar xz --strip-components=1 -C /opt/snitch-llvm
-# python 3.11
-RUN apt update -y \
- && apt install -y \
-      build-essential \
-      zlib1g-dev \
-      libncurses5-dev \
-      libgdbm-dev \
-      libnss3-dev \
-      libssl-dev \
-      libreadline-dev \
-      libffi-dev \
-      libsqlite3-dev \
-      wget \
-      libbz2-dev \
-      lzma \
-      liblzma-dev \
-      libbz2-dev \
- && mkdir -p /tmp/python-src \
- && wget -qO- https://www.python.org/ftp/python/3.11.5/Python-3.11.5.tgz | \
-    tar xz --strip-components=1 -C /tmp/python-src \
- && cd /tmp/python-src \
- && ./configure --prefix=/opt/python3.11 \
- && make install
 
 FROM deps as snax-mac
 # snitch runtime
@@ -63,14 +34,8 @@ RUN  cd /src && \
  make  -C target/snitch_cluster bin/snitch_cluster.vlt -j$(nproc) \
  CFG_OVERRIDE=cfg/snax-gemm.hjson
 
-FROM ubuntu:18.04 as toolchain
-# shared dependencies
-# libc for memset from old toolchain
-COPY --from=deps /opt/snitch-llvm/riscv32-unknown-elf/lib /opt/snitch-llvm/riscv32-unknown-elf/lib
-# libclang_rt.builtins_riscv32 from old toolchain
-COPY --from=deps /opt/snitch-llvm/lib/clang/12.0.1/lib /opt/snitch-llvm/lib/clang/12.0.1/lib
-COPY --from=deps /opt/python3.11 /opt/python3.11
-COPY --from=deps /src/util/trace /opt/snitch_cluster/util/trace
+FROM ghcr.io/kuleuven-micas/snax:pr-96 as toolchain
+
 COPY --from=snax-mac /opt/snitch-spike /opt/snitch-spike
 
 # SNAX-MAC dependencies
