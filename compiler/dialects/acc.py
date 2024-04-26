@@ -76,19 +76,42 @@ class LaunchOp(IRDLOperation):
 
     name = "acc2.launch"
 
+    values = var_operand_def(Attribute)  # TODO: make more precise?
+    """
+    The actual values used to set up registers linked to launch
+    """
+
     state = operand_def(StateType)
+
+    param_names = prop_def(ArrayAttr[StringAttr])
+    """
+    Maps the SSA values in `values` to accelerator launch parameters
+    """
 
     accelerator = prop_def(StringAttr)
 
     token = result_def()
 
-    def __init__(self, state: SSAValue | Operation):
+    def __init__(
+        self,
+        vals: list[SSAValue | Operation],
+        param_names: Iterable[str] | Iterable[StringAttr],
+        state: SSAValue | Operation,
+    ):
         state_val: SSAValue = SSAValue.get(state)
+
         if not isinstance(state_val.type, StateType):
             raise ValueError("`state` SSA Value must be of type `acc2.state`!")
+
+        param_names_tuple: tuple[StringAttr, ...] = tuple(
+            StringAttr(name) if isinstance(name, str) else name for name in param_names
+        )
         super().__init__(
-            operands=[state],
-            properties={"accelerator": state_val.type.accelerator},
+            operands=[vals, state],
+            properties={
+                "param_names": ArrayAttr(param_names_tuple),
+                "accelerator": state_val.type.accelerator,
+            },
             result_types=[TokenType(state_val.type.accelerator)],
         )
 
@@ -111,6 +134,12 @@ class LaunchOp(IRDLOperation):
             next(iter(self.token.uses)).operation, AwaitOp
         ):
             raise VerifyException("Launch token must be used by exactly one await op")
+
+        # that len(values) == len(param_names)
+        if len(self.values) != len(self.param_names):
+            raise ValueError(
+                "Must have received same number of values as parameter names"
+            )
         # TODO: allow use in control flow
 
 
@@ -234,7 +263,7 @@ class AcceleratorOp(IRDLOperation):
 
     fields = prop_def(DictionaryAttr)
 
-    launch_addr = prop_def(IntegerAttr)
+    launch_fields = prop_def(DictionaryAttr)
 
     barrier = prop_def(IntegerAttr)  # TODO: this will be reworked in a later version
 
@@ -242,12 +271,17 @@ class AcceleratorOp(IRDLOperation):
         self,
         name: str | StringAttr | SymbolRefAttr,
         fields: dict[str, int] | DictionaryAttr,
-        launch: int | IntegerAttr,
+        launch_fields: dict[str, int] | DictionaryAttr,
         barrier: int | IntegerAttr,
     ):
         if not isinstance(fields, DictionaryAttr):
             fields = DictionaryAttr(
                 {name: IntegerAttr(val, i32) for name, val in fields.items()}
+            )
+
+        if not isinstance(launch_fields, DictionaryAttr):
+            launch_fields = DictionaryAttr(
+                {name: IntegerAttr(val, i32) for name, val in launch_fields.items()}
             )
 
         super().__init__(
@@ -256,11 +290,7 @@ class AcceleratorOp(IRDLOperation):
                     SymbolRefAttr(name) if not isinstance(name, SymbolRefAttr) else name
                 ),
                 "fields": fields,
-                "launch_addr": (
-                    IntegerAttr(launch, i32)
-                    if not isinstance(launch, IntegerAttr)
-                    else launch
-                ),
+                "launch_fields": launch_fields,
                 "barrier": (
                     IntegerAttr(barrier, i32)
                     if not isinstance(barrier, IntegerAttr)
@@ -270,7 +300,7 @@ class AcceleratorOp(IRDLOperation):
         )
 
     def verify_(self) -> None:
-        for name, val in self.fields.data.items():
+        for _, val in self.fields.data.items():
             if not isinstance(val, IntegerAttr):
                 raise VerifyException("fields must only contain IntegerAttr!")
 
@@ -281,6 +311,12 @@ class AcceleratorOp(IRDLOperation):
         for name, val in self.fields.data.items():
             assert isinstance(val, IntegerAttr)
             yield name, val
+
+    def get_launch_fields(self) -> dict[str, IntegerAttr]:
+        dictionary = self.launch_fields.data
+        for _, val in dictionary.items():
+            assert isinstance(val, IntegerAttr)
+        return dictionary
 
 
 ACC = Dialect(

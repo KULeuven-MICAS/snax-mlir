@@ -5,12 +5,13 @@ builtin.module {
   "acc2.accelerator"() <{
       name            = @snax_hwpe_mult,
       fields          = {A=0x3d0, B=0x3d1, O=0x3d3, vector_length=0x3d4, nr_iters=0x3d5, mode=0x3d6},
-      launch_addr     = 0x3c0,
+      launch_fields   = {launch=0x3c0},
       barrier         = 0x3c3
   }> : () -> ()
 
   func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg2 : memref<?xi32>, %i1 : i1) {
     %0 = arith.constant 0 : index
+    %cst_0 = arith.constant 0 : i5
     %1 = "memref.extract_aligned_pointer_as_index"(%arg0) : (memref<?xi32>) -> index
     %2 = "arith.index_cast"(%1) : (index) -> i32
     %3 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<?xi32>) -> index
@@ -20,21 +21,21 @@ builtin.module {
     %7 = "memref.dim"(%arg0, %0) : (memref<?xi32>, index) -> index
     %8 = "arith.index_cast"(%7) : (index) -> i32
     %9 = "acc2.setup"(%2, %4, %6, %8) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !acc2.state<"snax_hwpe_mult">
-    %10 = "acc2.launch"(%9) <{"accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+    %10 = "acc2.launch"(%cst_0, %9) <{"param_names" = ["launch"] ,"accelerator" = "snax_hwpe_mult"}> : (i5, !acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
     "acc2.await"(%10) : (!acc2.token<"snax_hwpe_mult">) -> ()
     %13 = "scf.if"(%i1) ({
       %14 = "acc2.setup"(%6, %9) <{"param_names" = ["B"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 1, 1>}> : (i32, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
-      %15 = "acc2.launch"(%14) <{"accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+      %15 = "acc2.launch"(%cst_0, %14) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
       "acc2.await"(%15) : (!acc2.token<"snax_hwpe_mult">) -> ()
       %17 = "acc2.setup"(%4, %14) <{"param_names" = ["O"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 1, 1>}> : (i32, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
       scf.yield %17 : !acc2.state<"snax_hwpe_mult">
     }, {
-      %19 = "acc2.launch"(%9) <{"accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+      %19 = "acc2.launch"(%cst_0, %9) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
       "acc2.await"(%19) : (!acc2.token<"snax_hwpe_mult">) -> ()
       %20 = "acc2.setup"(%6, %4, %9) <{"param_names" = ["B", "O"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 2, 1>}> : (i32, i32, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
       scf.yield %20 : !acc2.state<"snax_hwpe_mult">
     }) : (i1) -> (!acc2.state<"snax_hwpe_mult">)
-    %21 = "acc2.launch"(%13) <{"accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+    %21 = "acc2.launch"(%cst_0, %13) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
     "acc2.await"(%21) : (!acc2.token<"snax_hwpe_mult">) -> ()
     func.return
   }
@@ -43,6 +44,7 @@ builtin.module {
 // CHECK-NEXT: builtin.module {
 // CHECK-NEXT:   func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg2 : memref<?xi32>, %i1 : i1) {
 // CHECK-NEXT:     %0 = arith.constant 0 : index
+// CHECK-NEXT:     %cst_0 = arith.constant 0 : i5
 // CHECK-NEXT:     %1 = "memref.extract_aligned_pointer_as_index"(%arg0) : (memref<?xi32>) -> index
 // CHECK-NEXT:     %2 = "arith.index_cast"(%1) : (index) -> i32
 // CHECK-NEXT:     %3 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<?xi32>) -> index

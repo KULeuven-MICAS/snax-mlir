@@ -15,10 +15,44 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
 
     name = "snax_hwpe_mult"
     fields = ("A", "B", "O", "vector_length", "nr_iters", "mode")
+    launch_fields = ("launch",)
 
-    def generate_setup_vals(
+    def convert_to_acc_ops(self, op: linalg.Generic) -> Sequence[Operation]:
+        """
+        Lowers the operation op to a sequence of acc_ops.
+        acc_ops are:
+            - *.op that generates SSAValues consumed by acc2.setup
+            - acc2.setup
+            - acc2.launch
+            - acc2.await
+        These ops can further be lowered by specific instances of the
+        Accelerator interface
+        """
+        args = self._generate_setup_vals(op)
+
+        ops_to_insert = []
+        # insert ops to calculate arguments
+        for new_ops, _ in args:
+            ops_to_insert.extend(new_ops)
+
+        return [
+            *ops_to_insert,
+            setup := acc.SetupOp([val for _, val in args], self.fields, self.name),
+            launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
+            token := acc.LaunchOp([launch_val], self.launch_fields, setup),
+            acc.AwaitOp(token),
+        ]
+
+    def _generate_setup_vals(
         self, op: linalg.Generic
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+        """
+        Produce a `Sequence[Operation], SSAValue` tuple
+        for each field that contains:
+
+        - a list of operations that calculate the field value
+        - a reference to the SSAValue containing the calculated field value
+        """
         a, b, c = op.operands
 
         zero = arith.Constant.from_int_and_width(0, builtin.IndexType())
@@ -52,7 +86,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
             name            = @snax_hwpe_mult,
             fields          = {A=0x3d0, B=0x3d1, O=0x3d3, n_iters=0x3d4,
                                vector_length=0x3d5, mode=0x3d6},
-            launch_addr     = 0x3c0,
+            launch_fields   = {"launch"=0x3c0},
             barrier = 0x3c3,
         }> : () -> ()
         """
@@ -66,6 +100,6 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
                 "nr_iters": 0x3D5,
                 "mode": 0x3D6,
             },
-            0x3C0,
+            {"launch": 0x3C0},
             0x3C3,
         )
