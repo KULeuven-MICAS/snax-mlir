@@ -72,17 +72,23 @@ class RoCCAccelerator(Accelerator, ABC):
         return ops
 
 
-def create_pairs(fields_op: acc.SetupOp, acc_op):
-    setup_dict = dict(fields_op.iter_params())
-    # Assert that pairs exist for each item in the setup op
+def assert_pairs(field_dict, field_names):
+    """
+    Assert that pairs of rs1 and rs2 exist for each item in the fields
+    """
     # Starting from rs1 ops
-    for name in [name for name in acc_op.field_names() if name.endswith(".rs1")]:
-        if name in setup_dict:
-            assert name[:-4:] + ".rs2" in setup_dict
+    for name in [name for name in field_names if name.endswith(".rs1")]:
+        if name in field_dict:
+            assert name[:-4:] + ".rs2" in field_dict
     # Starting from rs2 ops
-    for name in [name for name in acc_op.field_names() if name.endswith(".rs2")]:
-        if name in setup_dict:
-            assert name[:-4:] + ".rs1" in setup_dict
+    for name in [name for name in field_names if name.endswith(".rs2")]:
+        if name in field_dict:
+            assert name[:-4:] + ".rs1" in field_dict
+
+
+def create_pairs(fields_op: acc.SetupOp, acc_op: acc.AcceleratorOp):
+    setup_dict = dict(fields_op.iter_params())
+    assert_pairs(setup_dict, acc_op.field_names())
     # Create a dictionary that contains the two vals associated
     # to each single RoCC instruction
     vals: dict[str, list[SSAValue]] = {}
@@ -93,17 +99,9 @@ def create_pairs(fields_op: acc.SetupOp, acc_op):
     return vals
 
 
-def create_launch_pairs(fields_op: acc.LaunchOp, acc_op):
-    setup_dict = dict(fields_op.iter_params())
-    # Assert that pairs exist for each item in the setup op
-    # Starting from rs1 ops
-    for name in [name for name in acc_op.launch_field_names() if name.endswith(".rs1")]:
-        if name in setup_dict:
-            assert name[:-4:] + ".rs2" in setup_dict
-    # Starting from rs2 ops
-    for name in [name for name in acc_op.launch_field_names() if name.endswith(".rs2")]:
-        if name in setup_dict:
-            assert name[:-4:] + ".rs1" in setup_dict
+def create_launch_pairs(fields_op: acc.LaunchOp, acc_op: acc.AcceleratorOp):
+    launch_dict = dict(fields_op.iter_params())
+    assert_pairs(launch_dict, acc_op.launch_field_names())
     # Create a dictionary that contains the two vals associated
     # to each single RoCC instruction
     vals: dict[str, list[SSAValue]] = {}
