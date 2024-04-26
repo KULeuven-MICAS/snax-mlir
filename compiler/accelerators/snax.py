@@ -63,14 +63,14 @@ class SNAXAccelerator(Accelerator, ABC):
     def lower_acc_launch(
         launch_op: acc.LaunchOp, acc_op: acc.AcceleratorOp
     ) -> Sequence[Operation]:
-        launch_fields = acc_op.get_launch_fields()
-        # Get the launch address
-        assert "launch" in launch_fields
-        assert len(launch_fields) == 1
-        launch_address = launch_fields["launch"]
-        # Get the launch value
-        # launch_value = builtin.IntegerAttr.from_int_and_width(0, 5)
-        # There should only be one value here
+        # Get the launch address, for SNAX should be only one
+        launch_address = None
+        for field, val in acc_op.launch_field_items():
+            assert field == "launch"
+            launch_address = val
+        assert launch_address is not None
+        # Get the launch value,
+        # For SNAX there should only be one value here
         launch_value = None
         for field, val in launch_op.iter_params():
             assert field == "launch"
