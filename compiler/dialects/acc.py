@@ -115,6 +115,9 @@ class LaunchOp(IRDLOperation):
             result_types=[TokenType(state_val.type.accelerator)],
         )
 
+    def iter_params(self) -> Iterable[tuple[str, SSAValue]]:
+        return zip((p.data for p in self.param_names), self.values)
+
     def verify_(self) -> None:
         # that the state and my accelerator match
         assert isinstance(self.state.type, StateType)

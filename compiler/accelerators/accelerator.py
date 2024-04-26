@@ -53,7 +53,9 @@ class Accelerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def lower_acc_launch(acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_launch(
+        launch_op: acc.LaunchOp, acc_op: acc.AcceleratorOp
+    ) -> Sequence[Operation]:
         """
         Based on the acc2.accelerator op, return the necessary sequence of
         lower-level operations to perform an

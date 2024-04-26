@@ -73,7 +73,7 @@ class LowerAccLaunchToCsr(LowerAccBasePattern):
 
         # insert an op that sets the launch CSR to 1
         rewriter.replace_matched_op(
-            acc_info.lower_acc_launch(acc_op),
+            acc_info.lower_acc_launch(op, acc_op),
             [op.state],
             safe_erase=False,
         )

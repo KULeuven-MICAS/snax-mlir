@@ -60,21 +60,31 @@ class SNAXAccelerator(Accelerator, ABC):
         ]
 
     @staticmethod
-    def lower_acc_launch(acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_launch(
+        launch_op: acc.LaunchOp, acc_op: acc.AcceleratorOp
+    ) -> Sequence[Operation]:
         launch_fields = acc_op.get_launch_fields()
-        # SNAX only has a single launch field
+        # Get the launch address
         assert "launch" in launch_fields
         assert len(launch_fields) == 1
+        launch_address = launch_fields["launch"]
+        # Get the launch value
+        # launch_value = builtin.IntegerAttr.from_int_and_width(0, 5)
+        # There should only be one value here
+        launch_value = None
+        for field, val in launch_op.iter_params():
+            assert field == "launch"
+            launch_value = val
+        assert launch_value is not None
         return [
-            addr_val := arith.Constant(launch_fields["launch"]),
-            val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
+            addr_val := arith.Constant(launch_address),
             llvm.InlineAsmOp(
                 "csrw $0, $1",
                 # I = any 12 bit immediate, K = any 5 bit immediate
                 # The K allows LLVM to emit an `csrrwi` instruction,
                 # which has room for one 5 bit immediate only.
                 "I, K",
-                [addr_val, val],
+                [addr_val, launch_value],
                 has_side_effects=True,
             ),
         ]
