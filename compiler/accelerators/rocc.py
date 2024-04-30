@@ -26,50 +26,36 @@ class RoCCAccelerator(Accelerator, ABC):
         launch_op: acc.LaunchOp, acc_op: acc.AcceleratorOp
     ) -> Sequence[Operation]:
         xcustom_acc = 3  # hardcoded to 3 for now
-        vals = create_launch_pairs(launch_op, acc_op)
+        vals = create_pairs(launch_op, acc_op.launch_field_names())
         # Create the sequence of all operations that need to be emitted
-        ops: Sequence[Operation] = []
-        for name, func7 in [
-            (name, func7.value.data)
-            for name, func7 in acc_op.launch_field_items()
-            if name.endswith(".rs1")
-        ]:
-            ops.extend(
-                [
-                    get_rocc_inline_asm(
-                        str(xcustom_acc),
-                        str(func7),
-                        vals[name[:-4]][0],
-                        vals[name[:-4]][1],
-                    ),
-                ]
-            )
-        return ops
+        return combine_pairs_to_ops(acc_op.launch_field_items(), vals, xcustom_acc)
 
     @staticmethod
     def lower_acc_setup(
         setup_op: acc.SetupOp, acc_op: acc.AcceleratorOp
     ) -> Sequence[Operation]:
         xcustom_acc = 3  # hardcoded to 3 for now
-        vals = create_setup_pairs(setup_op, acc_op)
+        vals = create_pairs(setup_op, acc_op.field_names())
         # Create the sequence of all operations that need to be emitted
-        ops: Sequence[Operation] = []
-        for name, func7 in [
-            (name, func7.value.data)
-            for name, func7 in acc_op.field_items()
-            if name.endswith(".rs1")
-        ]:
-            ops.extend(
-                [
-                    get_rocc_inline_asm(
-                        str(xcustom_acc),
-                        str(func7),
-                        vals[name[:-4]][0],
-                        vals[name[:-4]][1],
-                    ),
-                ]
-            )
-        return ops
+        return combine_pairs_to_ops(acc_op.field_items(), vals, xcustom_acc)
+
+
+def combine_pairs_to_ops(field_items, values, xcustom_acc):
+    ops: Sequence[Operation] = []
+    for name, func7 in [
+        (name, func7.value.data) for name, func7 in field_items if name.endswith(".rs1")
+    ]:
+        ops.extend(
+            [
+                get_rocc_inline_asm(
+                    str(xcustom_acc),
+                    str(func7),
+                    values[name[:-4]][0],
+                    values[name[:-4]][1],
+                ),
+            ]
+        )
+    return ops
 
 
 def assert_pairs(field_dict, field_names):
@@ -86,17 +72,9 @@ def assert_pairs(field_dict, field_names):
             assert name[:-4:] + ".rs1" in field_dict
 
 
-def create_setup_pairs(fields_op: acc.LaunchOp, acc_op: acc.AcceleratorOp):
-    return create_pairs(fields_op, acc_op.field_names())
-
-
-def create_launch_pairs(fields_op: acc.LaunchOp, acc_op: acc.AcceleratorOp):
-    return create_pairs(fields_op, acc_op.launch_field_names())
-
-
 def create_pairs(fields_op: acc.LaunchOp, field_names):
-    launch_dict = dict(fields_op.iter_params())
-    assert_pairs(launch_dict, field_names)
+    field_dict = dict(fields_op.iter_params())
+    assert_pairs(field_dict, field_names)
     # Create a dictionary that contains the two vals associated
     # to each single RoCC instruction
     vals: dict[str, list[SSAValue]] = {}
