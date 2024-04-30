@@ -62,14 +62,11 @@ def assert_pairs(field_dict, field_names):
     """
     Assert that pairs of rs1 and rs2 exist for each item in the fields
     """
-    # Starting from rs1 ops
-    for name in [name for name in field_names if name.endswith(".rs1")]:
-        if name in field_dict:
-            assert name[:-4:] + ".rs2" in field_dict
-    # Starting from rs2 ops
-    for name in [name for name in field_names if name.endswith(".rs2")]:
-        if name in field_dict:
-            assert name[:-4:] + ".rs1" in field_dict
+    # Make a set of all the unique operation names
+    operations = set([name[:-4:] for name in field_names])
+    for operation in operations:
+        assert operation + ".rs1" in field_dict, f"No rs1 found for {operation}"
+        assert operation + ".rs2" in field_dict, f"No rs2 found for {operation}"
 
 
 def create_pairs(fields_op: acc.LaunchOp, field_names):
