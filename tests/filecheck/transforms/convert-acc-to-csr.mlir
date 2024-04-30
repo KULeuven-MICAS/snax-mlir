@@ -165,7 +165,7 @@ builtin.module {
       launch_fields   = {
         k_LOOP_WS.rs1=8,
         k_LOOP_WS.rs2=8},
-      barrier         = 0x3c3
+      barrier         = 0x0BAD
   }> : () -> ()
 
 

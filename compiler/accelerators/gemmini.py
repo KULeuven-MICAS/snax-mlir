@@ -39,6 +39,6 @@ class GemminiAccelerator(RoCCAccelerator):
             self.fields,
             self.launch_fields,  # Gemmini has no separate launch instruction,
             # but appears to launch on k_LOOP_WS configuration
-            0x0BAD,  # Gemmini works appears to work synchronously,
+            0x0BAD,  # Gemmini appears to work synchronously,
             # and does not have a separate await instruction
         )
