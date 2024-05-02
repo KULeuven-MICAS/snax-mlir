@@ -1,11 +1,13 @@
 from abc import ABC
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 
 from xdsl.dialects import llvm
+from xdsl.dialects.builtin import IntegerAttr
 from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.dialects import acc
+from compiler.inference.trace_acc_state import infer_state_of
 
 
 class RoCCAccelerator(Accelerator, ABC):
@@ -26,7 +28,7 @@ class RoCCAccelerator(Accelerator, ABC):
         launch_op: acc.LaunchOp, acc_op: acc.AcceleratorOp
     ) -> Sequence[Operation]:
         xcustom_acc = 3  # hardcoded to 3 for now
-        vals = create_pairs(launch_op, acc_op.launch_field_names())
+        vals = create_pairs(launch_op)
         # Create the sequence of all operations that need to be emitted
         return combine_pairs_to_ops(acc_op.launch_field_items(), vals, xcustom_acc)
 
@@ -35,50 +37,82 @@ class RoCCAccelerator(Accelerator, ABC):
         setup_op: acc.SetupOp, acc_op: acc.AcceleratorOp
     ) -> Sequence[Operation]:
         xcustom_acc = 3  # hardcoded to 3 for now
-        vals = create_pairs(setup_op, acc_op.field_names())
+        vals = create_pairs(setup_op)
+        # Only pass on the field names that are set in the current setup
+        instructions = set([name[:-4:] for name, _ in setup_op.iter_params()])
+        current_fields = {
+            key: val for key, val in acc_op.field_items() if key[:-4:] in instructions
+        }.items()
         # Create the sequence of all operations that need to be emitted
-        return combine_pairs_to_ops(acc_op.field_items(), vals, xcustom_acc)
+        return combine_pairs_to_ops(current_fields, vals, xcustom_acc)
 
 
-def combine_pairs_to_ops(field_items, values, xcustom_acc):
+def create_pairs(
+    fields_op: acc.LaunchOp | acc.SetupOp,
+) -> dict[str, tuple[SSAValue, SSAValue]]:
+    """
+    For a given RoCC launch or setup op, return a map that maps a single RoCC
+    instruction to pairs of two SSAValues
+
+    For setup ops, this can retrace back previous setup state if necessary
+    (i.e. if one of the two operands of an instruction gets dedupped)
+    """
+    # Make a set of all the unique instruction names in the current operation
+    instructions = set([name[:-4:] for name, _ in fields_op.iter_params()])
+    field_dict = dict(fields_op.iter_params())
+
+    # For setup_ops, get the previous setup state, if necessary
+    if isinstance(fields_op, acc.SetupOp):
+        prev_state = infer_state_of(fields_op.in_state) if fields_op.in_state else {}
+        for instruction in instructions:
+            if instruction + ".rs1" not in field_dict:
+                field_dict[instruction + ".rs1"] = prev_state[instruction + ".rs1"]
+            if instruction + ".rs2" not in field_dict:
+                field_dict[instruction + ".rs2"] = prev_state[instruction + ".rs2"]
+    # For launch_ops, no tracing back is necessary, since dedup doesn't happen
+    elif isinstance(fields_op, acc.LaunchOp):
+        pass
+    # Assert that pairs of rs1 and rs2 exist for each item in the fields
+    for instruction in instructions:
+        assert instruction + ".rs1" in field_dict, f"No rs1 found for {instruction}"
+        assert instruction + ".rs2" in field_dict, f"No rs2 found for {instruction}"
+    # Create a dictionary that contains the two vals associated
+    # to each single RoCC instruction
+    map: dict[str, tuple[SSAValue, SSAValue]] = {}
+    for instruction in instructions:
+        map.setdefault(
+            instruction,
+            (field_dict[instruction + ".rs1"], field_dict[instruction + ".rs2"]),
+        )
+    return map
+
+
+def combine_pairs_to_ops(
+    field_items: Iterable[tuple[str, IntegerAttr]],
+    values: dict[str, tuple[SSAValue, SSAValue]],
+    xcustom_acc: int,
+):
     ops: Sequence[Operation] = []
+    """
+    Emits a custom RoCC instruction for each field_item in field_items
+    CUSTOM field can be specified by xcustom_acc.
+    """
     for name, func7 in [
-        (name, func7.value.data) for name, func7 in field_items if name.endswith(".rs1")
+        (name[:-4], func7.value.data)
+        for name, func7 in field_items
+        if name.endswith(".rs1")
     ]:
         ops.extend(
             [
                 get_rocc_inline_asm(
                     str(xcustom_acc),
                     str(func7),
-                    values[name[:-4]][0],
-                    values[name[:-4]][1],
+                    values[name][0],
+                    values[name][1],
                 ),
             ]
         )
     return ops
-
-
-def assert_pairs(field_dict, field_names):
-    """
-    Assert that pairs of rs1 and rs2 exist for each item in the fields
-    """
-    # Make a set of all the unique operation names
-    operations = set([name[:-4:] for name in field_names])
-    for operation in operations:
-        assert operation + ".rs1" in field_dict, f"No rs1 found for {operation}"
-        assert operation + ".rs2" in field_dict, f"No rs2 found for {operation}"
-
-
-def create_pairs(fields_op: acc.LaunchOp, field_names):
-    field_dict = dict(fields_op.iter_params())
-    assert_pairs(field_dict, field_names)
-    # Create a dictionary that contains the two vals associated
-    # to each single RoCC instruction
-    vals: dict[str, list[SSAValue]] = {}
-    for field, val in fields_op.iter_params():
-        # Strip .rs1 or .rs2 off of the name
-        vals.setdefault(field[:-4], []).append(val)
-    return vals
 
 
 def get_rocc_inline_asm(
