@@ -1,4 +1,3 @@
-# simple script to generate inputs and expected outputs for simple_matmult
 import os
 
 import numpy as np
