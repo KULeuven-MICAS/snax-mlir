@@ -115,6 +115,9 @@ class LaunchOp(IRDLOperation):
             result_types=[TokenType(state_val.type.accelerator)],
         )
 
+    def iter_params(self) -> Iterable[tuple[str, SSAValue]]:
+        return zip((p.data for p in self.param_names), self.values)
+
     def verify_(self) -> None:
         # that the state and my accelerator match
         assert isinstance(self.state.type, StateType)
@@ -312,11 +315,13 @@ class AcceleratorOp(IRDLOperation):
             assert isinstance(val, IntegerAttr)
             yield name, val
 
-    def get_launch_fields(self) -> dict[str, IntegerAttr]:
-        dictionary = self.launch_fields.data
-        for _, val in dictionary.items():
+    def launch_field_names(self) -> tuple[str, ...]:
+        return tuple(self.launch_fields.data.keys())
+
+    def launch_field_items(self) -> Iterable[tuple[str, IntegerAttr]]:
+        for name, val in self.launch_fields.data.items():
             assert isinstance(val, IntegerAttr)
-        return dictionary
+            yield name, val
 
 
 ACC = Dialect(
