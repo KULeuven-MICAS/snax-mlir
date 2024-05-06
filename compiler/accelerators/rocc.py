@@ -39,9 +39,9 @@ class RoCCAccelerator(Accelerator, ABC):
         xcustom_acc = 3  # hardcoded to 3 for now
         vals = create_pairs(setup_op)
         # Only pass on the field names that are set in the current setup
-        instructions = set([name[:-4:] for name, _ in setup_op.iter_params()])
+        instructions = set([name[:-4] for name, _ in setup_op.iter_params()])
         current_fields = {
-            key: val for key, val in acc_op.field_items() if key[:-4:] in instructions
+            key: val for key, val in acc_op.field_items() if key[:-4] in instructions
         }.items()
         # Create the sequence of all operations that need to be emitted
         return combine_pairs_to_ops(current_fields, vals, xcustom_acc)
@@ -58,7 +58,7 @@ def create_pairs(
     (i.e. if one of the two operands of an instruction gets dedupped)
     """
     # Make a set of all the unique instruction names in the current operation
-    instructions = set([name[:-4:] for name, _ in fields_op.iter_params()])
+    instructions = set([name[:-4] for name, _ in fields_op.iter_params()])
     field_dict = dict(fields_op.iter_params())
 
     # For setup_ops, get the previous setup state, if necessary
@@ -78,13 +78,13 @@ def create_pairs(
         assert instruction + ".rs2" in field_dict, f"No rs2 found for {instruction}"
     # Create a dictionary that contains the two vals associated
     # to each single RoCC instruction
-    map: dict[str, tuple[SSAValue, SSAValue]] = {}
+    instruction_map: dict[str, tuple[SSAValue, SSAValue]] = {}
     for instruction in instructions:
-        map.setdefault(
+        instruction_map.setdefault(
             instruction,
             (field_dict[instruction + ".rs1"], field_dict[instruction + ".rs2"]),
         )
-    return map
+    return instruction_map
 
 
 def combine_pairs_to_ops(
