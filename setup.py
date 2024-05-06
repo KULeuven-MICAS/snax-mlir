@@ -1,7 +1,7 @@
-from setuptools import find_packages, setup
+from setuptools import setup
 
 setup(
-    name="compiler",
+    name="snax",
     version="0.1.0",
-    packages=find_packages(),
+    packages=["compiler", "util"],
 )

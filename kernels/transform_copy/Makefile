@@ -43,4 +43,4 @@ generate:
 	$(PYTHON) gentests.py
 
 clean:
-	rm -fr *.ll12 *.x *.o *.logs/ logs/ data.h data.c *_gen.preprocfinal.mlir *_gen *_gen_data.c transform_copy
+	rm -fr *.ll12 *.x *.o *.logs/ logs/ data.h data.c *_gen.preprocfinal.mlir *_gen *_gen_data.c transform_copy transform_from_none transform_from_strided
