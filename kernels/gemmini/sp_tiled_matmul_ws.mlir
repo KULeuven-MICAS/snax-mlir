@@ -33,6 +33,7 @@ builtin.module {
     %c_8 = arith.constant 8 : index
     %c_2 = arith.constant 2 : index
     %c_1 = arith.constant 1 : index
+    %c_0 = arith.constant 0 : index
     %false = arith.constant 0 : i1
     %true = arith.constant 1 : i1
     %NULL = arith.constant 0 : i64
@@ -54,12 +55,15 @@ builtin.module {
     // no_bias ? NULL : D
     %D_selected = arith.select %no_bias, %NULLptr, %D : !llvm.ptr 
 
+    // repeating_bias ? 0 : D_row_stride
+    %D_row_stride_selected = arith.select %repeating_bias, %c_0, %D_row_stride : index
+
     // Convert to LLVM compatible types
     %pad_K_shift_or_pad_J_shift_or_pad_I_shift_i64 = "arith.index_cast"(%pad_K_shift_or_pad_J_shift_or_pad_I_shift) : (index) -> i64
     %K_shift_or_J_shift_or_I_shift_i64 = "arith.index_cast"(%K_shift_or_J_shift_or_I_shift) : (index) -> i64
     %A_row_stride_i64 = "arith.index_cast"(%A_row_stride) : (index) -> i64
     %B_row_stride_i64 = "arith.index_cast"(%B_row_stride) : (index) -> i64
-    %D_row_stride_i64 = "arith.index_cast"(%D_row_stride) : (index) -> i64
+    %D_row_stride_selected_i64 = "arith.index_cast"(%D_row_stride_selected) : (index) -> i64
     %C_row_stride_i64 = "arith.index_cast"(%C_row_stride) : (index) -> i64
 
 
@@ -73,7 +77,7 @@ builtin.module {
         %C,
         %A_row_stride_i64,
         %B_row_stride_i64,
-        %D_row_stride_i64,
+        %D_row_stride_selected_i64,
         %C_row_stride_i64) 
         <{"accelerator" = "gemmini", "operandSegmentSizes" = array<i32: 10, 0>, 
         "param_names" = [ 
@@ -99,8 +103,10 @@ builtin.module {
    %inv_no_bias = arith.xori %no_bias, %true : i1
    // FIXME: This requires an LLVM cmpi instruction
    // %D_eq_NULL = arith.cmpi eq, %D, %NULLptr : i1
-   %ex_accumulate = arith.ori %false, %inv_no_bias : i1 // %D_eq_NULL, %inv_no_bias : i1
+   %ex_accumulate = arith.ori %false, %inv_no_bias : i1 // %D_eq_NULL, %inv_no_bias : i
    %ex_accumulate_cast = "arith.index_cast"(%ex_accumulate) : (i1) -> index
+
+   
 
    %a_spad_id_shift_18 = arith.shli %a_spad_id_cast, %c_18 : index
    %b_spad_id_shift_16 = arith.shli %b_spad_id_cast, %c_16 : index
