@@ -17,7 +17,7 @@ builtin.module {
       barrier         = 0x0BAD
   }> : () -> ()
   func.func public @sp_tiled_matmul_ws(
-    %A: index, %B : index, %D: index, %C: index, 
+    %A: !llvm.ptr, %B : !llvm.ptr, %D: !llvm.ptr, %C: !llvm.ptr, 
     %A_scale_factor: f64, %B_scale_factor: f64, %D_scale_factor: f64,
     %I: index , %J: index, %K: index,
     %pad_I: index, %pad_J: index, %pad_K: index,
@@ -35,7 +35,9 @@ builtin.module {
     %c_1 = arith.constant 1 : index
     %false = arith.constant 0 : i1
     %true = arith.constant 1 : i1
-    %NULL = arith.constant 0 : index
+    %NULL = arith.constant 0 : i64
+    %NULLptr = "llvm.inttoptr"(%NULL) : (i64) -> !llvm.ptr
+    
 
     // ((uint64_t)(pad_K) << 32) | ((uint64_t)(pad_J) << 16) | (uint64_t)(pad_I)
     %pad_K_shift_32 = arith.shli %pad_K, %c_32 : index
@@ -50,18 +52,11 @@ builtin.module {
     %K_shift_or_J_shift_or_I_shift = arith.ori %pad_K_shift_or_pad_J_shift, %pad_J : index
 
     // no_bias ? NULL : D
-    %D_selected = arith.select %no_bias, %NULL, %D : index
-
-    //%= "arith.index_cast"(%b_transpose) : (i1) -> index
-    //%= "arith.index_cast"(%a_transpose) : (i1) -> index
+    %D_selected = arith.select %no_bias, %NULLptr, %D : !llvm.ptr 
 
     // Convert to LLVM compatible types
     %pad_K_shift_or_pad_J_shift_or_pad_I_shift_i64 = "arith.index_cast"(%pad_K_shift_or_pad_J_shift_or_pad_I_shift) : (index) -> i64
     %K_shift_or_J_shift_or_I_shift_i64 = "arith.index_cast"(%K_shift_or_J_shift_or_I_shift) : (index) -> i64
-    %A_i64 = "arith.index_cast"(%A) : (index) -> i64
-    %B_i64 = "arith.index_cast"(%B) : (index) -> i64
-    %D_selected_i64 = "arith.index_cast"(%D_selected) : (index) -> i64
-    %C_i64 = "arith.index_cast"(%C) : (index) -> i64
     %A_row_stride_i64 = "arith.index_cast"(%A_row_stride) : (index) -> i64
     %B_row_stride_i64 = "arith.index_cast"(%B_row_stride) : (index) -> i64
     %D_row_stride_i64 = "arith.index_cast"(%D_row_stride) : (index) -> i64
@@ -71,10 +66,11 @@ builtin.module {
     %setup_state = "acc2.setup"(
         %pad_K_shift_or_pad_J_shift_or_pad_I_shift_i64,
         %K_shift_or_J_shift_or_I_shift_i64,
-        %A_i64,
-        %B_i64,
-        %D_selected_i64,
-        %C_i64,
+        %A,
+        %B,
+        %D,
+        //%D_selected_i64,
+        %C,
         %A_row_stride_i64,
         %B_row_stride_i64,
         %D_row_stride_i64,
@@ -91,7 +87,7 @@ builtin.module {
             "k_LOOP_WS_CONFIG_STRIDES_AB.rs2",
             "k_LOOP_WS_CONFIG_STRIDES_DC.rs1",
             "k_LOOP_WS_CONFIG_STRIDES_DC.rs2"
-          ]}> : (i64, i64, i64, i64, i64, i64, i64, i64, i64, i64) -> !acc2.state<"gemmini">
+          ]}> : (i64, i64, !llvm.ptr, !llvm.ptr, !llvm.ptr, !llvm.ptr, i64, i64, i64, i64) -> !acc2.state<"gemmini">
 
    // ((uint64_t)(a_spad_id) << 18) | ((uint64_t)(b_spad_id) << 16) | ((uint64_t)(act) << 8) | ((low_D) << 2) | ((full_C) << 1) | (ex_accumulate) 
    %a_spad_id_cast = "arith.index_cast"(%a_spad_id) : (i32) -> index
@@ -101,8 +97,9 @@ builtin.module {
    %low_D_cast = "arith.index_cast"(%low_D) : (i1) -> index
    // invert no_bias
    %inv_no_bias = arith.xori %no_bias, %true : i1
-   %D_eq_NULL = arith.cmpi eq, %D, %NULL : index
-   %ex_accumulate = arith.ori %D_eq_NULL, %inv_no_bias : i1
+   // FIXME: This requires an LLVM cmpi instruction
+   // %D_eq_NULL = arith.cmpi eq, %D, %NULLptr : i1
+   %ex_accumulate = arith.ori %false, %inv_no_bias : i1 // %D_eq_NULL, %inv_no_bias : i1
    %ex_accumulate_cast = "arith.index_cast"(%ex_accumulate) : (i1) -> index
 
    %a_spad_id_shift_18 = arith.shli %a_spad_id_cast, %c_18 : index
