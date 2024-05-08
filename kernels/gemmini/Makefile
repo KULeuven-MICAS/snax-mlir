@@ -1,6 +1,20 @@
-# Linking like this requires the binary to be compiled with -r for relocatable code
-sp_tiled_matmul_ws.o: 
-	compiler/snax-opt kernels/gemmini/sp_tiled_matmul_ws.mlir -p convert-acc-to-csr | mlir-opt-17 --test-lower-to-llvm | mlir-translate-17 --mlir-to-llvmir | clang-17 -x ir - -march=rv64g --target=riscv64-generic -nostdlib -r -o sp_tiled_matmul_ws.o
+GEMMINI_ROCC_TESTS := /home/josse/phd/gemmini-rocc-tests
+RISCV := /home/josse/phd/riscv-isa-sim/build
+SNAX-OPT:= /repo/compiler/snax-opt
+MLIR-OPT:= mlir-opt-17
+MLIR-TRANS:= mlir-translate-17
+CLANG := clang-17
+GCC := riscv64-unknown-elf-gcc
 
-mlp4_32-baremetal:
-	riscv64-unknown-elf-gcc  -DPREALLOCATE=1 -DMULTITHREAD=1 -mcmodel=medany -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -fno-tree-loop-distribute-patterns -march=rv64gc -Wa,-march=rv64gc -lm -lgcc -I/home/josse/phd/gemmini-rocc-tests/riscv-tests -I/home/josse/phd/gemmini-rocc-tests/riscv-tests/env -I/home/josse/phd/gemmini-rocc-tests -I/home/josse/phd/gemmini-rocc-tests/riscv-tests/benchmarks/common -DID_STRING=  -nostdlib -nostartfiles -static -T /home/josse/phd/gemmini-rocc-tests/riscv-tests/benchmarks/common/test.ld -DBAREMETAL=1  /home/josse/phd/gemmini-rocc-tests/mlps/mlp4_32.c  /home/josse/phd/snax-mlir/sp_tiled_matmul_ws.o  -o mlp4_32-baremetal /home/josse/phd/gemmini-rocc-tests/riscv-tests/benchmarks/common/syscalls.c /home/josse/phd/gemmini-rocc-tests/riscv-tests/benchmarks/common/crt.S
+# Linking like this requires the binary to be compiled with -r for relocatable code
+sp_tiled_matmul_ws.o: sp_tiled_matmul_ws.mlir
+	 ${SNAX-OPT} $< -p convert-acc-to-csr | ${MLIR-OPT} --test-lower-to-llvm | ${MLIR-TRANS} --mlir-to-llvmir | ${CLANG} -x ir - -march=rv64g --target=riscv64-generic -nostdlib -r -o $@
+
+APP := mlp4_32-baremetal
+SRCS := ${GEMMINI_ROCC_TESTS}/mlps/mlp4_32.c
+
+${APP}: sp_tiled_matmul_ws.o
+	${GCC} -DPREALLOCATE=1 -DMULTITHREAD=1 -mcmodel=medany -std=gnu99 -O2 -ffast-math -fno-common -fno-builtin-printf -fno-tree-loop-distribute-patterns -march=rv64gc -Wa,-march=rv64gc -lm -lgcc -I${GEMMINI_ROCC_TESTS}/riscv-tests -I${GEMMINI_ROCC_TESTS}/riscv-tests/env -I${GEMMINI_ROCC_TESTS} -I${GEMMINI_ROCC_TESTS}/benchmarks/common -DID_STRING=  -nostdlib -nostartfiles -static -T ${GEMMINI_ROCC_TESTS}/riscv-tests/benchmarks/common/test.ld -DBAREMETAL=1  ${SRCS}  $<  -o mlp4_32-baremetal ${GEMMINI_ROCC_TESTS}/riscv-tests/benchmarks/common/syscalls.c ${GEMMINI_ROCC_TESTS}/riscv-tests/benchmarks/common/crt.S
+
+spike: mlp4_32-baremetal
+	${RISCV}/spike --extension=gemmini $<
