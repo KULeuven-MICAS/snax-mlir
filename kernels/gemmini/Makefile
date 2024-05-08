@@ -6,6 +6,12 @@ MLIR-TRANS:= mlir-translate-17
 CLANG := clang-17
 GCC := riscv64-unknown-elf-gcc
 
+.PHONY: patch spike
+
+# Patch gemmini.h to not use the provided implementation and disable inlining
+patch: ${GEMMINI_ROCC_TESTS}/include/gemmini.h
+	git -c ${GEMMINI_ROCC_TESTS} apply gemmini.h.patch
+
 # Linking like this requires the binary to be compiled with -r for relocatable code
 sp_tiled_matmul_ws.o: sp_tiled_matmul_ws.mlir
 	 ${SNAX-OPT} $< -p convert-acc-to-csr | ${MLIR-OPT} --test-lower-to-llvm | ${MLIR-TRANS} --mlir-to-llvmir | ${CLANG} -x ir - -march=rv64g --target=riscv64-generic -nostdlib -r -o $@

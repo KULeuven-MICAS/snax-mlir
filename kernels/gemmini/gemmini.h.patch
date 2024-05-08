@@ -1,0 +1,49 @@
+diff --git a/include/gemmini.h b/include/gemmini.h
+index 710aa97..ecc80eb 100644
+--- a/include/gemmini.h
++++ b/include/gemmini.h
+@@ -499,7 +499,7 @@ static void sp_tiled_matmul_os(const elem_t * A, const elem_t * B, const void *
+ }
+ 
+ 
+-static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
++extern void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
+         const void * D, void * C,
+         scale_t A_scale_factor, scale_t B_scale_factor, scale_acc_t D_scale_factor,
+         size_t I, size_t J, size_t K, size_t pad_I, size_t pad_J, size_t pad_K,
+@@ -508,7 +508,7 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
+         bool full_C, bool low_D,
+         bool no_bias, bool repeating_bias,
+         int act,
+-        int a_spad_id, int b_spad_id) {
++        int a_spad_id, int b_spad_id) ;//{
+ /*
+   const uint32_t A_sp_addr_start = 0;
+   const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
+@@ -679,17 +679,17 @@ static void sp_tiled_matmul_ws(const elem_t * A, const elem_t * B,
+     }
+   }
+ */
+-
+-  // Combined loop
+-  gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
+-    A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
+-    a_transpose, b_transpose,
+-    full_C, low_D, !no_bias || D == NULL,
+-    act, a_spad_id, b_spad_id, false);
+-}
++//
++//  // Combined loop
++//  gemmini_loop_ws(I, J, K, pad_I, pad_J, pad_K, A, B, no_bias ? NULL : D, C,
++//    A_row_stride, B_row_stride, repeating_bias ? 0 : D_row_stride, C_row_stride,
++//    a_transpose, b_transpose,
++//    full_C, low_D, !no_bias || D == NULL,
++//    act, a_spad_id, b_spad_id, false);
++//}
+ 
+ 
+-static void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
++void tiled_matmul_outer(size_t dim_I, size_t dim_J, size_t dim_K,
+         const elem_t* A, const elem_t* B,
+         const void * D, void * C,
+         size_t stride_A, size_t stride_B, size_t stride_D, size_t stride_C,
