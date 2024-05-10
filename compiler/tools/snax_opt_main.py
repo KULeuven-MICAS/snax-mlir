@@ -11,6 +11,7 @@ from compiler.transforms.acc_dedup import AccDeduplicate
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_acc_to_csr import ConvertAccToCsrPass
 from compiler.transforms.convert_linalg_to_acc import ConvertLinalgToAccPass
+from compiler.transforms.convert_memref_stream_to_snax import ConvertMemrefStreamToSnax
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.insert_acc_op import InsertAccOp
@@ -40,7 +41,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_all_passes()
         super().register_all_targets()
 
-        ## Add custom dialects & passes
+        # Add custom dialects & passes
         self.ctx.load_dialect(Snax)
         self.ctx.load_dialect(TSL)
         self.ctx.load_dialect(ACC)
@@ -63,6 +64,9 @@ class SNAXOptMain(xDSLOptMain):
             ConvertLinalgToAccPass.name, lambda: ConvertLinalgToAccPass
         )
         super().register_pass(ConvertAccToCsrPass.name, lambda: ConvertAccToCsrPass)
+        super().register_pass(
+            ConvertMemrefStreamToSnax.name, lambda: ConvertMemrefStreamToSnax
+        )
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
