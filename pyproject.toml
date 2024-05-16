@@ -9,6 +9,7 @@ ignore = [
     "PT015", # https://beta.ruff.rs/docs/rules/pytest-assert-always-false/
 ]
 target-version = "py310"
+line-length = 120
 
 [tool.ruff.flake8-tidy-imports.banned-api]
 "xdsl.parser.core".msg = "Use xdsl.parser instead."
