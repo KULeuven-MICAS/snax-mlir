@@ -10,7 +10,10 @@ from compiler.dialects.tsl import TSL
 from compiler.transforms.acc_dedup import AccDeduplicate
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_acc_to_csr import ConvertAccToCsrPass
-from compiler.transforms.convert_linalg_to_acc import ConvertLinalgToAccPass
+from compiler.transforms.convert_linalg_to_acc import (
+    ConvertLinalgToAccPass,
+    TraceStatesPass,
+)
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.insert_acc_op import InsertAccOp
@@ -62,6 +65,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(
             ConvertLinalgToAccPass.name, lambda: ConvertLinalgToAccPass
         )
+        super().register_pass(TraceStatesPass.name, lambda: TraceStatesPass)
         super().register_pass(ConvertAccToCsrPass.name, lambda: ConvertAccToCsrPass)
 
         # arg handling

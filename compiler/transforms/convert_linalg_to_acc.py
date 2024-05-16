@@ -2,7 +2,7 @@ import sys
 from dataclasses import dataclass, field
 
 from xdsl.dialects import builtin, func, linalg, scf
-from xdsl.ir import Block, MLContext, Operation, Region, SSAValue
+from xdsl.ir import Block, MLContext, Operation, OpResult, Region, SSAValue, Use
 from xdsl.parser import StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -54,7 +54,7 @@ class ConnectStatesThroughControlFlowPattern(RewritePattern):
     all the `acc2.setup()` ops together so that later analysis passes
     can infer where the state comes from.
 
-    It currently handles scf.for, but not more.
+    It currently handles scf.if, but not more.
     """
 
     walked_funcs: set[str] = field(default_factory=set)
@@ -144,6 +144,81 @@ def _walk(
                     for res in new_if.results[num_scf_results:]:
                         assert isinstance(res.type, acc.StateType)
                         state[res.type.accelerator.data] = res
+                # a for loop necessitates us to introduce a loop-carried vairable
+                # that carries the state through the loop
+                elif isinstance(op, scf.For):
+                    # create a state with MarkedSSAValues so that we can see where they were changed.
+                    mock_state = {
+                        accel_name: MarkedSSAValue(ssa_val)
+                        for accel_name, ssa_val in state.items()
+                    }
+
+                    after_for_state = _walk(op.body, mock_state.copy(), rewriter)
+                    # no state change in loop => nothing to do
+                    if all(not val.new_uses() for val in mock_state.values()):
+                        continue
+
+                    updated_accelerators = [
+                        acc_name
+                        for acc_name, new_state in after_for_state.items()
+                        if state.get(acc_name) != new_state
+                    ]
+                    input_states: list[SSAValue] = [
+                        state.get(acc_name) for acc_name in updated_accelerators
+                    ]
+                    if any(input_state is None for input_state in input_states):
+                        # TODO: insert an empty setup op outside the loop to create an empty input state so that we can
+                        #       have a loop carried variable.
+                        raise NotImplementedError(
+                            "Anton was too lazy to implement this edge case."
+                        )
+
+                    # grab the new states that are active after the loop body
+                    new_states: list[SSAValue] = [
+                        after_for_state[acc_name] for acc_name in updated_accelerators
+                    ]
+
+                    # add the input states as initial loop-carried states
+                    op.operands = (*op.operands, *input_states)
+
+                    # add changes states as yield ops in the loop
+                    yield_op = op.body.block.last_op
+                    assert isinstance(yield_op, scf.Yield)
+                    yield_op.operands = (*yield_op.operands, *new_states)
+
+                    # create the loop-carried block arguments
+                    block_args = [
+                        rewriter.insert_block_argument(
+                            op.body.block, len(op.body.block.args), typ
+                        )
+                        for typ in (new_state.type for new_state in new_states)
+                    ]
+
+                    # this is only sound because the order of block_args is the same as the order of new_states,
+                    # which is the same as the order of updated_accelerators.
+                    for acc_name, block_arg in zip(
+                        updated_accelerators, block_args, strict=True
+                    ):
+                        if len(mock_state[acc_name].new_uses()) != 1:
+                            print(
+                                f"Unusual number of uses for acc {acc_name} in loop {op}..."
+                            )
+                        mock_state[acc_name].replace_new_uses_by(block_arg)
+                        # also update state
+
+                    # create new OpResults for the newly introduced loop-carried variables
+                    # note that Mathieu is very unhappy about this.
+                    new_results = [
+                        OpResult(state_val.type, op, len(op.results))
+                        for state_val in new_states
+                    ]
+                    # add them to the op
+                    # Mathieu did not approve
+                    op.results = (*op.results, *new_results)
+
+                    # update states
+                    for acc_name, result in zip(updated_accelerators, new_results):
+                        state[acc_name] = result
 
                 # calling another function invalidates all states
                 # we can't reason about other functions as of now, and
@@ -227,3 +302,49 @@ class ConvertLinalgToAccPass(ModulePass):
         PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
             op
         )
+
+
+class TraceStatesPass(ModulePass):
+    """
+    standalone version of state tracing for testing purposes
+    """
+
+    name = "accfg-trace-states"
+
+    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+        PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
+            op
+        )
+
+
+@dataclass(init=False, eq=False)
+class MarkedSSAValue(SSAValue):
+    """
+    This class is necessary for us to do a certain kind of rewrite where we need to pass normal looking SSAValues
+    to a pass, and then later get the uses that were added to them.
+    """
+
+    _wraps: SSAValue
+
+    def __init__(self, val: SSAValue):
+        super().__init__(val.type)
+        self.uses.update(val.uses)
+        self._wraps = val
+
+    @property
+    def owner(self) -> Operation | Block:
+        return self._wraps.owner
+
+    def new_uses(self) -> set[Use]:
+        """
+        Return the uses that were added to this value that are not present on the wrapped value.
+        """
+        return self.uses - self._wraps.uses
+
+    def replace_new_uses_by(self, value: SSAValue) -> None:
+        for use in self.new_uses().copy():
+            use.operation.operands[use.index] = value
+        # carry over name if possible
+        if value.name_hint is None:
+            value.name_hint = self._wraps.name_hint
+        assert len(self.new_uses()) == 0, "unexpected error in xdsl"
