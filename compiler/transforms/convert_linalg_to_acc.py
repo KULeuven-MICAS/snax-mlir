@@ -64,17 +64,34 @@ class ConnectStatesThroughControlFlowPattern(RewritePattern):
         if func_op.sym_name.data in self.walked_funcs:
             return
         self.walked_funcs.add(func_op.sym_name.data)
-        _walk(func_op, {}, rewriter)
+        _weave_states_in_region(func_op, {}, rewriter)
 
 
-def _walk(
+def _weave_states_in_region(
     container: Region | Operation, state: dict[str, SSAValue], rewriter: PatternRewriter
 ) -> dict[str, SSAValue]:
     """
-    Walks over a region or operation to "weave" accelerator setup states
-    together.
+    Walks over a region or operation to "weave" accelerator setup states together.
 
-    Takes an input state, and returns an output state.
+    Takes a dictionary containing the SSA value carrying the current state at the start
+    of the block for each accelerator, and *mutates* this dictionary to contain the SSA
+    value carrying the accelerator state at the end of the block. This dictionary is
+    also returned.
+
+    Applies itself iteratively over nested regions inside of ops in this region, when
+    it recognises the operations.
+
+    Currently supports weaving through:
+    - if/else blocks
+    - for loops
+
+    Assumes arith, memref, linalg, test and snax dialect ops can't modify the accelerator
+    state.
+
+    Also knows about some of the control flow dialects and terminator ops
+    (they don't impact state).
+
+    Assumes all other ops reset the accelerator state.
     """
     if isinstance(container, Operation):
         regions = container.regions
@@ -100,8 +117,12 @@ def _walk(
                 # special case for scf.if ops
                 elif isinstance(op, scf.If):
                     # grab the computed state for both sides:
-                    if_state = _walk(op.true_region, state.copy(), rewriter)
-                    else_state = _walk(op.false_region, state.copy(), rewriter)
+                    if_state = _weave_states_in_region(
+                        op.true_region, state.copy(), rewriter
+                    )
+                    else_state = _weave_states_in_region(
+                        op.false_region, state.copy(), rewriter
+                    )
 
                     # calculate the delta:
                     delta = calc_if_state_delta(state, if_state, else_state)
@@ -144,28 +165,37 @@ def _walk(
                     for res in new_if.results[num_scf_results:]:
                         assert isinstance(res.type, acc.StateType)
                         state[res.type.accelerator.data] = res
-                # a for loop necessitates us to introduce a loop-carried vairable
+                # a for loop necessitates us to introduce a loop-carried variable
                 # that carries the state through the loop
                 elif isinstance(op, scf.For):
-                    # create a state with MarkedSSAValues so that we can see where they were changed.
+                    # create a state with MarkedSSAValues so that we can track which new uses were introduced on this
+                    # state specifically:
                     mock_state = {
                         accel_name: MarkedSSAValue(ssa_val)
                         for accel_name, ssa_val in state.items()
                     }
 
-                    after_for_state = _walk(op.body, mock_state.copy(), rewriter)
+                    # go through the for loop body and weave states through that:
+                    after_for_state = _weave_states_in_region(
+                        op.body, mock_state.copy(), rewriter
+                    )
+                    # check which states got new uses:
                     # no state change in loop => nothing to do
                     if all(not val.new_uses() for val in mock_state.values()):
                         continue
 
+                    # create a list of all accelerator names that were updated. This lists order is important.
                     updated_accelerators = [
                         acc_name
                         for acc_name, new_state in after_for_state.items()
                         if state.get(acc_name) != new_state
                     ]
+                    # get a list of all initial states of accelerators that were changed int the loop.
                     input_states: list[SSAValue] = [
                         state.get(acc_name) for acc_name in updated_accelerators
                     ]
+                    # check that every accelerator has a state before the scf.for loop. This may not be always the
+                    # case, but we can fix it. The fix is not implemented as part of this PR though.
                     if any(input_state is None for input_state in input_states):
                         # TODO: insert an empty setup op outside the loop to create an empty input state so that we can
                         #       have a loop carried variable.
@@ -173,7 +203,7 @@ def _walk(
                             "Anton was too lazy to implement this edge case."
                         )
 
-                    # grab the new states that are active after the loop body
+                    # grab the new states that are changed after the loop body executed.
                     new_states: list[SSAValue] = [
                         after_for_state[acc_name] for acc_name in updated_accelerators
                     ]
@@ -181,7 +211,7 @@ def _walk(
                     # add the input states as initial loop-carried states
                     op.operands = (*op.operands, *input_states)
 
-                    # add changes states as yield ops in the loop
+                    # add changed states as yield ops in the loop
                     yield_op = op.body.block.last_op
                     assert isinstance(yield_op, scf.Yield)
                     yield_op.operands = (*yield_op.operands, *new_states)
@@ -199,6 +229,9 @@ def _walk(
                     for acc_name, block_arg in zip(
                         updated_accelerators, block_args, strict=True
                     ):
+                        # we expect each state to have just one new use introduced inside the loop (the next setup op).
+                        # future passes may require us to do something else, so I didn't want to assert here.
+                        # this is sort of a sanity check for myself during testing.
                         if len(mock_state[acc_name].new_uses()) != 1:
                             print(
                                 f"Unusual number of uses for acc {acc_name} in loop {op}..."
@@ -213,7 +246,8 @@ def _walk(
                         for state_val in new_states
                     ]
                     # add them to the op
-                    # Mathieu did not approve
+                    # Mathieu did not approve (he would prefer we create a new op, but that's also a lot of effort).
+                    # I (Anton) thinks this is fine because it works.
                     op.results = (*op.results, *new_results)
 
                     # update states
