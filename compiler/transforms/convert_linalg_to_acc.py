@@ -54,7 +54,7 @@ class ConnectStatesThroughControlFlowPattern(RewritePattern):
     all the `acc2.setup()` ops together so that later analysis passes
     can infer where the state comes from.
 
-    It currently handles scf.if, but not more.
+    It currently handles scf.if and scf.for, but not more.
     """
 
     walked_funcs: set[str] = field(default_factory=set)
