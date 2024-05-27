@@ -1,9 +1,8 @@
 import sys
-
 from dataclasses import dataclass
 
 from xdsl.dialects import builtin, scf
-from xdsl.ir import MLContext, OpResult, SSAValue, Operation, Block
+from xdsl.ir import Block, MLContext, Operation, OpResult, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     GreedyRewritePatternApplier,
