@@ -2,7 +2,7 @@ import sys
 from dataclasses import dataclass, field
 
 from xdsl.dialects import builtin, func, linalg, scf
-from xdsl.ir import Block, MLContext, Operation, OpResult, Region, SSAValue, Use
+from xdsl.ir import Block, MLContext, Operation, OpResult, Region, SSAValue, Use, BlockArgument
 from xdsl.parser import StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -168,27 +168,29 @@ def _weave_states_in_region(
                 # a for loop necessitates us to introduce a loop-carried variable
                 # that carries the state through the loop
                 elif isinstance(op, scf.For):
-                    # create a state with MarkedSSAValues so that we can track which new uses were introduced on this
-                    # state specifically:
+                    # create a state dictionary with TemporaryPlaceholderSSAValue so that we can track which new uses
+                    # were introduced on this version of the state dictionary specifically:
                     mock_state = {
-                        accel_name: MarkedSSAValue(ssa_val)
+                        accel_name: TemporaryPlaceholderSSAValue(ssa_val)
                         for accel_name, ssa_val in state.items()
                     }
 
-                    # go through the for loop body and weave states through that:
+                    # go through the for loop body and weave states through that (this is a recursive call):
                     after_for_state = _weave_states_in_region(
                         op.body, mock_state.copy(), rewriter
                     )
+
                     # check which states got new uses:
                     # no state change in loop => nothing to do
                     if all(not val.new_uses() for val in mock_state.values()):
                         continue
 
-                    # create a list of all accelerator names that were updated. This lists order is important.
+                    # create a list of all accelerator names that were updated. The order of this list defines
+                    # the order of all the other lists.
                     updated_accelerators = [
                         acc_name
                         for acc_name, new_state in after_for_state.items()
-                        if state.get(acc_name) != new_state
+                        if mock_state.get(acc_name) != new_state
                     ]
                     # get a list of all initial states of accelerators that were changed int the loop.
                     input_states: list[SSAValue] = [
@@ -352,10 +354,13 @@ class TraceStatesPass(ModulePass):
 
 
 @dataclass(init=False, eq=False)
-class MarkedSSAValue(SSAValue):
+class TemporaryPlaceholderSSAValue(SSAValue):
     """
-    This class is necessary for us to do a certain kind of rewrite where we need to pass normal looking SSAValues
-    to a pass, and then later get the uses that were added to them.
+    This value can be used temporarily in place of a normal SSA value, as long as all the places where it has been used
+    are replaced by a "real" SSA value at the end of the rewrite.
+
+    The idea is to pass this in the state of the _weave_states_in_region function, and then later inspect the states
+    to see which ones were actually used in the body. This is a bit hacky. But it works and is kinda useful.
     """
 
     _wraps: SSAValue

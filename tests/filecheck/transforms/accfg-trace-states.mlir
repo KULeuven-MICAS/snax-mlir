@@ -267,3 +267,36 @@ func.func @nested_loop() {
 // CHECK-NEXT:    }
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
+
+
+
+func.func @loop_with_multiple_input_states() {
+    %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
+
+    %s1 = "acc2.setup"(%A, %B, %O, %nr_iters) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !acc2.state<"snax_hwpe_mult">
+
+    %sb = "acc2.setup"(%A, %B, %O, %nr_iters) <{"accelerator" = "b", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !acc2.state<"b">
+
+    %lb, %ub, %step, %carry = "test.op"() : () -> (i32, i32, i32, i32)
+
+    %res = scf.for %i = %lb to %ub step %step iter_args(%arg0 = %carry) -> (i32) {
+        %s2b = "acc2.setup"(%A, %B, %O, %nr_iters) <{"accelerator" = "b", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !acc2.state<"b">
+        yield %arg0 : i32
+    }
+
+    return
+}
+
+// check that only accelerator "b" is passed into the loop:
+// CHECK-NEXT:  func.func @loop_with_multiple_input_states() {
+// CHECK-NEXT:    %A_7, %B_7, %O_7, %nr_iters_7 = "test.op"() : () -> (i32, i32, i32, i32)
+// CHECK-NEXT:    %s1_7 = "acc2.setup"(%A_7, %B_7, %O_7, %nr_iters_7) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !acc2.state<"snax_hwpe_mult">
+// CHECK-NEXT:    %sb = "acc2.setup"(%A_7, %B_7, %O_7, %nr_iters_7) <{"accelerator" = "b", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !acc2.state<"b">
+// CHECK-NEXT:    %lb_2, %ub_2, %step_2, %carry_2 = "test.op"() : () -> (i32, i32, i32, i32)
+// CHECK-NEXT:    %res_2, %7 = scf.for %i_2 = %lb_2 to %ub_2 step %step_2 iter_args(%arg0_2 = %carry_2, %sb_1 = %sb) -> (i32, !acc2.state<"b">) : i32 {
+//                                                                                                      ^^^^^^^^^^^           ^^^^^^^^^^^^^^^^
+// CHECK-NEXT:      %s2b = "acc2.setup"(%A_7, %B_7, %O_7, %nr_iters_7, %sb_1) <{"param_names" = ["A", "B", "O", "nr_iters"], "accelerator" = "b", "operandSegmentSizes" = array<i32: 4, 1>}> : (i32, i32, i32, i32, !acc2.state<"b">) -> !acc2.state<"b">
+// CHECK-NEXT:      scf.yield %arg0_2, %s2b : i32, !acc2.state<"b">
+// CHECK-NEXT:    }
+// CHECK-NEXT:    func.return
+// CHECK-NEXT:  }
