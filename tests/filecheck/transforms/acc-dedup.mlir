@@ -39,6 +39,20 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
   %17 = "acc2.launch"(%cst_0, %16) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5,!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
   "acc2.await"(%17) : (!acc2.token<"snax_hwpe_mult">) -> ()
 
+
+  %lb = arith.constant 0 : index
+  %ub = arith.constant 100 : index
+  %step = arith.constant 100 : index
+
+  %res_1 = scf.for %iv = %lb to %ub step %step iter_args(%inner_state = %16) -> (!acc2.state<"snax_hwpe_mult">) {
+
+    %s_new = "acc2.setup"(%1, %2, %3, %iv, %inner_state) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 1>, "param_names" = ["A", "B", "O", "size"]}> : (index, index, index, index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
+    %222 = "acc2.launch"(%cst_0, %s_new) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5,!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+    "acc2.await"(%222) : (!acc2.token<"snax_hwpe_mult">) -> ()
+
+    scf.yield %s_new : !acc2.state<"snax_hwpe_mult">
+  }
+
   func.return
 }
 

@@ -1,7 +1,9 @@
+import sys
+
 from dataclasses import dataclass
 
 from xdsl.dialects import builtin, scf
-from xdsl.ir import MLContext, OpResult, SSAValue
+from xdsl.ir import MLContext, OpResult, SSAValue, Operation, Block
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     GreedyRewritePatternApplier,
@@ -54,6 +56,91 @@ class SimplifyRedundantSetupCalls(RewritePattern):
                 op.in_state,
             )
         )
+
+
+class PullSetupOpsOutOfLoops(RewritePattern):
+    """
+    Tries to pull setup operations out of loop nests by:
+    1. Inspecting the source block of all operands
+    2. Get all operands that originate not from the block the current operation is in or its descendants (X)
+    3. Clone the operation, remove all ops that are not in X
+    4. Insert the cloned op right before the loop
+    5. Remove all operands from the original op that are in X
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
+        # don't apply to setups not inside for loops
+        loop_op = op.parent_op()
+        if not isinstance(loop_op, scf.For):
+            return
+
+        # we can't handle more than one setup op inside the loop for now:
+        if op.out_state not in loop_op.body.block.last_op.operands:
+            print(
+                "Ignoring loop hoisting for loop with multiple setup ops",
+                file=sys.stderr,
+            )
+            print(f"{loop_op}", file=sys.stderr)
+            return
+
+        # maybe this isn't needed
+        # TODO: test if this is needed
+        if op.in_state is None or op.in_state.owner != loop_op.body.block:
+            print(
+                "Ignoring setup op because its in_state is not the iter_arg",
+                file=sys.stderr,
+            )
+            return
+
+        # get a list of SSA values that originated in this block (= can't be moved)
+        values_originating_from_current_block = tuple(
+            val for val in op.values if get_ssa_values_blocks(val) == op.parent_block()
+        )
+        # list of values that can be moved:
+        loop_invariant_values = tuple(
+            val for val in op.values if val not in values_originating_from_current_block
+        )
+
+        # if all variables are loop-dependent, we have nothing left to do.
+        if len(values_originating_from_current_block) == len(op.values):
+            return
+
+        # create a new op
+        loop_invariant_setups = acc.SetupOp(
+            loop_invariant_values,
+            (
+                op.param_names.data[op.values.index(val)]
+                for val in loop_invariant_values
+            ),
+            op.accelerator,
+            in_state=get_initial_value_for_scf_for_lcv(loop_op, op.in_state),
+        )
+        # insert the new setup op before the loop
+        rewriter.insert_op_before(loop_invariant_setups, loop_op)
+
+        # replace loop_invariant_setups.in_state with loop_invariant_setups.out_state in the iter_args of loop_op
+        loop_op.operands = tuple(
+            (
+                val
+                if val != loop_invariant_setups.in_state
+                else loop_invariant_setups.out_state
+            )
+            for val in loop_op.operands
+        )
+
+        # create a new op to replace the old op
+        new_in_loop_setup_op = acc.SetupOp(
+            values_originating_from_current_block,
+            (
+                op.param_names.data[op.values.index(val)]
+                for val in values_originating_from_current_block
+            ),
+            op.accelerator,
+            in_state=op.in_state,
+        )
+        # replace the op with the new "slimmer" operation
+        rewriter.replace_matched_op(new_in_loop_setup_op)
 
 
 class HoistSetupCallsIntoConditionals(RewritePattern):
@@ -145,6 +232,7 @@ class AccDeduplicate(ModulePass):
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         patterns = [
             SimplifyRedundantSetupCalls(),
+            PullSetupOpsOutOfLoops(),
         ]
 
         if self.hoist:
@@ -154,3 +242,29 @@ class AccDeduplicate(ModulePass):
             GreedyRewritePatternApplier(patterns),
             walk_reverse=True,
         ).rewrite_module(op)
+
+
+def get_ssa_values_blocks(val: SSAValue) -> Block:
+    """
+    Returns the block in which an SSA vlaue was created.
+    """
+    match val.owner:
+        case Block() as block:
+            return block
+        case Operation() as op:
+            return op.parent_block()
+        case unknown:
+            raise ValueError(f"Unknown value owner: {unknown}")
+
+
+def get_initial_value_for_scf_for_lcv(loop: scf.For, var: SSAValue) -> SSAValue:
+    """
+    Given a loop-carried variable inside an scf for loop as the block argument,
+    return the SSA value that is passed as the initial value to it.
+    """
+    if var not in loop.body.block.args:
+        raise ValueError(
+            f"Given value {var} not a block argument of the for loop {loop}!"
+        )
+    idx = loop.body.block.args.index(var) - 1
+    return loop.iter_args[idx]
