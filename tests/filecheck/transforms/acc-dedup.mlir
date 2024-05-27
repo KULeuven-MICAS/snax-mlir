@@ -42,7 +42,7 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
 
   %lb = arith.constant 0 : index
   %ub = arith.constant 100 : index
-  %step = arith.constant 100 : index
+  %step = arith.constant 1 : index
 
   %res_1 = scf.for %iv = %lb to %ub step %step iter_args(%inner_state = %16) -> (!acc2.state<"snax_hwpe_mult">) {
 
@@ -85,6 +85,18 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
 // CHECK-NEXT:     "test.op"(%8) : (i32) -> ()
 // CHECK-NEXT:     %17 = "acc2.launch"(%cst_0, %9) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "acc2.await"(%17) : (!acc2.token<"snax_hwpe_mult">) -> ()
+// CHECK-NEXT:     %lb = arith.constant 0 : index
+// CHECK-NEXT:     %ub = arith.constant 100 : index
+// CHECK-NEXT:     %step = arith.constant 1 : index
+// CHECK-NEXT:     %18 = "acc2.setup"(%2, %3, %9) <{"param_names" = ["B", "O"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 2, 1>}> : (index, index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
+//                 ^^^^^^^^^^^^^^^^^^ new setup op for invariant ops
+// CHECK-NEXT:     %res_1 = scf.for %iv = %lb to %ub step %step iter_args(%inner_state = %18) -> (!acc2.state<"snax_hwpe_mult">) {
+// CHECK-NEXT:       %s_new = "acc2.setup"(%iv, %inner_state) <{"param_names" = ["size"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 1, 1>}> : (index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
+//                                         ^^^ only loop-dependent vars remaining
+// CHECK-NEXT:       %19 = "acc2.launch"(%cst_0, %s_new) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+// CHECK-NEXT:       "acc2.await"(%19) : (!acc2.token<"snax_hwpe_mult">) -> ()
+// CHECK-NEXT:       scf.yield %s_new : !acc2.state<"snax_hwpe_mult">
+// CHECK-NEXT:     }
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
