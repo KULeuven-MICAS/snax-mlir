@@ -2,7 +2,7 @@ import sys
 from dataclasses import dataclass, field
 
 from xdsl.dialects import builtin, func, linalg, scf
-from xdsl.ir import Block, MLContext, Operation, OpResult, Region, SSAValue, Use, BlockArgument
+from xdsl.ir import Block, MLContext, Operation, OpResult, Region, SSAValue, Use
 from xdsl.parser import StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
