@@ -2,7 +2,7 @@ import sys
 from dataclasses import dataclass, field
 
 from xdsl.dialects import builtin, func, linalg, scf
-from xdsl.ir import Block, MLContext, Operation, Region, SSAValue
+from xdsl.ir import Block, MLContext, Operation, OpResult, Region, SSAValue, Use
 from xdsl.parser import StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -54,7 +54,7 @@ class ConnectStatesThroughControlFlowPattern(RewritePattern):
     all the `acc2.setup()` ops together so that later analysis passes
     can infer where the state comes from.
 
-    It currently handles scf.for, but not more.
+    It currently handles scf.if and scf.for, but not more.
     """
 
     walked_funcs: set[str] = field(default_factory=set)
@@ -64,17 +64,34 @@ class ConnectStatesThroughControlFlowPattern(RewritePattern):
         if func_op.sym_name.data in self.walked_funcs:
             return
         self.walked_funcs.add(func_op.sym_name.data)
-        _walk(func_op, {}, rewriter)
+        _weave_states_in_region(func_op, {}, rewriter)
 
 
-def _walk(
+def _weave_states_in_region(
     container: Region | Operation, state: dict[str, SSAValue], rewriter: PatternRewriter
 ) -> dict[str, SSAValue]:
     """
-    Walks over a region or operation to "weave" accelerator setup states
-    together.
+    Walks over a region or operation to "weave" accelerator setup states together.
 
-    Takes an input state, and returns an output state.
+    Takes a dictionary containing the SSA value carrying the current state at the start
+    of the block for each accelerator, and *mutates* this dictionary to contain the SSA
+    value carrying the accelerator state at the end of the block. This dictionary is
+    also returned.
+
+    Applies itself iteratively over nested regions inside of ops in this region, when
+    it recognises the operations.
+
+    Currently supports weaving through:
+    - if/else blocks
+    - for loops
+
+    Assumes arith, memref, linalg, test and snax dialect ops can't modify the accelerator
+    state.
+
+    Also knows about some of the control flow dialects and terminator ops
+    (they don't impact state).
+
+    Assumes all other ops reset the accelerator state.
     """
     if isinstance(container, Operation):
         regions = container.regions
@@ -100,8 +117,12 @@ def _walk(
                 # special case for scf.if ops
                 elif isinstance(op, scf.If):
                     # grab the computed state for both sides:
-                    if_state = _walk(op.true_region, state.copy(), rewriter)
-                    else_state = _walk(op.false_region, state.copy(), rewriter)
+                    if_state = _weave_states_in_region(
+                        op.true_region, state.copy(), rewriter
+                    )
+                    else_state = _weave_states_in_region(
+                        op.false_region, state.copy(), rewriter
+                    )
 
                     # calculate the delta:
                     delta = calc_if_state_delta(state, if_state, else_state)
@@ -144,6 +165,96 @@ def _walk(
                     for res in new_if.results[num_scf_results:]:
                         assert isinstance(res.type, acc.StateType)
                         state[res.type.accelerator.data] = res
+                # a for loop necessitates us to introduce a loop-carried variable
+                # that carries the state through the loop
+                elif isinstance(op, scf.For):
+                    # create a state dictionary with TemporaryPlaceholderSSAValue so that we can track which new uses
+                    # were introduced on this version of the state dictionary specifically:
+                    mock_state = {
+                        accel_name: TemporaryPlaceholderSSAValue(ssa_val)
+                        for accel_name, ssa_val in state.items()
+                    }
+
+                    # go through the for loop body and weave states through that (this is a recursive call):
+                    after_for_state = _weave_states_in_region(
+                        op.body, mock_state.copy(), rewriter
+                    )
+
+                    # check which states got new uses:
+                    # no state change in loop => nothing to do
+                    if all(not val.new_uses() for val in mock_state.values()):
+                        continue
+
+                    # create a list of all accelerator names that were updated. The order of this list defines
+                    # the order of all the other lists.
+                    updated_accelerators = [
+                        acc_name
+                        for acc_name, new_state in after_for_state.items()
+                        if mock_state.get(acc_name) != new_state
+                    ]
+                    # get a list of all initial states of accelerators that were changed int the loop.
+                    input_states: list[SSAValue] = [
+                        state.get(acc_name) for acc_name in updated_accelerators
+                    ]
+                    # check that every accelerator has a state before the scf.for loop. This may not be always the
+                    # case, but we can fix it. The fix is not implemented as part of this PR though.
+                    if any(input_state is None for input_state in input_states):
+                        # TODO: insert an empty setup op outside the loop to create an empty input state so that we can
+                        #       have a loop carried variable.
+                        raise NotImplementedError(
+                            "Anton was too lazy to implement this edge case."
+                        )
+
+                    # grab the new states that are changed after the loop body executed.
+                    new_states: list[SSAValue] = [
+                        after_for_state[acc_name] for acc_name in updated_accelerators
+                    ]
+
+                    # add the input states as initial loop-carried states
+                    op.operands = (*op.operands, *input_states)
+
+                    # add changed states as yield ops in the loop
+                    yield_op = op.body.block.last_op
+                    assert isinstance(yield_op, scf.Yield)
+                    yield_op.operands = (*yield_op.operands, *new_states)
+
+                    # create the loop-carried block arguments
+                    block_args = [
+                        rewriter.insert_block_argument(
+                            op.body.block, len(op.body.block.args), typ
+                        )
+                        for typ in (new_state.type for new_state in new_states)
+                    ]
+
+                    # this is only sound because the order of block_args is the same as the order of new_states,
+                    # which is the same as the order of updated_accelerators.
+                    for acc_name, block_arg in zip(
+                        updated_accelerators, block_args, strict=True
+                    ):
+                        # we expect each state to have just one new use introduced inside the loop (the next setup op).
+                        # future passes may require us to do something else, so I didn't want to assert here.
+                        # this is sort of a sanity check for myself during testing.
+                        if len(mock_state[acc_name].new_uses()) != 1:
+                            print(
+                                f"Unusual number of uses for acc {acc_name} in loop {op}..."
+                            )
+                        mock_state[acc_name].replace_new_uses_by(block_arg)
+                        # also update state
+
+                    # create new OpResults for the newly introduced loop-carried variables
+                    # note that Mathieu is very unhappy about this.
+                    new_results = [
+                        OpResult(state_val.type, op, len(op.results))
+                        for state_val in new_states
+                    ]
+                    # add them to the op
+                    # Mathieu did not approve (he would prefer we create a new op, but that's also a lot of effort).
+                    # I (Anton) thinks this is fine because it works.
+                    op.results = (*op.results, *new_results)
+
+                    # update states
+                    for acc_name, result in zip(updated_accelerators, new_results):
+                        state[acc_name] = result
 
                 # calling another function invalidates all states
                 # we can't reason about other functions as of now, and
@@ -227,3 +338,52 @@ class ConvertLinalgToAccPass(ModulePass):
         PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
             op
         )
+
+
+class TraceStatesPass(ModulePass):
+    """
+    standalone version of state tracing for testing purposes
+    """
+
+    name = "accfg-trace-states"
+
+    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+        PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
+            op
+        )
+
+
+@dataclass(init=False, eq=False)
+class TemporaryPlaceholderSSAValue(SSAValue):
+    """
+    This value can be used temporarily in place of a normal SSA value, as long as all the places where it has been used
+    are replaced by a "real" SSA value at the end of the rewrite.
+
+    The idea is to pass this in the state of the _weave_states_in_region function, and then later inspect the states
+    to see which ones were actually used in the body. This is a bit hacky. But it works and is kinda useful.
+    """
+
+    _wraps: SSAValue
+
+    def __init__(self, val: SSAValue):
+        super().__init__(val.type)
+        self.uses.update(val.uses)
+        self._wraps = val
+
+    @property
+    def owner(self) -> Operation | Block:
+        return self._wraps.owner
+
+    def new_uses(self) -> set[Use]:
+        """
+        Return the uses that were added to this value that are not present on the wrapped value.
+        """
+        return self.uses - self._wraps.uses
+
+    def replace_new_uses_by(self, value: SSAValue) -> None:
+        for use in self.new_uses().copy():
+            use.operation.operands[use.index] = value
+        # carry over name if possible
+        if value.name_hint is None:
+            value.name_hint = self._wraps.name_hint
+        assert len(self.new_uses()) == 0, "unexpected error in xdsl"

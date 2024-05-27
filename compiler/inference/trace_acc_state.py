@@ -37,7 +37,7 @@ def infer_state_of(state_var: SSAValue) -> State:
             in_state.update(dict(setup_op.iter_params()))
             return in_state
         case scf.If() as if_op:
-            return state_union(*infer_states_for_if(if_op, state_var))
+            return state_intersection(*infer_states_for_if(if_op, state_var))
         case Block():
             # TODO: maybe implement something here?
             return {}
@@ -65,5 +65,5 @@ def infer_states_for_if(op: scf.If, state: SSAValue) -> tuple[State, State]:
     return tuple(states)
 
 
-def state_union(a: State, b: State) -> State:
-    return {k: a[k] for k in a if a[k] == b[k]}
+def state_intersection(a: State, b: State) -> State:
+    return {k: a[k] for k in a if a[k] == b.get(k)}
