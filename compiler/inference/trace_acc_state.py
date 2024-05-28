@@ -14,7 +14,7 @@ These inference passes walk the IR backwards.
 """
 
 from xdsl.dialects import scf
-from xdsl.ir import Block, SSAValue, BlockArgument
+from xdsl.ir import Block, BlockArgument, SSAValue
 
 from compiler.dialects import acc
 
@@ -39,16 +39,18 @@ def infer_state_of(state_var: SSAValue) -> State:
         case scf.If() as if_op:
             return state_intersection(*infer_states_for_if(if_op, state_var))
         case scf.For() as for_op:
-            yield_op = for_op. body.block.last_op
+            yield_op = for_op.body.block.last_op
             assert isinstance(yield_op, scf.Yield)
-            assert state_var in for_op.results  # this must be true because state_var.owner == for_op
-            return infer_state_of(
-                yield_op.operands[for_op.results.index(state_var)]
-            )
+            assert (
+                state_var in for_op.results
+            )  # this must be true because state_var.owner == for_op
+            return infer_state_of(yield_op.operands[for_op.results.index(state_var)])
         case Block() as block:
             match block.parent_op():
                 case scf.For() as for_op:
-                    assert isinstance(state_var, BlockArgument)  # must be a block argument for owner to be a block!
+                    assert isinstance(
+                        state_var, BlockArgument
+                    )  # must be a block argument for owner to be a block!
                     return infer_state_of(for_op.iter_args[state_var.index - 1])
                 case _:
                     return {}

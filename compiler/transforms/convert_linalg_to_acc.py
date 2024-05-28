@@ -197,9 +197,7 @@ def _weave_states_in_region(
                     for acc_name in updated_accelerators:
                         if acc_name not in state:
                             # create empty setup op
-                            empty_setup = acc.SetupOp(
-                                [], [], acc_name
-                            )
+                            empty_setup = acc.SetupOp([], [], acc_name)
                             # insert op before the scf.for
                             rewriter.insert_op_before(empty_setup, op)
                             # register it as an inpup
