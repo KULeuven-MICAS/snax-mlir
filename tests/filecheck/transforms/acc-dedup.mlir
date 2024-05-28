@@ -49,10 +49,8 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
     %s_new = "acc2.setup"(%1, %2, %3, %iv, %inner_state) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 1>, "param_names" = ["A", "B", "O", "size"]}> : (index, index, index, index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
     %222 = "acc2.launch"(%cst_0, %s_new) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5,!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
     "acc2.await"(%222) : (!acc2.token<"snax_hwpe_mult">) -> ()
-
     scf.yield %s_new : !acc2.state<"snax_hwpe_mult">
   }
-
   func.return
 }
 
@@ -100,9 +98,11 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 
+
 func.func @scf_for_test(%A: i32, %B: i32) {
   %O = "test.op"() : () -> i32
   %c32 = arith.constant 32 : i32
+
   // initial launch
   %init = acc2.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "size" = %c32 : i32) : !acc2.state<"snax_hwpe_mult">
   %token = "acc2.launch"(%init) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
@@ -112,6 +112,7 @@ func.func @scf_for_test(%A: i32, %B: i32) {
   %lb = arith.constant 0 : index
   %ub = arith.constant 100 : index
   %step = arith.constant 1 : index
+
   // set up one loop-invariant operand
   %A_shift = arith.addi %A, %c32 : i32
 
@@ -120,8 +121,9 @@ func.func @scf_for_test(%A: i32, %B: i32) {
     // some variables computed in-loop:
     %B_shift = arith.addi %B, %c32 : i32
     %O_shift = arith.addi %O, %c32 : i32
+
     // launch with loop-invariant and loop-dependent vars:
-    %s_new = "acc2.setup"(%A_shift, %B_shift, %O_shift, %c32, %inner_state) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 1>, "param_names" = ["A", "B", "O", "size"]}> : (i32, i32, i32, i32, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
+    %s_new = acc2.setup on "snax_hwpe_mult" ("A" = %A_shift : i32, "B" = %B_shift : i32, "O" = %O_shift : i32, "size" = %c32 : i32) in_state(%inner_state) : !acc2.state<"snax_hwpe_mult">
     %tok = "acc2.launch"(%s_new) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
     "acc2.await"(%tok) : (!acc2.token<"snax_hwpe_mult">) -> ()
 
@@ -129,13 +131,11 @@ func.func @scf_for_test(%A: i32, %B: i32) {
   }
 
   // tailing launch, with same inputs as initial launch:
-  %final = "acc2.setup"(%A, %B, %O, %c32, %res_state) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 1>, "param_names" = ["A", "B", "O", "size"]}> : (i32, i32, i32, i32, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
+  %final = acc2.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "size" = %c32 : i32) in_state(%res_state) : !acc2.state<"snax_hwpe_mult">
   %token2 = "acc2.launch"(%final) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> :  (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
   "acc2.await"(%token2) : (!acc2.token<"snax_hwpe_mult">) -> ()
-
   return
 }
-
 
 // CHECK-NEXT:   func.func @scf_for_test(%A : i32, %B : i32) {
 // CHECK-NEXT:     %O = "test.op"() : () -> i32
@@ -165,4 +165,17 @@ func.func @scf_for_test(%A: i32, %B: i32) {
 // CHECK-NEXT:     "acc2.await"(%token2) : (!acc2.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
-// CHECK-NEXT: }
+
+
+func.func @nested_loops(%A : i32, %lb : i32, %ub : i32, %step : i32) {
+  %0 = acc2.setup on "simple" () : !acc2.state<"simple">
+  %1 = scf.for %i = %lb to %ub step %step iter_args(%2 = %0) -> (!acc2.state<"simple">) : i32 {
+    %3 = scf.for %j = %i to %ub step %step iter_args(%4 = %2) -> (!acc2.state<"simple">) : i32 {
+      %out_state = acc2.setup on "simple" ("A" = %A : i32, "i" = %i : i32, "j" = %j : i32) in_state(%4) : !acc2.state<"simple">
+      scf.yield %out_state : !acc2.state<"simple">
+    }
+    scf.yield %3 : !acc2.state<"simple">
+  }
+  func.return
+}
+

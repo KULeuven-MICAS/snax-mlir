@@ -13,8 +13,10 @@ acc.setup(A = %3, C = %1)  // previous state = {A = %1, B = %2}
 These inference passes walk the IR backwards.
 """
 
+from collections.abc import Iterable
+
 from xdsl.dialects import scf
-from xdsl.ir import Block, BlockArgument, SSAValue
+from xdsl.ir import Block, BlockArgument, Region, SSAValue
 
 from compiler.dialects import acc
 
@@ -80,3 +82,17 @@ def infer_states_for_if(op: scf.If, state: SSAValue) -> tuple[State, State]:
 
 def state_intersection(a: State, b: State) -> State:
     return {k: a[k] for k in a if a[k] == b.get(k)}
+
+
+def all_setup_states_in_region(
+    region: Region, accel: str, recurse: bool = False
+) -> Iterable[State]:
+    for block in region.blocks:
+        for op in block.ops:
+            if isinstance(op, acc.SetupOp):
+                if op.accelerator.data != accel:
+                    continue
+                yield {name: val for name, val in op.iter_params()}
+            elif recurse:
+                for inner_region in op.regions:
+                    yield from all_setup_states_in_region(inner_region, accel, recurse)
