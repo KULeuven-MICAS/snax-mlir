@@ -88,16 +88,81 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
 // CHECK-NEXT:     %lb = arith.constant 0 : index
 // CHECK-NEXT:     %ub = arith.constant 100 : index
 // CHECK-NEXT:     %step = arith.constant 1 : index
-// CHECK-NEXT:     %18 = "acc2.setup"(%2, %3, %9) <{"param_names" = ["B", "O"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 2, 1>}> : (index, index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
-//                 ^^^^^^^^^^^^^^^^^^ new setup op for invariant ops
+// CHECK-NEXT:     %18 = acc2.setup on "snax_hwpe_mult" ("B" = %2 : index, "O" = %3 : index) in_state(%9) : !acc2.state<"snax_hwpe_mult">
+//                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ new setup op for invariant ops
 // CHECK-NEXT:     %res_1 = scf.for %iv = %lb to %ub step %step iter_args(%inner_state = %18) -> (!acc2.state<"snax_hwpe_mult">) {
-// CHECK-NEXT:       %s_new = "acc2.setup"(%iv, %inner_state) <{"param_names" = ["size"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 1, 1>}> : (index, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
-//                                         ^^^ only loop-dependent vars remaining
+// CHECK-NEXT:        %s_new = acc2.setup on "snax_hwpe_mult" ("size" = %iv : index) in_state(%inner_state) : !acc2.state<"snax_hwpe_mult">
+//                                   only loop-dependent vars remaining ^^^
 // CHECK-NEXT:       %19 = "acc2.launch"(%cst_0, %s_new) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
 // CHECK-NEXT:       "acc2.await"(%19) : (!acc2.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:       scf.yield %s_new : !acc2.state<"snax_hwpe_mult">
 // CHECK-NEXT:     }
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
-// CHECK-NEXT: }
 
+func.func @scf_for_test(%A: i32, %B: i32) {
+  %O = "test.op"() : () -> i32
+  %c32 = arith.constant 32 : i32
+  // initial launch
+  %init = acc2.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "size" = %c32 : i32) : !acc2.state<"snax_hwpe_mult">
+  %token = "acc2.launch"(%init) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+  "acc2.await"(%token) : (!acc2.token<"snax_hwpe_mult">) -> ()
+
+  // set up the loop
+  %lb = arith.constant 0 : index
+  %ub = arith.constant 100 : index
+  %step = arith.constant 1 : index
+  // set up one loop-invariant operand
+  %A_shift = arith.addi %A, %c32 : i32
+
+  // iterate a bunch of times
+  %res_state = scf.for %iv = %lb to %ub step %step iter_args(%inner_state = %init) -> (!acc2.state<"snax_hwpe_mult">) {
+    // some variables computed in-loop:
+    %B_shift = arith.addi %B, %c32 : i32
+    %O_shift = arith.addi %O, %c32 : i32
+    // launch with loop-invariant and loop-dependent vars:
+    %s_new = "acc2.setup"(%A_shift, %B_shift, %O_shift, %c32, %inner_state) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 1>, "param_names" = ["A", "B", "O", "size"]}> : (i32, i32, i32, i32, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
+    %tok = "acc2.launch"(%s_new) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+    "acc2.await"(%tok) : (!acc2.token<"snax_hwpe_mult">) -> ()
+
+    scf.yield %s_new : !acc2.state<"snax_hwpe_mult">
+  }
+
+  // tailing launch, with same inputs as initial launch:
+  %final = "acc2.setup"(%A, %B, %O, %c32, %res_state) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 1>, "param_names" = ["A", "B", "O", "size"]}> : (i32, i32, i32, i32, !acc2.state<"snax_hwpe_mult">) -> !acc2.state<"snax_hwpe_mult">
+  %token2 = "acc2.launch"(%final) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> :  (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+  "acc2.await"(%token2) : (!acc2.token<"snax_hwpe_mult">) -> ()
+
+  return
+}
+
+
+// CHECK-NEXT:   func.func @scf_for_test(%A : i32, %B : i32) {
+// CHECK-NEXT:     %O = "test.op"() : () -> i32
+// CHECK-NEXT:     %c32 = arith.constant 32 : i32
+// CHECK-NEXT:     %init = acc2.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "size" = %c32 : i32) : !acc2.state<"snax_hwpe_mult">
+//                 ^^^ first setup should be untouched ^^^
+// CHECK-NEXT:     %token = "acc2.launch"(%init) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+// CHECK-NEXT:     "acc2.await"(%token) : (!acc2.token<"snax_hwpe_mult">) -> ()
+// CHECK-NEXT:     %lb_1 = arith.constant 0 : index
+// CHECK-NEXT:     %ub_1 = arith.constant 100 : index
+// CHECK-NEXT:     %step_1 = arith.constant 1 : index
+// CHECK-NEXT:     %A_shift = arith.addi %A, %c32 : i32
+// CHECK-NEXT:     %20 = acc2.setup on "snax_hwpe_mult" ("A" = %A_shift : i32) in_state(%init) : !acc2.state<"snax_hwpe_mult">
+//                       ^^^^^^^^^^^^^^^^^^^^^ new setup op for loop-invariant variables
+// CHECK-NEXT:     %res_state = scf.for %iv_1 = %lb_1 to %ub_1 step %step_1 iter_args(%inner_state_1 = %20) -> (!acc2.state<"snax_hwpe_mult">) {
+// CHECK-NEXT:       %B_shift = arith.addi %B, %c32 : i32
+// CHECK-NEXT:       %O_shift = arith.addi %O, %c32 : i32
+// CHECK-NEXT:       %s_new_1 = acc2.setup on "snax_hwpe_mult" ("B" = %B_shift : i32, "O" = %O_shift : i32) in_state(%inner_state_1) : !acc2.state<"snax_hwpe_mult">
+//                           only loop-dependent variables left ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// CHECK-NEXT:       %tok = "acc2.launch"(%s_new_1) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+// CHECK-NEXT:       "acc2.await"(%tok) : (!acc2.token<"snax_hwpe_mult">) -> ()
+// CHECK-NEXT:       scf.yield %s_new_1 : !acc2.state<"snax_hwpe_mult">
+// CHECK-NEXT:     }
+// CHECK-NEXT:     %final = acc2.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32) in_state(%res_state) : !acc2.state<"snax_hwpe_mult">
+//                                                size parameter can be inferred as unchanged and deleted ^
+// CHECK-NEXT:     %token2 = "acc2.launch"(%final) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
+// CHECK-NEXT:     "acc2.await"(%token2) : (!acc2.token<"snax_hwpe_mult">) -> ()
+// CHECK-NEXT:     func.return
+// CHECK-NEXT:   }
+// CHECK-NEXT: }

@@ -192,18 +192,23 @@ def _weave_states_in_region(
                         for acc_name, new_state in after_for_state.items()
                         if mock_state.get(acc_name) != new_state
                     ]
+
+                    # insert empty setup ops for all setups that don't have a state before the loop
+                    for acc_name in updated_accelerators:
+                        if acc_name not in state:
+                            # create empty setup op
+                            empty_setup = acc.SetupOp(
+                                [], [], acc_name
+                            )
+                            # insert op before the scf.for
+                            rewriter.insert_op_before(empty_setup, op)
+                            # register it as an inpup
+                            state[acc_name] = empty_setup.out_state
+
                     # get a list of all initial states of accelerators that were changed int the loop.
                     input_states: list[SSAValue] = [
-                        state.get(acc_name) for acc_name in updated_accelerators
+                        state[acc_name] for acc_name in updated_accelerators
                     ]
-                    # check that every accelerator has a state before the scf.for loop. This may not be always the
-                    # case, but we can fix it. The fix is not implemented as part of this PR though.
-                    if any(input_state is None for input_state in input_states):
-                        # TODO: insert an empty setup op outside the loop to create an empty input state so that we can
-                        #       have a loop carried variable.
-                        raise NotImplementedError(
-                            "Anton was too lazy to implement this edge case."
-                        )
 
                     # grab the new states that are changed after the loop body executed.
                     new_states: list[SSAValue] = [
