@@ -19,7 +19,7 @@ jobs:
 
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/kuleuven-micas/snax-mlir:${{ github.event.inputs.container-tag || 'main' }}
+      image: ghcr.io/kuleuven-micas/snax-mlir:pr-138
 
     steps:
     - uses: actions/checkout@v3
