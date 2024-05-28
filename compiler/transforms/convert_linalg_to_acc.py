@@ -1,6 +1,5 @@
 import sys
 from dataclasses import dataclass, field
-from types import NoneType
 
 from xdsl.dialects import builtin, func, linalg, scf
 from xdsl.ir import (
