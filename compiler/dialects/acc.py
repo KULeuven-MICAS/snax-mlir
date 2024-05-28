@@ -31,6 +31,8 @@ from xdsl.irdl import (
     result_def,
     var_operand_def,
 )
+from xdsl.parser import Parser
+from xdsl.printer import Printer
 from xdsl.traits import SymbolOpInterface
 
 
@@ -242,6 +244,76 @@ class SetupOp(IRDLOperation):
             raise ValueError(
                 "Must have received same number of values as parameter names"
             )
+
+    def print(self, printer: Printer):
+        printer.print_string(" on ")
+        printer.print_string_literal(self.accelerator.data)
+        printer.print_string(" (")
+        for i, (name, val) in enumerate(zip(self.param_names, self.values)):
+            printer.print_string_literal(name.data)
+            printer.print_string(" = ")
+            printer.print_ssa_value(val)
+            printer.print_string(" : ")
+            printer.print_attribute(val.type)
+            # for all but the last value print separator
+            if i != len(self.values) - 1:
+                printer.print_string(", ")
+        printer.print_string(") ")
+
+        if self.in_state:
+            printer.print_string("in_state(")
+            printer.print_ssa_value(self.in_state)
+            printer.print_string(") ")
+
+        if self.attributes:
+            printer.print("attrs ")
+            printer.print_attr_dict(self.attributes)
+            printer.print(" ")
+
+        printer.print_string(": ")
+        printer.print_attribute(self.out_state.type)
+
+    @classmethod
+    def parse(cls: type[SetupOp], parser: Parser) -> SetupOp:
+        parser.parse_keyword("on")
+        accelerator = parser.parse_str_literal("accelerator name")
+
+        def parse_itm() -> tuple[str, SSAValue]:
+            name = parser.parse_str_literal("accelerator field name")
+            parser.parse_punctuation("=")
+            val = parser.parse_operand(f'expected value for field "{name}"')
+            parser.parse_punctuation(":")
+            typ = parser.parse_type()
+            assert (
+                val.type == typ
+            ), f"ssa value type mismatch! Expected {typ}, got {val.type}"
+            return name, val
+
+        args: list[tuple[str, SSAValue]] = parser.parse_comma_separated_list(
+            Parser.Delimiter.PAREN, parse_itm
+        )
+
+        in_state: SSAValue | None = None
+        if parser.parse_optional_keyword("in_state"):
+            parser.parse_punctuation("(")
+            in_state = parser.parse_operand()
+            parser.parse_punctuation(")")
+
+        attributes = {}
+        if parser.parse_optional_keyword("attrs"):
+            attributes = parser.parse_optional_attr_dict()
+
+        parser.parse_punctuation(":")
+        res_typ = parser.parse_type()
+        setup_op = cls(
+            [val for _, val in args],
+            [name for name, _ in args],
+            accelerator,
+            in_state,
+        )
+        setup_op.out_state.type = res_typ
+        setup_op.attributes.update(attributes)
+        return setup_op
 
 
 class AcceleratorSymbolOpTrait(SymbolOpInterface):
