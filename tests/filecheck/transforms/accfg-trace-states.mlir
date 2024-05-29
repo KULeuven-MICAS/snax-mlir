@@ -212,7 +212,8 @@ func.func @simple_loop() {
     return
 }
 
-// check that a new loop-carried state variable was introduced to the scf.for loop and an empty before state was added:
+// check that an empty setup was added before the loop,
+// and a new loop-carried state variable is added to the scf.for:
 // CHECK-NEXT:  func.func @simple_loop() {
 // CHECK-NEXT:    %A_5, %B_5, %O_5, %nr_iters_5 = "test.op"() : () -> (i32, i32, i32, i32)
 // CHECK-NEXT:    %lb, %ub, %step, %carry = "test.op"() : () -> (i32, i32, i32, i32)
