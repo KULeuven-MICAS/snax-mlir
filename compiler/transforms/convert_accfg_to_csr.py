@@ -16,13 +16,13 @@ from xdsl.pattern_rewriter import (
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.registry import AcceleratorRegistry
-from compiler.dialects import acc
+from compiler.dialects import accfg
 
 
 @dataclass
-class LowerAccBasePattern(RewritePattern, ABC):
+class LowerAccfgBasePattern(RewritePattern, ABC):
     """
-    Base class for the acc2 dialect lowerings.
+    Base class for the accfg dialect lowerings.
 
     Wraps some common logic to get handles to accelerator ops inside the module.
     """
@@ -32,7 +32,7 @@ class LowerAccBasePattern(RewritePattern, ABC):
     @cache
     def get_acc(
         self, accelerator: StringAttr
-    ) -> tuple[acc.AcceleratorOp, type[Accelerator]]:
+    ) -> tuple[accfg.AcceleratorOp, type[Accelerator]]:
         acc_op, acc_info = AcceleratorRegistry().lookup_acc_info(
             accelerator, self.module
         )
@@ -42,16 +42,16 @@ class LowerAccBasePattern(RewritePattern, ABC):
         return id(self)
 
 
-class LowerAccSetupToCsr(LowerAccBasePattern):
+class LowerAccfgSetupToCsr(LowerAccfgBasePattern):
     """
     Convert setup ops to a series of CSR sets that set each field to the given value.
 
-    Looks up the csr addresses of the value fields by getting the `acc2.accelerator`
+    Looks up the csr addresses of the value fields by getting the `accfg.accelerator`
     operation from the module op.
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
+    def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
         acc_op, acc_info = self.get_acc(op.accelerator)
         # grab a dict that translates field names to CSR addresses:
         # emit the llvm assembly code to set csr values:
@@ -61,14 +61,14 @@ class LowerAccSetupToCsr(LowerAccBasePattern):
         )
 
 
-class LowerAccLaunchToCsr(LowerAccBasePattern):
+class LowerAccfgLaunchToCsr(LowerAccfgBasePattern):
     """
     Convert launch ops to a single `csr_set $launch_addr, 1`
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: acc.LaunchOp, rewriter: PatternRewriter, /):
-        assert isinstance(op.state.type, acc.StateType)
+    def match_and_rewrite(self, op: accfg.LaunchOp, rewriter: PatternRewriter, /):
+        assert isinstance(op.state.type, accfg.StateType)
         acc_op, acc_info = self.get_acc(op.state.type.accelerator)
 
         # insert an op that sets the launch CSR to 1
@@ -79,14 +79,14 @@ class LowerAccLaunchToCsr(LowerAccBasePattern):
         )
 
 
-class LowerAccAwaitToCsr(LowerAccBasePattern):
+class LowerAccfgAwaitToCsr(LowerAccfgBasePattern):
     """
     Lower await ops to a set of assembly that lowers to a buffer.
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: acc.AwaitOp, rewriter: PatternRewriter, /):
-        assert isinstance(op.token.type, acc.StateType | acc.TokenType)
+    def match_and_rewrite(self, op: accfg.AwaitOp, rewriter: PatternRewriter, /):
+        assert isinstance(op.token.type, accfg.StateType | accfg.TokenType)
         acc_op, acc_info = self.get_acc(op.token.type.accelerator)
 
         # emit a snax_hwpe-style barrier
@@ -98,10 +98,10 @@ class LowerAccAwaitToCsr(LowerAccBasePattern):
 
 class DeleteAllStates(RewritePattern):
     """
-    This pattern deletes all remaining SSA values that are of `acc.state` type
+    This pattern deletes all remaining SSA values that are of `accfg.state` type
     from any remaining operations.
 
-    This is done to un-weave the `acc2.state` variables that were inserted into
+    This is done to un-weave the `accfg.state` variables that were inserted into
     control flow operations.
     """
 
@@ -116,14 +116,14 @@ class DeleteAllStates(RewritePattern):
         if op.parent_op() is None:
             return
         # first rewrite operands:
-        if any(isinstance(operand.type, acc.StateType) for operand in op.operands):
+        if any(isinstance(operand.type, accfg.StateType) for operand in op.operands):
             # use the generic creation interface to clone the op but with fewer
             # operands:
             new_op = op.__class__.create(
                 operands=[
                     operand
                     for operand in op.operands
-                    if not isinstance(operand.type, acc.StateType)
+                    if not isinstance(operand.type, accfg.StateType)
                 ],
                 result_types=[res.type for res in op.results],
                 properties=op.properties,
@@ -136,14 +136,14 @@ class DeleteAllStates(RewritePattern):
             op = new_op
 
         # then we check if any of the results are of the offending type
-        if any(isinstance(result.type, acc.StateType) for result in op.results):
+        if any(isinstance(result.type, accfg.StateType) for result in op.results):
             # and again, clone the op but remove the results of the offending type
             new_op = op.__class__.create(
                 operands=op.operands,
                 result_types=[
                     res.type
                     for res in op.results
-                    if not isinstance(res.type, acc.StateType)
+                    if not isinstance(res.type, accfg.StateType)
                 ],
                 properties=op.properties,
                 attributes=op.attributes,
@@ -163,7 +163,11 @@ class DeleteAllStates(RewritePattern):
             #  - `None` if the old result was erased, or
             #  - `new_results.pop(0)`, which is the next result of the new results
             replace_results_by = [
-                None if isinstance(res.type, acc.StateType) else new_ops_results.pop(0)
+                (
+                    None
+                    if isinstance(res.type, accfg.StateType)
+                    else new_ops_results.pop(0)
+                )
                 for res in op.results
             ]
             # and then we replace the offending operation
@@ -173,7 +177,7 @@ class DeleteAllStates(RewritePattern):
         for region in op.regions:
             for block in region.blocks:
                 for arg in block.args:
-                    if isinstance(arg.type, acc.StateType):
+                    if isinstance(arg.type, accfg.StateType):
                         rewriter.erase_block_argument(arg)
 
 
@@ -183,31 +187,31 @@ class RemoveAcceleratorOps(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: acc.AcceleratorOp, rewriter: PatternRewriter, /):
+    def match_and_rewrite(self, op: accfg.AcceleratorOp, rewriter: PatternRewriter, /):
         rewriter.erase_matched_op()
 
 
-class ConvertAccToCsrPass(ModulePass):
+class ConvertAccfgToCsrPass(ModulePass):
     """
-    Converts acc2 dialect ops to series of SNAX-like csr sets.
+    Converts accfg dialect ops to series of SNAX-like csr sets.
     """
 
-    name = "convert-acc-to-csr"
+    name = "convert-accfg-to-csr"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        # first lower all acc2 ops and erase old SSA values
+        # first lower all accfg ops and erase old SSA values
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
                 [
-                    LowerAccSetupToCsr(op),
-                    LowerAccLaunchToCsr(op),
-                    LowerAccAwaitToCsr(op),
+                    LowerAccfgSetupToCsr(op),
+                    LowerAccfgLaunchToCsr(op),
+                    LowerAccfgAwaitToCsr(op),
                 ]
             ),
             walk_reverse=True,
         ).rewrite_module(op)
 
-        # then we remove all the top-level acc2.accelerator operations from the module and erase the state variables
+        # then we remove all the top-level accfg.accelerator operations from the module and erase the state variables
         PatternRewriteWalker(
             GreedyRewritePatternApplier([DeleteAllStates(), RemoveAcceleratorOps()])
         ).rewrite_module(op)

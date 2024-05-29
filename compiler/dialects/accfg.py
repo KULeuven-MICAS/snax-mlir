@@ -42,7 +42,7 @@ class TokenType(ParametrizedAttribute, TypeAttribute):
     Async token type for launched accelerator requests.
     """
 
-    name = "acc2.token"
+    name = "accfg.token"
 
     accelerator: ParameterDef[StringAttr]
 
@@ -58,7 +58,7 @@ class StateType(ParametrizedAttribute, TypeAttribute):
     Used to trace an accelerators CSR state through def-use chain
     """
 
-    name = "acc2.state"
+    name = "accfg.state"
 
     accelerator: ParameterDef[StringAttr]
 
@@ -76,7 +76,7 @@ class LaunchOp(IRDLOperation):
     interfering with the Accelerator.
     """
 
-    name = "acc2.launch"
+    name = "accfg.launch"
 
     values = var_operand_def(Attribute)  # TODO: make more precise?
     """
@@ -103,7 +103,7 @@ class LaunchOp(IRDLOperation):
         state_val: SSAValue = SSAValue.get(state)
 
         if not isinstance(state_val.type, StateType):
-            raise ValueError("`state` SSA Value must be of type `acc2.state`!")
+            raise ValueError("`state` SSA Value must be of type `accfg.state`!")
 
         param_names_tuple: tuple[StringAttr, ...] = tuple(
             StringAttr(name) if isinstance(name, str) else name for name in param_names
@@ -154,7 +154,7 @@ class AwaitOp(IRDLOperation):
     Blocks until the launched operation finishes.
     """
 
-    name = "acc2.await"
+    name = "accfg.await"
 
     token = operand_def(TokenType)
 
@@ -165,14 +165,14 @@ class AwaitOp(IRDLOperation):
 @irdl_op_definition
 class SetupOp(IRDLOperation):
     """
-    acc2.setup writes values to a specific accelerators configuration and returns
+    accfg.setup writes values to a specific accelerators configuration and returns
     a value representing the currently known state of that accelerator's config.
 
-    If acc2.setup is called without any parameters, the resulting state is the
+    If accfg.setup is called without any parameters, the resulting state is the
     "empty" state, that represents a state without known values.
     """
 
-    name = "acc2.setup"
+    name = "accfg.setup"
 
     values = var_operand_def(Attribute)  # TODO: make more precise?
     """
@@ -181,7 +181,7 @@ class SetupOp(IRDLOperation):
 
     in_state = opt_operand_def(StateType)
     """
-    The state produced by a previous acc2.setup
+    The state produced by a previous accfg.setup
     """
 
     out_state = result_def(StateType)
@@ -330,7 +330,7 @@ class AcceleratorOp(IRDLOperation):
     CSR addresses.
     """
 
-    name = "acc2.accelerator"
+    name = "accfg.accelerator"
 
     traits = frozenset([AcceleratorSymbolOpTrait()])
 
@@ -396,8 +396,8 @@ class AcceleratorOp(IRDLOperation):
             yield name, val
 
 
-ACC = Dialect(
-    "acc2",
+ACCFG = Dialect(
+    "accfg",
     [
         SetupOp,
         LaunchOp,

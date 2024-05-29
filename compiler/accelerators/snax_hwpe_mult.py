@@ -4,7 +4,7 @@ from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.snax import SNAXAccelerator
-from compiler.dialects import acc
+from compiler.dialects import accfg
 
 
 class SNAXHWPEMultAccelerator(SNAXAccelerator):
@@ -21,10 +21,10 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
         """
         Lowers the operation op to a sequence of acc_ops.
         acc_ops are:
-            - *.op that generates SSAValues consumed by acc2.setup
-            - acc2.setup
-            - acc2.launch
-            - acc2.await
+            - *.op that generates SSAValues consumed by accfg.setup
+            - accfg.setup
+            - accfg.launch
+            - accfg.await
         These ops can further be lowered by specific instances of the
         Accelerator interface
         """
@@ -37,10 +37,10 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
 
         return [
             *ops_to_insert,
-            setup := acc.SetupOp([val for _, val in args], self.fields, self.name),
+            setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
             launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
-            token := acc.LaunchOp([launch_val], self.launch_fields, setup),
-            acc.AwaitOp(token),
+            token := accfg.LaunchOp([launch_val], self.launch_fields, setup),
+            accfg.AwaitOp(token),
         ]
 
     def _generate_setup_vals(
@@ -78,11 +78,11 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
 
         return ptrs + [nr_iters] + [vector_length] + [mode]
 
-    def generate_acc_op(self) -> acc.AcceleratorOp:
+    def generate_acc_op(self) -> accfg.AcceleratorOp:
         """
         Return this accelerator op:
 
-        "acc2.accelerator"() <{
+        "accfg.accelerator"() <{
             name            = @snax_hwpe_mult,
             fields          = {A=0x3d0, B=0x3d1, O=0x3d3, n_iters=0x3d4,
                                vector_length=0x3d5, mode=0x3d6},
@@ -90,7 +90,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
             barrier = 0x3c3,
         }> : () -> ()
         """
-        return acc.AcceleratorOp(
+        return accfg.AcceleratorOp(
             self.name,
             {
                 "A": 0x3D0,

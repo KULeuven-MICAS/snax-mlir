@@ -5,9 +5,9 @@ present at which points in the IR.
 Example inference results:
 
 ```
-acc.setup(A = %1, B = %2)  // previous state = {}
+accfg.setup(A = %1, B = %2)  // previous state = {}
 // ...
-acc.setup(A = %3, C = %1)  // previous state = {A = %1, B = %2}
+accfg.setup(A = %3, C = %1)  // previous state = {A = %1, B = %2}
 ```
 
 These inference passes walk the IR backwards.
@@ -18,7 +18,7 @@ from collections.abc import Iterable
 from xdsl.dialects import scf
 from xdsl.ir import Block, BlockArgument, Region, SSAValue
 
-from compiler.dialects import acc
+from compiler.dialects import accfg
 
 State = dict[str, SSAValue]
 
@@ -32,9 +32,9 @@ def infer_state_of(state_var: SSAValue) -> State:
     """
     owner = state_var.owner
     match owner:
-        case acc.SetupOp(in_state=None) as setup_op:
+        case accfg.SetupOp(in_state=None) as setup_op:
             return {name: val for name, val in setup_op.iter_params()}
-        case acc.SetupOp(in_state=st) as setup_op if st is not None:
+        case accfg.SetupOp(in_state=st) as setup_op if st is not None:
             in_state = infer_state_of(st)
             in_state.update(dict(setup_op.iter_params()))
             return in_state
@@ -90,7 +90,7 @@ def all_setup_ops_in_region(region: Region, accel: str) -> Iterable[State]:
     that the setup op is setting up.
     """
     for op in region.walk():
-        if isinstance(op, acc.SetupOp):
+        if isinstance(op, accfg.SetupOp):
             if op.accelerator.data != accel:
                 continue
             yield {name: val for name, val in op.iter_params()}

@@ -1,7 +1,7 @@
 from xdsl.dialects import builtin, scf
 from xdsl.ir import BlockArgument
 
-from compiler.dialects import acc
+from compiler.dialects import accfg
 from compiler.inference.trace_acc_state import infer_state_of, infer_states_for_if
 
 ACC = "acc1"
@@ -10,9 +10,9 @@ ACC = "acc1"
 def test_simple_setup_tracing():
     a, b, c = tuple(BlockArgument(builtin.i32, None, i) for i in range(3))
 
-    empty_setup = acc.SetupOp([], [], ACC)
+    empty_setup = accfg.SetupOp([], [], ACC)
 
-    full_setup = acc.SetupOp([a, b, c], ["A", "B", "C"], ACC, empty_setup)
+    full_setup = accfg.SetupOp([a, b, c], ["A", "B", "C"], ACC, empty_setup)
 
     assert infer_state_of(empty_setup.out_state) == {}
 
@@ -21,13 +21,13 @@ def test_simple_setup_tracing():
     # construct if block that sets state
     if_block = scf.If(
         a,
-        [acc.StateType("acc1")],
+        [accfg.StateType("acc1")],
         [
-            s1 := acc.SetupOp([b], ["A"], ACC, full_setup),
+            s1 := accfg.SetupOp([b], ["A"], ACC, full_setup),
             scf.Yield(s1),
         ],
         [
-            s2 := acc.SetupOp([c], ["B"], ACC, full_setup),
+            s2 := accfg.SetupOp([c], ["B"], ACC, full_setup),
             scf.Yield(s2),
         ],
     )
