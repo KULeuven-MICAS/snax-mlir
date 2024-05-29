@@ -1,7 +1,6 @@
-// RUN: ./compiler/snax-opt -p convert-linalg-to-acc,mlir-opt{executable=mlir-opt-17\ generic=true\ arguments='-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic'} %s | filecheck %s
+// RUN: ./compiler/snax-opt -p 'convert-linalg-to-acc,mlir-opt{executable=mlir-opt-17 generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic,-split-input-file}' %s | filecheck %s
 
 "builtin.module"() ({
-
   "acc2.accelerator"() <{
       name            = @snax_hwpe_mult,
       fields          = {A=0x3d0, B=0x3d1, O=0x3d3, vector_length=0x3d4, nr_iters=0x3d5, mode=0x3d6},

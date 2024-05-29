@@ -112,6 +112,9 @@ class DeleteAllStates(RewritePattern):
         as most operations should have either arguments *or* results of the chosen
         type but rarely both.
         """
+        # bug in xDSL sometimes calls this pattern on already removed IR
+        if op.parent_op() is None:
+            return
         # first rewrite operands:
         if any(isinstance(operand.type, acc.StateType) for operand in op.operands):
             # use the generic creation interface to clone the op but with fewer
@@ -166,6 +169,12 @@ class DeleteAllStates(RewritePattern):
             # and then we replace the offending operation
             rewriter.replace_op(op, new_op, new_results=replace_results_by)
 
+        # also clean up all block arguments
+        for region in op.regions:
+            for block in region.blocks:
+                for arg in block.args:
+                    if isinstance(arg.type, acc.StateType):
+                        rewriter.erase_block_argument(arg)
 
 class RemoveAcceleratorOps(RewritePattern):
     """
@@ -192,11 +201,10 @@ class ConvertAccToCsrPass(ModulePass):
                     LowerAccSetupToCsr(op),
                     LowerAccLaunchToCsr(op),
                     LowerAccAwaitToCsr(op),
-                    DeleteAllStates(),
                 ]
             ),
             walk_reverse=True,
         ).rewrite_module(op)
 
-        # then we remove all the top-level acc2.accelerator operations from the module
-        PatternRewriteWalker(RemoveAcceleratorOps()).rewrite_module(op)
+        # then we remove all the top-level acc2.accelerator operations from the module and erase the state variables
+        PatternRewriteWalker(GreedyRewritePatternApplier([DeleteAllStates(), RemoveAcceleratorOps()])).rewrite_module(op)
