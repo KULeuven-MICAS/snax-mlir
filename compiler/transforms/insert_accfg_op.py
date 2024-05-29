@@ -51,7 +51,7 @@ class InsertAccOp(ModulePass):
     selected accelerator.
 
     Pass can be called from CLI as e.g.:
-        snax-opt -p insert-acc-op{accelerater=snax_hwpe_mult}
+        snax-opt -p insert-accfg-op{accelerater=snax_hwpe_mult}
     """
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:

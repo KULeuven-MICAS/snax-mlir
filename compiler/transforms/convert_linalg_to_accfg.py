@@ -274,7 +274,7 @@ def _weave_states_in_region(
                 else:
                     state.clear()
                     print(
-                        f'[convert-linalg-to-acc] Unknown operation "{op.name}", '
+                        f'[convert-linalg-to-accfg] Unknown operation "{op.name}", '
                         "assuming all side effects and resetting states.",
                         file=sys.stderr,
                     )
