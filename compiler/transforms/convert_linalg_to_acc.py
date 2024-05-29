@@ -350,7 +350,7 @@ class TraceStatesPass(ModulePass):
 
 def find_all_acc_names_in_region(reg: Region) -> set[str]:
     """
-    Walk a region and return a set of accelerator names that have setup ops inside them.
+    Walk a region and return a set of accelerator names are set up in that region.
     """
     acs: set[str] = set()
     for op in reg.walk():
