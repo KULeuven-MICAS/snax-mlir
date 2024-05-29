@@ -15,6 +15,7 @@ class SNAXAccelerator(Accelerator, ABC):
     Abstract base class for extending AcceleratorInterfaces
     with common SNAX lowerings.
     """
+
     @staticmethod
     def lower_acc_launch(
         launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
@@ -70,9 +71,9 @@ class SNAXAccelerator(Accelerator, ABC):
 class SNAXPollingBarrier(Accelerator, ABC):
     """
     Abstract base class for SNAX Accelerators with Polling style barrier.
-    In this case, the while loop makes the CPU continuously polls 
+    In this case, the while loop makes the CPU continuously polls
     an accelerator register to see if it is finished.
-    
+
     The polling style barrier can be represented in C with:
 
     void snax_mac_sw_barrier() {
@@ -89,6 +90,7 @@ class SNAXPollingBarrier(Accelerator, ABC):
         asm volatile("nop\n");
     }
     """
+
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         return [
@@ -136,7 +138,7 @@ class SNAXPollingBarrier(Accelerator, ABC):
 class SNAXPollingBarrier2(Accelerator, ABC):
     """
     Abstract base class for SNAX Accelerators with different polling style barrier.
-    
+
     The polling style barrier can be represented in C with:
     void wait_batch_gemm() {
         uint32_t break_poll;
@@ -149,6 +151,7 @@ class SNAXPollingBarrier2(Accelerator, ABC):
             };
         };
     """
+
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         return [
@@ -157,7 +160,7 @@ class SNAXPollingBarrier2(Accelerator, ABC):
                 [],
                 [
                     barrier := arith.Constant(acc_op.barrier),
-                    one:= arith.Constant(
+                    one := arith.Constant(
                         builtin.IntegerAttr.from_int_and_width(1, 32)
                     ),
                     status := llvm.InlineAsmOp(
@@ -181,11 +184,12 @@ class SNAXPollingBarrier2(Accelerator, ABC):
             ),
         ]
 
-#class SNAXInterruptBarrier(Accelerator, ABC):
+
+# class SNAXInterruptBarrier(Accelerator, ABC):
 #    """
 #    Abstract base class for SNAX Accelerators with an Interrupt style barrier.
 #    In this case, the barrier will make stall the CPU util the accelerator is finished.
-#    
+#
 #    The interrupt style barrier can be represented in C with:
 #
 #    void wait_acc() {
@@ -194,7 +198,7 @@ class SNAXPollingBarrier2(Accelerator, ABC):
 #        // Trigger SNAX barrier
 #        write_csr(0x7c4, 0);
 #    }
-#    
+#
 #    NOTE: The enabling of the SNAX barrier is done through the acc2.setupOp.
 #    """
 #    @staticmethod
