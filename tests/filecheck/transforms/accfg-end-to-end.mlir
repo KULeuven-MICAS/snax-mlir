@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-files -p 'convert-linalg-to-acc,mlir-opt{executable=mlir-opt-17 generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic,-split-input-file},acc-dedup,convert-acc-to-csr' %s | filecheck %s
+// RUN: ./compiler/snax-opt --split-input-file -p 'convert-linalg-to-acc,mlir-opt{executable=mlir-opt-17 generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic,-split-input-file},acc-dedup,convert-acc-to-csr' %s | filecheck %s
 
 builtin.module {
   "acc2.accelerator"() <{
