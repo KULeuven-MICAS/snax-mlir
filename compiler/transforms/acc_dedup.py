@@ -124,10 +124,10 @@ class PullSetupOpsOutOfLoops(RewritePattern):
             return
 
         # iterate over all setups inside this loop and check if their values are loop-invariant or not
-        safe_values: set[str] = set()  # loop invariant values
-        unsafe_vals: set[str] = (
-            set()
-        )  # loop dependent values, or value set to multiple different values
+        # loop invariant values
+        safe_values: set[str] = set()
+        # loop dependent values, or value set to multiple different values
+        unsafe_vals: set[str] = set()
         # remember the values each field of the accelerator is set to, so that we can determine if they are the same
         acc_fields_to_values: dict[str, SSAValue] = {}
         # iterate over all the setup ops in the region and inspect their values
