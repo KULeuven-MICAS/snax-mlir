@@ -3,11 +3,11 @@ from collections.abc import Sequence
 from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.ir import Operation, SSAValue
 
-from compiler.accelerators.snax import SNAXAccelerator, SNAXInterruptBarrier
+from compiler.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier2 
 from compiler.dialects import acc
 
 
-class SNAXGEMMAccelerator(SNAXAccelerator, SNAXInterruptBarrier):
+class SNAXGEMMAccelerator(SNAXAccelerator, SNAXPollingBarrier2):
     """
     Accelerator Interface class for SNAX GEMM accelerator
     CSR lowerings are inherited from SNAXAcceleratorInterface.
@@ -32,7 +32,6 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXInterruptBarrier):
                 "strideB", 
                 "strideC",
                 "subtractions",
-                "enable_barrier",
               )
     launch_fields = ("launch",)
 
@@ -57,10 +56,9 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXInterruptBarrier):
                 "strideB": 0x3cb, 
                 "strideC": 0x3cc,
                 "subtractions": 0x3ce,
-                "enable_barrier": 0x7c4,
             },
             {"launch": 0x3cf},
-            0x7c4,
+            0x3cf,
         )
     def convert_to_acc_ops(self, op: linalg.Generic) -> Sequence[Operation]:
         """
@@ -83,7 +81,7 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXInterruptBarrier):
         return [
             *ops_to_insert,
             setup := acc.SetupOp([val for _, val in args], self.fields, self.name),
-            launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
+            launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
             token := acc.LaunchOp([launch_val], self.launch_fields, setup),
             acc.AwaitOp(token),
         ]
@@ -180,9 +178,9 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXInterruptBarrier):
 
         return [
                 size_config,
-                *_get_constants(constants, 32),
                 *ptrs,
-                _generate_subtract_config(zpa, zpb),
-                ([barrier_enable:=arith.Constant.from_int_and_width(1, 5)],barrier_enable.result) #Always enable barrier
+                *_get_constants(constants, 32),
+                _generate_subtract_config(zpa, zpb)
+                #([barrier_enable:=arith.Constant.from_int_and_width(1, 5)],barrier_enable.result) #Always enable barrier
                 ]
 

@@ -132,30 +132,79 @@ class SNAXPollingBarrier(Accelerator, ABC):
             llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
         ]
 
-class SNAXInterruptBarrier(Accelerator, ABC):
-    """
-    Abstract base class for SNAX Accelerators with an Interrupt style barrier.
-    In this case, the barrier will make stall the CPU util the accelerator is finished.
-    
-    The interrupt style barrier can be represented in C with:
 
-    void wait_acc() {
-        // Enable SNAX barrier
-        write_csr(0x7c3, 1);
-        // Trigger SNAX barrier
-        write_csr(0x7c4, 0);
-    }
+class SNAXPollingBarrier2(Accelerator, ABC):
+    """
+    Abstract base class for SNAX Accelerators with different polling style barrier.
     
-    NOTE: The enabling of the SNAX barrier is done through the acc2.setupOp.
+    The polling style barrier can be represented in C with:
+    void wait_batch_gemm() {
+        uint32_t break_poll;
+
+        while (1) {
+            // poll the state CSR[1] to see if GEMM is still busy
+            break_poll = read_csr(0x3cf);
+            if ((break_poll >> 1) == 1) {
+                break;
+            };
+        };
     """
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
-        return [barrier := arith.Constant(acc_op.barrier),
-                zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
-                llvm.InlineAsmOp(
-                    "csrw $0, $1",
-                    "I, K",
-                    [barrier, zero],
-                    has_side_effects=True,
-                )]
+        return [
+            While(
+                [],
+                [],
+                [
+                    barrier := arith.Constant(acc_op.barrier),
+                    one:= arith.Constant(
+                        builtin.IntegerAttr.from_int_and_width(1, 32)
+                    ),
+                    status := llvm.InlineAsmOp(
+                        "csrr $0, $1",
+                        # I = any 12 bit immediate
+                        # =r = store result in A 32- or 64-bit
+                        # general-purpose register (depending on the platform XLEN)
+                        "=r, I",
+                        [barrier],
+                        [i32],
+                        has_side_effects=True,
+                    ),
+                    shifted_status := arith.ShRUI(status, one),
+                    # check if equal to one
+                    comparison := arith.Cmpi(shifted_status, one, "ne"),
+                    Condition(comparison.results[0]),
+                ],
+                [
+                    Yield(),
+                ],
+            ),
+        ]
 
+#class SNAXInterruptBarrier(Accelerator, ABC):
+#    """
+#    Abstract base class for SNAX Accelerators with an Interrupt style barrier.
+#    In this case, the barrier will make stall the CPU util the accelerator is finished.
+#    
+#    The interrupt style barrier can be represented in C with:
+#
+#    void wait_acc() {
+#        // Enable SNAX barrier
+#        write_csr(0x7c3, 1);
+#        // Trigger SNAX barrier
+#        write_csr(0x7c4, 0);
+#    }
+#    
+#    NOTE: The enabling of the SNAX barrier is done through the acc2.setupOp.
+#    """
+#    @staticmethod
+#    def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+#        return [barrier := arith.Constant(acc_op.barrier),
+#                zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
+#                llvm.InlineAsmOp(
+#                    "csrw $0, $1",
+#                    "I, K",
+#                    [barrier, zero],
+#                    has_side_effects=True,
+#                )]
+#
