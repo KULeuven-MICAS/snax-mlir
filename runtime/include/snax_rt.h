@@ -65,6 +65,7 @@ void _mlir_ciface_snax_dma_2d_transfer(size_t *source, size_t *destination,
   //        size, source, destination, src_stride, dst_stride, repeat);
   snrt_dma_start_2d((void *)destination, (void *)source, size, dst_stride,
                     src_stride, repeat);
+  snrt_dma_wait_all();
 }
 
 int _mlir_ciface_snax_is_dm_core() { return snrt_is_dm_core(); }
