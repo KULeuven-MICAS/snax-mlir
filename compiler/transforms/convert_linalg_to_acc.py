@@ -194,7 +194,7 @@ def _weave_states_in_region(
                             empty_setup = acc.SetupOp([], [], acc_name)
                             # insert op before the scf.for
                             rewriter.insert_op_before(empty_setup, op)
-                            # register it as an inpup
+                            # register it as an input
                             state[acc_name] = empty_setup.out_state
 
                     # this is the state we are planning to pass to the weaving function inside the for body:
@@ -349,6 +349,9 @@ class TraceStatesPass(ModulePass):
 
 
 def find_all_acc_names_in_region(reg: Region) -> set[str]:
+    """
+    Walk a region and return a set of accelerator names that have setup ops inside them.
+    """
     acs: set[str] = set()
     for op in reg.walk():
         if isinstance(op, acc.SetupOp):
@@ -357,6 +360,9 @@ def find_all_acc_names_in_region(reg: Region) -> set[str]:
 
 
 def find_existing_block_arg(block: Block, accel: str) -> BlockArgument | None:
+    """
+    Inspect a block for block arguments of the correct acc.StateType type, return the block arg if found.
+    """
     for arg in block.args:
         if isinstance(arg.type, acc.StateType) and arg.type.accelerator.data == accel:
             return arg

@@ -84,15 +84,13 @@ def state_intersection(a: State, b: State) -> State:
     return {k: a[k] for k in a if a[k] == b.get(k)}
 
 
-def all_setup_states_in_region(
-    region: Region, accel: str, recurse: bool = False
-) -> Iterable[State]:
-    for block in region.blocks:
-        for op in block.ops:
-            if isinstance(op, acc.SetupOp):
-                if op.accelerator.data != accel:
-                    continue
-                yield {name: val for name, val in op.iter_params()}
-            elif recurse:
-                for inner_region in op.regions:
-                    yield from all_setup_states_in_region(inner_region, accel, recurse)
+def all_setup_ops_in_region(region: Region, accel: str) -> Iterable[State]:
+    """
+    Walk the region and look for all instances of a SetupOp, yield the fields
+    that the setup op is setting up.
+    """
+    for op in region.walk():
+        if isinstance(op, acc.SetupOp):
+            if op.accelerator.data != accel:
+                continue
+            yield {name: val for name, val in op.iter_params()}

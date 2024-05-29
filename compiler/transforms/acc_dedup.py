@@ -21,7 +21,7 @@ from xdsl.traits import Pure
 
 from compiler.dialects import acc
 from compiler.inference.trace_acc_state import (
-    all_setup_states_in_region,
+    all_setup_ops_in_region,
     infer_state_of,
 )
 
@@ -105,11 +105,11 @@ class ElideEmptySetupOps(RewritePattern):
 class PullSetupOpsOutOfLoops(RewritePattern):
     """
     Tries to pull setup operations out of loop nests by:
-    1. Inspecting the source block of all operands
-    2. Get all operands that originate not from the block the current operation is in or its descendants (X)
-    3. Clone the operation, remove all ops that are not in X
-    4. Insert the cloned op right before the loop
-    5. Remove all operands from the original op that are in X
+    - Creating a list of values that are safe to hoist:
+        - safe to hoist means, that the field is set to the same value every time
+        - And that that value originates from outside the loop
+    - Inserting a new setup op directly in front of the loop, containing only the safe fields
+    - Using that setups state as the new input-state for the loop.
     """
 
     @op_type_rewrite_pattern
@@ -124,25 +124,30 @@ class PullSetupOpsOutOfLoops(RewritePattern):
             return
 
         # iterate over all setups inside this loop and check if their values are loop-invariant or not
-        save_values: set[str] = set()  # loop invariant values
-        unsafe_vals: set[str] = set()  # loop dependent values
-        state: dict[str, SSAValue] = {}
-        for setup in all_setup_states_in_region(
-            loop_op.body, op.accelerator.data, recurse=True
-        ):
+        safe_values: set[str] = set()  # loop invariant values
+        unsafe_vals: set[str] = (
+            set()
+        )  # loop dependent values, or value set to multiple different values
+        # remember the values each field of the accelerator is set to, so that we can determine if they are the same
+        acc_fields_to_values: dict[str, SSAValue] = {}
+        # iterate over all the setup ops in the region and inspect their values
+        for setup in all_setup_ops_in_region(loop_op.body, op.accelerator.data):
             for key, val in setup.items():
                 # a value is "unsafe" if it originates inside the loop even on one setup call
                 if val_is_defined_in_block(val, loop_op.body.block):
                     unsafe_vals.add(key)
                 # and also if it changes at any point in the loop
-                elif key in state and state[key] != val:
+                elif key in acc_fields_to_values and acc_fields_to_values[key] != val:
                     unsafe_vals.add(key)
                 else:
-                    state[key] = val
-                    save_values.add(key)
+                    # we assume this to be a safe value, but we may encounter a new setup op
+                    # that suddenly makes this unsafe. This is handled later when we subtract
+                    # all unsafe vals from the safe vals.
+                    acc_fields_to_values[key] = val
+                    safe_values.add(key)
         # remove all unsafe vals form potentially safe values
         # also pick a deterministic, fixed order for the rest of the rewrite
-        loop_invariant_options = tuple(sorted(save_values - unsafe_vals))
+        loop_invariant_options = tuple(sorted(safe_values - unsafe_vals))
 
         # nothing to do if everything is loop dependent
         if not loop_invariant_options:
@@ -150,7 +155,7 @@ class PullSetupOpsOutOfLoops(RewritePattern):
 
         # create a new op
         loop_invariant_setups = acc.SetupOp(
-            (state[key] for key in loop_invariant_options),
+            (acc_fields_to_values[key] for key in loop_invariant_options),
             loop_invariant_options,
             op.accelerator,
             in_state=get_initial_value_for_scf_for_lcv(loop_op, op.in_state),
@@ -159,6 +164,8 @@ class PullSetupOpsOutOfLoops(RewritePattern):
         rewriter.insert_op_before(loop_invariant_setups, loop_op)
 
         # replace loop_invariant_setups.in_state with loop_invariant_setups.out_state in the iter_args of loop_op
+        # loop_invariant_setups.in_state is the previous input state to the for loop (as determined by a call
+        # to get_initial_value_for_scf_for_lcv)
         loop_op.operands = tuple(
             (
                 val
