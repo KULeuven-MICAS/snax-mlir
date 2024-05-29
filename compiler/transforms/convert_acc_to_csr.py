@@ -176,6 +176,7 @@ class DeleteAllStates(RewritePattern):
                     if isinstance(arg.type, acc.StateType):
                         rewriter.erase_block_argument(arg)
 
+
 class RemoveAcceleratorOps(RewritePattern):
     """
     Delete all accelerator ops after we lowered the setup ops
@@ -207,4 +208,6 @@ class ConvertAccToCsrPass(ModulePass):
         ).rewrite_module(op)
 
         # then we remove all the top-level acc2.accelerator operations from the module and erase the state variables
-        PatternRewriteWalker(GreedyRewritePatternApplier([DeleteAllStates(), RemoveAcceleratorOps()])).rewrite_module(op)
+        PatternRewriteWalker(
+            GreedyRewritePatternApplier([DeleteAllStates(), RemoveAcceleratorOps()])
+        ).rewrite_module(op)
