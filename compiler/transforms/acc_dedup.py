@@ -1,7 +1,14 @@
 from dataclasses import dataclass
 
 from xdsl.dialects import builtin, scf
-from xdsl.ir import MLContext, OpResult, SSAValue
+from xdsl.ir import (
+    Block,
+    BlockArgument,
+    MLContext,
+    Operation,
+    OpResult,
+    SSAValue,
+)
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     GreedyRewritePatternApplier,
@@ -10,9 +17,13 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.traits import Pure
 
 from compiler.dialects import acc
-from compiler.inference.trace_acc_state import infer_state_of
+from compiler.inference.trace_acc_state import (
+    all_setup_ops_in_region,
+    infer_state_of,
+)
 
 
 class SimplifyRedundantSetupCalls(RewritePattern):
@@ -26,21 +37,6 @@ class SimplifyRedundantSetupCalls(RewritePattern):
             (name, val) for name, val in op.iter_params() if prev_state.get(name) != val
         ]
 
-        # Step 3: If no new params remain, elide the whole op
-        if not new_params:
-            # This only happens when:
-            #  1) The operation has no input state, and
-            #  2) The operation has no parameters it sets
-            if op.in_state is None:
-                # in this case, we can't elide the operation if it's output state is
-                # used otherwise we would break stuff. So we just assume that a setup
-                # without parameters returns an "empty" state that assumes nothing.
-                return
-
-            op.out_state.replace_by(op.in_state)
-            rewriter.erase_matched_op()
-            return
-
         # Step 4: If all parameters change, do nothing
         if len(new_params) == len(op.param_names):
             return
@@ -53,6 +49,130 @@ class SimplifyRedundantSetupCalls(RewritePattern):
                 op.accelerator,
                 op.in_state,
             )
+        )
+
+
+class MergeSetupOps(RewritePattern):
+    """
+    Find two setup ops with only pure ops in between and merge them.
+
+    Merge them into one setup op.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
+        prev_op = op.prev_op
+        while prev_op is not None:
+            # if we encounter a setup op for the same accelerator, we continue
+            if (
+                isinstance(prev_op, acc.SetupOp)
+                and prev_op.accelerator == op.accelerator
+            ):
+                break
+            # if we encounter a not-pure op, we abort
+            if not prev_op.has_trait(Pure):
+                return
+            prev_op = prev_op.prev_op
+        if prev_op is None:
+            return
+
+        state = dict(prev_op.iter_params())
+        state.update(dict(op.iter_params()))
+
+        rewriter.replace_op(
+            prev_op,
+            new_setup := acc.SetupOp(
+                state.values(), state.keys(), op.accelerator, prev_op.in_state
+            ),
+        )
+        op.out_state.replace_by(new_setup.out_state)
+
+        rewriter.erase_matched_op()
+
+
+class ElideEmptySetupOps(RewritePattern):
+    """
+    remove setup ops that set zero parameters, but only if they have both a in- and an out-state
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
+        if len(op.values) == 0 and op.in_state is not None and op.out_state is not None:
+            op.out_state.replace_by(op.in_state)
+            rewriter.erase_matched_op()
+
+
+class PullSetupOpsOutOfLoops(RewritePattern):
+    """
+    Tries to pull setup operations out of loop nests by:
+    - Creating a list of values that are safe to hoist:
+        - safe to hoist means, that the field is set to the same value every time
+        - And that that value originates from outside the loop
+    - Inserting a new setup op directly in front of the loop, containing only the safe fields
+    - Using that setups state as the new input-state for the loop.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
+        # don't apply to setups not inside for loops
+        loop_op = op.parent_op()
+        if not isinstance(loop_op, scf.For):
+            return
+
+        # only do this for the first setup op in the loop
+        if op.in_state is None or op.in_state.owner != loop_op.body.block:
+            return
+
+        # iterate over all setups inside this loop and check if their values are loop-invariant or not
+        # loop invariant values
+        safe_values: set[str] = set()
+        # loop dependent values, or value set to multiple different values
+        unsafe_vals: set[str] = set()
+        # remember the values each field of the accelerator is set to, so that we can determine if they are the same
+        acc_fields_to_values: dict[str, SSAValue] = {}
+        # iterate over all the setup ops in the region and inspect their values
+        for setup in all_setup_ops_in_region(loop_op.body, op.accelerator.data):
+            for key, val in setup.items():
+                # a value is "unsafe" if it originates inside the loop even on one setup call
+                if val_is_defined_in_block(val, loop_op.body.block):
+                    unsafe_vals.add(key)
+                # and also if it changes at any point in the loop
+                elif key in acc_fields_to_values and acc_fields_to_values[key] != val:
+                    unsafe_vals.add(key)
+                else:
+                    # we assume this to be a safe value, but we may encounter a new setup op
+                    # that suddenly makes this unsafe. This is handled later when we subtract
+                    # all unsafe vals from the safe vals.
+                    acc_fields_to_values[key] = val
+                    safe_values.add(key)
+        # remove all unsafe vals form potentially safe values
+        # also pick a deterministic, fixed order for the rest of the rewrite
+        loop_invariant_options = tuple(sorted(safe_values - unsafe_vals))
+
+        # nothing to do if everything is loop dependent
+        if not loop_invariant_options:
+            return
+
+        # create a new op
+        loop_invariant_setups = acc.SetupOp(
+            (acc_fields_to_values[key] for key in loop_invariant_options),
+            loop_invariant_options,
+            op.accelerator,
+            in_state=get_initial_value_for_scf_for_lcv(loop_op, op.in_state),
+        )
+        # insert the new setup op before the loop
+        rewriter.insert_op_before(loop_invariant_setups, loop_op)
+
+        # replace loop_invariant_setups.in_state with loop_invariant_setups.out_state in the iter_args of loop_op
+        # loop_invariant_setups.in_state is the previous input state to the for loop (as determined by a call
+        # to get_initial_value_for_scf_for_lcv)
+        loop_op.operands = tuple(
+            (
+                val
+                if val != loop_invariant_setups.in_state
+                else loop_invariant_setups.out_state
+            )
+            for val in loop_op.operands
         )
 
 
@@ -145,6 +265,9 @@ class AccDeduplicate(ModulePass):
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         patterns = [
             SimplifyRedundantSetupCalls(),
+            PullSetupOpsOutOfLoops(),
+            MergeSetupOps(),
+            ElideEmptySetupOps(),
         ]
 
         if self.hoist:
@@ -154,3 +277,39 @@ class AccDeduplicate(ModulePass):
             GreedyRewritePatternApplier(patterns),
             walk_reverse=True,
         ).rewrite_module(op)
+
+
+def get_initial_value_for_scf_for_lcv(loop: scf.For, var: SSAValue) -> SSAValue:
+    """
+    Given a loop-carried variable inside an scf for loop as the block argument,
+    return the SSA value that is passed as the initial value to it.
+    """
+    if var not in loop.body.block.args:
+        raise ValueError(
+            f"Given value {var} not a block argument of the for loop {loop}!"
+        )
+    idx = loop.body.block.args.index(var) - 1
+    return loop.iter_args[idx]
+
+
+def val_is_defined_in_block(val: SSAValue, block: Block) -> bool:
+    """
+    Check if val is defined in block or in blocks nested in block.
+    """
+    if isinstance(val, BlockArgument):
+        block_ptr: Block | None = val.owner
+        # walk upwards until we hit block or None
+        while block_ptr is not None and block_ptr != block:
+            # walk upwards
+            block_ptr = block_ptr.parent_block()
+        # we either ran out of blocks
+        return block_ptr is not None
+    elif isinstance(val, OpResult):
+        op_ptr: Operation | None = val.owner
+        # walk up until we either hit the right block, or run out of parents
+        while op_ptr is not None and op_ptr.parent_block() != block:
+            op_ptr = op_ptr.parent_op()
+        # iff we didn't hit the right block, ptr must be none
+        return op_ptr is not None
+    else:
+        raise ValueError(f"Unsupported SSA Value type: {val}")
