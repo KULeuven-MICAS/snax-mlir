@@ -95,7 +95,7 @@ def combine_pairs_to_ops(
     ops: Sequence[Operation] = []
     """
     Emits a custom RoCC instruction for each field_item in field_items
-    CUSTOM field can be specified by xcustom_accfg.
+    CUSTOM field can be specified by xcustom_acc.
     """
     for name, func7 in [
         (name[:-4], func7.value.data)
