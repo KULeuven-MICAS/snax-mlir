@@ -62,7 +62,7 @@ void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
 
   wait_batch_gemm();
 
-  printf("Finished executing snax_qgemm\n");
+  printf("Finished executing snax_gemm\n");
 }
 
 int main() {

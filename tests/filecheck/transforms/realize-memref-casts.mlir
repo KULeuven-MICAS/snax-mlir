@@ -201,7 +201,7 @@
       %12 = "arith.muli"(%9, %11) : (i32, i32) -> i32
       %13 = "arith.addi"(%arg7, %12) : (i32, i32) -> i32
       "linalg.yield"(%13) : (i32) -> ()
-    }) {"library_call" = "snax_qgemm"} : (memref<?x128xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, 1 : i32>, memref<128x128xi8, #tsl.tsl<[?, 8] -> (256, 1), [?, 8] -> (?, 8), offset: 64>, 1 : i32>, i32, i32, memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, 1 : i32>) -> ()
+    }) {"library_call" = "snax_gemm"} : (memref<?x128xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, 1 : i32>, memref<128x128xi8, #tsl.tsl<[?, 8] -> (256, 1), [?, 8] -> (?, 8), offset: 64>, 1 : i32>, i32, i32, memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, 1 : i32>) -> ()
     "func.return"(%arg2) : (memref<?x128xi32, 0 : i32>) -> ()
   }) : () -> ()
 }) : () -> ()
@@ -232,7 +232,7 @@
 // CHECK-NEXT:      %16 = "arith.muli"(%13, %15) : (i32, i32) -> i32
 // CHECK-NEXT:      %17 = "arith.addi"(%arg7, %16) : (i32, i32) -> i32
 // CHECK-NEXT:      "linalg.yield"(%17) : (i32) -> ()
-// CHECK-NEXT:    }) {"library_call" = "snax_qgemm"} : (memref<?x128xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, 1 : i32>, memref<128x128xi8, #tsl.tsl<[?, 8] -> (256, 1), [?, 8] -> (?, 8), offset: 64>, 1 : i32>, i32, i32, memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, 1 : i32>) -> ()
+// CHECK-NEXT:    }) {"library_call" = "snax_gemm"} : (memref<?x128xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, 1 : i32>, memref<128x128xi8, #tsl.tsl<[?, 8] -> (256, 1), [?, 8] -> (?, 8), offset: 64>, 1 : i32>, i32, i32, memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, 1 : i32>) -> ()
 // CHECK-NEXT:    "memref.copy"(%11, %arg2) : (memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, 1 : i32>, memref<?x128xi32, 0 : i32>) -> ()
 // CHECK-NEXT:    "func.return"(%arg2) : (memref<?x128xi32, 0 : i32>) -> ()
 // CHECK-NEXT:  }) : () -> ()
