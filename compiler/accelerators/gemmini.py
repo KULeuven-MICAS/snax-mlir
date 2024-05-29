@@ -27,7 +27,7 @@ class GemminiAccelerator(RoCCAccelerator):
         """
         Return this accelerator op:
 
-        "acc2.accelerator"() <{
+        "accfg.accelerator"() <{
             name            = @gemmini,
             fields          = {...},
             launch_fields   = {...},

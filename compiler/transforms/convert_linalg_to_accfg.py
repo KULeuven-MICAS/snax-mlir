@@ -28,7 +28,7 @@ from compiler.dialects import accfg
 class ConvertLinalgToAcceleratorPattern(RewritePattern):
     """
     This pattern converts linalg generic ops that have been annotated
-    with library_call.data = "snax_hwpe_mult" to the acc2 dialect.
+    with library_call.data = "snax_hwpe_mult" to the accfg dialect.
 
     Eventually it should be converted to a generic pattern that handles
     all the different accelerators that snax has to offer. But not yet.
@@ -59,7 +59,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
 class ConnectStatesThroughControlFlowPattern(RewritePattern):
     """
     This pass walks the control flow path of a function body and connects
-    all the `acc2.setup()` ops together so that later analysis passes
+    all the `accfg.setup()` ops together so that later analysis passes
     can infer where the state comes from.
 
     It currently handles scf.if and scf.for, but not more.

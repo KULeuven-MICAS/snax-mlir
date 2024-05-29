@@ -12,7 +12,7 @@ from compiler.dialects.accfg import AcceleratorOp
 class AcceleratorRegistry:
     """
     This registry is used to get specific accelerator conversions from
-    a query based on an acc2.acceleratorop.
+    a query based on an accfg.acceleratorop.
     """
 
     registered_accelerators = {
@@ -35,7 +35,7 @@ class AcceleratorRegistry:
         if not isinstance(acc_op, AcceleratorOp):
             raise RuntimeError(
                 f"Symbol Table lookup failed for accelerator '{acc_query.data}'. "
-                "Is the symbol declared by an acc2.accelerator op in the module?"
+                "Is the symbol declared by an accfg.accelerator op in the module?"
             )
         else:
             return acc_op, self.get_acc_info(acc_op)

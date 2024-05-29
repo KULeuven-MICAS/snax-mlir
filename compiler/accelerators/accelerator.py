@@ -8,7 +8,7 @@ from compiler.dialects import accfg
 
 class Accelerator(ABC):
     """
-    Interface to lower to and from acc2 dialect.
+    Interface to lower to and from accfg dialect.
     """
 
     name: str
@@ -18,10 +18,10 @@ class Accelerator(ABC):
         """
         Lowers the operation op to a sequence of acc_ops.
         acc_ops are:
-            - *.op that generates SSAValues consumed by acc2.setup
-            - acc2.setup
-            - acc2.launch
-            - acc2.await
+            - *.op that generates SSAValues consumed by accfg.setup
+            - accfg.setup
+            - accfg.launch
+            - accfg.await
         These ops can further be lowered by specific instances of the
         Accelerator interface
         """
@@ -32,7 +32,7 @@ class Accelerator(ABC):
         """
         Return an accelerator op:
 
-        "acc2.accelerator"() <{
+        "accfg.accelerator"() <{
             name            = @name_of_the_accelerator,
             fields          = {field_1=address_1, field_2=address2},
             launch_fields   = {launch_field_1=address_1,
@@ -45,7 +45,7 @@ class Accelerator(ABC):
     @abstractmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         """
-        Based on the acc2.accelerator op, return the necessary sequence of
+        Based on the accfg.accelerator op, return the necessary sequence of
         lower-level operations to perform
         asynchronous await on the accelerator.
         """
@@ -57,7 +57,7 @@ class Accelerator(ABC):
         launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
     ) -> Sequence[Operation]:
         """
-        Based on the acc2.accelerator op, return the necessary sequence of
+        Based on the accfg.accelerator op, return the necessary sequence of
         lower-level operations to perform an
         asynchronous launch of the accelerator.
         """
@@ -69,7 +69,7 @@ class Accelerator(ABC):
         setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp
     ) -> Sequence[Operation]:
         """
-        Based on the acc2.accelerator op and the accfg.SetupOp,
+        Based on the accfg.accelerator op and the accfg.SetupOp,
         return the necessary sequence of lower-level operations to perform
         accelerator configuration.
         """

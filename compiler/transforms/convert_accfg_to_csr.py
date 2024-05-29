@@ -22,7 +22,7 @@ from compiler.dialects import accfg
 @dataclass
 class LowerAccfgBasePattern(RewritePattern, ABC):
     """
-    Base class for the acc2 dialect lowerings.
+    Base class for the accfg dialect lowerings.
 
     Wraps some common logic to get handles to accelerator ops inside the module.
     """
@@ -46,7 +46,7 @@ class LowerAccfgSetupToCsr(LowerAccfgBasePattern):
     """
     Convert setup ops to a series of CSR sets that set each field to the given value.
 
-    Looks up the csr addresses of the value fields by getting the `acc2.accelerator`
+    Looks up the csr addresses of the value fields by getting the `accfg.accelerator`
     operation from the module op.
     """
 
@@ -101,7 +101,7 @@ class DeleteAllStates(RewritePattern):
     This pattern deletes all remaining SSA values that are of `accfg.state` type
     from any remaining operations.
 
-    This is done to un-weave the `acc2.state` variables that were inserted into
+    This is done to un-weave the `accfg.state` variables that were inserted into
     control flow operations.
     """
 
@@ -193,13 +193,13 @@ class RemoveAcceleratorOps(RewritePattern):
 
 class ConvertAccfgToCsrPass(ModulePass):
     """
-    Converts acc2 dialect ops to series of SNAX-like csr sets.
+    Converts accfg dialect ops to series of SNAX-like csr sets.
     """
 
     name = "convert-accfg-to-csr"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        # first lower all acc2 ops and erase old SSA values
+        # first lower all accfg ops and erase old SSA values
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
                 [
@@ -211,7 +211,7 @@ class ConvertAccfgToCsrPass(ModulePass):
             walk_reverse=True,
         ).rewrite_module(op)
 
-        # then we remove all the top-level acc2.accelerator operations from the module and erase the state variables
+        # then we remove all the top-level accfg.accelerator operations from the module and erase the state variables
         PatternRewriteWalker(
             GreedyRewritePatternApplier([DeleteAllStates(), RemoveAcceleratorOps()])
         ).rewrite_module(op)

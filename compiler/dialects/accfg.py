@@ -103,7 +103,7 @@ class LaunchOp(IRDLOperation):
         state_val: SSAValue = SSAValue.get(state)
 
         if not isinstance(state_val.type, StateType):
-            raise ValueError("`state` SSA Value must be of type `acc2.state`!")
+            raise ValueError("`state` SSA Value must be of type `accfg.state`!")
 
         param_names_tuple: tuple[StringAttr, ...] = tuple(
             StringAttr(name) if isinstance(name, str) else name for name in param_names
@@ -165,10 +165,10 @@ class AwaitOp(IRDLOperation):
 @irdl_op_definition
 class SetupOp(IRDLOperation):
     """
-    acc2.setup writes values to a specific accelerators configuration and returns
+    accfg.setup writes values to a specific accelerators configuration and returns
     a value representing the currently known state of that accelerator's config.
 
-    If acc2.setup is called without any parameters, the resulting state is the
+    If accfg.setup is called without any parameters, the resulting state is the
     "empty" state, that represents a state without known values.
     """
 
@@ -181,7 +181,7 @@ class SetupOp(IRDLOperation):
 
     in_state = opt_operand_def(StateType)
     """
-    The state produced by a previous acc2.setup
+    The state produced by a previous accfg.setup
     """
 
     out_state = result_def(StateType)

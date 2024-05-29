@@ -21,10 +21,10 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
         """
         Lowers the operation op to a sequence of acc_ops.
         acc_ops are:
-            - *.op that generates SSAValues consumed by acc2.setup
-            - acc2.setup
-            - acc2.launch
-            - acc2.await
+            - *.op that generates SSAValues consumed by accfg.setup
+            - accfg.setup
+            - accfg.launch
+            - accfg.await
         These ops can further be lowered by specific instances of the
         Accelerator interface
         """
@@ -82,7 +82,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
         """
         Return this accelerator op:
 
-        "acc2.accelerator"() <{
+        "accfg.accelerator"() <{
             name            = @snax_hwpe_mult,
             fields          = {A=0x3d0, B=0x3d1, O=0x3d3, n_iters=0x3d4,
                                vector_length=0x3d5, mode=0x3d6},
