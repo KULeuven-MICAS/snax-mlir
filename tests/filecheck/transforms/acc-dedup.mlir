@@ -179,3 +179,65 @@ func.func @nested_loops(%A : i32, %lb : i32, %ub : i32, %step : i32) {
   func.return
 }
 
+// check that every loop-nest only contains values that cannot be set at a higher level
+// CHECK-NEXT:  func.func @nested_loops(%A_1 : i32, %lb_2 : i32, %ub_2 : i32, %step_2 : i32) {
+// CHECK-NEXT:    %21 = acc2.setup on "simple" ("A" = %A_1 : i32) : !acc2.state<"simple">
+//                                              ^^^^^^^^^^^^^^^^
+// CHECK-NEXT:    %22 = scf.for %i = %lb_2 to %ub_2 step %step_2 iter_args(%23 = %21) -> (!acc2.state<"simple">) : i32 {
+// CHECK-NEXT:      %24 = acc2.setup on "simple" ("i" = %i : i32) in_state(%23) : !acc2.state<"simple">
+//                                                ^^^^^^^^^^^^^^
+// CHECK-NEXT:      %25 = scf.for %j = %i to %ub_2 step %step_2 iter_args(%26 = %24) -> (!acc2.state<"simple">) : i32 {
+// CHECK-NEXT:        %out_state = acc2.setup on "simple" ("j" = %j : i32) in_state(%26) : !acc2.state<"simple">
+//                                                         ^^^^^^^^^^^^^^^
+// CHECK-NEXT:        scf.yield %out_state : !acc2.state<"simple">
+// CHECK-NEXT:      }
+// CHECK-NEXT:      scf.yield %25 : !acc2.state<"simple">
+// CHECK-NEXT:    }
+// CHECK-NEXT:    func.return
+// CHECK-NEXT:  }
+
+
+func.func @nested_loops_edge_cases(%A : i32, %lb : i32, %ub : i32, %step : i32) {
+  %0 = acc2.setup on "simple" () : !acc2.state<"simple">
+  %1 = scf.for %i = %lb to %ub step %step iter_args(%2 = %0) -> (!acc2.state<"simple">) : i32 {
+    %3 = scf.for %j = %i to %ub step %step iter_args(%l0 = %2) -> (!acc2.state<"simple">) : i32 {
+      %l1 = acc2.setup on "simple" ("A" = %A : i32, "B" = %A : i32, "i" = %i : i32, "j" = %j : i32) in_state(%l0) : !acc2.state<"simple">
+      // test.op is necessary, otherwise the two setups will be fused (as the second one would just overwrite the first one)
+      "test.op" () : () -> ()
+      %l2 = acc2.setup on "simple" ("A" = %A : i32, "B" = %ub : i32, "i" = %i : i32, "j" = %j : i32) in_state(%l1) : !acc2.state<"simple">
+      scf.yield %l2 : !acc2.state<"simple">
+    }
+    scf.yield %3 : !acc2.state<"simple">
+  }
+  func.return
+}
+
+// check that B cannot be hoisted outside of the loop because it is set to two different loop invariant values
+// CHECK-NEXT:  func.func @nested_loops_edge_cases(%A_2 : i32, %lb_3 : i32, %ub_3 : i32, %step_3 : i32) {
+// CHECK-NEXT:    %27 = acc2.setup on "simple" ("A" = %A_2 : i32) : !acc2.state<"simple">
+// CHECK-NEXT:    %28 = scf.for %i_1 = %lb_3 to %ub_3 step %step_3 iter_args(%29 = %27) -> (!acc2.state<"simple">) : i32 {
+// CHECK-NEXT:      %30 = acc2.setup on "simple" ("i" = %i_1 : i32) in_state(%29) : !acc2.state<"simple">
+// CHECK-NEXT:      %31 = scf.for %j_1 = %i_1 to %ub_3 step %step_3 iter_args(%l0 = %30) -> (!acc2.state<"simple">) : i32 {
+// CHECK-NEXT:        %l1 = acc2.setup on "simple" ("B" = %A_2 : i32, "j" = %j_1 : i32) in_state(%l0) : !acc2.state<"simple">
+// CHECK-NEXT:        "test.op"() : () -> ()
+// CHECK-NEXT:        %l2 = acc2.setup on "simple" ("B" = %ub_3 : i32) in_state(%l1) : !acc2.state<"simple">
+//                                                  ^^^^^^^^^^^ reset B, "j" can stay the same though
+// CHECK-NEXT:        scf.yield %l2 : !acc2.state<"simple">
+// CHECK-NEXT:      }
+// CHECK-NEXT:      scf.yield %31 : !acc2.state<"simple">
+// CHECK-NEXT:    }
+// CHECK-NEXT:    func.return
+// CHECK-NEXT:  }
+
+
+func.func @setup_fusion(%A: i32, %B: i32) {
+    %0 = acc2.setup on "simple" ("A" = %A : i32, "B" = %B : i32) : !acc2.state<"simple">
+    %1 = acc2.setup on "simple" ("A" = %B : i32) in_state(%0) : !acc2.state<"simple">
+    return
+}
+
+// check that the two ops are fused and the values of the later one overwrite the earlier ones
+// CHECK-NEXT:  func.func @setup_fusion(%A_3 : i32, %B_1 : i32) {
+// CHECK-NEXT:    %32 = acc2.setup on "simple" ("A" = %B_1 : i32, "B" = %B_1 : i32) : !acc2.state<"simple">
+// CHECK-NEXT:    func.return
+// CHECK-NEXT:  }
