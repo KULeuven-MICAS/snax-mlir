@@ -4,7 +4,7 @@ from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.snax import SNAXAccelerator
-from compiler.dialects import acc
+from compiler.dialects import accfg
 
 
 class SNAXHWPEMultAccelerator(SNAXAccelerator):
@@ -37,10 +37,10 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
 
         return [
             *ops_to_insert,
-            setup := acc.SetupOp([val for _, val in args], self.fields, self.name),
+            setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
             launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
-            token := acc.LaunchOp([launch_val], self.launch_fields, setup),
-            acc.AwaitOp(token),
+            token := accfg.LaunchOp([launch_val], self.launch_fields, setup),
+            accfg.AwaitOp(token),
         ]
 
     def _generate_setup_vals(
@@ -78,7 +78,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
 
         return ptrs + [nr_iters] + [vector_length] + [mode]
 
-    def generate_acc_op(self) -> acc.AcceleratorOp:
+    def generate_acc_op(self) -> accfg.AcceleratorOp:
         """
         Return this accelerator op:
 
@@ -90,7 +90,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator):
             barrier = 0x3c3,
         }> : () -> ()
         """
-        return acc.AcceleratorOp(
+        return accfg.AcceleratorOp(
             self.name,
             {
                 "A": 0x3D0,

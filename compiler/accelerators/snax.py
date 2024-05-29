@@ -7,7 +7,7 @@ from xdsl.dialects.scf import Condition, While, Yield
 from xdsl.ir import Operation
 
 from compiler.accelerators.accelerator import Accelerator
-from compiler.dialects import acc
+from compiler.dialects import accfg
 
 
 class SNAXAccelerator(Accelerator, ABC):
@@ -17,7 +17,7 @@ class SNAXAccelerator(Accelerator, ABC):
     """
 
     @staticmethod
-    def lower_acc_await(acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         return [
             While(
                 [],
@@ -61,7 +61,7 @@ class SNAXAccelerator(Accelerator, ABC):
 
     @staticmethod
     def lower_acc_launch(
-        launch_op: acc.LaunchOp, acc_op: acc.AcceleratorOp
+        launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
     ) -> Sequence[Operation]:
         # Get the launch address, for SNAX should be only one
         launch_address = None
@@ -91,7 +91,7 @@ class SNAXAccelerator(Accelerator, ABC):
 
     @staticmethod
     def lower_acc_setup(
-        setup_op: acc.SetupOp, acc_op: acc.AcceleratorOp
+        setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp
     ) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.field_items())
         ops: Sequence[Operation] = []

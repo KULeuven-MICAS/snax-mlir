@@ -4,19 +4,19 @@ from collections.abc import Sequence
 from xdsl.ir import MLContext
 from xdsl.xdsl_opt_main import xDSLOptMain
 
-from compiler.dialects.acc import ACC
+from compiler.dialects.accfg import ACCFG
 from compiler.dialects.snax import Snax
 from compiler.dialects.tsl import TSL
-from compiler.transforms.acc_dedup import AccDeduplicate
+from compiler.transforms.accfg_dedup import AccfgDeduplicate
 from compiler.transforms.clear_memory_space import ClearMemorySpace
-from compiler.transforms.convert_acc_to_csr import ConvertAccToCsrPass
-from compiler.transforms.convert_linalg_to_acc import (
+from compiler.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
+from compiler.transforms.convert_linalg_to_accfg import (
     ConvertLinalgToAccPass,
     TraceStatesPass,
 )
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
-from compiler.transforms.insert_acc_op import InsertAccOp
+from compiler.transforms.insert_accfg_op import InsertAccOp
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.memref_to_snax import MemrefToSNAX
@@ -46,7 +46,7 @@ class SNAXOptMain(xDSLOptMain):
         ## Add custom dialects & passes
         self.ctx.load_dialect(Snax)
         self.ctx.load_dialect(TSL)
-        self.ctx.load_dialect(ACC)
+        self.ctx.load_dialect(ACCFG)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
@@ -61,12 +61,12 @@ class SNAXOptMain(xDSLOptMain):
             RealizeMemrefCastsPass.name, lambda: RealizeMemrefCastsPass
         )
         super().register_pass(MemrefToSNAX.name, lambda: MemrefToSNAX)
-        super().register_pass(AccDeduplicate.name, lambda: AccDeduplicate)
+        super().register_pass(AccfgDeduplicate.name, lambda: AccfgDeduplicate)
         super().register_pass(
             ConvertLinalgToAccPass.name, lambda: ConvertLinalgToAccPass
         )
         super().register_pass(TraceStatesPass.name, lambda: TraceStatesPass)
-        super().register_pass(ConvertAccToCsrPass.name, lambda: ConvertAccToCsrPass)
+        super().register_pass(ConvertAccfgToCsrPass.name, lambda: ConvertAccfgToCsrPass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)

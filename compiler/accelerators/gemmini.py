@@ -1,5 +1,5 @@
 from compiler.accelerators.rocc import RoCCAccelerator
-from compiler.dialects import acc
+from compiler.dialects import accfg
 
 
 class GemminiAccelerator(RoCCAccelerator):
@@ -23,7 +23,7 @@ class GemminiAccelerator(RoCCAccelerator):
         "k_LOOP_WS.rs2": 8,
     }
 
-    def generate_acc_op(self) -> acc.AcceleratorOp:
+    def generate_acc_op(self) -> accfg.AcceleratorOp:
         """
         Return this accelerator op:
 
@@ -34,7 +34,7 @@ class GemminiAccelerator(RoCCAccelerator):
             barrier         = {},
         }> : () -> ()
         """
-        return acc.AcceleratorOp(
+        return accfg.AcceleratorOp(
             self.name,
             self.fields,
             self.launch_fields,  # Gemmini has no separate launch instruction,

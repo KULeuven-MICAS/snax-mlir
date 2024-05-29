@@ -21,7 +21,7 @@ from xdsl.pattern_rewriter import (
 )
 
 from compiler.accelerators.registry import AcceleratorRegistry
-from compiler.dialects import acc
+from compiler.dialects import accfg
 
 
 @dataclass
@@ -109,11 +109,11 @@ def _weave_states_in_region(
     for region in regions:
         for block in region.blocks:
             for op in block.ops:
-                # handle acc.setup ops:
-                if isinstance(op, acc.SetupOp):
+                # handle accfg.setup ops:
+                if isinstance(op, accfg.SetupOp):
                     accel = op.accelerator.data
                     if accel in state and op.in_state != state[accel]:
-                        new_op = acc.SetupOp(
+                        new_op = accfg.SetupOp(
                             op.values,
                             op.param_names,
                             op.accelerator,
@@ -171,7 +171,7 @@ def _weave_states_in_region(
                     )
                     # update state:
                     for res in new_if.results[num_scf_results:]:
-                        assert isinstance(res.type, acc.StateType)
+                        assert isinstance(res.type, accfg.StateType)
                         state[res.type.accelerator.data] = res
                 # a for loop necessitates us to introduce a loop-carried variable
                 # that carries the state through the loop
@@ -191,7 +191,7 @@ def _weave_states_in_region(
                     for acc_name in updated_accelerators:
                         if acc_name not in state:
                             # create empty setup op
-                            empty_setup = acc.SetupOp([], [], acc_name)
+                            empty_setup = accfg.SetupOp([], [], acc_name)
                             # insert op before the scf.for
                             rewriter.insert_op_before(empty_setup, op)
                             # register it as an input
@@ -209,7 +209,7 @@ def _weave_states_in_region(
                             arg = rewriter.insert_block_argument(
                                 op.body.block,
                                 len(op.body.block.args),
-                                acc.StateType(accel),
+                                accfg.StateType(accel),
                             )
                             created_block_args.append(arg)
                         inner_state[accel] = arg
@@ -234,7 +234,7 @@ def _weave_states_in_region(
 
                     # make sure we modify the for loop to add the new loop carried variables
                     for arg in created_block_args:
-                        assert isinstance(arg.type, acc.StateType)
+                        assert isinstance(arg.type, accfg.StateType)
                         acc_name = arg.type.accelerator.data
                         # extend the yield op to yield the state variable
                         yield_op.operands = (
@@ -247,7 +247,7 @@ def _weave_states_in_region(
 
                     # update states
                     for result in op.results:
-                        if isinstance(result.type, acc.StateType):
+                        if isinstance(result.type, accfg.StateType):
                             # update the state to reflect this
                             state[result.type.accelerator.data] = result
 
@@ -263,7 +263,7 @@ def _weave_states_in_region(
                     "memref",
                     "linalg",
                     "test",
-                    "acc2",
+                    "accfg",
                     "snax",
                 ):
                     continue
@@ -325,7 +325,7 @@ def calc_if_state_delta(
 
 
 class ConvertLinalgToAccPass(ModulePass):
-    name = "convert-linalg-to-acc"
+    name = "convert-linalg-to-accfg"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(ConvertLinalgToAcceleratorPattern(op)).rewrite_module(op)
@@ -354,16 +354,16 @@ def find_all_acc_names_in_region(reg: Region) -> set[str]:
     """
     acs: set[str] = set()
     for op in reg.walk():
-        if isinstance(op, acc.SetupOp):
+        if isinstance(op, accfg.SetupOp):
             acs.add(op.accelerator.data)
     return acs
 
 
 def find_existing_block_arg(block: Block, accel: str) -> BlockArgument | None:
     """
-    Inspect a block for block arguments of the correct acc.StateType type, return the block arg if found.
+    Inspect a block for block arguments of the correct accfg.StateType type, return the block arg if found.
     """
     for arg in block.args:
-        if isinstance(arg.type, acc.StateType) and arg.type.accelerator.data == accel:
+        if isinstance(arg.type, accfg.StateType) and arg.type.accelerator.data == accel:
             return arg
     return None

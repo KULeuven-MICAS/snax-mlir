@@ -6,7 +6,7 @@ from xdsl.traits import SymbolTable
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.gemmini import GemminiAccelerator
 from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
-from compiler.dialects.acc import AcceleratorOp
+from compiler.dialects.accfg import AcceleratorOp
 
 
 class AcceleratorRegistry:

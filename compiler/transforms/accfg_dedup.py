@@ -19,7 +19,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.traits import Pure
 
-from compiler.dialects import acc
+from compiler.dialects import accfg
 from compiler.inference.trace_acc_state import (
     all_setup_ops_in_region,
     infer_state_of,
@@ -28,7 +28,7 @@ from compiler.inference.trace_acc_state import (
 
 class SimplifyRedundantSetupCalls(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
+    def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
         # Step 1: Figure out previous state
         prev_state = infer_state_of(op.in_state) if op.in_state else {}
 
@@ -43,7 +43,7 @@ class SimplifyRedundantSetupCalls(RewritePattern):
 
         # Step 5: Replace matched op with reduced version
         rewriter.replace_matched_op(
-            acc.SetupOp(
+            accfg.SetupOp(
                 [val for _, val in new_params],
                 [param for param, _ in new_params],
                 op.accelerator,
@@ -60,12 +60,12 @@ class MergeSetupOps(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
+    def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
         prev_op = op.prev_op
         while prev_op is not None:
             # if we encounter a setup op for the same accelerator, we continue
             if (
-                isinstance(prev_op, acc.SetupOp)
+                isinstance(prev_op, accfg.SetupOp)
                 and prev_op.accelerator == op.accelerator
             ):
                 break
@@ -81,7 +81,7 @@ class MergeSetupOps(RewritePattern):
 
         rewriter.replace_op(
             prev_op,
-            new_setup := acc.SetupOp(
+            new_setup := accfg.SetupOp(
                 state.values(), state.keys(), op.accelerator, prev_op.in_state
             ),
         )
@@ -96,7 +96,7 @@ class ElideEmptySetupOps(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
+    def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
         if len(op.values) == 0 and op.in_state is not None and op.out_state is not None:
             op.out_state.replace_by(op.in_state)
             rewriter.erase_matched_op()
@@ -113,7 +113,7 @@ class PullSetupOpsOutOfLoops(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
+    def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
         # don't apply to setups not inside for loops
         loop_op = op.parent_op()
         if not isinstance(loop_op, scf.For):
@@ -154,7 +154,7 @@ class PullSetupOpsOutOfLoops(RewritePattern):
             return
 
         # create a new op
-        loop_invariant_setups = acc.SetupOp(
+        loop_invariant_setups = accfg.SetupOp(
             (acc_fields_to_values[key] for key in loop_invariant_options),
             loop_invariant_options,
             op.accelerator,
@@ -190,7 +190,7 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: acc.SetupOp, rewriter: PatternRewriter, /):
+    def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
         # do not apply if our in_state is not an scf.if
         if op.in_state is None or not isinstance(op.in_state.owner, scf.If):
             return
@@ -203,7 +203,7 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
         # this will only find things that happen *after* the scf.if, so nothing
         # inside the scf.if regions.
         uses = tuple(
-            use for use in op.in_state.uses if isinstance(use.operation, acc.LaunchOp)
+            use for use in op.in_state.uses if isinstance(use.operation, accfg.LaunchOp)
         )
         # if we have some launch ops, we need to investigate further:
         for use in uses:
@@ -252,13 +252,13 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
 
 
 @dataclass(frozen=True)
-class AccDeduplicate(ModulePass):
+class AccfgDeduplicate(ModulePass):
     """
     Reduce the number of parameters in setup calls by inferring previously
     set up values and carefully moving setup calls around.
     """
 
-    name = "acc-dedup"
+    name = "accfg-dedup"
 
     hoist: bool = True
 

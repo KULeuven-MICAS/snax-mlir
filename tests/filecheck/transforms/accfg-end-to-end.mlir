@@ -1,7 +1,7 @@
-// RUN: ./compiler/snax-opt --split-input-file -p 'convert-linalg-to-acc,mlir-opt{executable=mlir-opt-17 generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic,-split-input-file},acc-dedup,convert-acc-to-csr' %s | filecheck %s
+// RUN: ./compiler/snax-opt --split-input-file -p 'convert-linalg-to-accfg,mlir-opt{executable=mlir-opt-17 generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic,-split-input-file},accfg-dedup,convert-accfg-to-csr' %s | filecheck %s
 
 builtin.module {
-  "acc2.accelerator"() <{
+  "accfg.accelerator"() <{
       name            = @snax_hwpe_mult,
       fields          = {A=0x3d0, B=0x3d1, O=0x3d3, vector_length=0x3d4, nr_iters=0x3d5, mode=0x3d6},
       launch_fields   = {launch=0x3c0},
@@ -22,9 +22,9 @@ builtin.module {
       %O_shift = arith.addi %O, %c32 : i32
 
       // launch with loop-invariant and loop-dependent vars:
-      %state = acc2.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B_shift : i32, "O" = %O_shift : i32, "vector_length" = %c32 : i32) : !acc2.state<"snax_hwpe_mult">
-      %token = "acc2.launch"(%c32, %state) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i32, !acc2.state<"snax_hwpe_mult">) -> !acc2.token<"snax_hwpe_mult">
-      "acc2.await"(%token) : (!acc2.token<"snax_hwpe_mult">) -> ()
+      %state = accfg.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B_shift : i32, "O" = %O_shift : i32, "vector_length" = %c32 : i32) : !accfg.state<"snax_hwpe_mult">
+      %token = "accfg.launch"(%c32, %state) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i32, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+      "accfg.await"(%token) : (!accfg.token<"snax_hwpe_mult">) -> ()
 
       scf.yield
     }

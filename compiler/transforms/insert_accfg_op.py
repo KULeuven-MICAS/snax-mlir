@@ -12,12 +12,12 @@ from xdsl.pattern_rewriter import (
 from xdsl.traits import SymbolTable
 
 from compiler.accelerators.registry import AcceleratorRegistry
-from compiler.dialects import acc
+from compiler.dialects import accfg
 
 
 @dataclass
 class InsertAcceleratorOpPattern(RewritePattern):
-    acc_op: acc.AcceleratorOp
+    acc_op: accfg.AcceleratorOp
     """
     Pattern that attaches the AcceleratorOp specified by acc_op to
     the module symbol table if the symbol wasn't there already.
@@ -39,7 +39,7 @@ class InsertAcceleratorOpPattern(RewritePattern):
 
 @dataclass(frozen=True)
 class InsertAccOp(ModulePass):
-    name = "insert-acc-op"
+    name = "insert-accfg-op"
 
     accelerator: str  # accelerator name in registry
 

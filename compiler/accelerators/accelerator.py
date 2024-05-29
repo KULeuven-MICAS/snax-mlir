@@ -3,7 +3,7 @@ from collections.abc import Sequence
 
 from xdsl.ir import Operation
 
-from compiler.dialects import acc
+from compiler.dialects import accfg
 
 
 class Accelerator(ABC):
@@ -28,7 +28,7 @@ class Accelerator(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def generate_acc_op(self) -> acc.AcceleratorOp:
+    def generate_acc_op(self) -> accfg.AcceleratorOp:
         """
         Return an accelerator op:
 
@@ -43,7 +43,7 @@ class Accelerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def lower_acc_await(acc_op: acc.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         """
         Based on the acc2.accelerator op, return the necessary sequence of
         lower-level operations to perform
@@ -54,7 +54,7 @@ class Accelerator(ABC):
     @staticmethod
     @abstractmethod
     def lower_acc_launch(
-        launch_op: acc.LaunchOp, acc_op: acc.AcceleratorOp
+        launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
     ) -> Sequence[Operation]:
         """
         Based on the acc2.accelerator op, return the necessary sequence of
@@ -66,10 +66,10 @@ class Accelerator(ABC):
     @staticmethod
     @abstractmethod
     def lower_acc_setup(
-        setup_op: acc.SetupOp, acc_op: acc.AcceleratorOp
+        setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp
     ) -> Sequence[Operation]:
         """
-        Based on the acc2.accelerator op and the acc.SetupOp,
+        Based on the acc2.accelerator op and the accfg.SetupOp,
         return the necessary sequence of lower-level operations to perform
         accelerator configuration.
         """

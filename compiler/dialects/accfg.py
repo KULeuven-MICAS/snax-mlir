@@ -42,7 +42,7 @@ class TokenType(ParametrizedAttribute, TypeAttribute):
     Async token type for launched accelerator requests.
     """
 
-    name = "acc2.token"
+    name = "accfg.token"
 
     accelerator: ParameterDef[StringAttr]
 
@@ -58,7 +58,7 @@ class StateType(ParametrizedAttribute, TypeAttribute):
     Used to trace an accelerators CSR state through def-use chain
     """
 
-    name = "acc2.state"
+    name = "accfg.state"
 
     accelerator: ParameterDef[StringAttr]
 
@@ -76,7 +76,7 @@ class LaunchOp(IRDLOperation):
     interfering with the Accelerator.
     """
 
-    name = "acc2.launch"
+    name = "accfg.launch"
 
     values = var_operand_def(Attribute)  # TODO: make more precise?
     """
@@ -154,7 +154,7 @@ class AwaitOp(IRDLOperation):
     Blocks until the launched operation finishes.
     """
 
-    name = "acc2.await"
+    name = "accfg.await"
 
     token = operand_def(TokenType)
 
@@ -172,7 +172,7 @@ class SetupOp(IRDLOperation):
     "empty" state, that represents a state without known values.
     """
 
-    name = "acc2.setup"
+    name = "accfg.setup"
 
     values = var_operand_def(Attribute)  # TODO: make more precise?
     """
@@ -330,7 +330,7 @@ class AcceleratorOp(IRDLOperation):
     CSR addresses.
     """
 
-    name = "acc2.accelerator"
+    name = "accfg.accelerator"
 
     traits = frozenset([AcceleratorSymbolOpTrait()])
 
@@ -396,8 +396,8 @@ class AcceleratorOp(IRDLOperation):
             yield name, val
 
 
-ACC = Dialect(
-    "acc2",
+ACCFG = Dialect(
+    "accfg",
     [
         SetupOp,
         LaunchOp,
