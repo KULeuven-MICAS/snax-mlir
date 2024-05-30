@@ -246,9 +246,15 @@ class SetupOp(IRDLOperation):
             )
 
     def print(self, printer: Printer):
-        printer.print_string(" on ")
+        printer.print(" ")
         printer.print_string_literal(self.accelerator.data)
-        printer.print_string(" (")
+
+        if self.in_state:
+            printer.print_string(" from ")
+            printer.print_ssa_value(self.in_state)
+
+        printer.print_string(" to (")
+
         for i, (name, val) in enumerate(zip(self.param_names, self.values)):
             printer.print_string_literal(name.data)
             printer.print_string(" = ")
@@ -260,11 +266,6 @@ class SetupOp(IRDLOperation):
                 printer.print_string(", ")
         printer.print_string(") ")
 
-        if self.in_state:
-            printer.print_string("in_state(")
-            printer.print_ssa_value(self.in_state)
-            printer.print_string(") ")
-
         if self.attributes:
             printer.print("attrs ")
             printer.print_attr_dict(self.attributes)
@@ -275,8 +276,13 @@ class SetupOp(IRDLOperation):
 
     @classmethod
     def parse(cls: type[SetupOp], parser: Parser) -> SetupOp:
-        parser.parse_keyword("on")
         accelerator = parser.parse_str_literal("accelerator name")
+
+        in_state: SSAValue | None = None
+        if parser.parse_optional_keyword("from"):
+            in_state = parser.parse_operand()
+
+        parser.parse_keyword("to")
 
         def parse_itm() -> tuple[str, SSAValue]:
             name = parser.parse_str_literal("accelerator field name")
@@ -292,12 +298,6 @@ class SetupOp(IRDLOperation):
         args: list[tuple[str, SSAValue]] = parser.parse_comma_separated_list(
             Parser.Delimiter.PAREN, parse_itm
         )
-
-        in_state: SSAValue | None = None
-        if parser.parse_optional_keyword("in_state"):
-            parser.parse_punctuation("(")
-            in_state = parser.parse_operand()
-            parser.parse_punctuation(")")
 
         attributes = {}
         if parser.parse_optional_keyword("attrs"):
