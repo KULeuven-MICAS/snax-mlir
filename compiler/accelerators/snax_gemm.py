@@ -120,7 +120,7 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXPollingBarrier2):
                 or_op := arith.OrI(subtraction_a_no_overflow, shifted_subtraction_b),
             ], or_op.result
 
-        def _generate_size_config(Batch: int, M: int, K: int, N: int):
+        def _generate_size_config(batch: int, m: int, k: int, n: int):
             """
             Helper function to calculate the size config for SNAX GEMM
             Should be equivalent to C code:
@@ -130,25 +130,25 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXPollingBarrier2):
             }
             """
             return [
-                Batch_i8 := arith.Constant.from_int_and_width(Batch, 8),
-                M_i8 := arith.Constant.from_int_and_width(M, 8),
-                K_i8 := arith.Constant.from_int_and_width(K, 8),
-                N_i8 := arith.Constant.from_int_and_width(N, 8),
+                batch_i8 := arith.Constant.from_int_and_width(batch, 8),
+                m_i8 := arith.Constant.from_int_and_width(m, 8),
+                k_i8 := arith.Constant.from_int_and_width(k, 8),
+                n_i8 := arith.Constant.from_int_and_width(n, 8),
                 c_8 := arith.Constant.from_int_and_width(8, 32),
                 c_16 := arith.Constant.from_int_and_width(16, 32),
                 c_24 := arith.Constant.from_int_and_width(24, 32),
                 # Perform zero extension, as these ORed together later
-                Batch_i32 := arith.ExtUIOp(Batch_i8, builtin.i32),
-                M_i32 := arith.ExtUIOp(M_i8, builtin.i32),
-                K_i32 := arith.ExtUIOp(K_i8, builtin.i32),
-                N_i32 := arith.ExtUIOp(N_i8, builtin.i32),
-                K_shift := arith.ShLI(K_i32, c_8),
-                M_shift := arith.ShLI(M_i32, c_16),
-                Batch_shift := arith.ShLI(Batch_i32, c_24),
-                or_N_K_op := arith.OrI(K_shift, N_i32),
-                or_M_or_x_op := arith.OrI(M_shift, or_N_K_op),
-                or_Batch_or_x_op := arith.OrI(Batch_shift, or_M_or_x_op),
-            ], or_Batch_or_x_op.result
+                batch_i32 := arith.ExtUIOp(batch_i8, builtin.i32),
+                m_i32 := arith.ExtUIOp(m_i8, builtin.i32),
+                k_i32 := arith.ExtUIOp(k_i8, builtin.i32),
+                n_i32 := arith.ExtUIOp(n_i8, builtin.i32),
+                k_shift := arith.ShLI(k_i32, c_8),
+                m_shift := arith.ShLI(m_i32, c_16),
+                batch_shift := arith.ShLI(batch_i32, c_24),
+                or_n_k_op := arith.OrI(k_shift, n_i32),
+                or_m_or_x_op := arith.OrI(m_shift, or_n_k_op),
+                or_batch_or_x_op := arith.OrI(batch_shift, or_m_or_x_op),
+            ], or_batch_or_x_op.result
 
         def _get_constants(values, width):
             return [
@@ -181,5 +181,4 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXPollingBarrier2):
             *ptrs,
             *_get_constants(constants, 32),
             _generate_subtract_config(zpa, zpb)
-            # ([barrier_enable:=arith.Constant.from_int_and_width(1, 5)],barrier_enable.result) #Always enable barrier
         ]
