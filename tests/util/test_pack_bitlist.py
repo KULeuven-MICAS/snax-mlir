@@ -61,3 +61,4 @@ def test_pack_bitlist_mixed_vals():
 %12 = arith.ori %8, %10 : i32
 %13 = arith.ori %11, %12 : i32
 """
+
