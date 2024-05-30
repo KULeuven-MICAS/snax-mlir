@@ -137,6 +137,8 @@ class SNAXPollingBarrier(Accelerator, ABC):
 
 class SNAXPollingBarrier2(Accelerator, ABC):
     """
+    FIXME: Adapt this to an interrupt-style barrier for the newest RTL
+
     Abstract base class for SNAX Accelerators with different polling style barrier.
 
     The polling style barrier can be represented in C with:
@@ -174,7 +176,7 @@ class SNAXPollingBarrier2(Accelerator, ABC):
                         has_side_effects=True,
                     ),
                     shifted_status := arith.ShRUI(status, one),
-                    # check if equal to one
+                    # check if not equal to one
                     comparison := arith.Cmpi(shifted_status, one, "ne"),
                     Condition(comparison.results[0]),
                 ],
@@ -183,32 +185,3 @@ class SNAXPollingBarrier2(Accelerator, ABC):
                 ],
             ),
         ]
-
-
-# class SNAXInterruptBarrier(Accelerator, ABC):
-#    """
-#    Abstract base class for SNAX Accelerators with an Interrupt style barrier.
-#    In this case, the barrier will make stall the CPU util the accelerator is finished.
-#
-#    The interrupt style barrier can be represented in C with:
-#
-#    void wait_acc() {
-#        // Enable SNAX barrier
-#        write_csr(0x7c3, 1);
-#        // Trigger SNAX barrier
-#        write_csr(0x7c4, 0);
-#    }
-#
-#    NOTE: The enabling of the SNAX barrier is done through the acc2.setupOp.
-#    """
-#    @staticmethod
-#    def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
-#        return [barrier := arith.Constant(acc_op.barrier),
-#                zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
-#                llvm.InlineAsmOp(
-#                    "csrw $0, $1",
-#                    "I, K",
-#                    [barrier, zero],
-#                    has_side_effects=True,
-#                )]
-#
