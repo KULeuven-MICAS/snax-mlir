@@ -22,7 +22,7 @@ builtin.module {
       %O_shift = arith.addi %O, %c32 : i32
 
       // launch with loop-invariant and loop-dependent vars:
-      %state = accfg.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B_shift : i32, "O" = %O_shift : i32, "vector_length" = %c32 : i32) : !accfg.state<"snax_hwpe_mult">
+      %state = accfg.setup "snax_hwpe_mult" to ("A" = %A : i32, "B" = %B_shift : i32, "O" = %O_shift : i32, "vector_length" = %c32 : i32) : !accfg.state<"snax_hwpe_mult">
       %token = "accfg.launch"(%c32, %state) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i32, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
       "accfg.await"(%token) : (!accfg.token<"snax_hwpe_mult">) -> ()
 

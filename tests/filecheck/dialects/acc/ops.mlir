@@ -39,9 +39,9 @@ func.func @test() {
 // CHECK-NEXT:   func.func @test() {
 // CHECK-NEXT:     %one, %two = "test.op"() : () -> (i32, i32)
 // CHECK-NEXT:     %zero = arith.constant 0 : i32
-// CHECK-NEXT:     %state = accfg.setup on "acc1" ("A" = %one : i32, "B" = %two : i32) attrs {"test_attr" = 100 : i64} : !accfg.state<"acc1">
+// CHECK-NEXT:     %state = accfg.setup "acc1" to ("A" = %one : i32, "B" = %two : i32) attrs {"test_attr" = 100 : i64} : !accfg.state<"acc1">
 // CHECK-NEXT:     %token = "accfg.launch"(%zero, %state) <{"param_names" = ["launch"], "accelerator" = "acc1"}> : (i32, !accfg.state<"acc1">) -> !accfg.token<"acc1">
-// CHECK-NEXT:     %state2 = accfg.setup on "acc1" ("A" = %one : i32, "B" = %two : i32) in_state(%state) : !accfg.state<"acc1">
+// CHECK-NEXT:     %state2 = accfg.setup "acc1" from %state to ("A" = %one : i32, "B" = %two : i32) : !accfg.state<"acc1">
 // CHECK-NEXT:     "accfg.await"(%token) : (!accfg.token<"acc1">) -> ()
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }

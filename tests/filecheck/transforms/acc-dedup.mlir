@@ -62,22 +62,22 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
 // CHECK-NEXT:     %2 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<?xi32>) -> index
 // CHECK-NEXT:     %3 = "memref.extract_aligned_pointer_as_index"(%arg2) : (memref<?xi32>) -> index
 // CHECK-NEXT:     %4 = "memref.dim"(%arg0, %0) : (memref<?xi32>, index) -> index
-// CHECK-NEXT:     %5 = accfg.setup on "snax_hwpe_mult" ("A" = %1 : index, "B" = %2 : index, "O" = %3 : index, "size" = %4 : index) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:     %5 = accfg.setup "snax_hwpe_mult" to ("A" = %1 : index, "B" = %2 : index, "O" = %3 : index, "size" = %4 : index) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:     %6 = "accfg.launch"(%cst_0, %5) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%6) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:     %7 = "test.op"() : () -> i1
 // CHECK-NEXT:     %8, %9 = "scf.if"(%7) ({
-// CHECK-NEXT:       %10 = accfg.setup on "snax_hwpe_mult" ("B" = %3 : index) in_state(%5) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:       %10 = accfg.setup "snax_hwpe_mult" from %5 to ("B" = %3 : index) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:       %11 = "accfg.launch"(%cst_0, %10) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:       "accfg.await"(%11) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:       %12 = "test.op"() : () -> i32
-// CHECK-NEXT:       %13 = accfg.setup on "snax_hwpe_mult" ("O" = %2 : index) in_state(%10) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:       %13 = accfg.setup "snax_hwpe_mult" from %10 to ("O" = %2 : index) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:       scf.yield %12, %13 : i32, !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:     }, {
 // CHECK-NEXT:       %14 = "test.op"() : () -> i32
 // CHECK-NEXT:       %15 = "accfg.launch"(%cst_0, %5) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:       "accfg.await"(%15) : (!accfg.token<"snax_hwpe_mult">) -> ()
-// CHECK-NEXT:       %16 = accfg.setup on "snax_hwpe_mult" ("B" = %3 : index, "O" = %2 : index) in_state(%5) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:       %16 = accfg.setup "snax_hwpe_mult" from %5 to ("B" = %3 : index, "O" = %2 : index) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:       scf.yield %14, %16 : i32, !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:     }) : (i1) -> (i32, !accfg.state<"snax_hwpe_mult">)
 // CHECK-NEXT:     "test.op"(%8) : (i32) -> ()
@@ -86,10 +86,10 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
 // CHECK-NEXT:     %lb = arith.constant 0 : index
 // CHECK-NEXT:     %ub = arith.constant 100 : index
 // CHECK-NEXT:     %step = arith.constant 1 : index
-// CHECK-NEXT:     %18 = accfg.setup on "snax_hwpe_mult" ("B" = %2 : index, "O" = %3 : index) in_state(%9) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:     %18 = accfg.setup "snax_hwpe_mult" from %9 to ("B" = %2 : index, "O" = %3 : index) : !accfg.state<"snax_hwpe_mult">
 //                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ new setup op for invariant ops
 // CHECK-NEXT:     %res_1 = scf.for %iv = %lb to %ub step %step iter_args(%inner_state = %18) -> (!accfg.state<"snax_hwpe_mult">) {
-// CHECK-NEXT:        %s_new = accfg.setup on "snax_hwpe_mult" ("size" = %iv : index) in_state(%inner_state) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:        %s_new = accfg.setup "snax_hwpe_mult" from %inner_state to ("size" = %iv : index) : !accfg.state<"snax_hwpe_mult">
 //                                   only loop-dependent vars remaining ^^^
 // CHECK-NEXT:       %19 = "accfg.launch"(%cst_0, %s_new) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:       "accfg.await"(%19) : (!accfg.token<"snax_hwpe_mult">) -> ()
@@ -104,7 +104,7 @@ func.func @scf_for_test(%A: i32, %B: i32) {
   %c32 = arith.constant 32 : i32
 
   // initial launch
-  %init = accfg.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "size" = %c32 : i32) : !accfg.state<"snax_hwpe_mult">
+  %init = accfg.setup "snax_hwpe_mult" to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "size" = %c32 : i32) : !accfg.state<"snax_hwpe_mult">
   %token = "accfg.launch"(%init) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
   "accfg.await"(%token) : (!accfg.token<"snax_hwpe_mult">) -> ()
 
@@ -123,7 +123,7 @@ func.func @scf_for_test(%A: i32, %B: i32) {
     %O_shift = arith.addi %O, %c32 : i32
 
     // launch with loop-invariant and loop-dependent vars:
-    %s_new = accfg.setup on "snax_hwpe_mult" ("A" = %A_shift : i32, "B" = %B_shift : i32, "O" = %O_shift : i32, "size" = %c32 : i32) in_state(%inner_state) : !accfg.state<"snax_hwpe_mult">
+    %s_new = accfg.setup "snax_hwpe_mult" from %inner_state to ("A" = %A_shift : i32, "B" = %B_shift : i32, "O" = %O_shift : i32, "size" = %c32 : i32) : !accfg.state<"snax_hwpe_mult">
     %tok = "accfg.launch"(%s_new) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
     "accfg.await"(%tok) : (!accfg.token<"snax_hwpe_mult">) -> ()
 
@@ -131,7 +131,7 @@ func.func @scf_for_test(%A: i32, %B: i32) {
   }
 
   // tailing launch, with same inputs as initial launch:
-  %final = accfg.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "size" = %c32 : i32) in_state(%res_state) : !accfg.state<"snax_hwpe_mult">
+  %final = accfg.setup "snax_hwpe_mult" from %res_state to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "size" = %c32 : i32) : !accfg.state<"snax_hwpe_mult">
   %token2 = "accfg.launch"(%final) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> :  (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
   "accfg.await"(%token2) : (!accfg.token<"snax_hwpe_mult">) -> ()
   return
@@ -140,7 +140,7 @@ func.func @scf_for_test(%A: i32, %B: i32) {
 // CHECK-NEXT:   func.func @scf_for_test(%A : i32, %B : i32) {
 // CHECK-NEXT:     %O = "test.op"() : () -> i32
 // CHECK-NEXT:     %c32 = arith.constant 32 : i32
-// CHECK-NEXT:     %init = accfg.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "size" = %c32 : i32) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:     %init = accfg.setup "snax_hwpe_mult" to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "size" = %c32 : i32) : !accfg.state<"snax_hwpe_mult">
 //                 ^^^ first setup should be untouched ^^^
 // CHECK-NEXT:     %token = "accfg.launch"(%init) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%token) : (!accfg.token<"snax_hwpe_mult">) -> ()
@@ -148,18 +148,18 @@ func.func @scf_for_test(%A: i32, %B: i32) {
 // CHECK-NEXT:     %ub_1 = arith.constant 100 : index
 // CHECK-NEXT:     %step_1 = arith.constant 1 : index
 // CHECK-NEXT:     %A_shift = arith.addi %A, %c32 : i32
-// CHECK-NEXT:     %20 = accfg.setup on "snax_hwpe_mult" ("A" = %A_shift : i32) in_state(%init) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:     %20 = accfg.setup "snax_hwpe_mult" from %init to ("A" = %A_shift : i32) : !accfg.state<"snax_hwpe_mult">
 //                       ^^^^^^^^^^^^^^^^^^^^^ new setup op for loop-invariant variables
 // CHECK-NEXT:     %res_state = scf.for %iv_1 = %lb_1 to %ub_1 step %step_1 iter_args(%inner_state_1 = %20) -> (!accfg.state<"snax_hwpe_mult">) {
 // CHECK-NEXT:       %B_shift = arith.addi %B, %c32 : i32
 // CHECK-NEXT:       %O_shift = arith.addi %O, %c32 : i32
-// CHECK-NEXT:       %s_new_1 = accfg.setup on "snax_hwpe_mult" ("B" = %B_shift : i32, "O" = %O_shift : i32) in_state(%inner_state_1) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:       %s_new_1 = accfg.setup "snax_hwpe_mult" from %inner_state_1 to ("B" = %B_shift : i32, "O" = %O_shift : i32) : !accfg.state<"snax_hwpe_mult">
 //                           only loop-dependent variables left ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // CHECK-NEXT:       %tok = "accfg.launch"(%s_new_1) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:       "accfg.await"(%tok) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:       scf.yield %s_new_1 : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:     }
-// CHECK-NEXT:     %final = accfg.setup on "snax_hwpe_mult" ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32) in_state(%res_state) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:     %final = accfg.setup "snax_hwpe_mult" from %res_state to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32) : !accfg.state<"snax_hwpe_mult">
 //                                                size parameter can be inferred as unchanged and deleted ^
 // CHECK-NEXT:     %token2 = "accfg.launch"(%final) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%token2) : (!accfg.token<"snax_hwpe_mult">) -> ()
@@ -168,10 +168,10 @@ func.func @scf_for_test(%A: i32, %B: i32) {
 
 
 func.func @nested_loops(%A : i32, %lb : i32, %ub : i32, %step : i32) {
-  %0 = accfg.setup on "simple" () : !accfg.state<"simple">
+  %0 = accfg.setup "simple" to () : !accfg.state<"simple">
   %1 = scf.for %i = %lb to %ub step %step iter_args(%2 = %0) -> (!accfg.state<"simple">) : i32 {
     %3 = scf.for %j = %i to %ub step %step iter_args(%4 = %2) -> (!accfg.state<"simple">) : i32 {
-      %out_state = accfg.setup on "simple" ("A" = %A : i32, "i" = %i : i32, "j" = %j : i32) in_state(%4) : !accfg.state<"simple">
+      %out_state = accfg.setup "simple" from %4 to ("A" = %A : i32, "i" = %i : i32, "j" = %j : i32) : !accfg.state<"simple">
       scf.yield %out_state : !accfg.state<"simple">
     }
     scf.yield %3 : !accfg.state<"simple">
@@ -181,14 +181,14 @@ func.func @nested_loops(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 
 // check that every loop-nest only contains values that cannot be set at a higher level
 // CHECK-NEXT:  func.func @nested_loops(%A_1 : i32, %lb_2 : i32, %ub_2 : i32, %step_2 : i32) {
-// CHECK-NEXT:    %21 = accfg.setup on "simple" ("A" = %A_1 : i32) : !accfg.state<"simple">
-//                                              ^^^^^^^^^^^^^^^^
+// CHECK-NEXT:    %21 = accfg.setup "simple" to ("A" = %A_1 : i32) : !accfg.state<"simple">
+//                                               ^^^^^^^^^^^^^^^^
 // CHECK-NEXT:    %22 = scf.for %i = %lb_2 to %ub_2 step %step_2 iter_args(%23 = %21) -> (!accfg.state<"simple">) : i32 {
-// CHECK-NEXT:      %24 = accfg.setup on "simple" ("i" = %i : i32) in_state(%23) : !accfg.state<"simple">
-//                                                ^^^^^^^^^^^^^^
+// CHECK-NEXT:      %24 = accfg.setup "simple" from %23 to ("i" = %i : i32) : !accfg.state<"simple">
+//                                                          ^^^^^^^^^^^^^^
 // CHECK-NEXT:      %25 = scf.for %j = %i to %ub_2 step %step_2 iter_args(%26 = %24) -> (!accfg.state<"simple">) : i32 {
-// CHECK-NEXT:        %out_state = accfg.setup on "simple" ("j" = %j : i32) in_state(%26) : !accfg.state<"simple">
-//                                                         ^^^^^^^^^^^^^^^
+// CHECK-NEXT:        %out_state = accfg.setup "simple" from %26 to ("j" = %j : i32) : !accfg.state<"simple">
+//                                                                   ^^^^^^^^^^^^^^
 // CHECK-NEXT:        scf.yield %out_state : !accfg.state<"simple">
 // CHECK-NEXT:      }
 // CHECK-NEXT:      scf.yield %25 : !accfg.state<"simple">
@@ -198,13 +198,13 @@ func.func @nested_loops(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 
 
 func.func @nested_loops_edge_cases(%A : i32, %lb : i32, %ub : i32, %step : i32) {
-  %0 = accfg.setup on "simple" () : !accfg.state<"simple">
+  %0 = accfg.setup "simple" to () : !accfg.state<"simple">
   %1 = scf.for %i = %lb to %ub step %step iter_args(%2 = %0) -> (!accfg.state<"simple">) : i32 {
     %3 = scf.for %j = %i to %ub step %step iter_args(%l0 = %2) -> (!accfg.state<"simple">) : i32 {
-      %l1 = accfg.setup on "simple" ("A" = %A : i32, "B" = %A : i32, "i" = %i : i32, "j" = %j : i32) in_state(%l0) : !accfg.state<"simple">
+      %l1 = accfg.setup "simple" from %l0 to ("A" = %A : i32, "B" = %A : i32, "i" = %i : i32, "j" = %j : i32) : !accfg.state<"simple">
       // test.op so that the two setups aren't fused
       "test.op"() : () -> ()
-      %l2 = accfg.setup on "simple" ("A" = %A : i32, "B" = %ub : i32, "i" = %i : i32, "j" = %j : i32) in_state(%l1) : !accfg.state<"simple">
+      %l2 = accfg.setup "simple" from %l1 to ("A" = %A : i32, "B" = %ub : i32, "i" = %i : i32, "j" = %j : i32) : !accfg.state<"simple">
       // test op here too so that we don't accidentally dp some inter-iteration fusion
       "test.op"() : () -> ()
       scf.yield %l2 : !accfg.state<"simple">
@@ -216,14 +216,14 @@ func.func @nested_loops_edge_cases(%A : i32, %lb : i32, %ub : i32, %step : i32) 
 
 // check that B cannot be hoisted outside of the loop because it is set to two different loop invariant values
 // CHECK-NEXT:  func.func @nested_loops_edge_cases(%A_2 : i32, %lb_3 : i32, %ub_3 : i32, %step_3 : i32) {
-// CHECK-NEXT:    %27 = accfg.setup on "simple" ("A" = %A_2 : i32) : !accfg.state<"simple">
+// CHECK-NEXT:    %27 = accfg.setup "simple" to ("A" = %A_2 : i32) : !accfg.state<"simple">
 // CHECK-NEXT:    %28 = scf.for %i_1 = %lb_3 to %ub_3 step %step_3 iter_args(%29 = %27) -> (!accfg.state<"simple">) : i32 {
-// CHECK-NEXT:      %30 = accfg.setup on "simple" ("i" = %i_1 : i32) in_state(%29) : !accfg.state<"simple">
+// CHECK-NEXT:      %30 = accfg.setup "simple" from %29 to ("i" = %i_1 : i32) : !accfg.state<"simple">
 // CHECK-NEXT:      %31 = scf.for %j_1 = %i_1 to %ub_3 step %step_3 iter_args(%l0 = %30) -> (!accfg.state<"simple">) : i32 {
-// CHECK-NEXT:        %l1 = accfg.setup on "simple" ("B" = %A_2 : i32, "j" = %j_1 : i32) in_state(%l0) : !accfg.state<"simple">
+// CHECK-NEXT:        %l1 = accfg.setup "simple" from %l0 to ("B" = %A_2 : i32, "j" = %j_1 : i32) : !accfg.state<"simple">
 // CHECK-NEXT:        "test.op"() : () -> ()
-// CHECK-NEXT:        %l2 = accfg.setup on "simple" ("B" = %ub_3 : i32) in_state(%l1) : !accfg.state<"simple">
-//                                                  ^^^^^^^^^^^ reset B, "j" can stay the same though
+// CHECK-NEXT:        %l2 = accfg.setup "simple" from %l1 to ("B" = %ub_3 : i32) : !accfg.state<"simple">
+//                      reset B, "j" can stay the same though ^^^^^^^^^^^
 // CHECK-NEXT:        "test.op"() : () -> ()
 // CHECK-NEXT:        scf.yield %l2 : !accfg.state<"simple">
 // CHECK-NEXT:      }
@@ -234,13 +234,13 @@ func.func @nested_loops_edge_cases(%A : i32, %lb : i32, %ub : i32, %step : i32) 
 
 
 func.func @setup_fusion(%A: i32, %B: i32) {
-    %0 = accfg.setup on "simple" ("A" = %A : i32, "B" = %B : i32) : !accfg.state<"simple">
-    %1 = accfg.setup on "simple" ("A" = %B : i32) in_state(%0) : !accfg.state<"simple">
+    %0 = accfg.setup "simple" to ("A" = %A : i32, "B" = %B : i32) : !accfg.state<"simple">
+    %1 = accfg.setup "simple" from %0 to ("A" = %B : i32) : !accfg.state<"simple">
     return
 }
 
 // check that the two ops are fused and the values of the later one overwrite the earlier ones
 // CHECK-NEXT:  func.func @setup_fusion(%A_3 : i32, %B_1 : i32) {
-// CHECK-NEXT:    %32 = accfg.setup on "simple" ("A" = %B_1 : i32, "B" = %B_1 : i32) : !accfg.state<"simple">
+// CHECK-NEXT:    %32 = accfg.setup "simple" to ("A" = %B_1 : i32, "B" = %B_1 : i32) : !accfg.state<"simple">
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
