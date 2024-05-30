@@ -180,5 +180,5 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXPollingBarrier2):
             size_config,
             *ptrs,
             *_get_constants(constants, 32),
-            _generate_subtract_config(zpa, zpb)
+            _generate_subtract_config(zpa, zpb),
         ]
