@@ -3,7 +3,11 @@ from xdsl.ir import Operation, SSAValue
 from xdsl.dialects import arith
 
 
-def pack_bitlist(values: Sequence[int | SSAValue | Operation], offsets: Sequence[int | SSAValue | Operation], dtype : int = 32) -> Iterable[Operation]:
+def pack_bitlist(
+    values: Sequence[int | SSAValue | Operation],
+    offsets: Sequence[int | SSAValue | Operation],
+    dtype: int = 32,
+) -> Iterable[Operation]:
     """
     Takes a list of values and offsets, and packs them into a single `dtype` wide value.
 
