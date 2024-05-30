@@ -13,7 +13,8 @@ def pack_bitlist(
     Takes a list of values and offsets, and packs them into a single `dtype` wide value.
 
     Each value is shifted left by its offset and then all of them are or-ed together.
-    (They are or-ed together in a way that reduces data dependencies and makes it O(log(n)))
+    They are or-ed together in a way that reduces data dependencies and
+    makes the resulting operation tree have depth log(n)
 
     Values and offsets can be passed as either SSA values or integers.
     """
@@ -30,7 +31,7 @@ def pack_bitlist(
         yield (shift := arith.ShLI(value, offset))
         shifted_vals.append(shift.result)
 
-    # do a divide-and-conquer algorithm to or the values together in O(log(n)) instead of O(n).
+    # create a tree of or-operations with depth log(n)
     while len(shifted_vals) > 1:
         a, b, *rest = shifted_vals
         yield (ored_val := arith.OrI(a, b))
