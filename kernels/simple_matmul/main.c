@@ -44,13 +44,13 @@ uint32_t strideC = 0;
 void _mlir_ciface_simple_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
                                 TwoDMemrefI32_t *c);
 
-void _mlir_ciface_snax_qgemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
-                             int32_t zpb, TwoDMemrefI32_t *c) {
+void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
+                            int32_t zpb, TwoDMemrefI32_t *c) {
 
   int8_t *a_ptr = a->aligned_data;
   int8_t *b_ptr = b->aligned_data;
   int32_t *c_ptr = c->aligned_data;
-  printf("Executing snax_qgemm with a=%p, b=%p, c=%p \n", a_ptr, b_ptr, c_ptr);
+  printf("Executing snax_gemm with a=%p, b=%p, c=%p \n", a_ptr, b_ptr, c_ptr);
 
   uint32_t size_setting = gen_size_config(Batch, M_param, K_param, N_param);
 
@@ -62,7 +62,7 @@ void _mlir_ciface_snax_qgemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
 
   wait_batch_gemm();
 
-  printf("Finished executing snax_qgemm\n");
+  printf("Finished executing snax_gemm\n");
 }
 
 int main() {
