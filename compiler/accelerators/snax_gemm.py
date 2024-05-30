@@ -4,7 +4,7 @@ from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier2
-from compiler.dialects import acc
+from compiler.dialects import accfg
 
 
 class SNAXGEMMAccelerator(SNAXAccelerator, SNAXPollingBarrier2):
@@ -35,11 +35,11 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXPollingBarrier2):
     )
     launch_fields = ("launch",)
 
-    def generate_acc_op(self) -> acc.AcceleratorOp:
+    def generate_acc_op(self) -> accfg.AcceleratorOp:
         """
         Return a SNAX GEMM accelerator op with some default field adresses
         """
-        return acc.AcceleratorOp(
+        return accfg.AcceleratorOp(
             self.name,
             {
                 "size_setting": 0x3C0,
@@ -81,10 +81,10 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXPollingBarrier2):
 
         return [
             *ops_to_insert,
-            setup := acc.SetupOp([val for _, val in args], self.fields, self.name),
+            setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
             launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
-            token := acc.LaunchOp([launch_val], self.launch_fields, setup),
-            acc.AwaitOp(token),
+            token := accfg.LaunchOp([launch_val], self.launch_fields, setup),
+            accfg.AwaitOp(token),
         ]
 
     def _generate_setup_vals(
