@@ -17,6 +17,16 @@ def pack_bitlist(
     makes the resulting operation tree have depth log(n)
 
     Values and offsets can be passed as either SSA values or integers.
+
+    Generates the following IR structure:
+
+    val  off   val  off   val  off   val  off
+     +----+     +----+     +----+     +----+
+       <<         <<         <<         <<
+        +----------+          +----------+
+             or                    or
+             +----------------------+
+                        or
     """
     shifted_vals: list[SSAValue] = []
     for int_val, int_off in zip(values, offsets, strict=True):
