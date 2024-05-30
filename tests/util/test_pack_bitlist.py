@@ -1,8 +1,9 @@
 from io import StringIO
 
-from compiler.util.pack_bitlist import pack_bitlist
-from xdsl.printer import Printer
 from xdsl.dialects import arith, builtin
+from xdsl.printer import Printer
+
+from compiler.util.pack_bitlist import pack_bitlist
 
 
 def test_pack_bitlist():
@@ -14,7 +15,9 @@ def test_pack_bitlist():
     ):
         p.print(op)
 
-    assert out.getvalue() == """%0 = arith.constant 0 : i32
+    assert (
+        out.getvalue()
+        == """%0 = arith.constant 0 : i32
 %1 = arith.constant 1 : i32
 %2 = arith.shli %1, %0 : i32
 %3 = arith.constant 8 : i32
@@ -30,6 +33,7 @@ def test_pack_bitlist():
 %13 = arith.ori %8, %11 : i32
 %14 = arith.ori %12, %13 : i32
 """
+    )
 
 
 def test_pack_bitlist_mixed_vals():
@@ -41,12 +45,14 @@ def test_pack_bitlist_mixed_vals():
     for op in input_vals:
         p.print(op)
     for op in pack_bitlist(
-            [input_vals[0], input_vals[1], 2, input_vals[1]],
-            [0, 8, input_vals[2], 24],
+        [input_vals[0], input_vals[1], 2, input_vals[1]],
+        [0, 8, input_vals[2], 24],
     ):
         p.print(op)
 
-    assert out.getvalue() == """%0 = arith.constant 1 : i32
+    assert (
+        out.getvalue()
+        == """%0 = arith.constant 1 : i32
 %1 = arith.constant 128 : i32
 %2 = arith.constant 16 : i32
 %3 = arith.constant 0 : i32
@@ -61,4 +67,4 @@ def test_pack_bitlist_mixed_vals():
 %12 = arith.ori %8, %10 : i32
 %13 = arith.ori %11, %12 : i32
 """
-
+    )
