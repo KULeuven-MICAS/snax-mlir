@@ -1,6 +1,7 @@
-from typing import Sequence, Iterable
-from xdsl.ir import Operation, SSAValue
+from collections.abc import Iterable, Sequence
+
 from xdsl.dialects import arith
+from xdsl.ir import Operation, SSAValue
 
 
 def pack_bitlist(
