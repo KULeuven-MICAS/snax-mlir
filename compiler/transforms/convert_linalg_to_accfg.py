@@ -270,11 +270,7 @@ def _weave_states_in_region(
                 # these ops are specifically whitelisted:
                 elif isinstance(
                     op,
-                    (
-                        func.Return,
-                        scf.Yield,
-                        builtin.UnrealizedConversionCastOp,
-                    ),
+                    func.Return | scf.Yield | builtin.UnrealizedConversionCastOp,
                 ):
                     continue
                 # for every other operation, raise a warning and just assume the worst
