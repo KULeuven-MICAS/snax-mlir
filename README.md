@@ -81,7 +81,7 @@ pytest tests
 Inside the docker container:
 
 ```sh
-cd /kernels/simple_mult
+cd /repo/kernels/simple_mult
 make allrun
 ```
 

@@ -1,3 +1,10 @@
+[project]
+name = "snax-opt"
+version = "0.1.0"
+
+[project.scripts]
+snax-opt = "compiler.tools.snax_opt_main:main"
+
 [tool.ruff]
 select = ["E", "F", "W", "I", "UP", "PT", "TID251"]
 ignore = [
