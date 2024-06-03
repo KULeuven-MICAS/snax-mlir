@@ -8,6 +8,7 @@ from compiler.accelerators.gemmini import GemminiAccelerator
 from compiler.accelerators.snax_gemm import SNAXGEMMAccelerator
 from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
 from compiler.dialects.accfg import AcceleratorOp
+from compiler.accelerators.matmul_unit import MatmulUnit
 
 
 class AcceleratorRegistry:
@@ -20,6 +21,7 @@ class AcceleratorRegistry:
         "snax_hwpe_mult": SNAXHWPEMultAccelerator,
         "snax_gemm": SNAXGEMMAccelerator,
         "gemmini": GemminiAccelerator,
+        "matmul_unit": MatmulUnit,
     }
 
     def lookup_acc_info(
@@ -35,6 +37,7 @@ class AcceleratorRegistry:
         assert trait is not None
         acc_op = trait.lookup_symbol(module, acc_query)
         if not isinstance(acc_op, AcceleratorOp):
+            return None, self.registered_accelerators.get(acc_query.data)
             raise RuntimeError(
                 f"Symbol Table lookup failed for accelerator '{acc_query.data}'. "
                 "Is the symbol declared by an accfg.accelerator op in the module?"
