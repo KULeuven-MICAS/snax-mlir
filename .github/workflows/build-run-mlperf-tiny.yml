@@ -6,17 +6,12 @@ on:
       - main
   pull_request:
   workflow_dispatch:
-    inputs:
-      container-tag:
-        description: 'Container tag'
-        required: true
-        default: 'main'
 
 jobs:
   build-and-run-networks:
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/kuleuven-micas/snax:pr-138
+      image: ghcr.io/kuleuven-micas/snax:main
     steps:
       - uses: actions/checkout@v3
       - name: Install snax compiler
