@@ -25,6 +25,7 @@ from compiler.transforms.set_memory_layout import SetMemoryLayout
 from compiler.transforms.set_memory_space import SetMemorySpace
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_to_func import SNAXToFunc
+from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 
 
 class SNAXOptMain(xDSLOptMain):
@@ -67,6 +68,7 @@ class SNAXOptMain(xDSLOptMain):
         )
         super().register_pass(TraceStatesPass.name, lambda: TraceStatesPass)
         super().register_pass(ConvertAccfgToCsrPass.name, lambda: ConvertAccfgToCsrPass)
+        super().register_pass(AccfgConfigOverlapPass.name, lambda: AccfgConfigOverlapPass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
