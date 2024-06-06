@@ -22,7 +22,7 @@ class BlockLevelSetupAwaitOverlapPattern(RewritePattern):
     ```
 
     And moves the setup op right behind the launch, iff:
-    - The these two ops are the only two uses of the `%state` SSA value
+    - These two ops are the only two uses of the `%state` SSA value
     """
 
     @op_type_rewrite_pattern
