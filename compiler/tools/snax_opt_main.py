@@ -68,7 +68,9 @@ class SNAXOptMain(xDSLOptMain):
         )
         super().register_pass(TraceStatesPass.name, lambda: TraceStatesPass)
         super().register_pass(ConvertAccfgToCsrPass.name, lambda: ConvertAccfgToCsrPass)
-        super().register_pass(AccfgConfigOverlapPass.name, lambda: AccfgConfigOverlapPass)
+        super().register_pass(
+            AccfgConfigOverlapPass.name, lambda: AccfgConfigOverlapPass
+        )
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
