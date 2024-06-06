@@ -1,5 +1,5 @@
-from xdsl.dialects import builtin
-from xdsl.ir import MLContext, Operation, Use
+from xdsl.dialects import builtin, scf
+from xdsl.ir import Block, MLContext, Operation, Use
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -57,6 +57,62 @@ class BlockLevelSetupAwaitOverlapPattern(RewritePattern):
         op.detach()
         # insert the op right after the launch
         rewriter.insert_op_after(op, launch)
+
+
+class LooplevelSetupAwaitOverlapPattern(RewritePattern):
+    """
+    Converts an `scf.for` loop to have setup/launch overlaps
+
+    Given the following IR:
+    ```
+     %s0 = setup ... // loop-initial state
+     scf.for (%i = %lb to %ub step %step) iter_args(%l0 = %s0) ... {
+       %l1 = setup from %l0 to ("i" = %i)
+       %t = launch(%l1)
+       await(%t)
+       yield %l1
+     }
+    ```
+
+    1. We insert a copy of the setup op before the loop, replacing the loop variable with `%lb`.
+    2. We then move the setup inside the loop *behind* the launch
+    3. The launch now consumes the loop-variable directly
+
+    This results in the following IR post-optimization:
+
+    ```
+     %s0 = setup ... // loop-initial state
+     %l1 = setup from %l0 to ("i" = %lb)
+     scf.for (%i = %lb to %ub step %step) iter_args(%l0 = %s0) ... {
+       %t = launch(%l0)
+       %l1 = setup from %l0 to ("i" = %i)
+       await(%t)
+       yield %l1
+     }
+    ```
+    This will result in an additional setup that is unused (in the last iteration of the loop), but seeing as this
+    is happening during an await anyway, we won't focus much in it for now.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
+        # only apply if setup has an input state
+        if not op.in_state:
+            return
+        # only apply if setup is inside a for loop
+        for_op = op.parent_op()
+        if not isinstance(for_op, scf.For):
+            return
+
+        # if the setup ops input is not the loop-carried state var, don't apply optimization
+        if (
+            not isinstance(op.in_state.owner, Block)
+            or op.in_state.owner.parent_op() is not for_op
+        ):
+            return
+
+        # anton did not implement the rest of this optimisation yet.
+        return
 
 
 class AccfgConfigOverlapPass(ModulePass):

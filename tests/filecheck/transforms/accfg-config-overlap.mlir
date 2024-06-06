@@ -50,3 +50,38 @@ func.func @simple(%A: i32, %B: i32, %i1: i1) {
 // CHECK-NEXT:    }) : (i1) -> ()
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
+
+// -----
+
+func.func @single_loop(%A : i32, %lb : i32, %ub : i32, %step : i32) {
+  %0 = accfg.setup "simple" to () : !accfg.state<"simple">
+
+  %1 = scf.for %i = %lb to %ub step %step iter_args(%2 = %0) -> (!accfg.state<"simple">) : i32 {
+
+    %l1 = accfg.setup "simple" from %l0 to ("A" = %A : i32, "B" = %A : i32, "i" = %i) : !accfg.state<"simple">
+    %t = "accfg.launch"(%l1) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
+    "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
+
+    scf.yield %l1 : !accfg.state<"simple">
+  }
+
+  func.return
+}
+
+
+func.func @single_loop_expected(%A : i32, %lb : i32, %ub : i32, %step : i32) {
+  %0 = accfg.setup "simple" to () : !accfg.state<"simple">
+
+  %s_pre = accfg.setup "simple" from %0 to ("A" = %A : i32, "B" = %A : i32, "i" = %ub) : !accfg.state<"simple">
+
+  %1 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %s_pre) -> (!accfg.state<"simple">) : i32 {
+
+    %t = "accfg.launch"(%l0) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
+    %l1 = accfg.setup "simple" from %l0 to ("A" = %A : i32, "B" = %A : i32, "i" = %i) : !accfg.state<"simple">
+    "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
+
+    scf.yield %l1 : !accfg.state<"simple">
+  }
+
+  func.return
+}

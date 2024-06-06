@@ -12,9 +12,7 @@ from compiler.transforms.accfg_dedup import AccfgDeduplicate
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
 from compiler.transforms.convert_linalg_to_accfg import (
-    ConvertLinalgToAccPass,
-    TraceStatesPass,
-)
+    ConvertLinalgToAccPass, TraceStatesPass)
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.insert_accfg_op import InsertAccOp
