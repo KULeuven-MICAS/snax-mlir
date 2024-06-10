@@ -29,10 +29,13 @@ func.func public @simple_mult(%A: memref<64xi32, 0 : i32>,
       // Copy input from L3 to L1
       "memref.copy"(%A, %A_L1) : (memref<64xi32, 0: i32>, memref<64xi32, 1 : i32>) -> ()
       "memref.copy"(%B, %B_L1) : (memref<64xi32, 0: i32>, memref<64xi32, 1 : i32>) -> ()
+      // Synchronize with compute core
+      "snax.cluster_sync_op"() : () -> ()
       // Wait for compute core to finish computing here
       "snax.cluster_sync_op"() : () -> ()
       // Send back output from L1 to L3
       "memref.copy"(%D_L1, %D) : (memref<64xi32, 1: i32>, memref<64xi32, 0 : i32>) -> ()
+      "snax.cluster_sync_op"() : () -> ()
       scf.yield
     },{
       // Don't do anything if not a dm core
@@ -49,6 +52,8 @@ func.func public @simple_mult(%A: memref<64xi32, 0 : i32>,
         %r0 = arith.muli %a, %b : i32
         linalg.yield %r0 : i32
       }
+      // Synchronize with DM core
+      "snax.cluster_sync_op"() : () -> ()
       // Wait for output to go from L1 to L3
       "snax.cluster_sync_op"() : () -> ()
       scf.yield
