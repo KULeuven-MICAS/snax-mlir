@@ -21,7 +21,7 @@ void _mlir_ciface_snax_hwpe_mult(OneDMemrefI32_t *a, OneDMemrefI32_t *b,
 
 int main() {
 
-  // Create memref objects for data stored in L1
+  // Create memref objects for data stored in L3
   static OneDMemrefI32_t memrefA;
   memrefA.data = &A;
   memrefA.aligned_data = memrefA.data;
@@ -58,7 +58,6 @@ int main() {
   int nerr = 0;
   for (int i = 0; i < N; i++) {
     int32_t error = memrefD.aligned_data[i] - G[i];
-    printf("test\n");
     if (error != 0)
       nerr += 1;
   }
