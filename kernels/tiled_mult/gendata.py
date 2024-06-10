@@ -8,7 +8,7 @@ if __name__ == "__main__":
     # Reset random seed for reproducible behavior
     low_bound = -128
     high_bound = 127
-    array_size = 10
+    array_size = 64
     np.random.seed(0)
     # G = A*B
     A = np.random.randint(
