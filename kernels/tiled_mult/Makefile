@@ -1,0 +1,42 @@
+# Courtesy of Federico Ficarelli
+
+.DEFAULT_GOAL := all
+
+include ../../runtime/snax-mac.rules
+include ../../runtime/Makefile.rules
+
+TESTS =
+TESTS += baseline.x
+TESTS += linalg.x
+TESTS += linalg.acc_dialect.x
+
+CFLAGS += -std=gnu11
+CFLAGS += -Wall -Wextra
+
+
+# Override snax-opt rules to avoid linalg-to-library-call pass
+SNAXOPTACCFLAGS = -p insert-acc-op{accelerator=snax_hwpe_mult},convert-linalg-to-acc,convert-acc-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
+
+%.acc_dialect.snax-opt.mlir: %.preprocfinal.mlir
+	$(SNAXOPT) $(SNAXOPTACCFLAGS) -o $@ $<
+
+data.c data.h:
+	$(PYTHON) gendata.py
+
+%.x: %.o main.o data.o
+	$(LD) $(LDFLAGS) $^ -o $@
+
+sim_%: %
+	rm -fr ./logs/
+	$(VLTSIM) $<
+
+RUN = $(addprefix run_, $(TESTS))
+$(RUN): run_%: sim_%
+	mv logs $(subst sim_,,$<).logs
+
+all: $(TESTS)
+
+allrun: $(RUN)
+
+clean:
+	rm -fr *.ll12 *.x *.o *.logs/ logs/ data.h data.c
