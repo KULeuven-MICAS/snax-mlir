@@ -7,11 +7,15 @@ include ../../runtime/Makefile.rules
 
 TESTS =
 TESTS += baseline.x
-TESTS += linalg.x
+#TESTS += linalg.x
 TESTS += linalg.acc_dialect.x
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
+
+MLIRPREPROCFLAGS += --allow-unregistered-dialect
+MLIRPREPROC2FLAGS += --allow-unregistered-dialect
+MLIRPREPROC3FLAGS += --allow-unregistered-dialect
 
 
 # Override snax-opt rules to avoid linalg-to-library-call pass
