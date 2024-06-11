@@ -12,7 +12,9 @@ from compiler.transforms.accfg_dedup import AccfgDeduplicate
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
 from compiler.transforms.convert_linalg_to_accfg import (
-    ConvertLinalgToAccPass, TraceStatesPass)
+    ConvertLinalgToAccPass,
+    TraceStatesPass,
+)
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.insert_accfg_op import InsertAccOp
@@ -45,6 +47,9 @@ class SNAXOptMain(xDSLOptMain):
         ## Add custom dialects & passes
         self.ctx.load_dialect(Snax)
         self.ctx.load_dialect(TSL)
+        # TODO: this is needed with newer xDSL as they now also have the dialect
+        del self.ctx._registered_dialects["accfg"]  # pyright: ignore#
+
         self.ctx.load_dialect(ACCFG)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)

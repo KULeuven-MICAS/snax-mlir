@@ -1,14 +1,19 @@
-from xdsl.dialects import builtin, scf
-from xdsl.ir import Block, MLContext, Operation, Use
+from xdsl.dialects import arith, builtin, scf
+from xdsl.ir import Block, BlockArgument, MLContext, Operation, Use
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
+    GreedyRewritePatternApplier,
     PatternRewriter,
     PatternRewriteWalker,
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.rewriter import InsertPoint
+from xdsl.traits import is_side_effect_free
 
 from compiler.dialects import accfg
+from compiler.inference.helpers import iter_ops_range, previous_ops_of
+from compiler.inference.scoped_setups import get_scoped_setup_inputs
 
 
 class BlockLevelSetupAwaitOverlapPattern(RewritePattern):
@@ -53,13 +58,31 @@ class BlockLevelSetupAwaitOverlapPattern(RewritePattern):
         if launch.next_op is op:
             return
 
-        # detach the setup op
-        op.detach()
-        # insert the op right after the launch
-        rewriter.insert_op_after(op, launch)
+        # grab the parent block, which can't be none (we know that)
+        parent_block = op.parent_block()
+        assert parent_block is not None
+
+        # grab the setup op with all inputs in this block
+        inputs = get_scoped_setup_inputs(op, parent_block)
+
+        # if we have immovable inputs, abort
+        # TODO: it is fine if the immovable inputs are *before* the launch op anyway, as we only
+        #       care about ops up until the launch op. We can implement this later if it's a problem.
+        if inputs is None:
+            return
+
+        # if all the ops between launch and setup are input ops, then there's nothing to move!
+        if all(betwee_op in inputs.inputs for betwee_op in iter_ops_range(launch, op)):
+            return
+
+        inputs.lazy_move_up(  # and move the setup and inputs to be right behind the launch
+            parent_block,
+            InsertPoint.after(launch),
+            rewriter,
+        )
 
 
-class LooplevelSetupAwaitOverlapPattern(RewritePattern):
+class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
     """
     Converts an `scf.for` loop to have setup/launch overlaps
 
@@ -74,9 +97,12 @@ class LooplevelSetupAwaitOverlapPattern(RewritePattern):
      }
     ```
 
-    1. We insert a copy of the setup op before the loop, replacing the loop variable with `%lb`.
-    2. We then move the setup inside the loop *behind* the launch
-    3. The launch now consumes the loop-variable directly
+    1. We grab the first setup op inside the loop, with all dependencies
+    2. We insert a copy of the setup op before the loop, replacing dependencies with the loop inputs (%lb)
+    3. We insert a copy of the setup af the end of the loop, replacing dependencies with the next iterations variables
+       (which we get from the yield / by adding %step to %i)
+    4. We erase the original setup op.
+
 
     This results in the following IR post-optimization:
 
@@ -85,11 +111,14 @@ class LooplevelSetupAwaitOverlapPattern(RewritePattern):
      %l1 = setup from %l0 to ("i" = %lb)
      scf.for (%i = %lb to %ub step %step) iter_args(%l0 = %s0) ... {
        %t = launch(%l0)
-       %l1 = setup from %l0 to ("i" = %i)
        await(%t)
+       %i_next = arith.addi %i, %step
+       %l1 = setup from %l0 to ("i" = %i_next)
        yield %l1
      }
     ```
+    The setup will then be lifted before the await by teh BlockLevelSetupAwaitOverlapPattern.
+
     This will result in an additional setup that is unused (in the last iteration of the loop), but seeing as this
     is happening during an await anyway, we won't focus much in it for now.
     """
@@ -103,6 +132,9 @@ class LooplevelSetupAwaitOverlapPattern(RewritePattern):
         for_op = op.parent_op()
         if not isinstance(for_op, scf.For):
             return
+        # also grab the yield op, will be needed later
+        yield_op = for_op.body.block.last_op
+        assert isinstance(yield_op, scf.Yield)
 
         # if the setup ops input is not the loop-carried state var, don't apply optimization
         if (
@@ -110,9 +142,54 @@ class LooplevelSetupAwaitOverlapPattern(RewritePattern):
             or op.in_state.owner.parent_op() is not for_op
         ):
             return
+        # grab the index in iter_args, that our state occupies
+        assert isinstance(op.in_state, BlockArgument)
+        iter_arg_idx = (
+            op.in_state.index - 1
+        )  # -1 because the first block arg is the loop index
 
-        # anton did not implement the rest of this optimisation yet.
-        return
+        # also, if any operation between us and the loop start is not side effect free, abort
+        if any(not is_side_effect_free(prev_op) for prev_op in previous_ops_of(op)):
+            return
+
+        # 1. We grab the first setup op inside the loop, with all dependencies
+        inputs = get_scoped_setup_inputs(
+            op,
+            for_op.body.block,
+        )
+        # if we can't resolve dependencies, we are done for! Abort!
+        if inputs is None:
+            return
+
+        # 2. We insert a copy of the setup op before the loop, replacing dependencies with the loop inputs (%lb)
+        setup_before = inputs.copy_with_new_dependent_vals(
+            (for_op.lb, *for_op.iter_args)
+        )
+        setup_before.insert_at_position(
+            rewriter,
+            InsertPoint.before(for_op),
+        )
+        # use the result state of the before-loop setup as initial state
+        for_op.operands[3 + iter_arg_idx] = setup_before.setup.out_state
+
+        # 3. We insert a copy of the setup af the end of the loop, replacing dependencies with the next iterations
+        #    variables (which we get from the yield / by adding %step to %i)
+        rewriter.insert_op(
+            next_i := arith.Addi(for_op.body.block.args[0], for_op.step),
+            InsertPoint.before(yield_op),
+        )
+        setup_at_end = inputs.copy_with_new_dependent_vals(
+            (next_i.result, *yield_op.operands)
+        )
+        setup_at_end.insert_at_position(
+            rewriter,
+            InsertPoint.before(yield_op),
+        )
+        # make sure the yield returns the new state:
+        yield_op.operands[iter_arg_idx] = setup_at_end.setup.out_state
+
+        # 4. We erase the original setup op.
+        inputs.erase(op.in_state, rewriter)
 
 
 class AccfgConfigOverlapPass(ModulePass):
@@ -123,7 +200,14 @@ class AccfgConfigOverlapPass(ModulePass):
     name = "accfg-config-overlap"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(BlockLevelSetupAwaitOverlapPattern()).rewrite_module(op)
+        PatternRewriteWalker(
+            GreedyRewritePatternApplier(
+                [
+                    BlockLevelSetupAwaitOverlapPattern(),
+                    LoopLevelSetupAwaitOverlapPattern(),
+                ]
+            )
+        ).rewrite_module(op)
 
 
 def get_ops_from_uses(uses: set[Use]) -> tuple[Operation, ...]:
