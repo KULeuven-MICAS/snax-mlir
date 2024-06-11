@@ -81,7 +81,6 @@ class BlockLevelSetupAwaitOverlapPattern(RewritePattern):
         )
 
 
-
 class AccfgConfigOverlapPass(ModulePass):
     """
     This pass moves setup ops upward in code to enable setup-computation overlap.
