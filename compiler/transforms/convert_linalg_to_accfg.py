@@ -2,15 +2,7 @@ import sys
 from dataclasses import dataclass, field
 
 from xdsl.dialects import builtin, func, linalg, scf
-from xdsl.ir import (
-    Block,
-    BlockArgument,
-    MLContext,
-    Operation,
-    OpResult,
-    Region,
-    SSAValue,
-)
+from xdsl.ir import Block, MLContext, Operation, OpResult, Region, SSAValue
 from xdsl.parser import StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -22,6 +14,11 @@ from xdsl.pattern_rewriter import (
 
 from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.dialects import accfg
+from compiler.inference.helpers import (
+    calc_if_state_delta,
+    find_all_acc_names_in_region,
+    find_existing_block_arg,
+)
 
 
 @dataclass
@@ -284,49 +281,6 @@ def _weave_states_in_region(
     return state
 
 
-def calc_if_state_delta(
-    old_state: dict[str, SSAValue],
-    if_state: dict[str, SSAValue],
-    else_state: dict[str, SSAValue],
-) -> dict[str, tuple[SSAValue, SSAValue]]:
-    """
-    Given three state dictionaries (mapping accelerator names
-    to SSA vals containing their state, return a new dict that:
-
-    - Contains tuples (if_branch_val, else_branch_val)
-    - For all accelerators whose state val changed in *at least
-      one* of the branches
-    - And for all accelerator states that got introduced in *both*
-      branches
-    """
-    new_state: dict[str, tuple[SSAValue, SSAValue]] = {}
-
-    # for every key in the old state, find out if it changed
-    for k in old_state:
-        # get new vals (or None if dropped)
-        new_vals = (
-            if_state.pop(k, None),
-            else_state.pop(k, None),
-        )
-        # drop val if it is invalidated on one side
-        if any(v is None for v in new_vals):
-            continue
-        # if no val changed
-        if all(v == old_state[k] for v in new_vals):
-            continue
-        # pyright can't infer that we actually checked the argument type:
-        new_state[k] = new_vals  # pyright: ignore[reportArgumentType]
-
-    # check for states that are present in both branches
-    for k in if_state:
-        if k not in else_state:
-            continue
-        # add them to the new dict
-        new_state[k] = (if_state[k], else_state[k])
-
-    return new_state
-
-
 class ConvertLinalgToAccPass(ModulePass):
     name = "convert-linalg-to-accfg"
 
@@ -349,24 +303,3 @@ class TraceStatesPass(ModulePass):
         PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
             op
         )
-
-
-def find_all_acc_names_in_region(reg: Region) -> set[str]:
-    """
-    Walk a region and return a set of accelerator names are set up in that region.
-    """
-    acs: set[str] = set()
-    for op in reg.walk():
-        if isinstance(op, accfg.SetupOp):
-            acs.add(op.accelerator.data)
-    return acs
-
-
-def find_existing_block_arg(block: Block, accel: str) -> BlockArgument | None:
-    """
-    Inspect a block for block arguments of the correct accfg.StateType type, return the block arg if found.
-    """
-    for arg in block.args:
-        if isinstance(arg.type, accfg.StateType) and arg.type.accelerator.data == accel:
-            return arg
-    return None

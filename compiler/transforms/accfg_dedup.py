@@ -1,14 +1,7 @@
 from dataclasses import dataclass
 
 from xdsl.dialects import builtin, scf
-from xdsl.ir import (
-    Block,
-    BlockArgument,
-    MLContext,
-    Operation,
-    OpResult,
-    SSAValue,
-)
+from xdsl.ir import MLContext, OpResult, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     GreedyRewritePatternApplier,
@@ -17,13 +10,14 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.traits import Pure
+from xdsl.traits import is_side_effect_free
 
 from compiler.dialects import accfg
-from compiler.inference.trace_acc_state import (
-    all_setup_ops_in_region,
-    infer_state_of,
+from compiler.inference.helpers import (
+    get_initial_value_for_scf_for_lcv,
+    val_is_defined_in_block,
 )
+from compiler.inference.trace_acc_state import all_setup_ops_in_region, infer_state_of
 
 
 class SimplifyRedundantSetupCalls(RewritePattern):
@@ -70,7 +64,7 @@ class MergeSetupOps(RewritePattern):
             ):
                 break
             # if we encounter a not-pure op, we abort
-            if not prev_op.has_trait(Pure):
+            if not is_side_effect_free(prev_op):
                 return
             prev_op = prev_op.prev_op
         if prev_op is None:
@@ -277,39 +271,3 @@ class AccfgDeduplicate(ModulePass):
             GreedyRewritePatternApplier(patterns),
             walk_reverse=True,
         ).rewrite_module(op)
-
-
-def get_initial_value_for_scf_for_lcv(loop: scf.For, var: SSAValue) -> SSAValue:
-    """
-    Given a loop-carried variable inside an scf for loop as the block argument,
-    return the SSA value that is passed as the initial value to it.
-    """
-    if var not in loop.body.block.args:
-        raise ValueError(
-            f"Given value {var} not a block argument of the for loop {loop}!"
-        )
-    idx = loop.body.block.args.index(var) - 1
-    return loop.iter_args[idx]
-
-
-def val_is_defined_in_block(val: SSAValue, block: Block) -> bool:
-    """
-    Check if val is defined in block or in blocks nested in block.
-    """
-    if isinstance(val, BlockArgument):
-        block_ptr: Block | None = val.owner
-        # walk upwards until we hit block or None
-        while block_ptr is not None and block_ptr != block:
-            # walk upwards
-            block_ptr = block_ptr.parent_block()
-        # we either ran out of blocks
-        return block_ptr is not None
-    elif isinstance(val, OpResult):
-        op_ptr: Operation | None = val.owner
-        # walk up until we either hit the right block, or run out of parents
-        while op_ptr is not None and op_ptr.parent_block() != block:
-            op_ptr = op_ptr.parent_op()
-        # iff we didn't hit the right block, ptr must be none
-        return op_ptr is not None
-    else:
-        raise ValueError(f"Unsupported SSA Value type: {val}")
