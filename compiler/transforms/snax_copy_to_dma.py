@@ -6,8 +6,10 @@ from xdsl.dialects.builtin import (
     IntegerType,
     NoneAttr,
     StridedLayoutAttr,
+    UnrealizedConversionCastOp,
 )
 from xdsl.dialects.memref import CopyOp, Dim, ExtractAlignedPointerAsIndexOp, MemRefType
+from xdsl.dialects.snitch_runtime import DmaStart1DOp
 from xdsl.ir import Block, MLContext, Region
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -82,20 +84,29 @@ class MatchSimpleCopy(RewritePattern):
         ops_to_insert.append(source_ptr_op)
         ops_to_insert.append(dest_ptr_op)
 
-        # step 4: create function call
-        func_call = func.Call(
-            "snax_dma_1d_transfer",
-            [
-                source_ptr_op.aligned_pointer,
-                dest_ptr_op.aligned_pointer,
-                total_size_op.result,
-            ],
-            [],
+        # cast all of them to i32 for the standard dma start 1d op
+        source_ptr_op = UnrealizedConversionCastOp.get(
+            [source_ptr_op.aligned_pointer], [builtin.i32]
         )
+        dest_ptr_op = UnrealizedConversionCastOp.get(
+            [dest_ptr_op.aligned_pointer], [builtin.i32]
+        )
+        total_size_op = UnrealizedConversionCastOp.get(
+            [total_size_op.result], [builtin.i32]
+        )
+        ops_to_insert.extend([source_ptr_op, dest_ptr_op, total_size_op])
+
+        # step 4: create dma op
+        dma_op = DmaStart1DOp(
+            dest_ptr_op.results[0],
+            source_ptr_op.results[0],
+            total_size_op.results[0],
+        )
+        ## todo -> do something with result of dma op
 
         # step 5: insert ops and replace op
-        rewriter.insert_op_before_matched_op(ops_to_insert)
-        rewriter.replace_op(op, func_call)
+        rewriter.insert_op_before_matched_op([*ops_to_insert, dma_op])
+        rewriter.erase_matched_op(op)
 
 
 def extract_strides(memreftype: MemRefType):
