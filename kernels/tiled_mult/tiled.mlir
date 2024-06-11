@@ -28,12 +28,12 @@ func.func public @simple_mult(%A: memref<64xi32, 0 : i32>,
     // Here goes all the code that is run on the DM core
     "scf.if"(%is_dm_core) ({
       // Perform the memory transfer on a subview of the memref
-      %tiled_A = "memref.subview"(%A) <{operandSegmentSizes = array<i32: 1, 0, 0, 0>, static_offsets = array<i64: 0>, static_sizes = array<i64: 64>, static_strides = array<i64: 1>}> : (memref<64xi32, 0: i32>) -> memref<64xi32, strided<[1]>, 0: i32>
-      %tiled_B = "memref.subview"(%B) <{operandSegmentSizes = array<i32: 1, 0, 0, 0>, static_offsets = array<i64: 0>, static_sizes = array<i64: 64>, static_strides = array<i64: 1>}> : (memref<64xi32, 0: i32>) -> memref<64xi32, strided<[1]>, 0: i32>
-      %tiled_D = "memref.subview"(%D) <{operandSegmentSizes = array<i32: 1, 0, 0, 0>, static_offsets = array<i64: 0>, static_sizes = array<i64: 64>, static_strides = array<i64: 1>}> : (memref<64xi32, 0: i32>) -> memref<64xi32, strided<[1]>, 0: i32>
-      %tiled_A_L1 = "memref.subview"(%A_L1) <{operandSegmentSizes = array<i32: 1, 0, 0, 0>, static_offsets = array<i64: 0>, static_sizes = array<i64: 64>, static_strides = array<i64: 1>}> : (memref<64xi32, 1: i32>) -> memref<64xi32, strided<[1]>, 1: i32>
-      %tiled_B_L1 = "memref.subview"(%B_L1) <{operandSegmentSizes = array<i32: 1, 0, 0, 0>, static_offsets = array<i64: 0>, static_sizes = array<i64: 64>, static_strides = array<i64: 1>}> : (memref<64xi32, 1: i32>) -> memref<64xi32, strided<[1]>, 1: i32>
-      %tiled_D_L1 = "memref.subview"(%D_L1) <{operandSegmentSizes = array<i32: 1, 0, 0, 0>, static_offsets = array<i64: 0>, static_sizes = array<i64: 64>, static_strides = array<i64: 1>}> : (memref<64xi32, 1: i32>) -> memref<64xi32, strided<[1]>, 1: i32>
+      %tiled_A = memref.subview %A  [0][64][1] : memref<64xi32, 0: i32> to memref<64xi32, strided<[1]>, 0: i32>
+      %tiled_B = memref.subview %B  [0][64][1] : memref<64xi32, 0: i32> to memref<64xi32, strided<[1]>, 0: i32>
+      %tiled_D = memref.subview %D  [0][64][1] : memref<64xi32, 0: i32> to memref<64xi32, strided<[1]>, 0: i32>
+      %tiled_A_L1 = memref.subview %A_L1 [0][64][1] : memref<64xi32, 1: i32> to memref<64xi32, strided<[1]>, 1: i32>
+      %tiled_B_L1 = memref.subview %B_L1 [0][64][1] : memref<64xi32, 1: i32> to memref<64xi32, strided<[1]>, 1: i32>
+      %tiled_D_L1 = memref.subview %D_L1 [0][64][1] : memref<64xi32, 1: i32> to memref<64xi32, strided<[1]>, 1: i32>
       "memref.copy"(%tiled_A, %tiled_A_L1) : (memref<64xi32, strided<[1]>, 0: i32>, memref<64xi32, strided<[1]>, 1 : i32>) -> ()
       "memref.copy"(%tiled_B, %tiled_B_L1) : (memref<64xi32, strided<[1]>, 0: i32>, memref<64xi32, strided<[1]>, 1 : i32>) -> ()
       // Synchronize with compute core
@@ -52,9 +52,9 @@ func.func public @simple_mult(%A: memref<64xi32, 0 : i32>,
     "scf.if"(%is_compute_core) ({
       // Wait for input to come from DM core
       "snax.cluster_sync_op"() : () -> ()
-      %tiled_A_L1 = "memref.subview"(%A_L1) <{operandSegmentSizes = array<i32: 1, 0, 0, 0>, static_offsets = array<i64: 0>, static_sizes = array<i64: 64>, static_strides = array<i64: 1>}> : (memref<64xi32, 1: i32>) -> memref<64xi32, strided<[1]>, 1: i32>
-      %tiled_B_L1 = "memref.subview"(%B_L1) <{operandSegmentSizes = array<i32: 1, 0, 0, 0>, static_offsets = array<i64: 0>, static_sizes = array<i64: 64>, static_strides = array<i64: 1>}> : (memref<64xi32, 1: i32>) -> memref<64xi32, strided<[1]>, 1: i32>
-      %tiled_D_L1 = "memref.subview"(%D_L1) <{operandSegmentSizes = array<i32: 1, 0, 0, 0>, static_offsets = array<i64: 0>, static_sizes = array<i64: 64>, static_strides = array<i64: 1>}> : (memref<64xi32, 1: i32>) -> memref<64xi32, strided<[1]>, 1: i32>
+      %tiled_A_L1 = memref.subview %A_L1 [0][64][1] : memref<64xi32, 1: i32> to memref<64xi32, strided<[1]>, 1: i32>
+      %tiled_B_L1 = memref.subview %B_L1 [0][64][1] : memref<64xi32, 1: i32> to memref<64xi32, strided<[1]>, 1: i32>
+      %tiled_D_L1 = memref.subview %D_L1 [0][64][1] : memref<64xi32, 1: i32> to memref<64xi32, strided<[1]>, 1: i32>
       linalg.generic #simple_mult_attributes
       ins(%tiled_A_L1, %tiled_B_L1: memref<64xi32, strided<[1]>, 1: i32>, memref<64xi32, strided<[1]>, 1 : i32>)
       outs(%tiled_D_L1: memref<64xi32, strided<[1]>, 1: i32>) {
