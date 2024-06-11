@@ -7,8 +7,7 @@ include ../../runtime/Makefile.rules
 
 TESTS =
 TESTS += baseline.x
-#TESTS += linalg.x
-TESTS += linalg.acc_dialect.x
+TESTS += untiled.acc_dialect.x
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
