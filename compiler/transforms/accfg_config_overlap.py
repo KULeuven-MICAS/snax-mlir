@@ -71,7 +71,9 @@ class BlockLevelSetupAwaitOverlapPattern(RewritePattern):
             return
 
         # if all the ops between launch and setup are input ops, then there's nothing to move!
-        if all(between_op in inputs.inputs for between_op in iter_ops_range(launch, op)):
+        if all(
+            between_op in inputs.inputs for between_op in iter_ops_range(launch, op)
+        ):
             return
 
         inputs.lazy_move_up(  # and move the setup and inputs to be right behind the launch
