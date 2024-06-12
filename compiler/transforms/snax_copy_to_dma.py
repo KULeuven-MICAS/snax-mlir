@@ -155,8 +155,8 @@ class TransformDMA(RewritePattern):
             if not strides:
                 return
             if isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
-               # if destination is tsl, use those tile sizes
-               tile_bounds = op.destination.type.layout.tile_bounds()
+                # if destination is tsl, use those tile sizes
+                tile_bounds = op.destination.type.layout.tile_bounds()
             else:
                 # otherwise, shape can be used as single-dimension tile sizes
                 tile_bounds = [shape.data for shape in op.source.type.shape.data]
@@ -175,8 +175,8 @@ class TransformDMA(RewritePattern):
             if not strides:
                 return
             if isinstance(op.source.type.layout, TiledStridedLayoutAttr):
-               # if destination is tsl, use those tile sizes
-               tile_bounds = op.source.type.layout.tile_bounds()
+                # if destination is tsl, use those tile sizes
+                tile_bounds = op.source.type.layout.tile_bounds()
             else:
                 # otherwise, shape can be used as single-dimension tile sizes
                 tile_bounds = [shape.data for shape in op.destination.type.shape.data]
