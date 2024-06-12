@@ -57,22 +57,22 @@
 // -----
 
 "builtin.module"() ({
-  "func.func"() <{"sym_name" = "transform_copy", "function_type" = (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, 0 : i32>, memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, 1 : i32>) -> (), "sym_visibility" = "public"}> ({
-  ^0(%arg0 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, 0 : i32>, %arg1 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, 1 : i32>):
-    "memref.copy"(%arg0, %arg1) : (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, 0 : i32>, memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, 1 : i32>) -> ()
+  "func.func"() <{"sym_name" = "transform_copy", "function_type" = (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, "L3">, memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, "L1">) -> (), "sym_visibility" = "public"}> ({
+  ^0(%arg0 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, "L3">, %arg1 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, "L1">):
+    "memref.copy"(%arg0, %arg1) : (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, "L3">, memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, "L1">) -> ()
     "func.return"() : () -> ()
   }) : () -> ()
 }) : () -> ()
 
 // CHECK: "builtin.module"() ({
-// CHECK-NEXT:   "func.func"() <{"sym_name" = "transform_copy", "function_type" = (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, 0 : i32>, memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, 1 : i32>) -> (), "sym_visibility" = "public"}> ({
-// CHECK-NEXT:   ^0(%arg0 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, 0 : i32>, %arg1 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, 1 : i32>):
-// CHECK-NEXT:     %0 = "memref.extract_aligned_pointer_as_index"(%arg0) : (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, 0 : i32>) -> index
-// CHECK-NEXT:     %1 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, 1 : i32>) -> index
+// CHECK-NEXT:   "func.func"() <{"sym_name" = "transform_copy", "function_type" = (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, "L3">, memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, "L1">) -> (), "sym_visibility" = "public"}> ({
+// CHECK-NEXT:   ^0(%arg0 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, "L3">, %arg1 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, "L1">):
+// CHECK-NEXT:     %0 = "memref.extract_aligned_pointer_as_index"(%arg0) : (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, "L3">) -> index
+// CHECK-NEXT:     %1 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<8x8xi32, #tsl.tsl<[2, 4] -> (64, 4), [2, 4] -> (128, 16)>, "L1">) -> index
 // CHECK-NEXT:     %2 = "arith.constant"() <{"value" = 0 : index}> : () -> index
-// CHECK-NEXT:     %3 = "memref.dim"(%arg0, %2) : (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, 0 : i32>, index) -> index
+// CHECK-NEXT:     %3 = "memref.dim"(%arg0, %2) : (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, "L3">, index) -> index
 // CHECK-NEXT:     %4 = "arith.constant"() <{"value" = 1 : index}> : () -> index
-// CHECK-NEXT:     %5 = "memref.dim"(%arg0, %4) : (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, 0 : i32>, index) -> index
+// CHECK-NEXT:     %5 = "memref.dim"(%arg0, %4) : (memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, "L3">, index) -> index
 // CHECK-NEXT:     %6 = "arith.constant"() <{"value" = 2 : index}> : () -> index
 // CHECK-NEXT:     %7 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 // CHECK-NEXT:     %8 = "arith.constant"() <{"value" = 2 : index}> : () -> index

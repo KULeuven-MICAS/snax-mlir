@@ -18,7 +18,7 @@ class AllocOpRewrite(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, alloc_op: memref.Alloc, rewriter: PatternRewriter):
         """Swap memref.alloc op with snax.alloc, for now, we support
-        NoneType layouts and TSL Layouts, and a memory space of 1 (=L1)"""
+        NoneType layouts and TSL Layouts, and a memory space of L1"""
 
         # get the memref type
         memref_type: memref.MemRefType = alloc_op.memref.type
@@ -33,7 +33,7 @@ class AllocOpRewrite(RewritePattern):
         memory_space = memref_type.memory_space
 
         # if the memory space is not 1, conversion to snax is not possible
-        if isinstance(memory_space, NoneAttr) or memory_space.value.data != 1:
+        if not isinstance(memory_space, builtin.StringAttr) or memory_space.data != "L1":
             return
 
         # get the layout
