@@ -13,7 +13,7 @@
 // -----
 
 "builtin.module"() ({
-  %0 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<16x16xi32, 1: i32>
+  %0 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<16x16xi32, "L1">
 }) : () -> ()
 
 // CHECK: "builtin.module"() ({
@@ -30,7 +30,7 @@
 
 "builtin.module"() ({
   %0 = "test.op"() : () -> (index)
-  %1 = "memref.alloc"(%0) <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 1, 0>}> : (index) -> memref<?x16xi32, 1: i32>
+  %1 = "memref.alloc"(%0) <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 1, 0>}> : (index) -> memref<?x16xi32, "L1">
 }) : () -> ()
 
 // CHECK: "builtin.module"() ({
