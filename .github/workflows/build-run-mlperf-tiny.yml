@@ -11,7 +11,7 @@ jobs:
   build-and-run-networks:
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/kuleuven-micas/snax:main
+      image: ghcr.io/kuleuven-micas/snax:pr-146
     steps:
       - uses: actions/checkout@v3
       - name: Install snax compiler
