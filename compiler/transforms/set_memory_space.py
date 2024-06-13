@@ -22,7 +22,8 @@ class InitFuncMemorySpace(RewritePattern):
         # Function must have memref arguments with an undefined memory space
         if not any(
             [
-                isinstance(x, builtin.MemRefType) and isinstance(x.memory_space, builtin.NoneAttr)
+                isinstance(x, builtin.MemRefType)
+                and isinstance(x.memory_space, builtin.NoneAttr)
                 for x in [*op.function_type.inputs, *op.function_type.outputs]
             ]
         ):
@@ -138,7 +139,10 @@ class InitLinalgMemorySpace(RewritePattern):
                 return None
             if not isinstance(operand.type, builtin.MemRefType):
                 return None
-            if isinstance(operand.type.memory_space, builtin.StringAttr) and operand.type.memory_space.data == "L1":
+            if (
+                isinstance(operand.type.memory_space, builtin.StringAttr)
+                and operand.type.memory_space.data == "L1"
+            ):
                 return None
 
             # cast required: find previous cast or create new one
@@ -161,8 +165,14 @@ class InitLinalgMemorySpace(RewritePattern):
             return cast_op
 
         # cast all inputs and outputs to correct memory space
-        new_inputs = [inp if get_cast_op(inp) is None else get_cast_op(inp).dest for inp in op.inputs]
-        new_outputs = [out if get_cast_op(out) is None else get_cast_op(out).dest for out in op.outputs]
+        new_inputs = [
+            inp if get_cast_op(inp) is None else get_cast_op(inp).dest
+            for inp in op.inputs
+        ]
+        new_outputs = [
+            out if get_cast_op(out) is None else get_cast_op(out).dest
+            for out in op.outputs
+        ]
 
         # new linalg op with new inputs & outputs
         linalg_op = linalg.Generic(

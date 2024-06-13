@@ -46,7 +46,10 @@ class AllocToFunc(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, alloc_op: snax.Alloc, rewriter: PatternRewriter):
         ## only supporting L1 allocation for now
-        if not (isinstance(alloc_op.memory_space, builtin.StringAttr) and alloc_op.memory_space.data == "L1"):
+        if not (
+            isinstance(alloc_op.memory_space, builtin.StringAttr)
+            and alloc_op.memory_space.data == "L1"
+        ):
             return
 
         def dense_array(pos):
@@ -55,7 +58,9 @@ class AllocToFunc(RewritePattern):
         ops_to_insert = []
 
         # create constant alignment op to pass on to the allocation function
-        alignment_op = arith.Constant.from_int_and_width(alloc_op.alignment.value.data, builtin.IndexType())
+        alignment_op = arith.Constant.from_int_and_width(
+            alloc_op.alignment.value.data, builtin.IndexType()
+        )
         ops_to_insert.append(alignment_op)
 
         # call allocation function with size and alignment operations
@@ -80,7 +85,9 @@ class AllocToFunc(RewritePattern):
         ops_to_insert.append(func_result)
 
         # extract the allocated pointer and aligned pointer from alloc function call
-        pointer_op = llvm.ExtractValueOp(dense_array([0]), func_result.results[0], llvm.LLVMPointerType.opaque())
+        pointer_op = llvm.ExtractValueOp(
+            dense_array([0]), func_result.results[0], llvm.LLVMPointerType.opaque()
+        )
         aligned_pointer_op = llvm.ExtractValueOp(
             dense_array([1]), func_result.results[0], llvm.LLVMPointerType.opaque()
         )
@@ -91,11 +98,15 @@ class AllocToFunc(RewritePattern):
         ops_to_insert.append(llvm_struct)
 
         # insert pointer
-        llvm_struct = llvm.InsertValueOp(dense_array([0]), llvm_struct.res, pointer_op.res)
+        llvm_struct = llvm.InsertValueOp(
+            dense_array([0]), llvm_struct.res, pointer_op.res
+        )
         ops_to_insert.append(llvm_struct)
 
         # insert aligned pointer
-        llvm_struct = llvm.InsertValueOp(dense_array([1]), llvm_struct.res, aligned_pointer_op.res)
+        llvm_struct = llvm.InsertValueOp(
+            dense_array([1]), llvm_struct.res, aligned_pointer_op.res
+        )
         ops_to_insert.append(llvm_struct)
 
         # insert offset
@@ -107,9 +118,13 @@ class AllocToFunc(RewritePattern):
         for i, shape_op in enumerate(alloc_op.shapes):
             if isinstance(shape_op.type, builtin.IndexType):
                 # we must cast to integer for valid llvm op
-                shape_op = builtin.UnrealizedConversionCastOp.get([shape_op], [builtin.i32])
+                shape_op = builtin.UnrealizedConversionCastOp.get(
+                    [shape_op], [builtin.i32]
+                )
                 ops_to_insert.append(shape_op)
-            llvm_struct = llvm.InsertValueOp(dense_array([3, i]), llvm_struct.res, shape_op.results[0])
+            llvm_struct = llvm.InsertValueOp(
+                dense_array([3, i]), llvm_struct.res, shape_op.results[0]
+            )
             ops_to_insert.append(llvm_struct)
 
         module_op = alloc_op.get_toplevel_object()
@@ -129,7 +144,10 @@ class SNAXToFunc(ModulePass):
     name = "snax-to-func"
 
     def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
-        contains_sync = any(isinstance(op_in_module, snax.ClusterSyncOp) for op_in_module in module.walk())
+        contains_sync = any(
+            isinstance(op_in_module, snax.ClusterSyncOp)
+            for op_in_module in module.walk()
+        )
 
         if contains_sync:
             PatternRewriteWalker(InsertFunctionCall()).rewrite_module(module)

@@ -33,7 +33,10 @@ class AllocOpRewrite(RewritePattern):
         memory_space = memref_type.memory_space
 
         # if the memory space is not 1, conversion to snax is not possible
-        if not isinstance(memory_space, builtin.StringAttr) or memory_space.data != "L1":
+        if (
+            not isinstance(memory_space, builtin.StringAttr)
+            or memory_space.data != "L1"
+        ):
             return
 
         # get the layout
