@@ -24,7 +24,9 @@
 
 // CHECK: "builtin.module"() ({
 // CHECK-NEXT:   %0 = "test.op"() : () -> memref<64xi32, "L1">
-// CHECK-NEXT:   %1 = "memref.alloc"() <{"alignment" = 64 : i64, "L1">) -> ()
+// CHECK-NEXT:   %1 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<64xi32, strided<[1, 8]>, "L1">
+// CHECK-NEXT:   "memref.copy"(%0, %1) : (memref<64xi32, "L1">, memref<64xi32, strided<[1, 8]>, "L1">) -> ()
+// CHECK-NEXT:   "test.op"(%1) : (memref<64xi32, strided<[1, 8]>, "L1">) -> ()
 // CHECK-NEXT:   "memref.copy"(%1, %0) : (memref<64xi32, strided<[1, 8]>, "L1">, memref<64xi32, "L1">) -> ()
 // CHECK-NEXT: }) : () -> ()
 
