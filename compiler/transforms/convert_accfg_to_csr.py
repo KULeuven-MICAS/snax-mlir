@@ -57,6 +57,7 @@ class LowerAccfgSetupToCsr(LowerAccfgBasePattern):
         # emit the llvm assembly code to set csr values:
         rewriter.replace_matched_op(
             acc_info.lower_acc_setup(op, acc_op),
+            [None],
             safe_erase=False,
         )
 

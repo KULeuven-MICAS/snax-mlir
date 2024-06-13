@@ -68,13 +68,13 @@
 // CHECK-NEXT:     %1 = arith.constant 0 : index
 // CHECK-NEXT:     %2 = arith.constant 1 : i32
 // CHECK-NEXT:     %3 = "memref.extract_aligned_pointer_as_index"(%arg0) : (memref<?xi32>) -> index
-// CHECK-NEXT:     %4 = "arith.index_cast"(%3) : (index) -> i32
+// CHECK-NEXT:     %4 = arith.index_cast %3 : index to i32
 // CHECK-NEXT:     %5 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<?xi32>) -> index
-// CHECK-NEXT:     %6 = "arith.index_cast"(%5) : (index) -> i32
+// CHECK-NEXT:     %6 = arith.index_cast %5 : index to i32
 // CHECK-NEXT:     %7 = "memref.extract_aligned_pointer_as_index"(%arg2) : (memref<?xi32>) -> index
-// CHECK-NEXT:     %8 = "arith.index_cast"(%7) : (index) -> i32
+// CHECK-NEXT:     %8 = arith.index_cast %7 : index to i32
 // CHECK-NEXT:     %9 = "memref.dim"(%arg0, %1) : (memref<?xi32>, index) -> index
-// CHECK-NEXT:     %10 = "arith.index_cast"(%9) : (index) -> i32
+// CHECK-NEXT:     %10 = arith.index_cast %9 : index to i32
 // CHECK-NEXT:     %11 = accfg.setup "snax_hwpe_mult" to ("A" = %4 : i32, "B" = %6 : i32, "O" = %8 : i32, "vector_length" = %2 : i32, "nr_iters" = %10 : i32, "mode" = %2 : i32) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:     %12 = "accfg.launch"(%0, %11) <{"accelerator" = "snax_hwpe_mult", "param_names" = ["launch"]}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%12) : (!accfg.token<"snax_hwpe_mult">) -> ()
