@@ -45,7 +45,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_all_targets()
 
         ## Add custom dialects & passes
-        # TODO: this is needed with newer xDSL as they now also have the dialect
+        # FIXME: override upstream accfg dialect. Remove this after upstreaming full downstream accfg dialect.  
         del self.ctx._registered_dialects["accfg"]  # pyright: ignore
 
         self.ctx.load_dialect(Snax)
