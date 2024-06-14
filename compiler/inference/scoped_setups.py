@@ -141,7 +141,7 @@ class ScopedSetupWithInputs:
         ), "can't move to end of block! (malformed IR)"
         assert (
             pt.insert_before.parent_block() is scope
-        ), "Can't move operations to an insertion point that is not directly in $scope!"
+        ), "Can't move operations to an insertion point that is not directly in scope!"
 
         # don't do anything if the insertion point is one of our ops:
         if pt.insert_before in self.inputs or pt.insert_before is self.setup:
