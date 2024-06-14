@@ -115,7 +115,7 @@ def get_scoped_setup_inputs(
 @dataclass
 class ScopedSetupWithInputs:
     """
-    This dataclass represents a setup inside a loop that is loop variable dependent.
+    This dataclass represents a setup inside a block that is block-argument dependent.
 
     - setup: The setup operation
     - dependent_vars: SSA values that we know are loop-dependent
