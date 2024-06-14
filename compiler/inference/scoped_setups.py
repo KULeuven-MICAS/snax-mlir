@@ -75,7 +75,7 @@ def get_scoped_setup_inputs(
     while vals_to_inspect:
         # grab a value to inspect
         val = vals_to_inspect.pop(0)
-        # check if it's one of the loop dependent variables we are looking at
+        # check if it's one of the block arguments we are looking at
         if val in input_vars:
             # if it is, we have walked the use-def chain to its conclusion
             continue
