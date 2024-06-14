@@ -126,8 +126,7 @@ class InitLinalgMemorySpace(RewritePattern):
         # Op must have memref arguments with memory space not equal to L1
         if not any(
             [
-                isinstance(x.type, builtin.MemRefType)
-                and x.type.memory_space != L1
+                isinstance(x.type, builtin.MemRefType) and x.type.memory_space != L1
                 for x in op.inputs
             ]
         ):
