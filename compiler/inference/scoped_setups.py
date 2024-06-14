@@ -86,7 +86,7 @@ def get_scoped_setup_inputs(
         if isinstance(val.owner, Block):
             # shrug, idk what to do here
             print(
-                f"constructung pure input tree for setup {setup_op} failed on block argument {val} of:\n"
+                f"constructing pure input tree for setup {setup_op} failed on block argument {val} of:\n"
                 f"{val.owner.parent_op()}",
                 file=sys.stderr,
             )
