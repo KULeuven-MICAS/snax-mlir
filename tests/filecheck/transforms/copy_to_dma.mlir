@@ -53,6 +53,50 @@
 //CHECK-NEXT:   }) : () -> ()
 //CHECK-NEXT: }) : () -> ()
 
+// -----
+
+"builtin.module"() ({
+  "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<5x5xi32, strided<[10, 1]>>, memref<5x5xi32, strided<[20, 1]>>) -> (), "sym_visibility" = "public"}> ({
+  ^0(%arg0 : memref<5x5xi32, strided<[10, 1]>>, %arg1 : memref<5x5xi32, strided<[20, 1]>>):
+    "memref.copy"(%arg0, %arg1) : (memref<5x5xi32, strided<[10, 1]>>, memref<5x5xi32, strided<[20, 1]>>) -> ()
+    "func.return"() : () -> ()
+  }) : () -> ()
+}) : () -> ()
+
+//CHECK: "builtin.module"() ({
+//CHECK-NEXT:   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<5x5xi32, strided<[10, 1]>>, memref<5x5xi32, strided<[20, 1]>>) -> (), "sym_visibility" = "public"}> ({
+//CHECK-NEXT:   ^0(%arg0 : memref<5x5xi32, strided<[10, 1]>>, %arg1 : memref<5x5xi32, strided<[20, 1]>>):
+//CHECK-NEXT:     %0 = "memref.extract_aligned_pointer_as_index"(%arg0) : (memref<5x5xi32, strided<[10, 1]>>) -> index
+//CHECK-NEXT:     %1 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<5x5xi32, strided<[20, 1]>>) -> index
+//CHECK-NEXT:     %2 = "arith.constant"() <{"value" = 0 : index}> : () -> index
+//CHECK-NEXT:     %3 = "memref.dim"(%arg0, %2) : (memref<5x5xi32, strided<[10, 1]>>, index) -> index
+//CHECK-NEXT:     %4 = "arith.constant"() <{"value" = 1 : index}> : () -> index
+//CHECK-NEXT:     %5 = "memref.dim"(%arg0, %4) : (memref<5x5xi32, strided<[10, 1]>>, index) -> index
+//CHECK-NEXT:     %6 = "arith.constant"() <{"value" = 5 : index}> : () -> index
+//CHECK-NEXT:     %7 = "arith.constant"() <{"value" = 5 : index}> : () -> index
+//CHECK-NEXT:     %8 = "arith.constant"() <{"value" = 10 : index}> : () -> index
+//CHECK-NEXT:     %9 = "arith.constant"() <{"value" = 1 : index}> : () -> index
+//CHECK-NEXT:     %10 = "arith.constant"() <{"value" = 10 : index}> : () -> index
+//CHECK-NEXT:     %11 = "arith.constant"() <{"value" = 20 : index}> : () -> index
+//CHECK-NEXT:     %12 = "arith.constant"() <{"value" = 1 : index}> : () -> index
+//CHECK-NEXT:     %13 = "arith.constant"() <{"value" = 20 : index}> : () -> index
+//CHECK-NEXT:     %14 = "arith.constant"() <{"value" = 1 : index}> : () -> index
+//CHECK-NEXT:     %15 = "arith.constant"() <{"value" = 0 : index}> : () -> index
+//CHECK-NEXT:     %16 = "arith.constant"() <{"value" = 1 : index}> : () -> index
+//CHECK-NEXT:     "scf.for"(%15, %7, %16) ({
+//CHECK-NEXT:     ^1(%17 : index):
+//CHECK-NEXT:       %18 = "arith.muli"(%17, %9) : (index, index) -> index
+//CHECK-NEXT:       %19 = "arith.addi"(%0, %18) : (index, index) -> index
+//CHECK-NEXT:       %20 = "arith.muli"(%17, %12) : (index, index) -> index
+//CHECK-NEXT:       %21 = "arith.addi"(%1, %20) : (index, index) -> index
+//CHECK-NEXT:       "func.call"(%19, %21, %14, %10, %13, %6) <{"callee" = @snax_dma_2d_transfer}> : (index, index, index, index, index, index) -> ()
+//CHECK-NEXT:       "scf.yield"() : () -> ()
+//CHECK-NEXT:     }) : (index, index, index) -> ()
+//CHECK-NEXT:     "func.return"() : () -> ()
+//CHECK-NEXT:   }) : () -> ()
+//CHECK-NEXT:   "func.func"() <{"sym_name" = "snax_dma_2d_transfer", "function_type" = (index, index, index, index, index, index) -> (), "sym_visibility" = "private"}> ({
+//CHECK-NEXT:   }) : () -> ()
+//CHECK-NEXT: }) : () -> ()
 
 // -----
 
