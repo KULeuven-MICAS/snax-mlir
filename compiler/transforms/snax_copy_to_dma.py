@@ -127,6 +127,18 @@ def extract_strides(memreftype: MemRefType):
         strides = None
     return strides
 
+def extract_offset(memreftype: MemRefType):
+    """
+    Small helper function to extract the offset from a given memreftype
+    with a StridedLayoutAttr or NoneAttr (default row-major) layout.
+
+    Returns:
+        int: The extracted offset
+    """
+    if isinstance(memreftype.layout, StridedLayoutAttr):
+        return memreftype.layout.offset
+
+    return 0
 
 class TransformDMA(RewritePattern):
     """Look for memref copy operations with TSL layout and insert snitch DMA calls"""
@@ -156,6 +168,7 @@ class TransformDMA(RewritePattern):
             tsl_source = op.source.type.layout
         else:
             strides = extract_strides(op.source.type)
+            offset = extract_offset(op.source.type)
             if not strides:
                 return
             if isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
@@ -168,7 +181,7 @@ class TransformDMA(RewritePattern):
                 tile_bounds = [[x] if x > 0 else [None] for x in tile_bounds]
                 pass
             tsl_source = TiledStridedLayoutAttr(
-                TiledStridedLayout.from_strides(strides, tile_bounds)
+                TiledStridedLayout.from_strides(strides, tile_bounds, offset)
             )
 
         # if dest is not tsl, construct representation:
@@ -176,6 +189,7 @@ class TransformDMA(RewritePattern):
             tsl_dest = op.destination.type.layout
         else:
             strides = extract_strides(op.destination.type)
+            offset = extract_offset(op.destination.type)
             if not strides:
                 return
             if isinstance(op.source.type.layout, TiledStridedLayoutAttr):
@@ -188,7 +202,7 @@ class TransformDMA(RewritePattern):
                 tile_bounds = [[x] if x > 0 else [None] for x in tile_bounds]
                 pass
             tsl_dest = TiledStridedLayoutAttr(
-                TiledStridedLayout.from_strides(strides, tile_bounds)
+                TiledStridedLayout.from_strides(strides, tile_bounds, offset)
             )
 
         # list of all ops that need to be inserted
