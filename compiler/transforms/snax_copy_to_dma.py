@@ -136,7 +136,7 @@ def extract_offset(memreftype: MemRefType):
         int: The extracted offset
     """
     if isinstance(memreftype.layout, StridedLayoutAttr):
-        return memreftype.layout.offset
+        return memreftype.layout.offset.data
 
     return 0
 
@@ -315,8 +315,8 @@ class TransformDMA(RewritePattern):
             func_call = func.Call(
                 "snax_dma_2d_transfer",
                 [
-                    pointer_src.aligned_pointer,
-                    pointer_dst.aligned_pointer,
+                    pointer_src,
+                    pointer_dst,
                     dma_size.result,
                     dma_stride_src.result,
                     dma_stride_dst.result,
