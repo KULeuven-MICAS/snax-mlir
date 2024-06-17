@@ -110,7 +110,9 @@ def extract_strides(memreftype: MemRefType):
     if isinstance(memreftype.layout, StridedLayoutAttr):
         strides = memreftype.layout.strides.data
         element_stride = memreftype.element_type.width.data // 8
-        strides = [x.data * element_stride if isinstance(x, IntAttr) else None for x in strides]
+        strides = [
+            x.data * element_stride if isinstance(x, IntAttr) else None for x in strides
+        ]
     elif isinstance(memreftype.layout, NoneAttr):
         # default to row-major layout, construct strides
         # based on shape of the memref type
