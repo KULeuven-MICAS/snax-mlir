@@ -148,7 +148,7 @@ class TiledStridedLayout:
 
         # provide default result of single element common
         # contiguous block if none larger is found
-        default_result: list[Stride] = [Stride(1, 1)]
+        default_result: list[Stride] = [Stride(starting_stride, 1)]
 
         # find largest contiguous block
         current_stride = starting_stride
