@@ -58,7 +58,6 @@ int main() {
   int nerr = 0;
   for (int i = 0; i < N; i++) {
     int32_t error = memrefD.aligned_data[i] - G[i];
-    printf("%d) error = %d\n",i, error);
     if (error != 0)
       nerr += 1;
   }
