@@ -74,24 +74,14 @@
 //CHECK-NEXT:     %5 = "memref.dim"(%arg0, %4) : (memref<5x5xi32, strided<[10, 1]>>, index) -> index
 //CHECK-NEXT:     %6 = "arith.constant"() <{"value" = 5 : index}> : () -> index
 //CHECK-NEXT:     %7 = "arith.constant"() <{"value" = 5 : index}> : () -> index
-//CHECK-NEXT:     %8 = "arith.constant"() <{"value" = 10 : index}> : () -> index
-//CHECK-NEXT:     %9 = "arith.constant"() <{"value" = 1 : index}> : () -> index
-//CHECK-NEXT:     %10 = "arith.constant"() <{"value" = 10 : index}> : () -> index
-//CHECK-NEXT:     %11 = "arith.constant"() <{"value" = 20 : index}> : () -> index
-//CHECK-NEXT:     %12 = "arith.constant"() <{"value" = 1 : index}> : () -> index
-//CHECK-NEXT:     %13 = "arith.constant"() <{"value" = 20 : index}> : () -> index
-//CHECK-NEXT:     %14 = "arith.constant"() <{"value" = 1 : index}> : () -> index
-//CHECK-NEXT:     %15 = "arith.constant"() <{"value" = 0 : index}> : () -> index
-//CHECK-NEXT:     %16 = "arith.constant"() <{"value" = 1 : index}> : () -> index
-//CHECK-NEXT:     "scf.for"(%15, %7, %16) ({
-//CHECK-NEXT:     ^1(%17 : index):
-//CHECK-NEXT:       %18 = "arith.muli"(%17, %9) : (index, index) -> index
-//CHECK-NEXT:       %19 = "arith.addi"(%0, %18) : (index, index) -> index
-//CHECK-NEXT:       %20 = "arith.muli"(%17, %12) : (index, index) -> index
-//CHECK-NEXT:       %21 = "arith.addi"(%1, %20) : (index, index) -> index
-//CHECK-NEXT:       "func.call"(%19, %21, %14, %10, %13, %6) <{"callee" = @snax_dma_2d_transfer}> : (index, index, index, index, index, index) -> ()
-//CHECK-NEXT:       "scf.yield"() : () -> ()
-//CHECK-NEXT:     }) : (index, index, index) -> ()
+//CHECK-NEXT:     %8 = "arith.constant"() <{"value" = 40 : index}> : () -> index
+//CHECK-NEXT:     %9 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %10 = "arith.constant"() <{"value" = 40 : index}> : () -> index
+//CHECK-NEXT:     %11 = "arith.constant"() <{"value" = 80 : index}> : () -> index
+//CHECK-NEXT:     %12 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %13 = "arith.constant"() <{"value" = 80 : index}> : () -> index
+//CHECK-NEXT:     %14 = "arith.constant"() <{"value" = 20 : index}> : () -> index
+//CHECK-NEXT:     "func.call"(%0, %1, %14, %10, %13, %6) <{"callee" = @snax_dma_2d_transfer}> : (index, index, index, index, index, index) -> ()
 //CHECK-NEXT:     "func.return"() : () -> ()
 //CHECK-NEXT:   }) : () -> ()
 //CHECK-NEXT:   "func.func"() <{"sym_name" = "snax_dma_2d_transfer", "function_type" = (index, index, index, index, index, index) -> (), "sym_visibility" = "private"}> ({
