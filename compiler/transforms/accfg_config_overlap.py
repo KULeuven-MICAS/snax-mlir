@@ -120,7 +120,7 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
        yield %l1
      }
     ```
-    The setup will then be lifted before the await by teh BlockLevelSetupAwaitOverlapPattern.
+    The setup will then be lifted before the await by the BlockLevelSetupAwaitOverlapPattern.
 
     This will result in an additional setup that is unused (in the last iteration of the loop), but seeing as this
     is happening during an await anyway, we won't focus much in it for now.
