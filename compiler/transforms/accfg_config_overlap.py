@@ -137,11 +137,15 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
             return
 
         # only apply if there is a launch op in the same block:
-        if not any(isinstance(use.operation, accfg.LaunchOp) for use in op.out_state.uses):
+        if not any(
+            isinstance(use.operation, accfg.LaunchOp) for use in op.out_state.uses
+        ):
             return
         if not all(
             launch.operation.parent_block() is op.parent_block()
-            for launch in filter(lambda x: isinstance(x.operation, accfg.LaunchOp), op.out_state.uses)
+            for launch in filter(
+                lambda x: isinstance(x.operation, accfg.LaunchOp), op.out_state.uses
+            )
         ):
             return
 
