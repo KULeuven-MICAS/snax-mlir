@@ -213,7 +213,7 @@ func.func @double_setup_loop(%A : i32, %B : i32, %lb : i32, %ub : i32, %step : i
     %t1 = "accfg.launch"(%l1) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
     "accfg.await"(%t1) : (!accfg.token<"simple">) -> ()
 
-    // second setup, sets ub %B
+    // second setup, sets up %B
     %i2 = arith.addi %i, %i : i32
     %l2 = accfg.setup "simple" from %l1 to ("A" = %B : i32, "B" = %B : i32, "i" = %i2 : i32) : !accfg.state<"simple">
     %t2 = "accfg.launch"(%l2) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
