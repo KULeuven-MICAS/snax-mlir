@@ -63,7 +63,7 @@ class MergeSetupOps(RewritePattern):
                 and prev_op.accelerator == op.accelerator
             ):
                 break
-            # if we encounter a not-pure op, we abort
+            # if we encounter an op with side effects, we abort
             if not is_side_effect_free(prev_op):
                 return
             prev_op = prev_op.prev_op
