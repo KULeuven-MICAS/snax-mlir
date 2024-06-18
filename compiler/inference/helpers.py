@@ -106,6 +106,17 @@ def find_existing_block_arg(block: Block, accel: str) -> BlockArgument | None:
     return None
 
 
+def previous_ops_of(op: Operation) -> Generator[Operation, None, None]:
+    """
+    Walks up the block and yields the ops preceeding `op` until the start of the block.
+
+    Does not recurse into operations.
+    """
+    while op.prev_op is not None:
+        yield op.prev_op
+        op = op.prev_op
+
+
 def iter_ops_range(
     start_op: Operation | None, end_op: Operation | None
 ) -> Generator[Operation, None, None]:

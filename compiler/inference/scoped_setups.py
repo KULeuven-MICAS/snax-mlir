@@ -123,12 +123,51 @@ class ScopedSetupWithInputs:
 
     Has a couple of helper methods for:
 
-    1. Moving the setup and inputs to be at least above a certain point (inside the same block)
+    - Moving the setup and inputs to be at least above a certain point (inside the same block)
+    - Insert all the input ops and setup op at a specific position
+    - Clone everything with new input ops
+    - Erase the setup op
     """
 
     setup: accfg.SetupOp
     dependent_vars: tuple[SSAValue, ...]
     inputs: tuple[Operation, ...]
+
+    def insert_at_position(self, rewriter: PatternRewriter, point: InsertPoint):
+        rewriter.insert_op((*self.inputs, self.setup), point)
+
+    def copy_with_new_dependent_vals(
+        self: ScopedSetupWithInputs, new_dependent_vars: tuple[SSAValue, ...]
+    ) -> ScopedSetupWithInputs:
+        """
+        Copy the scoped setup and replace all inputs with new inputs, replacing dependent_vars with new_dependent_vars.
+
+        Returns a new scoped setup.
+        """
+        ops = []
+        # map the old inputs to the new inputs
+        mapper: dict[SSAValue, SSAValue] = dict(
+            zip(self.dependent_vars, new_dependent_vars, strict=True)
+        )
+        # for each operation that calculates the setup input:
+        for op in self.inputs:
+            # clone it, replacing the old inputs with the new inputs
+            new_op = op.clone(value_mapper=mapper)
+            # use the results of the new op in place of the old ops results
+            for old, new in zip(op.results, new_op.results):
+                mapper[old] = new
+            ops.append(new_op)
+
+        return ScopedSetupWithInputs(
+            self.setup.clone(value_mapper=mapper), new_dependent_vars, tuple(ops)
+        )
+
+    def erase(self, replacement_state: SSAValue, rewriter: PatternRewriter):
+        """
+        Erase the setup op, keeping the inputs in place (they can be erased by cse)
+        """
+        self.setup.out_state.replace_by(replacement_state)
+        rewriter.erase_op(self.setup)
 
     def lazy_move_up(self, scope: Block, pt: InsertPoint, rewriter: PatternRewriter):
         """
