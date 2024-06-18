@@ -43,7 +43,7 @@ Some further restrictions:
 
 A scoped setup can be:
 
-- Moved
+- Moved a bit (see `lazy_move_up` for more details)
 """
 
 from __future__ import annotations
@@ -121,9 +121,9 @@ class ScopedSetupWithInputs:
     - dependent_vars: SSA values that we know are loop-dependent
     - inputs: A sequence of Operations that are dependent on the depdendent_var and need to be moved with the setup op
 
-    Has three helpers to:
+    Has a couple of helper methods for:
 
-    1. Move the setup and inputs to be at least above a certain point
+    1. Moving the setup and inputs to be at least above a certain point (inside the same block)
     """
 
     setup: accfg.SetupOp
@@ -132,9 +132,38 @@ class ScopedSetupWithInputs:
 
     def lazy_move_up(self, scope: Block, pt: InsertPoint, rewriter: PatternRewriter):
         """
-        This method will move operations such that all inputs are located above the insertion point.
+        This method will move operations inside a block such that all inputs are located above the insertion point.
 
         Operations that are already above the insertion point won't be moved.
+
+        All operations must be in the `scope` block.
+
+        An example move (before):
+
+        ```
+        %v = arith.constant 8 : i32        // <<---- in scope
+
+        "test.op"()                        // <<---- move here
+
+        %other = arith.constant 144 : i32  // <<---- not in scope
+
+        %v2 = arith.constant 4 : i32       // <<---- in scope
+
+        %s1 = accfg.setup "test" to ("A" = %v : i32, "B" = %v2 : i32)   // <<---- setup op
+        ```
+
+        after calling lazy_move_up(InsertionPoint.before("test.op"()):
+        ```
+        %v = arith.constant 8 : i32        // <<---- not moved
+
+        %v2 = arith.constant 4 : i32       // <<---- moved
+
+        %s1 = accfg.setup "test" to ("A" = %v : i32, "B" = %v2 : i32)   // <<---- moved
+
+        "test.op"()                        // <<---- not moved
+
+        %other = arith.constant 144 : i32  // <<---- not moved
+        ```
         """
         assert (
             pt.insert_before is not None

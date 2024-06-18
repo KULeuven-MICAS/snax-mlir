@@ -76,7 +76,8 @@ class BlockLevelSetupAwaitOverlapPattern(RewritePattern):
         ):
             return
 
-        inputs.lazy_move_up(  # and move the setup and inputs to be right behind the launch
+        # and move the setup and inputs to be right behind the launch
+        inputs.lazy_move_up(
             parent_block,
             InsertPoint.after(launch),
             rewriter,
