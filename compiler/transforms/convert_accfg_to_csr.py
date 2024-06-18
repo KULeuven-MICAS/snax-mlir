@@ -133,7 +133,7 @@ class DeleteAllStates(RewritePattern):
                 regions=[reg.clone() for reg in op.regions],
             )
             # replace the op
-            rewriter.replace_op(op, new_op)
+            rewriter.replace_op(op, new_op, safe_erase=False)
             op = new_op
 
         # then we check if any of the results are of the offending type
@@ -172,14 +172,16 @@ class DeleteAllStates(RewritePattern):
                 for res in op.results
             ]
             # and then we replace the offending operation
-            rewriter.replace_op(op, new_op, new_results=replace_results_by)
+            rewriter.replace_op(
+                op, new_op, new_results=replace_results_by, safe_erase=False
+            )
 
         # also clean up all block arguments
         for region in op.regions:
             for block in region.blocks:
                 for arg in block.args:
                     if isinstance(arg.type, accfg.StateType):
-                        rewriter.erase_block_argument(arg)
+                        rewriter.erase_block_argument(arg, safe_erase=False)
 
 
 class RemoveAcceleratorOps(RewritePattern):
