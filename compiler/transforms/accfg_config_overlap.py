@@ -111,7 +111,7 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
 
     ```
      %s0 = setup ... // loop-initial state
-     %l1 = setup from %l0 to ("i" = %lb)
+     %l1 = setup from %s0 to ("i" = %lb)
      scf.for (%i = %lb to %ub step %step) iter_args(%l0 = %s0) ... {
        %t = launch(%l0)
        await(%t)
