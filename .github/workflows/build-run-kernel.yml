@@ -5,43 +5,33 @@ on:
     branches:
       - main
   pull_request:
-  workflow_dispatch:
-    inputs:
-      container-tag:
-        description: 'Container tag'
-        required: true
-        default: 'main'
 
 jobs:
   build-and-run-kernels:
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/kuleuven-micas/snax-mlir:${{ github.event.inputs.container-tag || 'main' }}
+      image: ghcr.io/kuleuven-micas/snax:v0.1.0
     steps:
       - uses: actions/checkout@v3
       - name: Install snax compiler
         run: |
-          /opt/python3.11/bin/python3 -m pip install -e .
+          python3 -m pip install -e .
       - name: Reinstall pip modules from requirements
         run: |
-          /opt/python3.11/bin/python3 -m pip install -r requirements.txt
+          python3 -m pip install -r requirements.txt
       - name: Build and run kernel simple mult
         run: |
-          export PATH=/opt/python3.11/bin:$PATH
           make allrun
         working-directory: kernels/simple_mult
       - name: Build and run kernel simple copy
         run: |
-          export PATH=/opt/python3.11/bin:$PATH
           make allrun
         working-directory: kernels/simple_copy
       - name: Build and run kernel transform_copy
         run: |
-          export PATH=/opt/python3.11/bin:$PATH
           make allrun
         working-directory: kernels/transform_copy
       - name: Build and run kernel simple_matmul
         run: |
-          export PATH=/opt/python3.11/bin:$PATH
           make allrun
         working-directory: kernels/simple_matmul
