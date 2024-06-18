@@ -136,6 +136,9 @@ def extract_offset(memreftype: MemRefType):
         int: The extracted offset
     """
     if isinstance(memreftype.layout, StridedLayoutAttr):
+        # Dynamic offset
+        if isinstance(memreftype.layout.offset, NoneAttr):
+            return None
         el_bytes = memreftype.element_type.width.data // 8
         return memreftype.layout.offset.data * el_bytes
 
