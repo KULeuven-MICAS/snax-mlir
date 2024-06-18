@@ -51,7 +51,7 @@ class SNAXOptMain(xDSLOptMain):
         self.ctx.load_dialect(Snax)
         self.ctx.load_dialect(TSL)
         # TODO: this is needed with newer xDSL as they now also have the dialect
-        del self.ctx._registered_dialects["accfg"]  # pyright: ignore#
+        self.ctx._registered_dialects.pop("accfg", None)
 
         self.ctx.load_dialect(ACCFG)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
