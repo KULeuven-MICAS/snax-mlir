@@ -43,9 +43,7 @@ Some further restrictions:
 
 A scoped setup can be:
 
-- Copied with new inputs
-- Moved
-- Erased
+- Moved a bit (see `lazy_move_up` for more details)
 """
 
 from __future__ import annotations
@@ -77,7 +75,7 @@ def get_scoped_setup_inputs(
     while vals_to_inspect:
         # grab a value to inspect
         val = vals_to_inspect.pop(0)
-        # check if it's one of the loop dependent variables we are looking at
+        # check if it's one of the block arguments we are looking at
         if val in input_vars:
             # if it is, we have walked the use-def chain to its conclusion
             continue
@@ -88,7 +86,7 @@ def get_scoped_setup_inputs(
         if isinstance(val.owner, Block):
             # shrug, idk what to do here
             print(
-                f"constructung pure input tree for setup {setup_op} failed on block argument {val} of:\n"
+                f"constructing pure input tree for setup {setup_op} failed on block argument {val} of:\n"
                 f"{val.owner.parent_op()}",
                 file=sys.stderr,
             )
@@ -107,6 +105,7 @@ def get_scoped_setup_inputs(
                     f"Op with effects in use-def chain upwards of setup {setup_op}: {val.owner}",
                     file=sys.stderr,
                 )
+                return None
 
     return ScopedSetupWithInputs(
         setup_op, input_vars, tuple(reversed(inputs))  # reverse order
@@ -116,18 +115,18 @@ def get_scoped_setup_inputs(
 @dataclass
 class ScopedSetupWithInputs:
     """
-    This dataclass represents a setup inside a loop that is loop variable dependent.
+    This dataclass represents a setup inside a block that is block-argument dependent.
 
     - setup: The setup operation
     - dependent_vars: SSA values that we know are loop-dependent
     - inputs: A sequence of Operations that are dependent on the depdendent_var and need to be moved with the setup op
 
-    Has three helpers to:
+    Has a couple of helper methods for:
 
-    1. Insert all the input ops and setup op at a specific position
-    2. Clone everything with new input ops
-    3. Erase the setup op
-    4. Move the setup and inputs to be at least above a certain point
+    - Moving the setup and inputs to be at least above a certain point (inside the same block)
+    - Insert all the input ops and setup op at a specific position
+    - Clone everything with new input ops
+    - Erase the setup op
     """
 
     setup: accfg.SetupOp
@@ -172,16 +171,45 @@ class ScopedSetupWithInputs:
 
     def lazy_move_up(self, scope: Block, pt: InsertPoint, rewriter: PatternRewriter):
         """
-        This method will move operations such that all inputs are located above the insertion point.
+        This method will move operations inside a block such that all inputs are located above the insertion point.
 
         Operations that are already above the insertion point won't be moved.
+
+        All operations must be in the `scope` block.
+
+        An example move (before):
+
+        ```
+        %v = arith.constant 8 : i32        // <<---- in scope
+
+        "test.op"()                        // <<---- move here
+
+        %other = arith.constant 144 : i32  // <<---- not in scope
+
+        %v2 = arith.constant 4 : i32       // <<---- in scope
+
+        %s1 = accfg.setup "test" to ("A" = %v : i32, "B" = %v2 : i32)   // <<---- setup op
+        ```
+
+        after calling lazy_move_up(InsertionPoint.before("test.op"()):
+        ```
+        %v = arith.constant 8 : i32        // <<---- not moved
+
+        %v2 = arith.constant 4 : i32       // <<---- moved
+
+        %s1 = accfg.setup "test" to ("A" = %v : i32, "B" = %v2 : i32)   // <<---- moved
+
+        "test.op"()                        // <<---- not moved
+
+        %other = arith.constant 144 : i32  // <<---- not moved
+        ```
         """
         assert (
             pt.insert_before is not None
         ), "can't move to end of block! (malformed IR)"
         assert (
             pt.insert_before.parent_block() is scope
-        ), "Can't move operations to an insertion point that is not directly in $scope!"
+        ), "Can't move operations to an insertion point that is not directly in scope!"
 
         # don't do anything if the insertion point is one of our ops:
         if pt.insert_before in self.inputs or pt.insert_before is self.setup:
