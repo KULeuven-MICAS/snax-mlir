@@ -2,13 +2,17 @@ from xdsl.dialects import builtin
 from xdsl.ir import MLContext, Operation, Use
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
+    GreedyRewritePatternApplier,
     PatternRewriter,
     PatternRewriteWalker,
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.rewriter import InsertPoint
 
 from compiler.dialects import accfg
+from compiler.inference.helpers import iter_ops_range
+from compiler.inference.scoped_setups import get_scoped_setup_inputs
 
 
 class BlockLevelSetupAwaitOverlapPattern(RewritePattern):
@@ -53,10 +57,31 @@ class BlockLevelSetupAwaitOverlapPattern(RewritePattern):
         if launch.next_op is op:
             return
 
-        # detach the setup op
-        op.detach()
-        # insert the op right after the launch
-        rewriter.insert_op_after(op, launch)
+        # grab the parent block, which can't be none (we know that)
+        parent_block = op.parent_block()
+        assert parent_block is not None
+
+        # grab the setup op with all inputs in this block
+        inputs = get_scoped_setup_inputs(op, parent_block)
+
+        # if we have immovable inputs, abort
+        # TODO: it is fine if the immovable inputs are *before* the launch op anyway, as we only
+        #       care about ops up until the launch op. We can implement this later if it's a problem.
+        if inputs is None:
+            return
+
+        # if all the ops between launch and setup are input ops, then there's nothing to move!
+        if all(
+            between_op in inputs.inputs for between_op in iter_ops_range(launch, op)
+        ):
+            return
+
+        # and move the setup and inputs to be right behind the launch
+        inputs.lazy_move_up(
+            parent_block,
+            InsertPoint.after(launch),
+            rewriter,
+        )
 
 
 class AccfgConfigOverlapPass(ModulePass):
@@ -67,7 +92,13 @@ class AccfgConfigOverlapPass(ModulePass):
     name = "accfg-config-overlap"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(BlockLevelSetupAwaitOverlapPattern()).rewrite_module(op)
+        PatternRewriteWalker(
+            GreedyRewritePatternApplier(
+                [
+                    BlockLevelSetupAwaitOverlapPattern(),
+                ]
+            )
+        ).rewrite_module(op)
 
 
 def get_ops_from_uses(uses: set[Use]) -> tuple[Operation, ...]:

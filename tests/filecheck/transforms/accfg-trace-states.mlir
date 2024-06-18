@@ -7,9 +7,13 @@
 func.func @simple() {
     %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
 
-    %s1 = "accfg.setup"(%A, %B, %O, %nr_iters) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !accfg.state<"snax_hwpe_mult">
+    %s1 = accfg.setup "snax_hwpe_mult" to (
+        "A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32
+    ) : !accfg.state<"snax_hwpe_mult">
 
-    %s2 = "accfg.setup"(%A, %B, %O, %nr_iters) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !accfg.state<"snax_hwpe_mult">
+    %s2 = accfg.setup "snax_hwpe_mult" to (
+        "A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32
+    ) : !accfg.state<"snax_hwpe_mult">
 
     return
 }
