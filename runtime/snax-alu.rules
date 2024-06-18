@@ -1,0 +1,3 @@
+# Specific settings for snax-alu RTL
+SNITCH_SW_PATH = /opt/snax-gemm
+VLTSIM        = /opt/snax-alu-rtl/bin/snitch_cluster.vlt
