@@ -135,6 +135,16 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
         for_op = op.parent_op()
         if not isinstance(for_op, scf.For):
             return
+
+        # only apply if there is a launch op in the same block:
+        if not any(isinstance(use.operation, accfg.LaunchOp) for use in op.out_state.uses):
+            return
+        if not all(
+            launch.operation.parent_block() is op.parent_block()
+            for launch in filter(lambda x: isinstance(x.operation, accfg.LaunchOp), op.out_state.uses)
+        ):
+            return
+
         # also grab the yield op, will be needed later
         yield_op = for_op.body.block.last_op
         assert isinstance(yield_op, scf.Yield)
