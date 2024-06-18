@@ -14,7 +14,7 @@
 
 "builtin.module"() ({
   %0 = "test.op"() : () -> (index)
-  %1 = "snax.alloc"(%0, %0, %0) <{"memory_space" = 1 : i32, "alignment" = 64 : i32}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+  %1 = "snax.alloc"(%0, %0, %0) <{"memory_space" = "L1", "alignment" = 64 : i32}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 }) : () -> ()
 
 // CHECK: "builtin.module"() ({

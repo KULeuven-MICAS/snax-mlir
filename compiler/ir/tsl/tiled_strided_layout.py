@@ -27,7 +27,7 @@ class TiledStridedLayout:
 
     @staticmethod
     def from_strides(
-        strides: list[int], tile_bounds: list[int], offset: int = 0
+        strides: list[int | None], tile_bounds: list[list[int | None]], offset: int = 0
     ) -> TiledStridedLayout:
         """Create a TiledStridedLayout from a list of strides and tile bounds
 

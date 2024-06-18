@@ -11,31 +11,31 @@ builtin.module {
 
   func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg2 : memref<?xi32>, %i1 : i1) {
     %0 = arith.constant 0 : index
-    %cst_0 = arith.constant 0 : i5
+    %cst = arith.constant 0 : i5
     %1 = "memref.extract_aligned_pointer_as_index"(%arg0) : (memref<?xi32>) -> index
-    %2 = "arith.index_cast"(%1) : (index) -> i32
+    %2 = arith.index_cast %1 : index to i32
     %3 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<?xi32>) -> index
-    %4 = "arith.index_cast"(%3) : (index) -> i32
+    %4 = arith.index_cast %3 : index to i32
     %5 = "memref.extract_aligned_pointer_as_index"(%arg2) : (memref<?xi32>) -> index
-    %6 = "arith.index_cast"(%5) : (index) -> i32
+    %6 = arith.index_cast %5 : index to i32
     %7 = "memref.dim"(%arg0, %0) : (memref<?xi32>, index) -> index
-    %8 = "arith.index_cast"(%7) : (index) -> i32
+    %8 = arith.index_cast %7 : index to i32
     %9 = "accfg.setup"(%2, %4, %6, %8) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !accfg.state<"snax_hwpe_mult">
-    %10 = "accfg.launch"(%cst_0, %9) <{"param_names" = ["launch"] ,"accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+    %10 = "accfg.launch"(%cst, %9) <{"param_names" = ["launch"] ,"accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
     "accfg.await"(%10) : (!accfg.token<"snax_hwpe_mult">) -> ()
     %13 = "scf.if"(%i1) ({
       %14 = "accfg.setup"(%6, %9) <{"param_names" = ["B"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 1, 1>}> : (i32, !accfg.state<"snax_hwpe_mult">) -> !accfg.state<"snax_hwpe_mult">
-      %15 = "accfg.launch"(%cst_0, %14) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+      %15 = "accfg.launch"(%cst, %14) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
       "accfg.await"(%15) : (!accfg.token<"snax_hwpe_mult">) -> ()
       %17 = "accfg.setup"(%4, %14) <{"param_names" = ["O"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 1, 1>}> : (i32, !accfg.state<"snax_hwpe_mult">) -> !accfg.state<"snax_hwpe_mult">
       scf.yield %17 : !accfg.state<"snax_hwpe_mult">
     }, {
-      %19 = "accfg.launch"(%cst_0, %9) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+      %19 = "accfg.launch"(%cst, %9) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
       "accfg.await"(%19) : (!accfg.token<"snax_hwpe_mult">) -> ()
       %20 = "accfg.setup"(%6, %4, %9) <{"param_names" = ["B", "O"], "accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 2, 1>}> : (i32, i32, !accfg.state<"snax_hwpe_mult">) -> !accfg.state<"snax_hwpe_mult">
       scf.yield %20 : !accfg.state<"snax_hwpe_mult">
     }) : (i1) -> (!accfg.state<"snax_hwpe_mult">)
-    %21 = "accfg.launch"(%cst_0, %13) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+    %21 = "accfg.launch"(%cst, %13) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
     "accfg.await"(%21) : (!accfg.token<"snax_hwpe_mult">) -> ()
     func.return
   }
@@ -44,15 +44,15 @@ builtin.module {
 // CHECK-NEXT: builtin.module {
 // CHECK-NEXT:   func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg2 : memref<?xi32>, %i1 : i1) {
 // CHECK-NEXT:     %0 = arith.constant 0 : index
-// CHECK-NEXT:     %cst_0 = arith.constant 0 : i5
+// CHECK-NEXT:     %cst = arith.constant 0 : i5
 // CHECK-NEXT:     %1 = "memref.extract_aligned_pointer_as_index"(%arg0) : (memref<?xi32>) -> index
-// CHECK-NEXT:     %2 = "arith.index_cast"(%1) : (index) -> i32
+// CHECK-NEXT:     %2 = arith.index_cast %1 : index to i32
 // CHECK-NEXT:     %3 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<?xi32>) -> index
-// CHECK-NEXT:     %4 = "arith.index_cast"(%3) : (index) -> i32
+// CHECK-NEXT:     %4 = arith.index_cast %3 : index to i32
 // CHECK-NEXT:     %5 = "memref.extract_aligned_pointer_as_index"(%arg2) : (memref<?xi32>) -> index
-// CHECK-NEXT:     %6 = "arith.index_cast"(%5) : (index) -> i32
+// CHECK-NEXT:     %6 = arith.index_cast %5 : index to i32
 // CHECK-NEXT:     %7 = "memref.dim"(%arg0, %0) : (memref<?xi32>, index) -> index
-// CHECK-NEXT:     %8 = "arith.index_cast"(%7) : (index) -> i32
+// CHECK-NEXT:     %8 = arith.index_cast %7 : index to i32
 // CHECK-NEXT:     %9 = arith.constant 976 : i64
 // CHECK-NEXT:     "llvm.inline_asm"(%9, %2) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
 // CHECK-NEXT:     %10 = arith.constant 977 : i64
@@ -62,7 +62,7 @@ builtin.module {
 // CHECK-NEXT:     %12 = arith.constant 981 : i64
 // CHECK-NEXT:     "llvm.inline_asm"(%12, %8) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
 // CHECK-NEXT:     %13 = arith.constant 960 : i64
-// CHECK-NEXT:     "llvm.inline_asm"(%13, %cst_0) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
+// CHECK-NEXT:     "llvm.inline_asm"(%13, %cst) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
 // CHECK-NEXT:     scf.while () : () -> () {
 // CHECK-NEXT:       %14 = arith.constant 963 : i64
 // CHECK-NEXT:       %15 = arith.constant 0 : i32
@@ -82,7 +82,7 @@ builtin.module {
 // CHECK-NEXT:       %20 = arith.constant 977 : i64
 // CHECK-NEXT:       "llvm.inline_asm"(%20, %6) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
 // CHECK-NEXT:       %21 = arith.constant 960 : i64
-// CHECK-NEXT:       "llvm.inline_asm"(%21, %cst_0) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
+// CHECK-NEXT:       "llvm.inline_asm"(%21, %cst) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
 // CHECK-NEXT:       scf.while () : () -> () {
 // CHECK-NEXT:         %22 = arith.constant 963 : i64
 // CHECK-NEXT:         %23 = arith.constant 0 : i32
@@ -103,7 +103,7 @@ builtin.module {
 // CHECK-NEXT:       scf.yield
 // CHECK-NEXT:     }, {
 // CHECK-NEXT:       %29 = arith.constant 960 : i64
-// CHECK-NEXT:       "llvm.inline_asm"(%29, %cst_0) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
+// CHECK-NEXT:       "llvm.inline_asm"(%29, %cst) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
 // CHECK-NEXT:       scf.while () : () -> () {
 // CHECK-NEXT:         %30 = arith.constant 963 : i64
 // CHECK-NEXT:         %31 = arith.constant 0 : i32
@@ -126,7 +126,7 @@ builtin.module {
 // CHECK-NEXT:       scf.yield
 // CHECK-NEXT:     }) : (i1) -> ()
 // CHECK-NEXT:     %38 = arith.constant 960 : i64
-// CHECK-NEXT:     "llvm.inline_asm"(%38, %cst_0) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
+// CHECK-NEXT:     "llvm.inline_asm"(%38, %cst) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
 // CHECK-NEXT:     scf.while () : () -> () {
 // CHECK-NEXT:       %39 = arith.constant 963 : i64
 // CHECK-NEXT:       %40 = arith.constant 0 : i32

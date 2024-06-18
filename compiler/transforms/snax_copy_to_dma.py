@@ -109,7 +109,11 @@ def extract_strides(memreftype: MemRefType):
     """
     if isinstance(memreftype.layout, StridedLayoutAttr):
         strides = memreftype.layout.strides.data
-        strides = [x.data if isinstance(x, IntAttr) else None for x in strides]
+        # bits to bytes:
+        element_stride = memreftype.element_type.width.data // 8
+        strides = [
+            x.data * element_stride if isinstance(x, IntAttr) else None for x in strides
+        ]
     elif isinstance(memreftype.layout, NoneAttr):
         # default to row-major layout, construct strides
         # based on shape of the memref type
@@ -151,32 +155,40 @@ class TransformDMA(RewritePattern):
         if isinstance(op.source.type.layout, TiledStridedLayoutAttr):
             tsl_source = op.source.type.layout
         else:
-            # destination should be tsl
-            if not isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
-                return
             strides = extract_strides(op.source.type)
             if not strides:
                 return
+            if isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
+                # if destination is tsl, use those tile sizes
+                tile_bounds = op.destination.type.layout.data.tile_bounds()
+            else:
+                # otherwise, shape can be used as single-dimension tile sizes
+                tile_bounds = [shape.data for shape in op.source.type.shape.data]
+                # change dynamic size -1 to None
+                tile_bounds = [[x] if x > 0 else [None] for x in tile_bounds]
+                pass
             tsl_source = TiledStridedLayoutAttr(
-                TiledStridedLayout.from_strides(
-                    strides, op.destination.type.layout.data.tile_bounds()
-                )
+                TiledStridedLayout.from_strides(strides, tile_bounds)
             )
 
         # if dest is not tsl, construct representation:
         if isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
             tsl_dest = op.destination.type.layout
         else:
-            # source should be tsl
-            if not isinstance(op.source.type.layout, TiledStridedLayoutAttr):
-                return
             strides = extract_strides(op.destination.type)
             if not strides:
                 return
+            if isinstance(op.source.type.layout, TiledStridedLayoutAttr):
+                # if destination is tsl, use those tile sizes
+                tile_bounds = op.source.type.layout.data.tile_bounds()
+            else:
+                # otherwise, shape can be used as single-dimension tile sizes
+                tile_bounds = [shape.data for shape in op.destination.type.shape.data]
+                # change dynamic size -1 to None
+                tile_bounds = [[x] if x > 0 else [None] for x in tile_bounds]
+                pass
             tsl_dest = TiledStridedLayoutAttr(
-                TiledStridedLayout.from_strides(
-                    strides, op.source.type.layout.data.tile_bounds()
-                )
+                TiledStridedLayout.from_strides(strides, tile_bounds)
             )
 
         # list of all ops that need to be inserted

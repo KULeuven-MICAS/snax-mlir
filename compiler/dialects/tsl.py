@@ -3,7 +3,7 @@ from __future__ import annotations
 from math import prod
 
 from xdsl.dialects.arith import Constant, DivUI, Muli
-from xdsl.dialects.builtin import IndexType
+from xdsl.dialects.builtin import IndexType, MemrefLayoutAttr
 from xdsl.dialects.memref import Dim
 from xdsl.ir import Data, Dialect, Operation, SSAValue
 from xdsl.irdl import (
@@ -17,7 +17,7 @@ from compiler.parser.tsl_parser import TSLParser
 
 
 @irdl_attr_definition
-class TiledStridedLayoutAttr(Data[TiledStridedLayout]):
+class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
     """An Attribute containing an TiledStridedLayout object."""
 
     name = "tsl.tsl"
