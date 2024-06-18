@@ -10,6 +10,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.traits import SymbolTable
 
 from compiler.dialects import snax
+from compiler.util.snax_memory import L1
 
 
 class InsertFunctionCall(RewritePattern):
@@ -46,10 +47,7 @@ class AllocToFunc(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, alloc_op: snax.Alloc, rewriter: PatternRewriter):
         ## only supporting L1 allocation for now
-        if not (
-            isinstance(alloc_op.memory_space, builtin.IntegerAttr)
-            and alloc_op.memory_space.value.data == 1
-        ):
+        if alloc_op.memory_space != L1:
             return
 
         def dense_array(pos):

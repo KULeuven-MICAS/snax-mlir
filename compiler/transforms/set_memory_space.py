@@ -8,11 +8,13 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
+from compiler.util.snax_memory import L1, L3
+
 
 class InitFuncMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: func.FuncOp, rewriter: PatternRewriter):
-        """Add a default (0 : i32) memory space to memrefs used in the function
+        """Add a default "L3" memory space to memrefs used in the function
         that do not have a memory space specified yet"""
 
         # Function must be public
@@ -22,22 +24,22 @@ class InitFuncMemorySpace(RewritePattern):
         # Function must have memref arguments with an undefined memory space
         if not any(
             [
-                isinstance(x, memref.MemRefType)
+                isinstance(x, builtin.MemRefType)
                 and isinstance(x.memory_space, builtin.NoneAttr)
                 for x in [*op.function_type.inputs, *op.function_type.outputs]
             ]
         ):
             return
 
-        # Mapping function to assign default memory space (0 : i32)
+        # Mapping function to assign default memory space "L3"
         def change_to_memory_space(t):
-            if isinstance(t, memref.MemRefType):
+            if isinstance(t, builtin.MemRefType):
                 if isinstance(t.memory_space, builtin.NoneAttr):
-                    return memref.MemRefType(
+                    return builtin.MemRefType(
                         t.element_type,
                         t.get_shape(),
                         t.layout,
-                        builtin.IntegerAttr(0, builtin.i32),
+                        L3,
                     )
             return t
 
@@ -67,19 +69,19 @@ class InitFuncMemorySpace(RewritePattern):
 class InitMemRefGlobalMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.GetGlobal, rewriter: PatternRewriter):
-        # global variables should go in memory space 0 (L3)
+        # global variables should go in memory space L3
         memspace = op.memref.type.memory_space
 
-        # If memory space is already 0, don't do anything
-        if isinstance(memspace, builtin.IntegerAttr) and memspace.value.data == 0:
+        # If memory space is already L3, don't do anything
+        if memspace == L3:
             return
 
         # otherwise, create new memref type with correct memory space
-        new_memref_type = memref.MemRefType(
+        new_memref_type = builtin.MemRefType(
             op.memref.type.element_type,
             op.memref.type.get_shape(),
             op.memref.type.layout,
-            builtin.IntegerAttr(0, builtin.i32),
+            L3,
         )
 
         # create new get_global op
@@ -92,10 +94,10 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
 class InitMemRefAllocMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.Alloc, rewriter: PatternRewriter):
-        # allocs should go in memory space 1 (L1)
+        # allocs should go in memory space L1
         memspace = op.memref.type.memory_space
 
-        if isinstance(memspace, builtin.IntegerAttr) and memspace.value.data == 1:
+        if memspace == L1:
             # good, nothing left to do
             return
 
@@ -106,7 +108,7 @@ class InitMemRefAllocMemorySpace(RewritePattern):
             op.memref.type.get_shape(),
             dynamic_sizes=op.dynamic_sizes,
             layout=op.memref.type.layout,
-            memory_space=builtin.IntegerAttr(1, builtin.i32),
+            memory_space=L1,
         )
 
         # replace op
@@ -115,18 +117,16 @@ class InitMemRefAllocMemorySpace(RewritePattern):
 
 class InitLinalgMemorySpace(RewritePattern):
     """Walk through dispatchable operations (just linalg.Generic for now)
-    and change them to use only memrefs in memory space (1 : i32). If they
+    and change them to use only memrefs in memory space "L1". If they
     currently use a memref in a different memory adress space, insert a
     memref.memory_space_cast operation to convert the two"""
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
-        # Op must have memref arguments with memory space not equal to 1
+        # Op must have memref arguments with memory space not equal to L1
         if not any(
             [
-                isinstance(x.type, memref.MemRefType)
-                and isinstance(x.type.memory_space, builtin.IntegerAttr)
-                and x.type.memory_space.value.data != 1
+                isinstance(x.type, builtin.MemRefType) and x.type.memory_space != L1
                 for x in op.inputs
             ]
         ):
@@ -137,12 +137,9 @@ class InitLinalgMemorySpace(RewritePattern):
             # check if cast is required: must be a memref in wrong memory space
             if not isinstance(operand, SSAValue):
                 return None
-            if not isinstance(operand.type, memref.MemRefType):
+            if not isinstance(operand.type, builtin.MemRefType):
                 return None
-            if (
-                isinstance(operand.type.memory_space, builtin.IntegerAttr)
-                and operand.type.memory_space.value.data == 1
-            ):
+            if operand.type.memory_space == L1:
                 return None
 
             # cast required: find previous cast or create new one
@@ -150,16 +147,15 @@ class InitLinalgMemorySpace(RewritePattern):
             for use in operand.uses:
                 if (
                     isinstance(use.operation, memref.MemorySpaceCast)
-                    and isinstance(use.operation.dest.type, memref.MemRefType)
-                    and use.operation.dest.type.memory_space
-                    == builtin.IntegerAttr(1, builtin.i32)
+                    and isinstance(use.operation.dest.type, builtin.MemRefType)
+                    and use.operation.dest.type.memory_space == L1
                 ):
                     cast_op = use.operation
                     break
             # If cast op not found, create and insert new one
             if cast_op is None:
                 cast_op = memref.MemorySpaceCast.from_type_and_target_space(
-                    operand, operand.type, builtin.IntegerAttr(1, builtin.i32)
+                    operand, operand.type, L1
                 )
                 rewriter.insert_op_before_matched_op(cast_op)
 
@@ -211,10 +207,10 @@ class HandleFuncReturns(RewritePattern):
             func_op_output = outputs[i]
             func_return_output = op.arguments[i]
 
-            if not isinstance(func_op_output, memref.MemRefType):
+            if not isinstance(func_op_output, builtin.MemRefType):
                 new_arguments.append(func_return_output)
                 continue
-            if not isinstance(func_return_output.type, memref.MemRefType):
+            if not isinstance(func_return_output.type, builtin.MemRefType):
                 new_arguments.append(func_return_output)
                 continue
 

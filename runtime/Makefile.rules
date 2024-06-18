@@ -47,8 +47,6 @@ CFLAGS += -fno-common
 CFLAGS += -O3
 
 LDFLAGS += -fuse-ld=$(SNITCH_LLVM_PATH)/ld.lld$(LLVM_VERSION_POSTFIX)
-LDFLAGS += -L/opt/snitch-llvm/lib/clang/12.0.1/lib/
-LDFLAGS += -L/opt/snitch-llvm/riscv32-unknown-elf/lib/
 LDFLAGS += --target=riscv32-unknown-elf
 LDFLAGS += -mcpu=generic-rv32
 LDFLAGS += -march=rv32imafdzfh
@@ -58,8 +56,6 @@ LDFLAGS += -T$(SNITCH_SW_PATH)/sw/snRuntime/base.ld
 LDFLAGS += -L$(SNITCH_SW_PATH)/target/snitch_cluster/sw/runtime/rtl-generic
 LDFLAGS += -L$(SNITCH_SW_PATH)/target/snitch_cluster/sw/runtime/rtl-generic/build
 LDFLAGS += -nostdlib
-LDFLAGS += -lclang_rt.builtins-riscv32
-LDFLAGS += -lc
 LDFLAGS += -lsnRuntime
 
 # useful for debugging at llvm level:
