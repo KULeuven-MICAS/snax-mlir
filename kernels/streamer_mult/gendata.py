@@ -3,7 +3,6 @@ import numpy as np
 from util.gendata import create_data, create_header
 
 if __name__ == "__main__":
-
     # Reset random seed for reproducible behavior
     low_bound = 0
     high_bound = 100
@@ -26,11 +25,7 @@ if __name__ == "__main__":
     O = np.zeros(array_size, dtype=np.dtype("int64"))
     G = A + B
 
-    sizes = {
-        "MODE": 0,
-        "DATA_LEN": array_size,
-        "LOOP_ITER": loop_iter
-    }
+    sizes = {"MODE": 0, "DATA_LEN": array_size, "LOOP_ITER": loop_iter}
     variables = {"A": A, "B": B, "O": O, "G": G}
 
     create_header("data.h", sizes, variables)
