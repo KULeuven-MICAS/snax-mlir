@@ -28,30 +28,59 @@ func.func public @simple_mult(%A: memref<128xi32, "L3">,
     %tile_size = arith.constant 16 : index
     %c128 = arith.constant 128 : index
     %c0 = arith.constant 0 : index
+    %c2 = arith.constant 2 : index
+    // hot loop begins after two tiles
+    %two_tile_size = arith.muli %c2, %tile_size : index                // 2 * tile_size
+    %second_to_last_index = arith.subi %c128, %two_tile_size : index   // all_tiles - 2 * tile_size
+    %last_index = arith.subi %c128, %tile_size: index                  // all_tiles - tile_size
     // Here goes all the code that is run on the DM core
     "scf.if"(%is_dm_core) ({
       // Perform the memory transfer on a subview of the memref
-      scf.for %iv = %c0 to %c128 step %tile_size {
+      %tiled_A_0 = "memref.subview"(%A, %c0, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L3">, index, index) -> memref<?xi32, strided<[1], offset: ?> , "L3">
+      %tiled_B_0 = "memref.subview"(%B, %c0, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L3">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L3">
+      %tiled_A_L1_0 = "memref.subview"(%A_L1, %c0, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      %tiled_B_L1_0 = "memref.subview"(%B_L1, %c0, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      "memref.copy"(%tiled_A_0, %tiled_A_L1_0) : (memref<?xi32, strided<[1], offset:?>, "L3">, memref<?xi32, strided<[1],offset: ?>, "L1">) -> ()
+      "memref.copy"(%tiled_B_0, %tiled_B_L1_0) : (memref<?xi32, strided<[1], offset:?>, "L3">, memref<?xi32, strided<[1],offset: ?>, "L1">) -> ()
+      // Perform the second transfer
+      "snax.cluster_sync_op"() : () -> ()
+      %tiled_A_1 = "memref.subview"(%A, %tile_size, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L3">, index, index) -> memref<?xi32, strided<[1], offset: ?> , "L3">
+      %tiled_B_1 = "memref.subview"(%B, %tile_size, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L3">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L3">
+      %tiled_A_L1_1 = "memref.subview"(%A_L1, %tile_size, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      %tiled_B_L1_1 = "memref.subview"(%B_L1, %tile_size, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      "memref.copy"(%tiled_A_1, %tiled_A_L1_1) : (memref<?xi32, strided<[1], offset:?>, "L3">, memref<?xi32, strided<[1],offset: ?>, "L1">) -> ()
+      "memref.copy"(%tiled_B_1, %tiled_B_L1_1) : (memref<?xi32, strided<[1], offset:?>, "L3">, memref<?xi32, strided<[1],offset: ?>, "L1">) -> ()
+      "snax.cluster_sync_op"() : () -> ()
+      // hot loop, send inputs and outputs
+      scf.for %iv = %two_tile_size to %c128 step %tile_size {
           %tiled_A = "memref.subview"(%A, %iv, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L3">, index, index) -> memref<?xi32, strided<[1], offset: ?> , "L3">
           %tiled_B = "memref.subview"(%B, %iv, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L3">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L3">
           %tiled_A_L1 = "memref.subview"(%A_L1, %iv, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
           %tiled_B_L1 = "memref.subview"(%B_L1, %iv, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
           "memref.copy"(%tiled_A, %tiled_A_L1) : (memref<?xi32, strided<[1], offset:?>, "L3">, memref<?xi32, strided<[1],offset: ?>, "L1">) -> ()
           "memref.copy"(%tiled_B, %tiled_B_L1) : (memref<?xi32, strided<[1], offset:?>, "L3">, memref<?xi32, strided<[1],offset: ?>, "L1">) -> ()
+          // Transfer 2 tiles ago
+          %two_indexes_ago = arith.subi %iv, %two_tile_size : index
+          %tiled_D = "memref.subview"(%D, %two_indexes_ago, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L3">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L3">
+          %tiled_D_L1 = "memref.subview"(%D_L1, %two_indexes_ago, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+          "memref.copy"(%tiled_D_L1, %tiled_D) : (memref<?xi32, strided<[1], offset: ?>, "L1">, memref<?xi32, strided<[1], offset: ?>, "L3">) -> ()
+          // Wait until synchronized with compute core
+          "snax.cluster_sync_op"() : () -> ()
           scf.yield
       }
       // Synchronize with compute core
+      // Send second to last output
+      %tiled_D_0 = "memref.subview"(%D, %second_to_last_index, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L3">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L3">
+      %tiled_D_L1_0 = "memref.subview"(%D_L1, %second_to_last_index, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      "memref.copy"(%tiled_D_L1_0, %tiled_D_0) : (memref<?xi32, strided<[1], offset: ?>, "L1">, memref<?xi32, strided<[1], offset: ?>, "L3">) -> ()
       "snax.cluster_sync_op"() : () -> ()
       // Wait for compute core to finish computing here
+      // Send last output
+      %tiled_D_1 = "memref.subview"(%D, %last_index, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L3">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L3">
+      %tiled_D_L1_1 = "memref.subview"(%D_L1, %last_index, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      "memref.copy"(%tiled_D_L1_1, %tiled_D_1) : (memref<?xi32, strided<[1], offset: ?>, "L1">, memref<?xi32, strided<[1], offset: ?>, "L3">) -> ()
       "snax.cluster_sync_op"() : () -> ()
       // Send back output from L1 to L3
-      scf.for %iv = %c0 to %c128 step %tile_size {
-          %tiled_D = "memref.subview"(%D, %iv, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L3">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L3">
-          %tiled_D_L1 = "memref.subview"(%D_L1, %iv, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64: -9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
-          "memref.copy"(%tiled_D_L1, %tiled_D) : (memref<?xi32, strided<[1], offset: ?>, "L1">, memref<?xi32, strided<[1], offset: ?>, "L3">) -> ()
-          scf.yield
-      }
-      "snax.cluster_sync_op"() : () -> ()
       scf.yield
     },{
       // Don't do anything if not a dm core
@@ -59,9 +88,18 @@ func.func public @simple_mult(%A: memref<128xi32, "L3">,
     }) : (i1) -> ()
     // Here goes all the code that is run on the compute core
     "scf.if"(%is_compute_core) ({
-      // Wait for input to come from DM core
+      // Wait for first input tile to come from DM core
       "snax.cluster_sync_op"() : () -> ()
-      scf.for %iv = %c0 to %c128 step %tile_size {
+      %tiled_A_L1_0 = "memref.subview"(%A_L1, %c0, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64:-9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      %tiled_B_L1_0 = "memref.subview"(%B_L1, %c0, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64:-9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      %tiled_D_L1_0 = "memref.subview"(%D_L1, %c0, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64:-9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      "linalg.generic"(%tiled_A_L1_0, %tiled_B_L1_0, %tiled_D_L1_0) <{indexing_maps = [affine_map<(n) -> (n)>, affine_map<(n) -> (n)>, affine_map<(n) -> (n)>], iterator_types = [#linalg.iterator_type<parallel>], library_call = "snax_hwpe_mult", operandSegmentSizes = array<i32: 2, 1>}> ({
+      ^bb0(%arg3: i32, %arg4: i32, %arg5: i32):
+        %10 = "arith.muli"(%arg3, %arg4) : (i32, i32) -> i32
+        "linalg.yield"(%10) : (i32) -> ()
+      }) : (memref<?xi32, strided<[1], offset: ?>, "L1">, memref<?xi32, strided<[1], offset: ?>, "L1">, memref<?xi32, strided<[1], offset: ?>, "L1">) -> ()
+      "snax.cluster_sync_op"() : () -> ()
+      scf.for %iv = %tile_size to %last_index step %tile_size {
           %tiled_A_L1 = "memref.subview"(%A_L1, %iv, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64:-9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
           %tiled_B_L1 = "memref.subview"(%B_L1, %iv, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64:-9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
           %tiled_D_L1 = "memref.subview"(%D_L1, %iv, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64:-9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
@@ -71,8 +109,17 @@ func.func public @simple_mult(%A: memref<128xi32, "L3">,
             "linalg.yield"(%10) : (i32) -> ()
           }) : (memref<?xi32, strided<[1], offset: ?>, "L1">, memref<?xi32, strided<[1], offset: ?>, "L1">, memref<?xi32, strided<[1], offset: ?>, "L1">) -> ()
           // Synchronize with DM core
+          "snax.cluster_sync_op"() : () -> ()
       }
       "snax.cluster_sync_op"() : () -> ()
+      %tiled_A_L1_1 = "memref.subview"(%A_L1, %last_index, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64:-9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      %tiled_B_L1_1 = "memref.subview"(%B_L1, %last_index, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64:-9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      %tiled_D_L1_1 = "memref.subview"(%D_L1, %last_index, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64:-9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi32, "L1">, index, index) -> memref<?xi32, strided<[1], offset: ?>, "L1">
+      "linalg.generic"(%tiled_A_L1_1, %tiled_B_L1_1, %tiled_D_L1_1) <{indexing_maps = [affine_map<(n) -> (n)>, affine_map<(n) -> (n)>, affine_map<(n) -> (n)>], iterator_types = [#linalg.iterator_type<parallel>], library_call = "snax_hwpe_mult", operandSegmentSizes = array<i32: 2, 1>}> ({
+      ^bb0(%arg3: i32, %arg4: i32, %arg5: i32):
+        %10 = "arith.muli"(%arg3, %arg4) : (i32, i32) -> i32
+        "linalg.yield"(%10) : (i32) -> ()
+      }) : (memref<?xi32, strided<[1], offset: ?>, "L1">, memref<?xi32, strided<[1], offset: ?>, "L1">, memref<?xi32, strided<[1], offset: ?>, "L1">) -> ()
       // Wait for output to go from L1 to L3
       "snax.cluster_sync_op"() : () -> ()
       //func.call @debug() : () -> ()
