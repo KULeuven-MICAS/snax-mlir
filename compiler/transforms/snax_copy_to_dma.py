@@ -7,7 +7,7 @@ from xdsl.dialects.builtin import (
     NoneAttr,
     StridedLayoutAttr,
 )
-from xdsl.dialects.memref import CopyOp, Dim, ExtractAlignedPointerAsIndexOp, MemRefType
+from xdsl.dialects.memref import CopyOp, Dim, ExtractAlignedPointerAsIndexOp, MemRefType, ExtractStridedMetaDataOp
 from xdsl.ir import Block, MLContext, Region
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -219,15 +219,29 @@ class TransformDMA(RewritePattern):
         ops_to_insert.append(pointer_dst)
 
         # apply offset if it is not zero
-        if tsl_source.data.offset:
-            offset = Constant.from_int_and_width(tsl_source.data.offset, IndexType())
+        if tsl_source.data.offset != 0:
+            # Dynamic offset
+            if tsl_source.data.offset is None:
+                assert isinstance(op.source.type.layout, StridedLayoutAttr)
+                offset_op = ExtractStridedMetaDataOp(op.source)
+                offset = offset_op.offset
+            else:
+                offset_op = Constant.from_int_and_width(tsl_source.data.offset, IndexType())
+                offset = offset_op.result
             pointer_src = Addi(pointer_src, offset, IndexType())
-            ops_to_insert.extend([offset, pointer_src])
+            ops_to_insert.extend([offset_op, pointer_src])
 
-        if tsl_dest.data.offset:
-            offset = Constant.from_int_and_width(tsl_dest.data.offset, IndexType())
+        if tsl_dest.data.offset != 0:
+            # Dynamic offset
+            if tsl_dest.data.offset is None:
+                assert isinstance(op.destination.type.layout, StridedLayoutAttr)
+                offset_op = ExtractStridedMetaDataOp(op.destination)
+                offset = offset_op.offset
+            else:
+                offset_op = Constant.from_int_and_width(tsl_dest.data.offset, IndexType())
+                offset = offset_op.result
             pointer_dst = Addi(pointer_dst, offset, IndexType())
-            ops_to_insert.extend([offset, pointer_dst])
+            ops_to_insert.extend([offset_op, pointer_dst])
 
         # step 2: find largest common contiguous block, to be used for dma transfers
 
