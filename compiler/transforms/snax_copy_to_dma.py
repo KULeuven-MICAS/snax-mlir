@@ -224,24 +224,34 @@ class TransformDMA(RewritePattern):
             if tsl_source.data.offset is None:
                 assert isinstance(op.source.type.layout, StridedLayoutAttr)
                 offset_op = ExtractStridedMetaDataOp(op.source)
-                offset = offset_op.offset
+                # Calculate number of bytes in type
+                el_bytes = op.source.type.element_type.width.data // 8
+                el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
+                calc_offset_op = Muli(el_bytes_op, offset_op.offset ,IndexType())
+                pointer_src = Addi(pointer_src, calc_offset_op, IndexType())
+                ops_to_insert.extend([offset_op, el_bytes_op, calc_offset_op, pointer_src])
             else:
+                # Multiplication with el_bytes already happens statically with extract_offset()
                 offset_op = Constant.from_int_and_width(tsl_source.data.offset, IndexType())
-                offset = offset_op.result
-            pointer_src = Addi(pointer_src, offset, IndexType())
-            ops_to_insert.extend([offset_op, pointer_src])
+                pointer_src = Addi(pointer_src, offset_op.result, IndexType())
+                ops_to_insert.extend([offset_op, pointer_src])
 
         if tsl_dest.data.offset != 0:
             # Dynamic offset
             if tsl_dest.data.offset is None:
                 assert isinstance(op.destination.type.layout, StridedLayoutAttr)
                 offset_op = ExtractStridedMetaDataOp(op.destination)
-                offset = offset_op.offset
+                # Calculate number of bytes in type
+                el_bytes = op.source.type.element_type.width.data // 8
+                el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
+                calc_offset_op = Muli(el_bytes_op, offset_op.offset ,IndexType())
+                pointer_dst = Addi(pointer_dst, calc_offset_op, IndexType())
+                ops_to_insert.extend([offset_op, el_bytes_op, calc_offset_op, pointer_dst])
             else:
+                # Multiplication with el_bytes already happens statically with extract_offset()
                 offset_op = Constant.from_int_and_width(tsl_dest.data.offset, IndexType())
-                offset = offset_op.result
-            pointer_dst = Addi(pointer_dst, offset, IndexType())
-            ops_to_insert.extend([offset_op, pointer_dst])
+                pointer_dst = Addi(pointer_dst, offset_op.result, IndexType())
+                ops_to_insert.extend([offset_op, pointer_dst])
 
         # step 2: find largest common contiguous block, to be used for dma transfers
 
