@@ -1,9 +1,10 @@
-#include "snrt.h"
-#include "memref.h"
 #include "data.h"
+#include "memref.h"
 #include "snax_rt.h"
+#include "snrt.h"
 
-void _mlir_ciface_streamer_add(OneDMemrefI32_t* A, OneDMemrefI32_t* B, OneDMemrefI32_t* O);
+void _mlir_ciface_streamer_add(OneDMemrefI32_t *A, OneDMemrefI32_t *B,
+                               OneDMemrefI32_t *O);
 
 int main() {
   // Set err value for checking
@@ -39,7 +40,7 @@ int main() {
   // Compare results and check if the
   // accelerator returns correct answers
   // For every incorrect answer, increment err
-  if(snrt_cluster_core_idx() != 0)
+  if (snrt_cluster_core_idx() != 0)
     return 0;
 
   uint64_t check_val;
@@ -73,5 +74,4 @@ int main() {
   printf("Number of errors: %d \n", err);
 
   return err;
-
 }

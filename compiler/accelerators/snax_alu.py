@@ -44,11 +44,15 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
             *ops_to_insert,
             setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
             launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
-            token := accfg.LaunchOp([launch_val, launch_val], self.launch_fields, setup),
+            token := accfg.LaunchOp(
+                [launch_val, launch_val], self.launch_fields, setup
+            ),
             accfg.AwaitOp(token),
         ]
 
-    def _generate_setup_vals(self, op: linalg.Generic) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def _generate_setup_vals(
+        self, op: linalg.Generic
+    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         c0 = arith.Constant.from_int_and_width(0, 32)
         c4 = arith.Constant.from_int_and_width(4, 32)
         c8 = arith.Constant.from_int_and_width(8, 32)

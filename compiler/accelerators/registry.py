@@ -5,9 +5,9 @@ from xdsl.traits import SymbolTable
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.gemmini import GemminiAccelerator
+from compiler.accelerators.snax_alu import SNAXAluAccelerator
 from compiler.accelerators.snax_gemm import SNAXGEMMAccelerator
 from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
-from compiler.accelerators.snax_alu import SNAXAluAccelerator
 from compiler.dialects.accfg import AcceleratorOp
 
 
