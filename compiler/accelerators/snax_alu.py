@@ -19,7 +19,7 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
         "b_tstride",
         "o_tstride",
         "a_sstride",
-        "b_tstride",
+        "b_sstride",
         "o_sstride",
         "a_ptr",
         "b_ptr",
