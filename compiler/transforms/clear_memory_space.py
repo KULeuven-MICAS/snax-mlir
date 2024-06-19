@@ -32,6 +32,8 @@ class ClearMemorySpace(ModulePass):
         for op_in_module in module.walk():
             for operand in op_in_module.operands:
                 operand.type = clear_memory_space(operand.type)
+            for result in op_in_module.results:
+                result.type = clear_memory_space(result.type)
 
             if isinstance(op_in_module, func.FuncOp):
                 # special case for func ops because func ops do not have
