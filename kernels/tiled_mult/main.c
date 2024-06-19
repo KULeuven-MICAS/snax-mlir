@@ -21,8 +21,8 @@ void _mlir_ciface_snax_hwpe_mult(OneDMemrefI32_t *a, OneDMemrefI32_t *b,
 
 void _mlir_ciface_debug() {
   int32_t* A = (int32_t*)0x10000040;
-  int32_t* B = (int32_t*)0x10000180;
-  int32_t* D = (int32_t*)0x100002C0;
+  int32_t* B = (int32_t*)0x10000280;
+  int32_t* D = (int32_t*)0x100004C0;
   for (int i = 0; i < N; i++){
       printf("%2d) A: %10d ",i, A[i]);
       printf("B: %10d ", B[i]);
