@@ -35,3 +35,7 @@ jobs:
         run: |
           make allrun
         working-directory: kernels/simple_matmul
+      - name: Build and run kernel streamer_alu
+        run: |
+          make allrun
+        working-directory: kernels/streamer_alu
