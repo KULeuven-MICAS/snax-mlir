@@ -6,6 +6,7 @@ from xdsl.xdsl_opt_main import xDSLOptMain
 
 from compiler.dialects.accfg import ACCFG
 from compiler.dialects.snax import Snax
+from compiler.dialects.snax_stream import SnaxStream
 from compiler.dialects.tsl import TSL
 from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 from compiler.transforms.accfg_dedup import AccfgDeduplicate
@@ -52,6 +53,7 @@ class SNAXOptMain(xDSLOptMain):
         self.ctx.load_dialect(Snax)
         self.ctx.load_dialect(TSL)
         self.ctx.load_dialect(ACCFG)
+        self.ctx.load_dialect(SnaxStream)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
