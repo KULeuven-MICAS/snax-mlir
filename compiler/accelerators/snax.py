@@ -17,39 +17,40 @@ class SNAXAccelerator(Accelerator, ABC):
     """
 
     @staticmethod
-    def lower_acc_launch(
-        launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
-    ) -> Sequence[Operation]:
-        # Get the launch address, for SNAX should be only one
-        launch_address = None
-        for field, val in acc_op.launch_field_items():
-            assert field == "launch"
-            launch_address = val
-        assert launch_address is not None
-        # Get the launch value,
-        # For SNAX there should only be one value here
-        launch_value = None
+    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+        field_to_csr = dict(acc_op.launch_field_items())
+        ops: Sequence[Operation] = []
         for field, val in launch_op.iter_params():
-            assert field == "launch"
+            # Get the launch address
+            launch_address = None
+            assert "launch" in field
+            launch_address = field_to_csr[field]
+            assert launch_address is not None
+
+            # Get the launch value,
+            launch_value = None
             launch_value = val
-        assert launch_value is not None
-        return [
-            addr_val := arith.Constant(launch_address),
-            llvm.InlineAsmOp(
-                "csrw $0, $1",
-                # I = any 12 bit immediate, K = any 5 bit immediate
-                # The K allows LLVM to emit an `csrrwi` instruction,
-                # which has room for one 5 bit immediate only.
-                "I, K",
-                [addr_val, launch_value],
-                has_side_effects=True,
-            ),
-        ]
+            assert launch_value is not None
+
+            ops.extend(
+                [
+                    addr_val := arith.Constant(launch_address),
+                    llvm.InlineAsmOp(
+                        "csrw $0, $1",
+                        # I = any 12 bit immediate, K = any 5 bit immediate
+                        # The K allows LLVM to emit an `csrrwi` instruction,
+                        # which has room for one 5 bit immediate only.
+                        "I, K",
+                        [addr_val, launch_value],
+                        has_side_effects=True,
+                    ),
+                ]
+            )
+
+        return ops
 
     @staticmethod
-    def lower_acc_setup(
-        setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp
-    ) -> Sequence[Operation]:
+    def lower_acc_setup(setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.field_items())
         ops: Sequence[Operation] = []
         for field, val in setup_op.iter_params():
@@ -105,9 +106,7 @@ class SNAXPollingBarrier(Accelerator, ABC):
                 [],
                 [
                     barrier := arith.Constant(acc_op.barrier),
-                    zero := arith.Constant(
-                        builtin.IntegerAttr.from_int_and_width(0, 32)
-                    ),
+                    zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 32)),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate
@@ -166,9 +165,7 @@ class SNAXPollingBarrier2(Accelerator, ABC):
                 [],
                 [
                     barrier := arith.Constant(acc_op.barrier),
-                    one := arith.Constant(
-                        builtin.IntegerAttr.from_int_and_width(1, 32)
-                    ),
+                    one := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 32)),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate

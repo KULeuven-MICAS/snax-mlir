@@ -7,6 +7,7 @@ from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.gemmini import GemminiAccelerator
 from compiler.accelerators.snax_gemm import SNAXGEMMAccelerator
 from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
+from compiler.accelerators.snax_alu import SNAXAluAccelerator
 from compiler.dialects.accfg import AcceleratorOp
 
 
@@ -17,6 +18,7 @@ class AcceleratorRegistry:
     """
 
     registered_accelerators = {
+        "snax_alu": SNAXAluAccelerator,
         "snax_hwpe_mult": SNAXHWPEMultAccelerator,
         "snax_gemm": SNAXGEMMAccelerator,
         "gemmini": GemminiAccelerator,
