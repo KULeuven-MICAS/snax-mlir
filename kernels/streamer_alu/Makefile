@@ -11,9 +11,6 @@ TESTS += streamer_mult.x
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
 
-%.acc_dialect.snax-opt.mlir: %.preprocfinal.mlir
-	$(SNAXOPT) $(SNAXOPTACCFLAGS) -o $@ $<
-
 data.c data.h:
 	$(PYTHON) gendata.py
 
