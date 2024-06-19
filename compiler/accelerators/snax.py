@@ -93,6 +93,7 @@ class SNAXPollingBarrier(Accelerator, ABC):
 
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+        nops = [llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True) for _ in range(11)]
         return [
             While(
                 [],
@@ -128,10 +129,8 @@ class SNAXPollingBarrier(Accelerator, ABC):
                 [addr_val, zero],
                 has_side_effects=True,
             ),
-            # Three nops for random but important reasons
-            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
-            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
-            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
+            # a lot of nops for random but important reasons
+            *nops
         ]
 
 
