@@ -13,7 +13,6 @@
 // A, B and computes D = A * B where '*' is the elementwise product.
 func.func private @snax_is_dm_core() -> i1
 func.func private @snax_is_compute_core() -> i1
-//func.func private @debug() -> ()
 func.func public @simple_mult(%A: memref<128xi32, "L3">,
                              %B: memref<128xi32, "L3">,
                              %D: memref<128xi32, "L3">) -> () {
@@ -57,7 +56,6 @@ func.func public @simple_mult(%A: memref<128xi32, "L3">,
       "snax.cluster_sync_op"() : () -> ()
       // Wait for output to go from L1 to L3
       "snax.cluster_sync_op"() : () -> ()
-      //func.call @debug() : () -> ()
       scf.yield
     }, {
       scf.yield

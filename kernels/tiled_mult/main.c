@@ -10,27 +10,6 @@
 // Kernel provided via external definition
 void _mlir_ciface_simple_mult(OneDMemrefI32_t *a, OneDMemrefI32_t *b,
                               OneDMemrefI32_t *d);
-
-void _mlir_ciface_snax_hwpe_mult(OneDMemrefI32_t *a, OneDMemrefI32_t *b,
-                                 OneDMemrefI32_t *d) {
-  snax_mac_setup_simple_mult(a->aligned_data, b->aligned_data, d->aligned_data,
-                             a->shape[0]);
-  snax_mac_launch();
-  snax_mac_sw_barrier();
-}
-
-void _mlir_ciface_debug() {
-  int32_t* A = (int32_t*)0x10000040;
-  int32_t* B = (int32_t*)0x10000280;
-  int32_t* D = (int32_t*)0x100004C0;
-  for (int i = 0; i < N; i++){
-      printf("%2d) A: %10d ",i, A[i]);
-      printf("B: %10d ", B[i]);
-      printf("D: %10d\n", D[i]);
-  }
-  return;
-}
-
 int main() {
 
   // Create memref objects for data stored in L3
@@ -70,9 +49,6 @@ int main() {
   int nerr = 0;
   for (int i = 0; i < N; i++) {
     int32_t error = memrefD.aligned_data[i] - G[i];
-
-    //printf("%d) %d\n",i, memrefD.aligned_data[i]);
-    //printf("    error = %d\n", error);
     if (error != 0)
       nerr += 1;
   }

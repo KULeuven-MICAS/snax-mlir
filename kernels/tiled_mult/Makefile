@@ -6,8 +6,9 @@ include ../../runtime/snax-mac.rules
 include ../../runtime/Makefile.rules
 
 TESTS =
-TESTS += baseline.x
 TESTS += untiled.acc_dialect.x
+TESTS += tiled.acc_dialect.x
+TESTS += tiled_pipelined.acc_dialect.x
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
