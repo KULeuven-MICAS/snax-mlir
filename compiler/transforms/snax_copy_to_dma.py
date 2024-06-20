@@ -7,7 +7,13 @@ from xdsl.dialects.builtin import (
     NoneAttr,
     StridedLayoutAttr,
 )
-from xdsl.dialects.memref import CopyOp, Dim, ExtractAlignedPointerAsIndexOp, MemRefType
+from xdsl.dialects.memref import (
+    CopyOp,
+    Dim,
+    ExtractAlignedPointerAsIndexOp,
+    ExtractStridedMetaDataOp,
+    MemRefType,
+)
 from xdsl.ir import Block, MLContext, Region
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -128,6 +134,24 @@ def extract_strides(memreftype: MemRefType):
     return strides
 
 
+def extract_offset(memreftype: MemRefType):
+    """
+    Small helper function to extract the offset from a given memreftype
+    with a StridedLayoutAttr or NoneAttr (default row-major) layout.
+
+    Returns:
+        int | None: The extracted offset or None if it is dynamic.
+    """
+    if isinstance(memreftype.layout, StridedLayoutAttr):
+        # Dynamic offset
+        if isinstance(memreftype.layout.offset, NoneAttr):
+            return None
+        el_bytes = memreftype.element_type.width.data // 8
+        return memreftype.layout.offset.data * el_bytes
+
+    return 0
+
+
 class TransformDMA(RewritePattern):
     """Look for memref copy operations with TSL layout and insert snitch DMA calls"""
 
@@ -156,6 +180,7 @@ class TransformDMA(RewritePattern):
             tsl_source = op.source.type.layout
         else:
             strides = extract_strides(op.source.type)
+            offset = extract_offset(op.source.type)
             if not strides:
                 return
             if isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
@@ -168,7 +193,7 @@ class TransformDMA(RewritePattern):
                 tile_bounds = [[x] if x > 0 else [None] for x in tile_bounds]
                 pass
             tsl_source = TiledStridedLayoutAttr(
-                TiledStridedLayout.from_strides(strides, tile_bounds)
+                TiledStridedLayout.from_strides(strides, tile_bounds, offset)
             )
 
         # if dest is not tsl, construct representation:
@@ -176,6 +201,7 @@ class TransformDMA(RewritePattern):
             tsl_dest = op.destination.type.layout
         else:
             strides = extract_strides(op.destination.type)
+            offset = extract_offset(op.destination.type)
             if not strides:
                 return
             if isinstance(op.source.type.layout, TiledStridedLayoutAttr):
@@ -188,7 +214,7 @@ class TransformDMA(RewritePattern):
                 tile_bounds = [[x] if x > 0 else [None] for x in tile_bounds]
                 pass
             tsl_dest = TiledStridedLayoutAttr(
-                TiledStridedLayout.from_strides(strides, tile_bounds)
+                TiledStridedLayout.from_strides(strides, tile_bounds, offset)
             )
 
         # list of all ops that need to be inserted
@@ -201,15 +227,48 @@ class TransformDMA(RewritePattern):
         ops_to_insert.append(pointer_dst)
 
         # apply offset if it is not zero
-        if tsl_source.data.offset:
-            offset = Constant.from_int_and_width(tsl_source.data.offset, IndexType())
-            pointer_src = Addi(pointer_src, offset, IndexType())
-            ops_to_insert.extend([offset, pointer_src])
+        if tsl_source.data.offset != 0:
+            # Dynamic offset
+            if tsl_source.data.offset is None:
+                # dynamic offsets for tsl is TODO
+                assert isinstance(op.source.type.layout, StridedLayoutAttr)
+                offset_op = ExtractStridedMetaDataOp(op.source)
+                # Calculate number of bytes in type
+                el_bytes = op.source.type.element_type.width.data // 8
+                el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
+                calc_offset_op = Muli(el_bytes_op, offset_op.offset, IndexType())
+                pointer_src = Addi(pointer_src, calc_offset_op, IndexType())
+                ops_to_insert.extend(
+                    [offset_op, el_bytes_op, calc_offset_op, pointer_src]
+                )
+            else:
+                # Multiplication with el_bytes already happens statically with extract_offset()
+                offset_op = Constant.from_int_and_width(
+                    tsl_source.data.offset, IndexType()
+                )
+                pointer_src = Addi(pointer_src, offset_op.result, IndexType())
+                ops_to_insert.extend([offset_op, pointer_src])
 
-        if tsl_dest.data.offset:
-            offset = Constant.from_int_and_width(tsl_dest.data.offset, IndexType())
-            pointer_dst = Addi(pointer_dst, offset, IndexType())
-            ops_to_insert.extend([offset, pointer_dst])
+        if tsl_dest.data.offset != 0:
+            # Dynamic offset
+            if tsl_dest.data.offset is None:
+                assert isinstance(op.destination.type.layout, StridedLayoutAttr)
+                offset_op = ExtractStridedMetaDataOp(op.destination)
+                # Calculate number of bytes in type
+                el_bytes = op.source.type.element_type.width.data // 8
+                el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
+                calc_offset_op = Muli(el_bytes_op, offset_op.offset, IndexType())
+                pointer_dst = Addi(pointer_dst, calc_offset_op, IndexType())
+                ops_to_insert.extend(
+                    [offset_op, el_bytes_op, calc_offset_op, pointer_dst]
+                )
+            else:
+                # Multiplication with el_bytes already happens statically with extract_offset()
+                offset_op = Constant.from_int_and_width(
+                    tsl_dest.data.offset, IndexType()
+                )
+                pointer_dst = Addi(pointer_dst, offset_op.result, IndexType())
+                ops_to_insert.extend([offset_op, pointer_dst])
 
         # step 2: find largest common contiguous block, to be used for dma transfers
 
@@ -301,8 +360,8 @@ class TransformDMA(RewritePattern):
             func_call = func.Call(
                 "snax_dma_2d_transfer",
                 [
-                    pointer_src.aligned_pointer,
-                    pointer_dst.aligned_pointer,
+                    pointer_src,
+                    pointer_dst,
                     dma_size.result,
                     dma_stride_src.result,
                     dma_stride_dst.result,

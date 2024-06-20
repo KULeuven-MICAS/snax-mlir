@@ -19,15 +19,17 @@ class TiledStridedLayout:
     """
 
     tstrides: list[TiledStride]
-    offset: int
+    offset: int | None
 
-    def __init__(self, tstrides: list[TiledStride], offset: int = 0):
+    def __init__(self, tstrides: list[TiledStride], offset: int | None = 0):
         self.tstrides = tstrides
         self.offset = offset
 
     @staticmethod
     def from_strides(
-        strides: list[int | None], tile_bounds: list[list[int | None]], offset: int = 0
+        strides: list[int | None],
+        tile_bounds: list[list[int | None]],
+        offset: int | None = 0,
     ) -> TiledStridedLayout:
         """Create a TiledStridedLayout from a list of strides and tile bounds
 
@@ -46,8 +48,10 @@ class TiledStridedLayout:
 
     def __str__(self) -> str:
         result = ", ".join(map(str, self.tstrides))
+        # Don't print offset if it is zero
         if self.offset != 0:
-            result += f", offset: {self.offset}"
+            offset_str = str(self.offset) if self.offset is not None else "?"
+            result += f", offset: {offset_str}"
         return result
 
     def __iter__(self) -> Iterator[tuple[int, int, Stride]]:
@@ -148,7 +152,7 @@ class TiledStridedLayout:
 
         # provide default result of single element common
         # contiguous block if none larger is found
-        default_result: list[Stride] = [Stride(1, 1)]
+        default_result: list[Stride] = [Stride(starting_stride, 1)]
 
         # find largest contiguous block
         current_stride = starting_stride

@@ -93,6 +93,12 @@ class SNAXPollingBarrier(Accelerator, ABC):
 
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+        # kernels/tiled_mult/tiled.preprocfinal.mlir only works
+        # when at least 4 nops are introduced, due to hardware handshake issues.
+        # this is will likely not be fixed in the future.
+        nops = [
+            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True) for _ in range(4)
+        ]
         return [
             While(
                 [],
@@ -128,10 +134,8 @@ class SNAXPollingBarrier(Accelerator, ABC):
                 [addr_val, zero],
                 has_side_effects=True,
             ),
-            # Three nops for random but important reasons
-            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
-            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
-            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True),
+            # a lot of nops for random but important reasons
+            *nops,
         ]
 
 

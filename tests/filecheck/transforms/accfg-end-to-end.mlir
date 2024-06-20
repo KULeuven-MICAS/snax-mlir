@@ -65,11 +65,10 @@ builtin.module {
 // CHECK-NEXT:       %16 = arith.constant 965 : i12
 // CHECK-NEXT:       %17 = arith.constant 0 : i5
 // CHECK-NEXT:       "llvm.inline_asm"(%16, %17) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i12, i5) -> ()
+// Check any amount of nops
 // CHECK-NEXT:       "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:       "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:       "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:     }
-// CHECK-NEXT:     func.return
+// CHECK: }
+// CHECK:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
 
