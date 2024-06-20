@@ -2,7 +2,6 @@ from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.ir import Attribute, Operation, SSAValue
-from xdsl.parser import IndexType
 from xdsl.utils.hints import isa
 
 from compiler.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier
@@ -74,9 +73,13 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
                 [
                     ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref),
                     metadata := memref.ExtractStridedMetaDataOp(ref),
-                    el_bytes := arith.Constant.from_int_and_width(ref.type.element_type.width.data // 8, builtin.IndexType()),
+                    el_bytes := arith.Constant.from_int_and_width(
+                        ref.type.element_type.width.data // 8, builtin.IndexType()
+                    ),
                     byte_offset := arith.Muli(metadata.offset, el_bytes),
-                    ptr_plus_byte_offset := arith.Addi(ptr, byte_offset, builtin.IndexType()),
+                    ptr_plus_byte_offset := arith.Addi(
+                        ptr, byte_offset, builtin.IndexType()
+                    ),
                     ptr_i32 := arith.IndexCastOp(ptr_plus_byte_offset, builtin.i32),
                 ],
                 ptr_i32.result,

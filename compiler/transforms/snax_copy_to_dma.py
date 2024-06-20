@@ -7,7 +7,13 @@ from xdsl.dialects.builtin import (
     NoneAttr,
     StridedLayoutAttr,
 )
-from xdsl.dialects.memref import CopyOp, Dim, ExtractAlignedPointerAsIndexOp, MemRefType, ExtractStridedMetaDataOp
+from xdsl.dialects.memref import (
+    CopyOp,
+    Dim,
+    ExtractAlignedPointerAsIndexOp,
+    ExtractStridedMetaDataOp,
+    MemRefType,
+)
 from xdsl.ir import Block, MLContext, Region
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -127,6 +133,7 @@ def extract_strides(memreftype: MemRefType):
         strides = None
     return strides
 
+
 def extract_offset(memreftype: MemRefType):
     """
     Small helper function to extract the offset from a given memreftype
@@ -143,6 +150,7 @@ def extract_offset(memreftype: MemRefType):
         return memreftype.layout.offset.data * el_bytes
 
     return 0
+
 
 class TransformDMA(RewritePattern):
     """Look for memref copy operations with TSL layout and insert snitch DMA calls"""
@@ -227,12 +235,16 @@ class TransformDMA(RewritePattern):
                 # Calculate number of bytes in type
                 el_bytes = op.source.type.element_type.width.data // 8
                 el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
-                calc_offset_op = Muli(el_bytes_op, offset_op.offset ,IndexType())
+                calc_offset_op = Muli(el_bytes_op, offset_op.offset, IndexType())
                 pointer_src = Addi(pointer_src, calc_offset_op, IndexType())
-                ops_to_insert.extend([offset_op, el_bytes_op, calc_offset_op, pointer_src])
+                ops_to_insert.extend(
+                    [offset_op, el_bytes_op, calc_offset_op, pointer_src]
+                )
             else:
                 # Multiplication with el_bytes already happens statically with extract_offset()
-                offset_op = Constant.from_int_and_width(tsl_source.data.offset, IndexType())
+                offset_op = Constant.from_int_and_width(
+                    tsl_source.data.offset, IndexType()
+                )
                 pointer_src = Addi(pointer_src, offset_op.result, IndexType())
                 ops_to_insert.extend([offset_op, pointer_src])
 
@@ -244,12 +256,16 @@ class TransformDMA(RewritePattern):
                 # Calculate number of bytes in type
                 el_bytes = op.source.type.element_type.width.data // 8
                 el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
-                calc_offset_op = Muli(el_bytes_op, offset_op.offset ,IndexType())
+                calc_offset_op = Muli(el_bytes_op, offset_op.offset, IndexType())
                 pointer_dst = Addi(pointer_dst, calc_offset_op, IndexType())
-                ops_to_insert.extend([offset_op, el_bytes_op, calc_offset_op, pointer_dst])
+                ops_to_insert.extend(
+                    [offset_op, el_bytes_op, calc_offset_op, pointer_dst]
+                )
             else:
                 # Multiplication with el_bytes already happens statically with extract_offset()
-                offset_op = Constant.from_int_and_width(tsl_dest.data.offset, IndexType())
+                offset_op = Constant.from_int_and_width(
+                    tsl_dest.data.offset, IndexType()
+                )
                 pointer_dst = Addi(pointer_dst, offset_op.result, IndexType())
                 ops_to_insert.extend([offset_op, pointer_dst])
 

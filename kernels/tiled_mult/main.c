@@ -53,8 +53,8 @@ int main() {
       nerr += 1;
   }
   // Always return 0 (for CI reasons), but do print on error
-  if (nerr > 0){
-      printf("*** SOFT-FAILED *** (errors = %d)\n", nerr);
+  if (nerr > 0) {
+    printf("*** SOFT-FAILED *** (errors = %d)\n", nerr);
   }
   return 0;
 }
