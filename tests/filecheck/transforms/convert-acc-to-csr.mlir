@@ -76,9 +76,7 @@ builtin.module {
 // CHECK-NEXT:     %19 = arith.constant 0 : i5
 // CHECK-NEXT:     "llvm.inline_asm"(%18, %19) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i12, i5) -> ()
 // CHECK-NEXT:     "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:     "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:     "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:     "scf.if"(%i1) ({
+// CHECK:     "scf.if"(%i1) ({
 // CHECK-NEXT:       %20 = arith.constant 977 : i64
 // CHECK-NEXT:       "llvm.inline_asm"(%20, %6) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
 // CHECK-NEXT:       %21 = arith.constant 960 : i64
@@ -95,10 +93,9 @@ builtin.module {
 // CHECK-NEXT:       %26 = arith.constant 965 : i12
 // CHECK-NEXT:       %27 = arith.constant 0 : i5
 // CHECK-NEXT:       "llvm.inline_asm"(%26, %27) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i12, i5) -> ()
+// Any number of nops is fine
 // CHECK-NEXT:       "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:       "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:       "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:       %28 = arith.constant 979 : i64
+// CHECK:       %28 = arith.constant 979 : i64
 // CHECK-NEXT:       "llvm.inline_asm"(%28, %4) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
 // CHECK-NEXT:       scf.yield
 // CHECK-NEXT:     }, {
@@ -116,10 +113,9 @@ builtin.module {
 // CHECK-NEXT:       %34 = arith.constant 965 : i12
 // CHECK-NEXT:       %35 = arith.constant 0 : i5
 // CHECK-NEXT:       "llvm.inline_asm"(%34, %35) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i12, i5) -> ()
+// Any number of nops is fine
 // CHECK-NEXT:       "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:       "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:       "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:       %36 = arith.constant 977 : i64
+// CHECK:       %36 = arith.constant 977 : i64
 // CHECK-NEXT:       "llvm.inline_asm"(%36, %6) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
 // CHECK-NEXT:       %37 = arith.constant 979 : i64
 // CHECK-NEXT:       "llvm.inline_asm"(%37, %4) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
@@ -139,10 +135,9 @@ builtin.module {
 // CHECK-NEXT:     %43 = arith.constant 965 : i12
 // CHECK-NEXT:     %44 = arith.constant 0 : i5
 // CHECK-NEXT:     "llvm.inline_asm"(%43, %44) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i12, i5) -> ()
+// Any number of nops is fine
 // CHECK-NEXT:     "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:     "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:     "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK-NEXT:     func.return
+// CHECK:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
 
