@@ -140,7 +140,7 @@ def extract_offset(memreftype: MemRefType):
     with a StridedLayoutAttr or NoneAttr (default row-major) layout.
 
     Returns:
-        int: The extracted offset
+        int | None: The extracted offset or None if it is dynamic.
     """
     if isinstance(memreftype.layout, StridedLayoutAttr):
         # Dynamic offset
@@ -230,6 +230,7 @@ class TransformDMA(RewritePattern):
         if tsl_source.data.offset != 0:
             # Dynamic offset
             if tsl_source.data.offset is None:
+                #dynamic offsets for tsl is TODO 
                 assert isinstance(op.source.type.layout, StridedLayoutAttr)
                 offset_op = ExtractStridedMetaDataOp(op.source)
                 # Calculate number of bytes in type
