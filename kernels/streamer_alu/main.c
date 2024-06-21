@@ -61,7 +61,7 @@ int main() {
     write_csr(0x3c0, LOOP_ITER);
     write_csr(0x3c1, 32);
     write_csr(0x3c2, 32);
-    write_csr(0x3c3, 64);
+    write_csr(0x3c3, 32);
     write_csr(0x3c4, 8);
     write_csr(0x3c5, 8);
     write_csr(0x3c6, 8);
@@ -96,9 +96,8 @@ int main() {
     uint64_t check_val;
 
     for (uint32_t i = 0; i < DATA_LEN; i++) {
-      // The accelerator outputs 128 bits but this is a hassle to check,
-      // so we constrain the values to be small and only check the lower 64 ones
-      check_val = *(local_o + i * 2);
+
+      check_val = *(local_o + i);
       if (check_val != G[i]) {
         err++;
       }
