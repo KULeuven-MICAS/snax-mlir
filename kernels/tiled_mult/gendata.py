@@ -4,8 +4,8 @@ from util.gendata import create_data, create_header
 
 if __name__ == "__main__":
     # Reset random seed for reproducible behavior
-    low_bound = 0
-    high_bound = 100
+    low_bound = -128
+    high_bound = 127
     array_size = 128
 
     # snax-alu design-time spatial parallelism
