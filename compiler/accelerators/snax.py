@@ -20,31 +20,35 @@ class SNAXAccelerator(Accelerator, ABC):
     def lower_acc_launch(
         launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
     ) -> Sequence[Operation]:
-        # Get the launch address, for SNAX should be only one
-        launch_address = None
-        for field, val in acc_op.launch_field_items():
-            assert field == "launch"
-            launch_address = val
-        assert launch_address is not None
-        # Get the launch value,
-        # For SNAX there should only be one value here
-        launch_value = None
+        field_to_csr = dict(acc_op.launch_field_items())
+        ops: Sequence[Operation] = []
         for field, val in launch_op.iter_params():
-            assert field == "launch"
+            # Get the launch address
+            launch_address = None
+            assert "launch" in field
+            launch_address = field_to_csr[field]
+            assert launch_address is not None
+
+            # Get the launch value,
             launch_value = val
-        assert launch_value is not None
-        return [
-            addr_val := arith.Constant(launch_address),
-            llvm.InlineAsmOp(
-                "csrw $0, $1",
-                # I = any 12 bit immediate, K = any 5 bit immediate
-                # The K allows LLVM to emit an `csrrwi` instruction,
-                # which has room for one 5 bit immediate only.
-                "I, K",
-                [addr_val, launch_value],
-                has_side_effects=True,
-            ),
-        ]
+            assert launch_value is not None
+
+            ops.extend(
+                [
+                    addr_val := arith.Constant(launch_address),
+                    llvm.InlineAsmOp(
+                        "csrw $0, $1",
+                        # I = any 12 bit immediate, K = any 5 bit immediate
+                        # The K allows LLVM to emit an `csrrwi` instruction,
+                        # which has room for one 5 bit immediate only.
+                        "I, K",
+                        [addr_val, launch_value],
+                        has_side_effects=True,
+                    ),
+                ]
+            )
+
+        return ops
 
     @staticmethod
     def lower_acc_setup(
