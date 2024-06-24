@@ -48,8 +48,9 @@ int main() {
   int nerr = 0;
   for (int i = 0; i < DATA_LEN; i++) {
     int64_t error = memrefO.aligned_data[i] - G[i];
-    // printf("%d -> %d\n", (int32_t)memrefO.aligned_data[i], (int32_t)G[i]);
     if (error != 0)
+      // printf("%d) %d -> %d\n",i, (int32_t)memrefO.aligned_data[i],
+      // (int32_t)G[i]);
       nerr += 1;
   }
   return nerr;
