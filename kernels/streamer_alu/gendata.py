@@ -22,8 +22,7 @@ if __name__ == "__main__":
     B = np.random.randint(
         low_bound, high_bound, size=array_size, dtype=np.dtype("int64")
     )
-    # x2 to accommodate 128 bit outputs, as numpy does not understand int128
-    O = np.zeros(array_size * 2, dtype=np.dtype("int64"))
+    O = np.zeros(array_size, dtype=np.dtype("int64"))
     G = A + B
 
     sizes = {"MODE": 0, "DATA_LEN": array_size, "LOOP_ITER": loop_iter}

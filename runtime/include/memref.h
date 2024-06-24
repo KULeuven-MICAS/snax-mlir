@@ -12,6 +12,16 @@ struct OneDMemrefI32 {
   uint32_t stride[1];
 };
 
+struct OneDMemrefI64 {
+  int64_t *data; // allocated pointer: Pointer to data buffer as allocated,
+                 // only used for deallocating the memref
+  int64_t *aligned_data; // aligned pointer: Pointer to properly aligned data
+                         // that memref indexes
+  uint32_t offset;
+  uint32_t shape[1];
+  uint32_t stride[1];
+};
+
 struct TwoDMemrefI32 {
   int32_t *data; // allocated pointer: Pointer to data buffer as allocated,
                  // only used for deallocating the memref
@@ -33,5 +43,6 @@ struct TwoDMemrefI8 {
 };
 
 typedef struct OneDMemrefI32 OneDMemrefI32_t;
+typedef struct OneDMemrefI64 OneDMemrefI64_t;
 typedef struct TwoDMemrefI8 TwoDMemrefI8_t;
 typedef struct TwoDMemrefI32 TwoDMemrefI32_t;
