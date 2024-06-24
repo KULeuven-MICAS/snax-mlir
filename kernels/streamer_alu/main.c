@@ -43,26 +43,20 @@ int main() {
   if (snrt_cluster_core_idx() != 0)
     return 0;
 
+  // Mark the end of the CSR setup cycles
+  uint32_t end_csr_setup = snrt_mcycle();
+
+  // Compare results and check if the
+  // accelerator returns correct answers
+  // For every incorrect answer, increment err
   uint64_t check_val;
 
-    // Mark the end of the CSR setup cycles
-    uint32_t end_csr_setup = snrt_mcycle();
+  for (uint32_t i = 0; i < DATA_LEN; i++) {
 
-    // Do this to poll the accelerator
-    while (read_csr(0x3cf)) {
-    };
-
-    // Compare results and check if the
-    // accelerator returns correct answers
-    // For every incorrect answer, increment err
-    uint64_t check_val;
-
-    for (uint32_t i = 0; i < DATA_LEN; i++) {
-
-      check_val = *(local_o + i);
-      if (check_val != G[i]) {
-        err++;
-      }
+    // memrefO is int32 type, but data is i64
+    check_val = memrefO.aligned_data[i * 2];
+    if (check_val != G[i]) {
+      err++;
     }
   }
 
