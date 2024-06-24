@@ -57,7 +57,6 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
         c4 = arith.Constant.from_int_and_width(4, 32)
         c8 = arith.Constant.from_int_and_width(8, 32)
         c32 = arith.Constant.from_int_and_width(32, 32)
-        c64 = arith.Constant.from_int_and_width(64, 32)
 
         ptr_a = memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[0])
         ptr_b = memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[1])
@@ -73,7 +72,7 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
             # temporal strides streamers
             ([c32], c32.result),
             ([], c32.result),
-            ([c64], c64.result),
+            ([], c32.result),
             # spatial strides streamers
             ([c8], c8.result),
             ([], c8.result),
