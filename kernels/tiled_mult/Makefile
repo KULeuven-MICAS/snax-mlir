@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := all
 
-include ../../runtime/snax-mac.rules
+include ../../runtime/snax-alu.rules
 include ../../runtime/Makefile.rules
 
 TESTS =
@@ -19,7 +19,7 @@ MLIRPREPROC3FLAGS += --allow-unregistered-dialect
 
 
 # Override snax-opt rules to avoid linalg-to-library-call pass
-SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=snax_hwpe_mult},convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
+SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=snax_alu},convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
 
 %.acc_dialect.snax-opt.mlir: %.preprocfinal.mlir
 	$(SNAXOPT) $(SNAXOPTACCFLAGS) -o $@ $<
