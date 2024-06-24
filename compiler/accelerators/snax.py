@@ -30,7 +30,6 @@ class SNAXAccelerator(Accelerator, ABC):
             assert launch_address is not None
 
             # Get the launch value,
-            launch_value = None
             launch_value = val
             assert launch_value is not None
 
