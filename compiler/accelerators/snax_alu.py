@@ -53,8 +53,16 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
     def _generate_setup_vals(
         self, op: linalg.Generic
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+        a, _, _ = op.operands
+
+        c0_index = arith.Constant.from_int_and_width(0, builtin.IndexType())
+        dim_0 = memref.Dim.from_source_and_index(a, c0_index)
+        design_time_parallelism = arith.Constant.from_int_and_width(
+            4, builtin.IndexType()
+        )
+        loop_bound = arith.DivUI(dim_0, design_time_parallelism)
+        loop_bound_i32 = arith.IndexCastOp(loop_bound, builtin.i32)
         c0 = arith.Constant.from_int_and_width(0, 32)
-        c4 = arith.Constant.from_int_and_width(4, 32)
         c8 = arith.Constant.from_int_and_width(8, 32)
         c32 = arith.Constant.from_int_and_width(32, 32)
 
@@ -68,7 +76,10 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
 
         return [
             # loop bound streamer
-            ([c4], c4.result),
+            (
+                [c0_index, dim_0, design_time_parallelism, loop_bound, loop_bound_i32],
+                loop_bound_i32.result,
+            ),
             # temporal strides streamers
             ([c32], c32.result),
             ([], c32.result),
@@ -84,7 +95,7 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
             # alu mode
             ([c0], c0.result),
             # alu iterations
-            ([], c4.result),
+            ([], loop_bound_i32.result),
         ]
 
     def generate_acc_op(self) -> accfg.AcceleratorOp:
