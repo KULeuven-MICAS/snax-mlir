@@ -14,32 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install snax compiler
-        run: |
-          python3 -m pip install -e .
+        run: python3 -m pip install -e .
       - name: Reinstall pip modules from requirements
-        run: |
-          python3 -m pip install -r requirements.txt
-      - name: Build and run kernel simple mult
-        run: |
-          make allrun
-        working-directory: kernels/simple_mult
-      - name: Build and run kernel simple copy
-        run: |
-          make allrun
-        working-directory: kernels/simple_copy
-      - name: Build and run kernel transform_copy
-        run: |
-          make allrun
-        working-directory: kernels/transform_copy
-      - name: Build and run kernel simple_matmul
-        run: |
-          make allrun
-        working-directory: kernels/simple_matmul
-      - name: Build and run kernel streamer_alu
-        run: |
-          make allrun
-        working-directory: kernels/streamer_alu
-      - name: Build and run kernel tiled_add
-        run: |
-          make allrun
-        working-directory: kernels/tiled_add
+        run: python3 -m pip install -r requirements.txt
+      - name: Build and run kernels
+        run: make allrun
+        working-directory: kernels/${{ matrix.kernel }}
+    strategy:
+      matrix:
+        kernel: [simple_mult, simple_copy, transform_copy, simple_matmul, streamer_alu, tiled_add]
