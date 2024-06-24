@@ -62,9 +62,9 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
         ptr_b = memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[1])
         ptr_o = memref.ExtractAlignedPointerAsIndexOp.get(op.outputs[0])
 
-        ptr_a_i32 = builtin.UnrealizedConversionCastOp.get([ptr_a], [builtin.i32])
-        ptr_b_i32 = builtin.UnrealizedConversionCastOp.get([ptr_b], [builtin.i32])
-        ptr_o_i32 = builtin.UnrealizedConversionCastOp.get([ptr_o], [builtin.i32])
+        ptr_a_i32 = arith.IndexCastOp(ptr_a, builtin.i32)
+        ptr_b_i32 = arith.IndexCastOp(ptr_b, builtin.i32)
+        ptr_o_i32 = arith.IndexCastOp(ptr_o, builtin.i32)
 
         return [
             # loop bound streamer
@@ -78,9 +78,9 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
             ([], c8.result),
             ([], c8.result),
             # base pointers streamers
-            ([ptr_a, ptr_a_i32], ptr_a_i32.results[0]),
-            ([ptr_b, ptr_b_i32], ptr_b_i32.results[0]),
-            ([ptr_o, ptr_o_i32], ptr_o_i32.results[0]),
+            ([ptr_a, ptr_a_i32], ptr_a_i32.result),
+            ([ptr_b, ptr_b_i32], ptr_b_i32.result),
+            ([ptr_o, ptr_o_i32], ptr_o_i32.result),
             # alu mode
             ([c0], c0.result),
             # alu iterations
