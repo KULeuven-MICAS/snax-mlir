@@ -1,80 +1,87 @@
 # SNAX-MLIR
 
-Repository for running MLIR compiled stuff on SNAX
+Repository for research on an MLIR-based compiler for open-source RISC-V based heterogeneous accelerators platforms developed by KULeuven and friends.
+Here `snax-opt` is developed, an [MLIR](https://mlir.llvm.org) compiler in python, based on [xdsl](https://github.com/xdslproject/xdsl).
+The open-source hardware that `snax-opt` is targetting is available over at [KULeuven-MICAS/snax_cluster](https://github.com/KULeuven-MICAS/snax_cluster)
+
+_Please note that this repository is currently under heavy development and not ready for general consumption.
+We very happily welcome active collaborations and pull requests though!_
 
 General flow:
-pytorch -> `torch-mlir` -> linalg dialect -> mlir-opt, mlir-translate, clang -> snax binary
+```mermaid
+graph LR
+    A[Input MLIR] --> B(mlir-opt) --> C(snax-opt) --> D(mlir-opt)--> E(mlir-translate) 
+    B --> D
+    E --> F(clang) --> G[RISC-V SNAX Executable]
+```
+
+Example input MLIR is available in the `kernels` folder, it contains:
+* Handwritten MLIR tests, mainly `linalg` on `memref`s.
+* Scripts to download and build MLPerf Tiny Benchmark tests.
+
+The output binary can be run on a RISC-V RTL simulator through [verilator](https://www.veripool.org/verilator/).
+These builds are developed and maintained over at [KULeuven-MICAS/snax_cluster](https://github.com/KULeuven-MICAS/snax_cluster)
+```mermaid
+graph LR
+    A[SNAX platform 1\n executable A] --> B[RISC-V SNAX platform 1\nVerilated model]
+    C[SNAX platform 1\n executable B] --> B
+    D[SNAX platform 2\n executable C] --> E[RISC-V SNAX platform 2\nVerilated model]
+    F[SNAX platform 2\n executable D] --> E
+```
 
 ## Requirements
 
-* pytest
-* numpy
-* [xdsl](https://github.com/xdslproject/xdsl)
+This repository has various requirements based on what you want to do:
+
+* Development on `snax-opt` only requires the following python packages: `xdsl`, `lit`, `filecheck` and `pre-commit`. Currently all tests are performed with python 3.10.
+* End-to-end compilation of kernels requires all the above packages, and a per-platform customized version of the `snitch_runtime` (`libSnRuntime.a`). 
+Furthermore you will need `numpy`, `tensorflow-cpu` (only required for importing MLPerf Tiny Benchmarks in MLIR), `clang`, `mlir-opt`, `mlir-translate` and `make`.
+* Running RTL simulations of compiled kernels requires all above dependences, and a build of a verilated model. 
+The requirements in this case are specified at [KULeuven-MICAS/snax_cluster](https://github.com/KULeuven-MICAS/snax_cluster).
+Tracing requires a custom version of [`spike-dasm`](https://github.com/pulp-platform/riscv-isa-sim).
+
+Unless you are an expert user, we recommend you to use our monolithic docker setup outlined below.
+This setup contains all dependencies in the right versions to perform both hardware and software development on SNAX.
 
 ## Setup with Docker Container
 
-For compiling the low-level kernels you need the snitch compilation toolchain,
-which is easiest to get through a docker container.
-
 ### Getting the container remotely
 
-You can run tests/experiments in this repository with:
+You can run tests/experiments in this repository with docker.
+For `<docker-version>` we recommend taking note of the docker version currently used in all continuous integration tests (see `.github/workflows/build-and-run-kernels.yml`).
 
 ```sh
-docker run -itv `pwd`:/repo:z ghcr.io/kuleuven-micas/snax-mlir:main
+docker run -itv `pwd`:/repo:z ghcr.io/kuleuven-micas/snax:<docker-version>
+```
+This will download the image if it is not present on your system yet.
+The repository will be available under `/repo` inside the container.
+
+To use the `snax-opt` command you need to additionaly install it with pip:
+
+```sh
+pip install -e /repo
 ```
 
-This will download the image if it is not present on your system yet.
-The repository will be available under `/repo`
-
-To use the custom `snax-opt` compiler across the repo you need to additionaly install it with pip:
+Make sure all python dependencies are up-to-date with:
 
 ```sh
-pip3 install -e /repo
+cd /repo
+pip install -r requirements.txt
 ```
 
 ### Building the container locally (optional)
 
-To build the container locally, you can use the following commands:
+To build the container locally, you can get the container from the hardware repository with the following commands:
 
 ```sh
-cd container
-docker build . -t ghcr.io/kuleuven-micas/snax-mlir:main # optional: --build-arg config=path_to_your_hjson_file.hjson
-cd ..
+git clone git@github.com:kuleuven-micas/snax_cluster
+cd snax_cluster
+docker build -t ghcr.io/kuleuven-micas/snax:main -f util/container/Dockerfile .
 ```
 
 Then you can run the experiments with the above `docker run` command
 
-Note: leaving out the `config` `--build-arg` will use the default `snitch_cluster` setup.
-
-### A note on github actions
-
-Our github actions use the container build to run tests. The actions always use the last docker build from the `main` branch. Be aware that if you make changes to the Dockerfile in a certain PR, the actions will still run on the `main` Docker build, which may result in errors. Changes to `requirements.txt` are reinstalled before every test, so these are safe to change. The following packages are only defined in the Dockerfile and thus require extra caution when changing:
-
-* [snax-cluster](https://github.com/kuleuven-micas/snitch_cluster) and dependencies (runtime, verilator, spike)
-* llvm (llvm, clang, lld)
-* standard linux packages (everything installed with `apt`)
-
-## Pytorch -> Linalg
-
-### Run stardew tests
-
-The folder tests include some examples of translating torch models to mlir using the stardew framework.
-The python3.11 installation in the docker container comes with all the requirements pre-installed and can be run:
-
-```sh
-python3 tests/test_mult.py
-```
-
-This will output the final MLIR code.
-
-All tests can be run using pytest:
-
-```sh
-pytest tests
-```
-
-## Linalg -> Snax
+## Running examples on SNAX
 
 ### Run Snax Kernels
 
@@ -90,41 +97,9 @@ This will compile `main.c` two different `kernel`s:
 1. `baseline.c`: A C implementation of the kernel
 2. `linalg.mlir`: An MLIR Linalg implementation of the kernel
 
-Note that for both kernels, a different lowering path is employed.
-All C code is lowered with the same flow (1):
+The exact invocations of all the compilers can be seen in the terminal
 
-1. c code input
-
-```mermaid
-graph LR
-    A[Input C code] --> B(clang-12)
-    B --> C(lld-12)
-    C --> D[RISC-V Executable]
-```
-
-2. mlir input
-
-```mermaid
-graph LR
-    A[Input MLIR] --> B(mlir-opt-16: preprocessing)
-    B --> C(snax-opt)
-    C --> D(mlir-opt-16: lowering)
-    D --> E(mlir-translate)
-    E --> F(clang-12)
-    F --> G(lld-12)
-    G --> H[RISC-V Executable]
-```
-
-Note: Due to snitch's dependency on a custom LLVM-12 backend (which does not support LLVM opaque pointers) we are stuck with MLIR version 16.
-Opaque pointers were introduced in LLVM 15, and support for typed pointers is removed in LLVM 17.
-More information is available [here](https://llvm.org/docs/OpaquePointers.html).
-However, we also need to use MLIR version 18, as our custom `snax-opt` compiler is built upon xDSL, which is based on the latest version of MLIR-18. This results in a combination of llvm versions 12, 16 and 18.
-To enable the conversions, we use a couple of conversion scripts:
-
-* `tollvm12.py` converts the LLVM output from mlir-translate from version LLVM 16 to LLVM 12
-  * Certain LLVM metadata, introduced by `mlir-translate-16` was only introduced in versions later than LLVM 12, and they would throw an error if they are not removed
-* `tomlir16.py` and `tomlir18.py`convert the MLIR code between MLIR 16 and 18, such that we can use our own compiler written based on xDSL.
-  * The main difference between MLIR 16 and 18 is the introduction of MLIR properties, and the difference in spelling of `operandSegmentSizes`
+* `tollvm12.py` inserts extra metadata required for clang to compile the binary.
 
 ### Inspect traces for snax kernels
 
@@ -155,7 +130,7 @@ In this way you can inspect the program the way it is put into the memory.
 ```sh
 cd /kernels/simple_mult
 make baseline.o # Make an object file
-/opt/snitch-llvm/bin/llvm-objdump -d baseline.o
+llvm-objdump-17 -d baseline.o
 ```
 
 As you can see, disassembly does not require running the program.
