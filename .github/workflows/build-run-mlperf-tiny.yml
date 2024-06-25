@@ -1,4 +1,4 @@
-name: Build and run MLPerf Tiny Networks
+name: Build MLPerf Tiny Networks
 
 on:
   push:
@@ -12,6 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     container: 
       image: ghcr.io/kuleuven-micas/snax:v0.1.3
+    strategy:
+      matrix:
+        model:
+          - name: ad01_int8
+            dir: kernels/mlperf_tiny_ad01
+          - name: pretrainedResnet_quant
+            dir: kernels/mlperf_tiny_ic
+          - name: vww_96_int8
+            dir: kernels/mlperf_tiny_vww
+          - name: kws_ref_model
+            dir: kernels/mlperf_tiny_kws
     steps:
       - uses: actions/checkout@v3
       - name: Install snax compiler
@@ -20,35 +31,12 @@ jobs:
       - name: Reinstall pip modules from requirements
         run: |
           python3 -m pip install -r requirements.txt
-      - name: Anomaly detection (snax)
+      - name: snax-opt network compilation
         run: |
-          make ad01_int8.o
-        working-directory: kernels/mlperf_tiny_ad01
-      - name: Anomaly detection (vanilla)
+          make ${{ matrix.model.name }}.o
+        working-directory: ${{ matrix.model.dir }}
+      - name: vanilla network compilation
         run: |
-          make ad01_int8.no-snax-opt.o
-        working-directory: kernels/mlperf_tiny_ad01
-      - name: Image classfication (snax)
-        run: |
-          make pretrainedResnet_quant.o
-        working-directory: kernels/mlperf_tiny_ic
-      - name: Image classfication (vanilla)
-        run: |
-          make pretrainedResnet_quant.no-snax-opt.o
-        working-directory: kernels/mlperf_tiny_ic
-      - name: Visual Wake Words (snax)
-        run: |
-          make vww_96_int8.o
-        working-directory: kernels/mlperf_tiny_vww
-      - name: Visual Wake Words (vanilla)
-        run: |
-          make vww_96_int8.no-snax-opt.o
-        working-directory: kernels/mlperf_tiny_vww
-      - name: Keyword spotting (snax)
-        run: |
-          make kws_ref_model.o
-        working-directory: kernels/mlperf_tiny_kws
-      - name: Keyword spotting (vanilla)
-        run: |
-          make kws_ref_model.no-snax-opt.o
-        working-directory: kernels/mlperf_tiny_kws
+          make ${{ matrix.model.name }}.no-snax-opt.o
+        working-directory: ${{ matrix.model.dir }}
+ 
