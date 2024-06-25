@@ -39,7 +39,7 @@ jobs:
         run: |
           make allrun
         working-directory: kernels/streamer_alu
-      - name: Build and run kernel tiled_mult
+      - name: Build and run kernel tiled_add
         run: |
           make allrun
-        working-directory: kernels/tiled_mult
+        working-directory: kernels/tiled_add
