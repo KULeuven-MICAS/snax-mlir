@@ -24,7 +24,6 @@ from xdsl.irdl import (
     result_def,
     var_operand_def,
 )
-from xdsl.traits import Pure
 from xdsl.utils.exceptions import VerifyException
 
 from compiler.util.memref_descriptor import LLVMMemrefDescriptor
@@ -41,12 +40,11 @@ class ClusterSyncOp(IRDLOperation):
 @irdl_op_definition
 class MCycleOp(IRDLOperation):
     """Utility operation that translates to risc-v mcycle instruction
-    for trace annotation.
-    This operation has no side effects, since it only reads from a register"""
-
-    traits = frozenset((Pure(),))
+    for trace annotation."""
 
     name = "snax.mcycle"
+
+    result: OpResult = result_def(i32)
 
 
 @irdl_op_definition
