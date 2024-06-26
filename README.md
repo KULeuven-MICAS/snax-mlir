@@ -19,8 +19,8 @@ Example input MLIR is available in the `kernels` folder, it contains:
 * Handwritten MLIR tests, mainly `linalg` on `memref`s.
 * Scripts to download and build MLPerf Tiny Benchmark tests.
 
-The output binary can be run on a RISC-V RTL simulator through [verilator](https://www.veripool.org/verilator/).
-These builds are developed and maintained over at [KULeuven-MICAS/snax_cluster](https://github.com/KULeuven-MICAS/snax_cluster)
+The output binary can be run on a SNAX Cluster RTL simulator through [verilator](https://www.veripool.org/verilator/).
+These simulator builds are developed and maintained over at [KULeuven-MICAS/snax_cluster](https://github.com/KULeuven-MICAS/snax_cluster), and some prebuilt systems are shipped with the docker container.
 ```mermaid
 graph LR
     A[SNAX platform 1\n executable A] --> B[RISC-V SNAX platform 1\nVerilated model]
