@@ -29,7 +29,10 @@ def has_accfg_effects(op: Operation) -> bool:
 
     # Recurse into children to check them according to the same rules
     if any(
-        has_accfg_effects(op) for region in op.regions for block in region.blocks for op in block.ops
+        has_accfg_effects(op)
+        for region in op.regions
+        for block in region.blocks
+        for op in block.ops
     ):
         return True
     # all other ops are assumed to not have effects
