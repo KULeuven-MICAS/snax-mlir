@@ -75,17 +75,18 @@ if __name__ == "__main__":
         ax.set_yticklabels(yticklabels)
         ax.set_xlabel("Time")
         ax.set_title("Performance Sections on SNAX")
-        plt.savefig("timeline.pdf", bbox_inches="tight")
+        plt.savefig(file, bbox_inches="tight")
 
     # Copy over files into a new directory
     announce("Preparing benchmark")
-    shutil.copytree(src=directory, dst=benchmark_dir)
+    shutil.rmtree(benchmark_dir)
+    shutil.copytree(src=directory, dst=benchmark_dir, dirs_exist_ok=False)
     # Run the build
     announce("Building benchmark")
     subprocess.run(["make", binary], cwd=benchmark_dir)
     # Run the code
     announce("Running benchmark")
-    subprocess.run(["make", "sim_" + binary], cwd=benchmark_dir)
+    subprocess.run(["make", "run_" + binary], cwd=benchmark_dir)
     # Trace the log
     announce("Tracing benchmark")
     subprocess.run(["make", "traces"], cwd=benchmark_dir)
