@@ -7,7 +7,17 @@ from compiler.dialects import accfg
 
 
 def has_accfg_effects(op: Operation) -> bool:
-    # chgeck if op is marked
+    """
+    Checks if an operation effects state managed by the accfg dialect, according to the following criteria:
+
+    - If provided, an attribute named `accfg_effects` of either of the two types will overwrite inference.
+      These attributes will need to be added by the provider of the IR, as only they know which functions may affect
+      the accelerator.
+    - By default we assume that function calls modify state (e.g. `func.call` and `llvm.call`).
+    - All other operation don't modify state, as long as the ops contained within them don't modify state according
+      to above criterion.
+    """
+    # check if op is marked as effecting
     effects_attr = op.attributes.get("accfg_effects", None)
     if isinstance(effects_attr, accfg.EffectsAttr):
         return effects_attr.effects != accfg.EffectsEnum.NONE
@@ -17,6 +27,11 @@ def has_accfg_effects(op: Operation) -> bool:
     if isinstance(op, func.Call | llvm.CallOp):
         return True
 
+    # Recurse into children to check them according to the same rules
+    if any(
+        has_accfg_effects(op) for region in op.regions for block in region.blocks for op in block.ops
+    ):
+        return True
     # all other ops are assumed to not have effects
     return False
 
