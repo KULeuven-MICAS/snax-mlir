@@ -1,4 +1,3 @@
-import sys
 from dataclasses import dataclass, field
 
 from xdsl.dialects import builtin, func, linalg, scf
