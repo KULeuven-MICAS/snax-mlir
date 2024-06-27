@@ -26,7 +26,8 @@ class ConvertMCycleToLLVM(RewritePattern):
                 has_side_effects=True,
             ),
         )
-        rewriter.replace_matched_op(riscv_mcycle)
+        rewriter.insert_op_before_matched_op(riscv_mcycle)
+        rewriter.erase_matched_op()
 
 
 class SNAXLowerMCycle(ModulePass):

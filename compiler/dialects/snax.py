@@ -44,8 +44,6 @@ class MCycleOp(IRDLOperation):
 
     name = "snax.mcycle"
 
-    result: OpResult = result_def(i32)
-
 
 @irdl_op_definition
 class LayoutCast(IRDLOperation):
