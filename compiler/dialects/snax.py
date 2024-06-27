@@ -38,6 +38,14 @@ class ClusterSyncOp(IRDLOperation):
 
 
 @irdl_op_definition
+class MCycleOp(IRDLOperation):
+    """Utility operation that translates to risc-v mcycle instruction
+    for trace annotation."""
+
+    name = "snax.mcycle"
+
+
+@irdl_op_definition
 class LayoutCast(IRDLOperation):
     """LayoutCast operation for memrefs in a snax cluster. This
     operation is used to change the layout of the memref data"""
@@ -133,4 +141,4 @@ class Alloc(IRDLOperation):
         descriptor.verify()
 
 
-Snax = Dialect("snax", [ClusterSyncOp, LayoutCast, Alloc], [])
+Snax = Dialect("snax", [ClusterSyncOp, MCycleOp, LayoutCast, Alloc], [])
