@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from enum import Enum
 
 from xdsl.dialects.builtin import (
     ArrayAttr,
@@ -12,6 +13,7 @@ from xdsl.dialects.builtin import (
 )
 from xdsl.ir import (
     Attribute,
+    Data,
     Dialect,
     Operation,
     ParametrizedAttribute,
@@ -31,9 +33,35 @@ from xdsl.irdl import (
     result_def,
     var_operand_def,
 )
-from xdsl.parser import Parser
+from xdsl.parser import AttrParser, Parser
 from xdsl.printer import Printer
 from xdsl.traits import SymbolOpInterface
+
+
+class EffectsEnum(Enum):
+    NONE = "none"
+    FULL = "full"
+
+
+class EffectsAttr(Data[EffectsEnum]):
+    """
+    An Attribute specifying if the marked operation has any effects on accelerator states.
+    """
+
+    name = "accfg.effects"
+
+    @classmethod
+    def parse_parameter(cls, parser: AttrParser) -> EffectsEnum:
+        with parser.in_angle_brackets():
+            for field in EffectsEnum:
+                if parser.parse_optional_keyword(field.value):
+                    return field
+            valid_vals = ", ".join(field.value for field in EffectsEnum)
+            parser.raise_error(f"Unknown keyword, expected one of: {valid_vals}")
+
+    def print_parameter(self, printer: Printer) -> None:
+        with printer.in_angle_brackets():
+            printer.print(self.data.value)
 
 
 @irdl_attr_definition
@@ -49,7 +77,7 @@ class TokenType(ParametrizedAttribute, TypeAttribute):
     def __init__(self, accelerator: str | StringAttr):
         if not isinstance(accelerator, StringAttr):
             accelerator = StringAttr(accelerator)
-        return super().__init__([accelerator])
+        super().__init__([accelerator])
 
 
 @irdl_attr_definition
@@ -399,12 +427,13 @@ class AcceleratorOp(IRDLOperation):
 ACCFG = Dialect(
     "accfg",
     [
-        SetupOp,
-        LaunchOp,
-        AwaitOp,
         AcceleratorOp,
+        AwaitOp,
+        LaunchOp,
+        SetupOp,
     ],
     [
+        EffectsAttr,
         StateType,
         TokenType,
     ],

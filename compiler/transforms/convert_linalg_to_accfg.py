@@ -18,6 +18,7 @@ from compiler.inference.helpers import (
     calc_if_state_delta,
     find_all_acc_names_in_region,
     find_existing_block_arg,
+    has_accfg_effects,
 )
 
 
@@ -248,36 +249,10 @@ def _weave_states_in_region(
                             # update the state to reflect this
                             state[result.type.accelerator.data] = result
 
-                # calling another function invalidates all states
-                # we can't reason about other functions as of now, and
-                # adding support for that is out of scope for now.
-                elif isinstance(op, func.Call):
+                # Check if the op has effects on accfg state
+                elif has_accfg_effects(op):
                     state.clear()
-                # arith, memref, linalg and test ops are not relevant to
-                # accelerator setup, so we can skip them
-                elif op.dialect_name() in (
-                    "arith",
-                    "memref",
-                    "linalg",
-                    "test",
-                    "accfg",
-                    "snax",
-                ):
-                    continue
-                # these ops are specifically whitelisted:
-                elif isinstance(
-                    op,
-                    func.Return | scf.Yield | builtin.UnrealizedConversionCastOp,
-                ):
-                    continue
-                # for every other operation, raise a warning and just assume the worst
-                else:
-                    state.clear()
-                    print(
-                        f'[convert-linalg-to-accfg] Unknown operation "{op.name}", '
-                        "assuming all side effects and resetting states.",
-                        file=sys.stderr,
-                    )
+
     return state
 
 

@@ -1,9 +1,24 @@
 from collections.abc import Generator
 
-from xdsl.dialects import scf
+from xdsl.dialects import func, llvm, scf
 from xdsl.ir import Block, BlockArgument, Operation, OpResult, Region, SSAValue
 
 from compiler.dialects import accfg
+
+
+def has_accfg_effects(op: Operation) -> bool:
+    # chgeck if op is marked
+    effects_attr = op.attributes.get("accfg_effects", None)
+    if isinstance(effects_attr, accfg.EffectsAttr):
+        return effects_attr.effects != accfg.EffectsEnum.NONE
+
+    # ops that may affect state are function calls
+    # all function calls that *don't* effect must be marked
+    if isinstance(op, func.Call | llvm.CallOp):
+        return True
+
+    # all other ops are assumed to not have effects
+    return False
 
 
 def get_initial_value_for_scf_for_lcv(loop: scf.For, var: SSAValue) -> SSAValue:
