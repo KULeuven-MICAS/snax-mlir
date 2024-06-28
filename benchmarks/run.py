@@ -3,35 +3,47 @@ import pathlib
 import shutil
 import subprocess
 
-try:
-    import matplotlib.pyplot as plt
 
-    no_matplotlib = False
-except ImportError:
-    no_matplotlib = True
+class SNAXBenchmark:
+    trace_file = "trace_hart_{hart}.trace.json"
 
-# Script that runs a benchmark and processes the results
-if __name__ == "__main__":
-    benchmark = "tiled_add"
-    directory = pathlib.Path("../kernels/tiled_add/")
-    benchmark_dir = pathlib.Path.cwd() / "results" / benchmark
-    binary = "tiled.acc_dialect.x"
-    trace_file = "trace_hart_{hart:05}.trace.json"
-    plot_file = binary + ".pdf"
+    def __init__(
+        self, kernel: str, binary: str, export_dir: str, benchmark: str | None = None
+    ):
+        self.kernel = kernel
+        self.binary = binary
+        self.src_dir = pathlib.Path(f"../kernels/{self.kernel}/")
+        self.log_dir = self.src_dir / (self.binary + ".logs")
+        if benchmark is None:
+            self.benchmark = kernel
+        else:
+            self.benchmark = benchmark
+        self.export_dir = export_dir / pathlib.Path("results") / self.benchmark
 
-    def announce(string):
-        str_len = len(string) + len(benchmark) + 5
+    def announce(self, string) -> None:
+        str_len = len(string) + len(self.benchmark) + 5
         separator = str_len * "="
         print(separator)
-        print(" " + string + ' "' + benchmark + '"')
+        print(" " + string + ' "' + self.benchmark + '"')
         print(separator)
 
-    def postprocess_trace():
-        harts = range(2)
+    def build(self) -> None:
+        self.announce("Building benchmark")
+        subprocess.run(["make", self.binary], cwd=self.src_dir, check=True)
+
+    def run(self) -> None:
+        self.announce("Running benchmark")
+        subprocess.run(["make", "run_" + self.binary], cwd=self.src_dir, check=True)
+
+    def trace(self) -> dict[int, list[tuple[int, int]]]:
+        self.announce("Tracing benchmark")
+        subprocess.run(["make", "traces"], cwd=self.src_dir, check=True)
+        # Get number of harts
+        harts = len(list(self.log_dir.glob(__class__.trace_file.format(hart="*"))))
         hart_cycles = {}
-        for hart in harts:
+        for hart in range(harts):
             json_file = pathlib.Path(
-                benchmark_dir / (binary + ".logs") / trace_file.format(hart=hart)
+                self.log_dir / __class__.trace_file.format(hart=f"{hart:05}")
             )
             with open(json_file) as file:
                 cycle_list = []
@@ -41,17 +53,27 @@ if __name__ == "__main__":
             hart_cycles[hart] = cycle_list
         return hart_cycles
 
-    def plot_sections(sections, file):
+    def plot(
+        self, hart_cycles: dict[int, list[tuple[int, int]]], folder: str, file=None
+    ):
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            return
+        dst_folder = self.export_dir / pathlib.Path(folder)
+        if file is None:
+            file = dst_folder / (self.binary + ".pdf")
+        self.announce(f"Plotting benchmark @ {file}")
         # Colors for the sections
         colors = plt.get_cmap("Set2").colors
-        fig, ax = plt.subplots()
+        _, ax = plt.subplots(figsize=(30, 6))
         # Plotting sections for core 1
         yticks = []
         yticklabels = []
-        for j, hart in enumerate(range(len(sections.keys()))):
+        for j, hart in enumerate(range(len(hart_cycles.keys()))):
             yticks.append(15 + j * 10)
             yticklabels.append(f"Hart {j}")
-            for i, (start, end) in enumerate(sections[hart]):
+            for i, (start, end) in enumerate(hart_cycles[hart]):
                 ax.broken_barh(
                     [(start, end - start)],
                     ((j + 1) * 10, 9),
@@ -65,35 +87,43 @@ if __name__ == "__main__":
                     va="center",
                     ha="center",
                     color="white",
-                    fontsize=8,
+                    fontsize=10,
                     fontweight="bold",
                     rotation=90,
                 )
-
         # Setting labels and grid
         ax.set_yticks(yticks)
         ax.set_yticklabels(yticklabels)
         ax.set_xlabel("Time")
         ax.set_title("Performance Sections on SNAX")
-        plt.savefig(file, bbox_inches="tight")
+        if not dst_folder.exists():
+            dst_folder.mkdir(parents=True)
+        plt.savefig(dst_folder / file, bbox_inches="tight")
 
-    # Copy over files into a new directory
-    announce("Preparing benchmark")
-    shutil.rmtree(benchmark_dir)
-    shutil.copytree(src=directory, dst=benchmark_dir, dirs_exist_ok=False)
-    # Run the build
-    announce("Building benchmark")
-    subprocess.run(["make", binary], cwd=benchmark_dir)
-    # Run the code
-    announce("Running benchmark")
-    subprocess.run(["make", "run_" + binary], cwd=benchmark_dir)
-    # Trace the log
-    announce("Tracing benchmark")
-    subprocess.run(["make", "traces"], cwd=benchmark_dir)
-    announce("Postprocessing benchmark")
-    hart_sections = postprocess_trace()
-    if no_matplotlib:
-        announce("Not plotting benchmark, matplotlib not installed")
-    else:
-        announce("Plotting benchmark")
-        plot_sections(hart_sections, plot_file)
+    def copy_binary(self, folder: str):
+        self.announce("Copying binary")
+        dst_folder = pathlib.Path(self.export_dir / folder)
+        if not dst_folder.exists():
+            dst_folder.mkdir()
+        shutil.copy(src=self.src_dir / self.binary, dst=dst_folder / self.binary)
+
+    def copy_logs(self, folder: str):
+        self.announce("Copying logs")
+        shutil.copytree(
+            src=self.log_dir, dst=self.export_dir / folder, dirs_exist_ok=True
+        )
+
+
+if __name__ == "__main__":
+    folder = "run1"
+    bm = SNAXBenchmark(
+        kernel="tiled_add",
+        binary="tiled.acc_dialect.x",
+        export_dir=str(pathlib.Path.cwd()),
+    )
+    bm.build()
+    bm.run()
+    hart_cycles = bm.trace()
+    bm.plot(hart_cycles, folder)
+    bm.copy_binary(folder)
+    bm.copy_logs(folder)
