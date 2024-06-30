@@ -31,6 +31,10 @@ class SNAXBenchmark:
         self.announce("Building benchmark")
         subprocess.run(["make", self.binary, *build_opts], cwd=self.src_dir, check=True)
 
+    def clean(self) -> None:
+        self.announce("Cleaning benchmark")
+        subprocess.run(["make", "clean"], cwd=self.src_dir, check=True)
+
     def run(self) -> None:
         self.announce("Running benchmark")
         subprocess.run(["make", "run_" + self.binary], cwd=self.src_dir, check=True)
@@ -121,6 +125,7 @@ if __name__ == "__main__":
         binary="tiled.acc_dialect.x",
         export_dir=str(pathlib.Path.cwd()),
     )
+    bm.clean()
     bm.build(build_opts=["ARRAY_SIZE=256", "TILE_SIZE=16", "NO_CHECK=1"])
     bm.run()
     hart_cycles = bm.trace()
