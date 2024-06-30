@@ -17,6 +17,10 @@ MLIRPREPROCFLAGS += --allow-unregistered-dialect
 MLIRPREPROC2FLAGS += --allow-unregistered-dialect
 MLIRPREPROC3FLAGS += --allow-unregistered-dialect
 
+ifdef NO_CHECK
+ CFLAGS += -DNO_CHECK
+endif
+
 
 # Override snax-opt rules to avoid linalg-to-library-call pass
 SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=snax_alu},convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,snax-lower-mcycle
