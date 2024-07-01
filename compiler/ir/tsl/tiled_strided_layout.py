@@ -148,6 +148,7 @@ class TiledStridedLayout:
             contiguous block.
 
         """
+        self_strides = [x for x in self]
         result: list[Stride] = []
 
         # provide default result of single element common
@@ -161,7 +162,7 @@ class TiledStridedLayout:
             next_stride = next(
                 (
                     (dim, depth, stride_self)
-                    for dim, depth, stride_self in self
+                    for dim, depth, stride_self in self_strides
                     if stride_self.step == current_stride
                 ),
                 None,
@@ -170,17 +171,18 @@ class TiledStridedLayout:
             # check if contiguous block is found
             if next_stride is None:
                 return result or default_result
-            # return if dynamic
-            if next_stride[2].is_dynamic():
-                return result or default_result
             else:
                 dim, depth, stride_self = next_stride
+                self_strides.remove(next_stride)
 
             # check if contiguous block is common with other layout
             stride_other = other.get_stride(dim, depth)
             if stride_self == stride_other:
                 result.append(stride_self)
-                current_stride = stride_self.step * stride_self.bound
+                if stride_self.step is None or stride_self.bound is None:
+                    current_stride = None
+                else:
+                    current_stride = stride_self.step * stride_self.bound
 
             else:
                 return result or default_result
