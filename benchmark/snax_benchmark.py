@@ -8,11 +8,16 @@ class SNAXBenchmark:
     trace_file = "trace_hart_{hart}.trace.json"
 
     def __init__(
-        self, kernel: str, binary: str, export_dir: str, benchmark: str | None = None
+        self,
+        kernel: str,
+        binary: str,
+        src_dir: str,
+        export_dir: str,
+        benchmark: str | None = None,
     ):
         self.kernel = kernel
         self.binary = binary
-        self.src_dir = pathlib.Path(f"../kernels/{self.kernel}/")
+        self.src_dir = pathlib.Path(src_dir)
         self.log_dir = self.src_dir / (self.binary + ".logs")
         if benchmark is None:
             self.benchmark = kernel
@@ -81,8 +86,8 @@ class SNAXBenchmark:
                 ax.broken_barh(
                     [(start, end - start)],
                     ((j + 1) * 10, 9),
-                    facecolors=colors[i % len(colors)],
-                    label=f"Core 1 Section {i+1}",
+                    facecolors=colors[i % len(colors) % 2 + 2],
+                    label=f"Hart {j} Section {i+1}",
                 )
                 ax.text(
                     start + (end - start) / 2,
@@ -99,7 +104,9 @@ class SNAXBenchmark:
         ax.set_yticks(yticks)
         ax.set_yticklabels(yticklabels)
         ax.set_xlabel("Time")
-        ax.set_title("Performance Sections on SNAX")
+        ax.set_title(
+            f"Benchmark {self.benchmark}: Cycles for Sections \n Binary: {self.binary}"
+        )
         if not dst_folder.exists():
             dst_folder.mkdir(parents=True)
         plt.savefig(dst_folder / file, bbox_inches="tight")
@@ -108,7 +115,7 @@ class SNAXBenchmark:
         self.announce("Copying binary")
         dst_folder = pathlib.Path(self.export_dir / folder)
         if not dst_folder.exists():
-            dst_folder.mkdir()
+            dst_folder.mkdir(parents=True)
         shutil.copy(src=self.src_dir / self.binary, dst=dst_folder / self.binary)
 
     def copy_logs(self, folder: str):
@@ -116,19 +123,3 @@ class SNAXBenchmark:
         shutil.copytree(
             src=self.log_dir, dst=self.export_dir / folder, dirs_exist_ok=True
         )
-
-
-if __name__ == "__main__":
-    folder = "run1"
-    bm = SNAXBenchmark(
-        kernel="tiled_add",
-        binary="tiled.acc_dialect.x",
-        export_dir=str(pathlib.Path.cwd()),
-    )
-    bm.clean()
-    bm.build(build_opts=["ARRAY_SIZE=256", "TILE_SIZE=16", "NO_CHECK=1"])
-    bm.run()
-    hart_cycles = bm.trace()
-    bm.plot(hart_cycles, folder)
-    bm.copy_binary(folder)
-    bm.copy_logs(folder)
