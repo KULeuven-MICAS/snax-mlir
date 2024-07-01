@@ -4,6 +4,7 @@ from xdsl.dialects.builtin import (
     IndexType,
     IntAttr,
     IntegerType,
+    MemRefType,
     NoneAttr,
     StridedLayoutAttr,
 )
@@ -12,9 +13,8 @@ from xdsl.dialects.memref import (
     Dim,
     ExtractAlignedPointerAsIndexOp,
     ExtractStridedMetaDataOp,
-    MemRefType,
 )
-from xdsl.ir import Block, MLContext, Region
+from xdsl.ir import Block, MLContext, Region, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -26,6 +26,42 @@ from xdsl.traits import SymbolTable
 
 from compiler.dialects.tsl import TiledStridedLayoutAttr
 from compiler.ir.tsl import TiledStridedLayout
+
+
+def get_total_size_op(source: SSAValue):
+    assert isinstance(source.type, MemRefType)
+
+    # step 1: extract size information to calculate total size
+    # this is done by multiplying all the shape dimensions
+    ops_to_insert = []
+    total_size_op = None
+    for dim in range(source.type.get_num_dims()):
+        const_op = Constant.from_int_and_width(dim, IndexType())
+        ops_to_insert.append(const_op)
+        dim_op = Dim.from_source_and_index(source, const_op.result)
+        ops_to_insert.append(dim_op)
+        if total_size_op is None:
+            total_size_op = dim_op
+        else:
+            total_size_op = Muli(total_size_op.result, dim_op.result, IndexType())
+            ops_to_insert.append(total_size_op)
+
+    # step 2: calculate element size to get total size in bytes
+    # multiyply the # elements by the (element size // 8) to get the
+    # total size in bytes
+    element_type: IntegerType = source.type.get_element_type()
+    assert element_type.width.data % 8 == 0
+    element_size = element_type.width.data // 8
+    element_size_op = Constant.from_int_and_width(element_size, IndexType())
+    total_size_op = Muli(
+        total_size_op.result,
+        element_size_op.result,
+        IndexType(),
+    )
+    ops_to_insert.append(element_size_op)
+    ops_to_insert.append(total_size_op)
+
+    return ops_to_insert, total_size_op
 
 
 class MatchSimpleCopy(RewritePattern):
@@ -52,43 +88,16 @@ class MatchSimpleCopy(RewritePattern):
         ):
             return
 
-        # step 1: extract size information to calculate total size
-        # this is done by multiplying all the shape dimensions
-        ops_to_insert = []
-        total_size_op = None
-        for dim in range(op.source.type.get_num_dims()):
-            const_op = Constant.from_int_and_width(dim, IndexType())
-            ops_to_insert.append(const_op)
-            dim_op = Dim.from_source_and_index(op.source, const_op.result)
-            ops_to_insert.append(dim_op)
-            if total_size_op is None:
-                total_size_op = dim_op
-            else:
-                total_size_op = Muli(total_size_op.result, dim_op.result, IndexType())
-                ops_to_insert.append(total_size_op)
+        # get the size of the ops
+        ops_to_insert, total_size_op = get_total_size_op(op.source)
 
-        # step 2: calculate element size to get total size in bytes
-        # multiyply the # elements by the (element size // 8) to get the
-        # total size in bytes
-        element_type: IntegerType = op.source.type.get_element_type()
-        assert element_type.width.data % 8 == 0
-        element_size = element_type.width.data // 8
-        element_size_op = Constant.from_int_and_width(element_size, IndexType())
-        total_size_op = Muli(
-            total_size_op.result,
-            element_size_op.result,
-            IndexType(),
-        )
-        ops_to_insert.append(element_size_op)
-        ops_to_insert.append(total_size_op)
-
-        # step 3: extract source and destination pointers
+        # extract source and destination pointers
         source_ptr_op = ExtractAlignedPointerAsIndexOp.get(op.source)
         dest_ptr_op = ExtractAlignedPointerAsIndexOp.get(op.destination)
         ops_to_insert.append(source_ptr_op)
         ops_to_insert.append(dest_ptr_op)
 
-        # step 4: create function call
+        # create function call
         func_call = func.Call(
             "snax_dma_1d_transfer",
             [
@@ -99,7 +108,7 @@ class MatchSimpleCopy(RewritePattern):
             [],
         )
 
-        # step 5: insert ops and replace op
+        # insert ops and replace op
         rewriter.insert_op_before_matched_op(ops_to_insert)
         rewriter.replace_op(op, func_call)
 
@@ -336,16 +345,26 @@ class TransformDMA(RewritePattern):
 
         # step 4: generate variables for 2D dma transfer
         if len(remaining_strides) == 0:
-            # is actually 1d dma transfer, fake 2d transfer for experiments
-            one_op = arith.Constant.from_int_and_width(1, IndexType())
-            ops_to_insert.append(one_op)
-            dma_loop = {
-                "step_src_op": one_op,
-                "step_dst_op": one_op,
-                "bound_op": one_op,
-            }
+            # is actually 1d dma transfer, calculate size of transfer:
+            ops_to_add, total_size_op = get_total_size_op(op.source)
+            ops_to_insert.extend(ops_to_add)
+
+            # create function call
+            func_call = func.Call(
+                "snax_dma_1d_transfer", [pointer_src, pointer_dst, total_size_op], []
+            )
+
+            # insert ops and replace op
+            rewriter.insert_op_before_matched_op(ops_to_insert)
+            rewriter.replace_op(op, func_call)
+            return
         else:
             dma_loop = remaining_strides.pop(0)
+
+        # if my reasoning is correct, if there are remaining strides,
+        # then the lcb cannot be dynamic
+        assert lcb[-1].bound is not None
+        assert lcb[-1].step is not None
 
         dma_size = Constant.from_int_and_width(
             lcb[-1].bound * lcb[-1].step, IndexType()
@@ -473,6 +492,8 @@ class SNAXCopyToDMA(ModulePass):
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(MatchSimpleCopy()).rewrite_module(op)
+        PatternRewriteWalker(TransformDMA()).rewrite_module(op)
+
         if any(
             isinstance(op_in_module, func.Call)
             and op_in_module.callee.root_reference.data == "snax_dma_1d_transfer"
@@ -483,7 +504,6 @@ class SNAXCopyToDMA(ModulePass):
             )
             SymbolTable.insert_or_update(op, func_decl)
 
-        PatternRewriteWalker(TransformDMA()).rewrite_module(op)
         if any(
             isinstance(op_in_module, func.Call)
             and op_in_module.callee.root_reference.data == "snax_dma_2d_transfer"

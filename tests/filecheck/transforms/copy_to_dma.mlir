@@ -56,6 +56,54 @@
 // -----
 
 "builtin.module"() ({
+  "func.func"() <{"sym_name" = "transform_copy", "function_type" = (memref<?x?xi32, strided<[?, 1]>, "L0">, memref<?x?xi32, strided<[?, 1]>, "L1">) -> (), "sym_visibility" = "public"}> ({
+  ^0(%arg0 : memref<?x?xi32, strided<[?, 1]>, "L0">, %arg1 : memref<?x?xi32, strided<[?, 1]>, "L1">):
+    "memref.copy"(%arg0, %arg1) : (memref<?x?xi32, strided<[?, 1]>, "L0">, memref<?x?xi32, strided<[?, 1]>, "L1">) -> ()
+    "func.return"() : () -> ()
+  }) : () -> ()
+}) : () -> ()
+
+//CHECK: "builtin.module"() ({
+//CHECK-NEXT:   "func.func"() <{"sym_name" = "transform_copy", "function_type" = (memref<?x?xi32, strided<[?, 1]>, "L0">, memref<?x?xi32, strided<[?, 1]>, "L1">) -> (), "sym_visibility" = "public"}> ({
+//CHECK-NEXT:   ^0(%arg0 : memref<?x?xi32, strided<[?, 1]>, "L0">, %arg1 : memref<?x?xi32, strided<[?, 1]>, "L1">):
+//CHECK-NEXT:     %0 = "memref.extract_aligned_pointer_as_index"(%arg0) : (memref<?x?xi32, strided<[?, 1]>, "L0">) -> index
+//CHECK-NEXT:     %1 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<?x?xi32, strided<[?, 1]>, "L1">) -> index
+//CHECK-NEXT:     %2 = "arith.constant"() <{"value" = 0 : index}> : () -> index
+//CHECK-NEXT:     %3 = "memref.dim"(%arg0, %2) : (memref<?x?xi32, strided<[?, 1]>, "L0">, index) -> index
+//CHECK-NEXT:     %4 = "arith.constant"() <{"value" = 1 : index}> : () -> index
+//CHECK-NEXT:     %5 = "memref.dim"(%arg0, %4) : (memref<?x?xi32, strided<[?, 1]>, "L0">, index) -> index
+//CHECK-NEXT:     %6 = "arith.constant"() <{"value" = 1 : index}> : () -> index
+//CHECK-NEXT:     %7 = "arith.divui"(%3, %6) : (index, index) -> index
+//CHECK-NEXT:     %8 = "arith.constant"() <{"value" = 1 : index}> : () -> index
+//CHECK-NEXT:     %9 = "arith.divui"(%5, %8) : (index, index) -> index
+//CHECK-NEXT:     %10 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %11 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %12 = "arith.muli"(%9, %10) : (index, index) -> index
+//CHECK-NEXT:     %13 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %14 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %15 = "arith.muli"(%9, %13) : (index, index) -> index
+//CHECK-NEXT:     %16 = "arith.constant"() <{"value" = 0 : index}> : () -> index
+//CHECK-NEXT:     %17 = "memref.dim"(%arg0, %16) : (memref<?x?xi32, strided<[?, 1]>, "L0">, index) -> index
+//CHECK-NEXT:     %18 = "arith.constant"() <{"value" = 1 : index}> : () -> index
+//CHECK-NEXT:     %19 = "memref.dim"(%arg0, %18) : (memref<?x?xi32, strided<[?, 1]>, "L0">, index) -> index
+//CHECK-NEXT:     %20 = "arith.muli"(%17, %19) : (index, index) -> index
+//CHECK-NEXT:     %21 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %22 = "arith.muli"(%20, %21) : (index, index) -> index
+
+
+                  // Even though it is a strided copy, the algorithm now detects it is still contiguous 
+                  // and emits it as a 1D DMA transfer
+
+//CHECK-NEXT:     "func.call"(%0, %1, %22) <{"callee" = @snax_dma_1d_transfer}> : (index, index, index) -> ()
+//CHECK-NEXT:     "func.return"() : () -> ()
+//CHECK-NEXT:   }) : () -> ()
+//CHECK-NEXT:   "func.func"() <{"sym_name" = "snax_dma_1d_transfer", "function_type" = (index, index, index) -> (), "sym_visibility" = "private"}> ({
+//CHECK-NEXT:   }) : () -> ()
+//CHECK-NEXT: }) : () -> ()
+
+// -----
+
+"builtin.module"() ({
   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<5x5xi32, strided<[10, 1]>>, memref<5x5xi32, strided<[20, 1]>>) -> (), "sym_visibility" = "public"}> ({
   ^0(%arg0 : memref<5x5xi32, strided<[10, 1]>>, %arg1 : memref<5x5xi32, strided<[20, 1]>>):
     "memref.copy"(%arg0, %arg1) : (memref<5x5xi32, strided<[10, 1]>>, memref<5x5xi32, strided<[20, 1]>>) -> ()
