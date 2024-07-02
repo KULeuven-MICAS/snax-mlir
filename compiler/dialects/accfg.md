@@ -71,7 +71,7 @@ This pass consists of five individual rewrites:
 4. Move setups into conditionals
 5. Move loop-invariant setups
 
-The first two rewrites only acts locally, either on single ops, or pairs of setup operations within the same block.
+The first two rewrites only act locally, either on single ops, or pairs of setup operations within the same block.
 This makes reasoning simple and effective.
 
 The deduplication pattern recursively looks at the operations producing the input state to determine if a value
