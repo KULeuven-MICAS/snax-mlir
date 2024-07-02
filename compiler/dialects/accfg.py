@@ -39,6 +39,11 @@ from xdsl.traits import SymbolOpInterface
 
 
 class EffectsEnum(Enum):
+    """
+    Specify to explicitly say:
+    * NONE: There are no accfg side-effects to this operation
+    * FULL: There are accfg side-effects to this operation
+    """
     NONE = "none"
     FULL = "full"
 
