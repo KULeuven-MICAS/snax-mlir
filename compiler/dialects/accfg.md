@@ -6,7 +6,7 @@ the semantics of its operations and the assumptions made by its passes.
 
 ## Operation Semantics
 
-The `accfg` dialect provides three operations that interact with a stateful "client" device. These operations are as
+The `accfg` dialect provides three operations that interact with a stateful accelerator device. These operations are as
 follows:
 
 - `accfg.setup` writes to zero or more configuration registers of the client device
