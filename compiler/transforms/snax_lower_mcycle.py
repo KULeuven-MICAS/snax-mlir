@@ -17,12 +17,12 @@ class ConvertMCycleToLLVM(RewritePattern):
         """Swap op with call"""
         riscv_mcycle = (
             llvm.InlineAsmOp(
-                "csrr $0, mcycle",
+                "csrr zero, mcycle",
                 # =r = store result in A 32- or 64-bit
                 # general-purpose register (depending on the platform XLEN)
-                "=r,~{memory}",
+                "~{memory}",
                 [],
-                [builtin.i32],
+                [],
                 has_side_effects=True,
             ),
         )

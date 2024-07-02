@@ -39,6 +39,11 @@ int main() {
 
   snrt_cluster_hw_barrier();
 
+#ifdef NO_CHECK
+  // No correctness check =
+  // Always finish as if nothing happened
+  return 0;
+#else
   // Correctness check -
   // from this point on only core 0 is required to be alive.
   int thiscore = snrt_cluster_core_idx();
@@ -54,4 +59,5 @@ int main() {
       nerr += 1;
   }
   return nerr;
+#endif
 }
