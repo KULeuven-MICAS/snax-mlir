@@ -1,6 +1,6 @@
 # `accfg` Dialect Documentation
 
-The `accfg` dialect is meant to server as a genric optimisation dialect, which may be used by any lowering pipieline
+The `accfg` dialect is meant to serve as a generic optimisation dialect, which may be used by any lowering pipeline
 who has certain semantics and wants to use our optimisations. It is therefore paramount that the dialect documents
 the semantics of its operations and the assumptions made by its passes.
 
