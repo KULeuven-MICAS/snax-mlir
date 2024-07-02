@@ -95,7 +95,8 @@ This pass tries to move setup operations upwards *before* `await` operations. Th
 
 - We can freely modify the accelerator state while it's running
 - We have a truly asynchronous accelerator (e.g. `launch` will not block until the accelerator has completed)
-- Configuring the accelerator does not dominate the runtime, meaning we can do some work while we wait (e.g. calculating the next setup values)
+- Configuring the accelerator does not dominate the runtime, meaning we can do some work while we wait (e.g. calculating
+  the next setup values)
 
 In detail, it performs the following optimisations:
 
