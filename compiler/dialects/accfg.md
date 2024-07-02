@@ -15,7 +15,7 @@ follows:
 
 Each operation identifies the client it's interacting with uniquely through a compile-time known property called
 `accelerator`. **The client must persist values in its configuration registers across `launch` invocations.**
-It is also assumed that all sources that effect the accelerators registers is expressed in the `accfg` dialect.
+It is also assumed that all sources that effect the accelerators registers are expressed in the `accfg` dialect.
 
 Every `setup` operation produces an `accfg.state` SSA value, representing the current state of the accelerators
 registers after the setup operation acted on it. The parameters set by this operation are called *setup parameters*.
