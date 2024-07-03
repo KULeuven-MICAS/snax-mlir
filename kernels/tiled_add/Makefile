@@ -17,15 +17,26 @@ MLIRPREPROCFLAGS += --allow-unregistered-dialect
 MLIRPREPROC2FLAGS += --allow-unregistered-dialect
 MLIRPREPROC3FLAGS += --allow-unregistered-dialect
 
+ifdef NO_CHECK
+ CFLAGS += -DNO_CHECK
+endif
+
 
 # Override snax-opt rules to avoid linalg-to-library-call pass
-SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=snax_alu},convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
+SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=snax_alu},convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,snax-lower-mcycle
 
-%.acc_dialect.snax-opt.mlir: %.preprocfinal.mlir
+# Set default 
+ARRAY_SIZE ?= 2048
+TILE_SIZE ?= 128
+
+%.preprocfinal.sized.mlir: %.preprocfinal.mlir
+	cat $< | sed -E 's/128/${ARRAY_SIZE}/gm;t' | sed -E 's/%tile_size = arith.constant 16 : index/%tile_size = arith.constant ${TILE_SIZE} : index/gm;t' > $@
+
+%.acc_dialect.snax-opt.mlir: %.preprocfinal.sized.mlir
 	$(SNAXOPT) $(SNAXOPTACCFLAGS) -o $@ $<
 
 data.c data.h:
-	$(PYTHON) gendata.py
+	$(PYTHON) gendata.py --array_size=${ARRAY_SIZE}
 
 %.x: %.o main.o data.o
 	$(LD) $(LDFLAGS) $^ -o $@
