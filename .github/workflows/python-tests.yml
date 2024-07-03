@@ -26,6 +26,10 @@ jobs:
       shell: bash
       run: |
         python3 -m pip install -r requirements.txt
+    - name: Install snax-mlir
+      shell: bash
+      run: |
+        python3 -m pip install -e .
     - name: Test with pytest
       shell: bash
       run: |
