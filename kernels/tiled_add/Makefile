@@ -30,7 +30,7 @@ ARRAY_SIZE ?= 2048
 TILE_SIZE ?= 128
 
 %.preprocfinal.sized.mlir: %.preprocfinal.mlir
-	cat $< | sed -E 's/128/${ARRAY_SIZE}/gm;t' | sed -E 's/16/${TILE_SIZE}/gm;t' > $@
+	cat $< | sed -E 's/128/${ARRAY_SIZE}/gm;t' | sed -E 's/%tile_size = arith.constant 16 : index/%tile_size = arith.constant ${TILE_SIZE} : index/gm;t' > $@
 
 %.acc_dialect.snax-opt.mlir: %.preprocfinal.sized.mlir
 	$(SNAXOPT) $(SNAXOPTACCFLAGS) -o $@ $<
