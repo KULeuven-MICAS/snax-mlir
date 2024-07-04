@@ -22,8 +22,14 @@ ifdef NO_CHECK
 endif
 
 
+ifdef ACCFGOPT
+ ACCFGOPTFLAGS=accfg-dedup,accfg-config-overlap,
+endif
+	
+
 # Override snax-opt rules to avoid linalg-to-library-call pass
-SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=snax_alu},convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,snax-lower-mcycle
+SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=snax_alu},convert-linalg-to-accfg,${ACCFGOPTFLAGS} #convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,snax-lower-mcycle
+
 
 # Set default 
 ARRAY_SIZE ?= 2048

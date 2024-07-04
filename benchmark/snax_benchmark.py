@@ -29,24 +29,32 @@ class SNAXBenchmark:
         str_len = len(string) + len(self.benchmark) + 5
         separator = str_len * "="
         print(separator)
-        print(" " + string + ' "' + self.benchmark + '"')
+        print("| " + self.benchmark + " |" + " " + string)
         print(separator)
 
     def build(self, build_opts: list[str] = []) -> None:
         self.announce("Building benchmark")
-        subprocess.run(["make", self.binary, *build_opts], cwd=self.src_dir, check=True)
+        command = ["make", self.binary, *build_opts]
+        print(" ".join(command))
+        subprocess.run(command, cwd=self.src_dir, check=True)
 
     def clean(self) -> None:
         self.announce("Cleaning benchmark")
-        subprocess.run(["make", "clean"], cwd=self.src_dir, check=True)
+        command = ["make", "clean"]
+        print(" ".join(command))
+        subprocess.run(command, cwd=self.src_dir, check=True)
 
     def run(self) -> None:
         self.announce("Running benchmark")
-        subprocess.run(["make", "run_" + self.binary], cwd=self.src_dir, check=True)
+        command = ["make", "run_" + self.binary]
+        print(" ".join(command))
+        subprocess.run(command, cwd=self.src_dir, check=True)
 
     def trace(self) -> dict[int, list[tuple[int, int]]]:
         self.announce("Tracing benchmark")
-        subprocess.run(["make", "traces"], cwd=self.src_dir, check=True)
+        command = ["make", "traces"]
+        print(" ".join(command))
+        subprocess.run(command, cwd=self.src_dir, check=True)
         # Get number of harts
         harts = len(list(self.log_dir.glob(__class__.trace_file.format(hart="*"))))
         hart_cycles = {}
@@ -112,14 +120,13 @@ class SNAXBenchmark:
         plt.savefig(dst_folder / file, bbox_inches="tight")
 
     def copy_binary(self, folder: str):
-        self.announce("Copying binary")
         dst_folder = pathlib.Path(self.export_dir / folder)
+        self.announce(f"Copying binary to {dst_folder}")
         if not dst_folder.exists():
             dst_folder.mkdir(parents=True)
         shutil.copy(src=self.src_dir / self.binary, dst=dst_folder / self.binary)
 
     def copy_logs(self, folder: str):
-        self.announce("Copying logs")
-        shutil.copytree(
-            src=self.log_dir, dst=self.export_dir / folder, dirs_exist_ok=True
-        )
+        dst_folder = self.export_dir / folder
+        self.announce(f"Copying logs to {dst_folder}")
+        shutil.copytree(src=self.log_dir, dst=dst_folder, dirs_exist_ok=True)
