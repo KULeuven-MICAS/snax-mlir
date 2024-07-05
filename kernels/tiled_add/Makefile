@@ -28,7 +28,7 @@ endif
 	
 
 # Override snax-opt rules to avoid linalg-to-library-call pass
-SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=snax_alu},convert-linalg-to-accfg,${ACCFGOPTFLAGS} #convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,snax-lower-mcycle
+SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=snax_alu},convert-linalg-to-accfg,"mlir-opt{executable=mlir-opt-17 generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic,-split-input-file}",${ACCFGOPTFLAGS}convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,snax-lower-mcycle
 
 
 # Set default 
