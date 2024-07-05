@@ -32,7 +32,7 @@ class SNAXBenchmark:
         print("| " + self.benchmark + " |" + " " + string)
         print(separator)
 
-    def build(self, build_opts: list[str] = []) -> None:
+    def build(self, build_opts: list[str] | tuple[str, ...] = ()) -> None:
         self.announce("Building benchmark")
         command = ["make", self.binary, *build_opts]
         print(" ".join(command))
@@ -44,9 +44,9 @@ class SNAXBenchmark:
         print(" ".join(command))
         subprocess.run(command, cwd=self.src_dir, check=True)
 
-    def run(self) -> None:
+    def run(self, args: list[str] | tuple[str, ...] = ()) -> None:
         self.announce("Running benchmark")
-        command = ["make", "run_" + self.binary]
+        command = ["make", "run_" + self.binary, *args]
         print(" ".join(command))
         subprocess.run(command, cwd=self.src_dir, check=True)
 

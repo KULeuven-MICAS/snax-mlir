@@ -51,7 +51,7 @@ if __name__ == "__main__":
     )
     bm.clean()
     bm.build(build_opts=["ARRAY_SIZE=256", "TILE_SIZE=16", "ACCFGOPT=1"])
-    bm.run()
+    bm.run(['-i'])
     hart_cycles = bm.trace()
     bm.plot(hart_cycles, folder)
     bm.copy_binary(folder)
