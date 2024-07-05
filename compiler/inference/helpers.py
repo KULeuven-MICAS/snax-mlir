@@ -10,7 +10,7 @@ def has_accfg_effects(op: Operation) -> bool:
     """
     Checks if an operation effects state managed by the accfg dialect, according to the following criteria:
 
-    - If provided, an attribute named `accfg_effects` of either of the two types will overwrite inference.
+    - If provided, an attribute named `accfg.effects` of either of the two types will overwrite inference.
       These attributes will need to be added by the provider of the IR, as only they know which functions may affect
       the accelerator.
     - By default we assume that function calls modify state (e.g. `func.call` and `llvm.call`).
@@ -18,7 +18,7 @@ def has_accfg_effects(op: Operation) -> bool:
       to above criterion.
     """
     # check if op is marked as effecting
-    effects_attr = op.attributes.get("accfg_effects", None)
+    effects_attr = op.attributes.get("accfg.effects", None)
     if isinstance(effects_attr, accfg.EffectsAttr):
         return effects_attr.effects != accfg.EffectsEnum.NONE
 
