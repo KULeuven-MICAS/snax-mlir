@@ -30,6 +30,10 @@ func.func @test() {
 
     "accfg.await"(%token) : (!accfg.token<"acc1">) -> ()
 
+    "test.op"() {"accfg.effects" = #accfg.effects<none>} : () -> ()
+
+    "test.op"() {"accfg.effects" = #accfg.effects<full>} : () -> ()
+
     func.return
 }
 
@@ -43,6 +47,8 @@ func.func @test() {
 // CHECK-NEXT:     %token = "accfg.launch"(%zero, %state) <{"param_names" = ["launch"], "accelerator" = "acc1"}> : (i32, !accfg.state<"acc1">) -> !accfg.token<"acc1">
 // CHECK-NEXT:     %state2 = accfg.setup "acc1" from %state to ("A" = %one : i32, "B" = %two : i32) : !accfg.state<"acc1">
 // CHECK-NEXT:     "accfg.await"(%token) : (!accfg.token<"acc1">) -> ()
+// CHECK-NEXT:    "test.op"() {"accfg.effects" = #accfg.effects<none>} : () -> ()
+// CHECK-NEXT:    "test.op"() {"accfg.effects" = #accfg.effects<full>} : () -> ()
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
@@ -57,6 +63,8 @@ func.func @test() {
 // CHECK-GENERIC:     %token = "accfg.launch"(%zero, %state) <{"param_names" = ["launch"], "accelerator" = "acc1"}> : (i32, !accfg.state<"acc1">) -> !accfg.token<"acc1">
 // CHECK-GENERIC:     %state2 = "accfg.setup"(%one, %two, %state) <{"param_names" = ["A", "B"], "accelerator" = "acc1", "operandSegmentSizes" = array<i32: 2, 1>}> : (i32, i32, !accfg.state<"acc1">) -> !accfg.state<"acc1">
 // CHECK-GENERIC:     "accfg.await"(%token) : (!accfg.token<"acc1">) -> ()
+// CHECK-GENERIC:    "test.op"() {"accfg.effects" = #accfg.effects<none>} : () -> ()
+// CHECK-GENERIC:    "test.op"() {"accfg.effects" = #accfg.effects<full>} : () -> ()
 // CHECK-GENERIC:     "func.return"() : () -> ()
 // CHECK-GENERIC:   }) : () -> ()
 // CHECK-GENERIC: }) : () -> ()

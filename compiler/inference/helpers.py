@@ -1,9 +1,42 @@
 from collections.abc import Generator
 
-from xdsl.dialects import scf
+from xdsl.dialects import func, llvm, scf
 from xdsl.ir import Block, BlockArgument, Operation, OpResult, Region, SSAValue
 
 from compiler.dialects import accfg
+
+
+def has_accfg_effects(op: Operation) -> bool:
+    """
+    Checks if an operation effects state managed by the accfg dialect, according to the following criteria:
+
+    - If provided, an attribute named `accfg.effects` of either of the two types will overwrite inference.
+      These attributes will need to be added by the provider of the IR, as only they know which functions may affect
+      the accelerator.
+    - By default we assume that function calls modify state (e.g. `func.call` and `llvm.call`).
+    - All other operation don't modify state, as long as the ops contained within them don't modify state according
+      to above criterion.
+    """
+    # check if op is marked as effecting
+    effects_attr = op.attributes.get("accfg.effects", None)
+    if isinstance(effects_attr, accfg.EffectsAttr):
+        return effects_attr.effects != accfg.EffectsEnum.NONE
+
+    # ops that may affect state are function calls
+    # all function calls that *don't* effect must be marked
+    if isinstance(op, func.Call | llvm.CallOp):
+        return True
+
+    # Recurse into children to check them according to the same rules
+    if any(
+        has_accfg_effects(op)
+        for region in op.regions
+        for block in region.blocks
+        for op in block.ops
+    ):
+        return True
+    # all other ops are assumed to not have effects
+    return False
 
 
 def get_initial_value_for_scf_for_lcv(loop: scf.For, var: SSAValue) -> SSAValue:
