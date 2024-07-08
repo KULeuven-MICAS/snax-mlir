@@ -3,11 +3,11 @@ from collections.abc import Sequence
 from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.ir import Operation, SSAValue
 
-from compiler.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier
+from compiler.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier3
 from compiler.dialects import accfg
 
 
-class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
+class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier3):
     """
     Accelerator interface class for the SNAX Alu accelerator.
     """
