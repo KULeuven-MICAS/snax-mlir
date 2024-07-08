@@ -68,7 +68,7 @@
 //CHECK-NEXT:   ^0(%arg0 : memref<5xi32, strided<[1], offset: ?>, "L3">, %arg1 : memref<5xi32, strided<[1], offset: ?>, "L1">):
 //CHECK-NEXT:     %0 = "memref.extract_aligned_pointer_as_index"(%arg0) : (memref<5xi32, strided<[1], offset: ?>, "L3">) -> index
 //CHECK-NEXT:     %1 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<5xi32, strided<[1], offset: ?>, "L1">) -> index
-//CHECK-NEXT:     %2, %3, %4, %5 = "memref.extract_strided_metadata"(%arg0) {"resultSegmentSizes" = array<i32: 1, 1, 1, 1>} : (memref<5xi32, strided<[1], offset: ?>, "L3">) -> (memref<i32, "L0">, index, index, index)
+//CHECK-NEXT:     %2, %3, %4, %5 = "memref.extract_strided_metadata"(%arg0) {"resultSegmentSizes" = array<i32: 1, 1, 1, 1>} : (memref<5xi32, strided<[1], offset: ?>, "L3">) -> (memref<i32, "L3">, index, index, index)
 //CHECK-NEXT:     %6 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %7 = "arith.muli"(%6, %3) : (index, index) -> index
 //CHECK-NEXT:     %8 = "arith.addi"(%0, %7) : (index, index) -> index
