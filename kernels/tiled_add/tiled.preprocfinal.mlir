@@ -29,7 +29,6 @@ func.func public @streamer_add_tiled(%A: memref<128xi64, "L3">,
     "snax.mcycle"() : () -> ()
     // Here goes all the code that is run on the DM core
     "scf.if"(%is_dm_core) ({
-      "snax.mcycle"() : () -> ()
       // Perform the memory transfer on a subview of the memref
       scf.for %iv = %c0 to %c128 step %tile_size {
           "snax.mcycle"() : () -> ()
@@ -41,6 +40,8 @@ func.func public @streamer_add_tiled(%A: memref<128xi64, "L3">,
           "memref.copy"(%tiled_B, %tiled_B_L1) : (memref<?xi64, strided<[1], offset:?>, "L3">, memref<?xi64, strided<[1],offset: ?>, "L1">) -> ()
           scf.yield
       }
+
+      "snax.mcycle"() : () -> ()
       // Synchronize with compute core
       "snax.cluster_sync_op"() : () -> ()
       // Wait for compute core to finish computing here
@@ -53,6 +54,8 @@ func.func public @streamer_add_tiled(%A: memref<128xi64, "L3">,
           "memref.copy"(%tiled_D_L1, %tiled_D) : (memref<?xi64, strided<[1], offset: ?>, "L1">, memref<?xi64, strided<[1], offset: ?>, "L3">) -> ()
           scf.yield
       }
+
+      "snax.mcycle"() : () -> ()
       "snax.cluster_sync_op"() : () -> ()
       scf.yield
     },{
@@ -63,6 +66,7 @@ func.func public @streamer_add_tiled(%A: memref<128xi64, "L3">,
     "scf.if"(%is_compute_core) ({
       // Wait for input to come from DM core
       "snax.cluster_sync_op"() : () -> ()
+      "snax.mcycle"() : () -> ()
       scf.for %iv = %c0 to %c128 step %tile_size {
           "snax.mcycle"() : () -> ()
           %tiled_A_L1 = "memref.subview"(%A_L1, %iv, %tile_size) <{operandSegmentSizes = array<i32: 1, 1, 1, 0>, static_offsets = array<i64:-9223372036854775808>, static_sizes = array<i64: -9223372036854775808>, static_strides = array<i64: 1>}> : (memref<128xi64, "L1">, index, index) -> memref<?xi64, strided<[1], offset: ?>, "L1">
@@ -75,6 +79,8 @@ func.func public @streamer_add_tiled(%A: memref<128xi64, "L3">,
           }) : (memref<?xi64, strided<[1], offset: ?>, "L1">, memref<?xi64, strided<[1], offset: ?>, "L1">, memref<?xi64, strided<[1], offset: ?>, "L1">) -> ()
           // Synchronize with DM core
       }
+
+      "snax.mcycle"() : () -> ()
       "snax.cluster_sync_op"() : () -> ()
       // Wait for output to go from L1 to L3
       "snax.cluster_sync_op"() : () -> ()
