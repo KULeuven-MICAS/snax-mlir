@@ -339,3 +339,45 @@ class SNAXPollingBarrier2(Accelerator, ABC):
                 ],
             ),
         ]
+
+
+class SNAXPollingBarrier3(Accelerator, ABC):
+    """
+    FIXME: Adapt this to an interrupt-style barrier for the newest RTL
+
+    Abstract base class for SNAX Accelerators with different polling style barrier.
+
+    The polling style barrier can be represented in C with:
+        while (read_csr(0x3cf));
+    """
+
+    @staticmethod
+    def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+        return [
+            While(
+                [],
+                [],
+                [
+                    barrier := arith.Constant(acc_op.barrier),
+                    zero := arith.Constant(
+                        builtin.IntegerAttr.from_int_and_width(0, 32)
+                    ),
+                    status := llvm.InlineAsmOp(
+                        "csrr $0, $1",
+                        # I = any 12 bit immediate
+                        # =r = store result in A 32- or 64-bit
+                        # general-purpose register (depending on the platform XLEN)
+                        "=r, I",
+                        [barrier],
+                        [i32],
+                        has_side_effects=True,
+                    ),
+                    # check if not equal to zero
+                    comparison := arith.Cmpi(status, zero, "ne"),
+                    Condition(comparison.results[0]),
+                ],
+                [
+                    Yield(),
+                ],
+            ),
+        ]
