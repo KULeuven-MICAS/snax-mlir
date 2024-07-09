@@ -17,7 +17,7 @@ func.func @returned_args(%state: !accfg.state<"simple">) -> !accfg.state<"simple
 
 // CHECK-LABEL: @returned_args
 // CHECK-SAME:  ([[state:%\S+]] : !accfg.state<"simple">)
-// CHECK-NOT:       accfg.reset [[state]]
+// CHECK-NOT:   accfg.reset [[state]]
 
 
 // -----

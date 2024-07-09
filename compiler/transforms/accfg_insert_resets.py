@@ -1,6 +1,7 @@
 import itertools
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 from xdsl.dialects import builtin
 from xdsl.ir import Attribute, Block, MLContext, Operation, SSAValue
