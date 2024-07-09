@@ -28,6 +28,7 @@ from compiler.transforms.set_memory_space import SetMemorySpace
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
+from compiler.transforms.accfg_insert_resets import InsertResetsPass
 
 
 class SNAXOptMain(xDSLOptMain):
@@ -68,6 +69,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(
             RealizeMemrefCastsPass.name, lambda: RealizeMemrefCastsPass
         )
+        super().register_pass(InsertResetsPass.name, lambda: InsertResetsPass)
         super().register_pass(MemrefToSNAX.name, lambda: MemrefToSNAX)
         super().register_pass(AccfgDeduplicate.name, lambda: AccfgDeduplicate)
         super().register_pass(

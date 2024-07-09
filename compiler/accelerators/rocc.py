@@ -46,6 +46,10 @@ class RoCCAccelerator(Accelerator, ABC):
         # Create the sequence of all operations that need to be emitted
         return combine_pairs_to_ops(current_fields, vals, xcustom_acc)
 
+    @staticmethod
+    def lower_reset(rest_op: accfg.ResetOp, acc_op: accfg.AcceleratorOp):
+        return []
+
 
 def create_pairs(
     fields_op: accfg.LaunchOp | accfg.SetupOp,

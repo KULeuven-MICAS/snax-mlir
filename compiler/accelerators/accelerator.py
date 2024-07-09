@@ -25,7 +25,7 @@ class Accelerator(ABC):
         These ops can further be lowered by specific instances of the
         Accelerator interface
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def generate_acc_op(self) -> accfg.AcceleratorOp:
@@ -39,7 +39,7 @@ class Accelerator(ABC):
             barrier         = barrier_address,
         }> : () -> ()
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @staticmethod
     @abstractmethod
@@ -49,7 +49,7 @@ class Accelerator(ABC):
         lower-level operations to perform
         asynchronous await on the accelerator.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @staticmethod
     @abstractmethod
@@ -61,7 +61,7 @@ class Accelerator(ABC):
         lower-level operations to perform an
         asynchronous launch of the accelerator.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @staticmethod
     @abstractmethod
@@ -73,4 +73,11 @@ class Accelerator(ABC):
         return the necessary sequence of lower-level operations to perform
         accelerator configuration.
         """
-        raise NotImplementedError
+        raise NotImplementedError()
+
+    @staticmethod
+    @abstractmethod
+    def lower_reset(
+        rest_op: accfg.ResetOp, acc_op: accfg.AcceleratorOp
+    ) -> Sequence[Operation]:
+        raise NotImplementedError()

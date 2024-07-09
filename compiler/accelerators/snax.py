@@ -73,6 +73,10 @@ class SNAXAccelerator(Accelerator, ABC):
             )
         return ops
 
+    @staticmethod
+    def lower_reset(rest_op: accfg.ResetOp, acc_op: accfg.AcceleratorOp):
+        return []
+
 
 class SNAXStreamer(Accelerator, ABC):
     """

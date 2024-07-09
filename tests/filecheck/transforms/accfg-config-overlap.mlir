@@ -1,4 +1,5 @@
 // RUN: snax-opt --split-input-file -p accfg-config-overlap %s | filecheck %s
+// RUN: snax-opt --split-input-file -p accfg-config-overlap,accfg-insert-resets %s | filecheck %s --check-prefix CHECK-RESET
 
 func.func @simple(%A: i32, %B: i32) {
     %s1 = accfg.setup "simple" to ("A" = %A : i32) : !accfg.state<"simple">
@@ -20,6 +21,10 @@ func.func @simple(%A: i32, %B: i32) {
 //                 ∧∧∧∧∧∧∧∧∧∧∧ await now after next setup
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
+
+
+// CHECK-RESET:      %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
+// CHECK-RESET-NEXT: "accfg.reset"(%s2) : (!accfg.state<"simple">) -> ()
 
 
 // -----
@@ -54,6 +59,10 @@ func.func @computed(%A: i32) {
 // CHECK-NEXT:  }
 
 
+// CHECK-RESET:       %s2 = accfg.setup "simple" from %s1 to ("A" = %A_plus : i32) : !accfg.state<"simple">
+// CHECK-RESET-NEXT:  "accfg.reset"(%s2) : (!accfg.state<"simple">) -> ()
+
+
 // -----
 
 func.func @simple_negative(%A: i32, %B: i32, %i1: i1) {
@@ -82,6 +91,10 @@ func.func @simple_negative(%A: i32, %B: i32, %i1: i1) {
 // CHECK-NEXT:    }) : (i1) -> ()
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
+
+
+// CHECK-RESET:       %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
+// CHECK-RESET-NEXT:  "accfg.reset"(%s2) : (!accfg.state<"simple">) -> ()
 
 
 // -----
@@ -113,6 +126,10 @@ func.func @single_loop(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 // CHECK-NEXT:     }
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
+
+
+// CHECK-RESET:   %2 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %1) -> (!accfg.state<"simple">) : i32 {
+// CHECK-RESET:  "accfg.reset"(%2) : (!accfg.state<"simple">) -> ()
 
 
 // -----
@@ -159,6 +176,10 @@ func.func @complex_loop(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 // CHECK-NEXT: }
 
 
+// CHECK-RESET:   %3 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %2) -> (!accfg.state<"simple">) : i32 {
+// CHECK-RESET:  "accfg.reset"(%3) : (!accfg.state<"simple">) -> ()
+
+
 // -----
 
 func.func @nested_loops(%A : i32, %lb : i32, %ub : i32, %step : i32) {
@@ -197,6 +218,10 @@ func.func @nested_loops(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 // CHECK-NEXT:    }
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
+
+
+// CHECK-RESET:  %1 = scf.for %i = %lb to %ub step %step iter_args(%2 = %0) -> (!accfg.state<"simple">) : i32 {
+// CHECK-RESET:  "accfg.reset"(%1) : (!accfg.state<"simple">) -> ()
 
 
 // -----
@@ -256,3 +281,7 @@ func.func @double_setup_loop(%A : i32, %B : i32, %lb : i32, %ub : i32, %step : i
 // CHECK-NEXT:    }
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
+
+
+// CHECK-RESET:  %3 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %2) -> (!accfg.state<"simple">) : i32 {
+// CHECK-RESET:  "accfg.reset"(%3) : (!accfg.state<"simple">) -> ()

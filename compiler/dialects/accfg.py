@@ -430,12 +430,27 @@ class AcceleratorOp(IRDLOperation):
             yield name, val
 
 
+@irdl_op_definition
+class ResetOp(IRDLOperation):
+    name = "accfg.reset"
+
+    in_state = operand_def(StateType)
+
+    def __init__(self, in_state: Operation | SSAValue):
+        super().__init__(operands=[in_state])
+
+    def get_modified_fields(self) -> set[str]:
+        # TODO: implement this part
+        return set()
+
+
 ACCFG = Dialect(
     "accfg",
     [
         AcceleratorOp,
         AwaitOp,
         LaunchOp,
+        ResetOp,
         SetupOp,
     ],
     [
