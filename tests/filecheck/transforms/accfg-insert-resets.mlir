@@ -109,3 +109,19 @@ func.func @scf_if_2(%i : i32, %cond: i1) {
 // CHECK-NOT:   accfg.reset [[state]] : !accfg.state<"acc">
 // CHECK:       yield
 // CHECK:       accfg.reset [[state2]] : !accfg.state<"acc">
+
+
+// -----
+
+func.func @simple_sequence(%A: i32) {
+    %s1 = accfg.setup "acc" to ("A" = %A : i32) : !accfg.state<"acc">
+
+    %s2 = accfg.setup "acc" from %s1 to ("A" = %A : i32) : !accfg.state<"acc">
+
+    return
+}
+
+// CHECK-LABEL: @simple_sequence
+// CHECK-NEXT: %s1 = accfg.setup "acc" to ("A" = %A : i32) : !accfg.state<"acc">
+// CHECK-NEXT: %s2 = accfg.setup "acc" from %s1 to ("A" = %A : i32) : !accfg.state<"acc">
+// CHECK-NEXT: accfg.reset %s2

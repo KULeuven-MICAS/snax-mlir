@@ -1,35 +1,48 @@
 import itertools
 from dataclasses import dataclass
+from typing import Callable, TypeVar
 
 from xdsl.dialects import builtin
 from xdsl.ir import Attribute, Block, MLContext, Operation, SSAValue
 from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import (
-    PatternRewriter,
-    PatternRewriteWalker,
-    RewritePattern,
-)
+from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern
 from xdsl.rewriter import InsertPoint
 from xdsl.traits import IsTerminator
 
 from compiler.dialects import accfg
 
+_RewritePatternT = TypeVar("_RewritePatternT", bound=RewritePattern)
 
-def ssa_val_rewrite_pattern(val_type: type[Attribute]):
-    def wrapper(fun):
-        seen: set[SSAValue] = set()
 
-        def match_and_rewrite(self, op: Operation, rewriter: PatternRewriter):
+def ssa_val_rewrite_pattern(
+    val_type: type[Attribute],
+) -> Callable[
+    [Callable[[_RewritePatternT, SSAValue, PatternRewriter], None]],
+    Callable[[_RewritePatternT, Operation, PatternRewriter], None],
+]:
+    """
+    Expresses a rewrite pattern that acts on SSA Values instead of operations.
+
+    Pass `val_type` and only match on SSA Values of the specified type.
+    """
+
+    def wrapper(
+        old_match_and_rewrite: Callable[
+            [_RewritePatternT, SSAValue, PatternRewriter], None
+        ]
+    ) -> Callable[[_RewritePatternT, Operation, PatternRewriter], None]:
+        # this is the function that actually wraps the match_and_rewrite method
+
+        def match_and_rewrite(
+            self: _RewritePatternT, op: Operation, rewriter: PatternRewriter
+        ):
             for val in itertools.chain(
                 op.results,
                 *(block.args for region in op.regions for block in region.blocks),
             ):
                 if not isinstance(val.type, val_type):
                     continue
-                if val in seen:
-                    continue
-                seen.add(val)
-                fun(self, val, rewriter)
+                old_match_and_rewrite(self, val, rewriter)
 
         return match_and_rewrite
 
@@ -99,12 +112,10 @@ class InsertResetsForDanglingStatesPattern(RewritePattern):
 
     @ssa_val_rewrite_pattern(accfg.StateType)
     def match_and_rewrite(self, val: SSAValue, rewriter: PatternRewriter, /):
-        # abort if:
-        #  - there are uses of the op
-        #  - and all of them are setups/reset ops
-        # this may not be correct, let's see...
-        if val.uses and all(
-            isinstance(use.operation, accfg.SetupOp | accfg.ResetOp) for use in val.uses
+        # abort if
+        # any use is a reset or another setup op
+        if any(
+            isinstance(use.operation, accfg.ResetOp | accfg.SetupOp) for use in val.uses
         ):
             return
 
