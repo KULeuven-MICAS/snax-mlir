@@ -130,7 +130,7 @@ In this way you can inspect the program the way it is put into the memory.
 ```sh
 cd /kernels/simple_mult
 make baseline.o # Make an object file
-llvm-objdump-17 -d baseline.o
+llvm-objdump -d baseline.o
 ```
 
 As you can see, disassembly does not require running the program.

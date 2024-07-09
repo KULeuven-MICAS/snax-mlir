@@ -4,15 +4,15 @@ MAKEFILE_RULES_DIRNAME := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # NOTE: we are using absolute paths from the Docker container
 SNITCH_LLVM_PATH = /usr/bin
-LLVM_VERSION_POSTFIX = -17
+LLVM_VERSION_POSTFIX =
 CC            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
 LD            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
 AR            = $(SNITCH_LLVM_PATH)/llvm-ar$(LLVM_VERSION_POSTFIX)
 RANLIB        = $(SNITCH_LLVM_PATH)/llvm-ranlib$(LLVM_VERSION_POSTFIX)
 DASM          = spike-dasm
 GENTRACE      = /opt/gen_trace.py
-MLIROPT       = mlir-opt-17
-MLIRTRANSLATE = mlir-translate-17
+MLIROPT       = mlir-opt
+MLIRTRANSLATE = mlir-translate
 SNAXOPT       = $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
 PYTHON        = python3
 TFLITE_TO_TOSA = $(MAKEFILE_RULES_DIRNAME)/tflite_to_tosa.py
