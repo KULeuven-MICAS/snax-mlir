@@ -73,13 +73,14 @@ def get_insertion_points_where_val_dangles(val: SSAValue):
         if candidate is not None:
             if idx < candidate.idx:
                 continue
-        if candidate.op.has_trait(IsTerminator):
-            inserts.pop(block)
+        if use.operation.has_trait(IsTerminator):
+            inserts.pop(block, None)
             dead_blocks.add(block)
+            continue
 
         inserts[block] = InsertCandidate(idx, use.operation)
 
-    yield from (InsertPoint.after(cd.pt) for cd in inserts.values())
+    yield from (InsertPoint.after(cd.op) for cd in inserts.values())
 
 
 
@@ -91,11 +92,14 @@ class InsertResetsForDanglingStatesPattern(RewritePattern):
     """
     @ssa_val_rewrite_pattern(accfg.StateType)
     def match_and_rewrite(self, val: SSAValue, rewriter: PatternRewriter, /):
-        if all(isinstance(use.operation, accfg.LaunchOp | accfg.ResetOp) for use in val.uses):
+        if val.uses and all(isinstance(use.operation, accfg.SetupOp | accfg.ResetOp) for use in val.uses):
             return
 
         for point in get_insertion_points_where_val_dangles(val):
-
+            rewriter.insert_op(
+                accfg.ResetOp(val),
+                point,
+            )
 
 
 class InsertResetsPass(ModulePass):

@@ -436,6 +436,8 @@ class ResetOp(IRDLOperation):
 
     in_state = operand_def(StateType)
 
+    assembly_format = "$in_state attr-dict `:` type($in_state)"
+
     def __init__(self, in_state: Operation | SSAValue):
         super().__init__(operands=[in_state])
 

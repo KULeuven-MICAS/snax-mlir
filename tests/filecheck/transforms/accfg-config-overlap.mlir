@@ -24,7 +24,7 @@ func.func @simple(%A: i32, %B: i32) {
 
 
 // CHECK-RESET:      %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
-// CHECK-RESET-NEXT: "accfg.reset"(%s2) : (!accfg.state<"simple">) -> ()
+// CHECK-RESET-NEXT: accfg.reset %s2 : !accfg.state<"simple">
 
 
 // -----
@@ -60,7 +60,7 @@ func.func @computed(%A: i32) {
 
 
 // CHECK-RESET:       %s2 = accfg.setup "simple" from %s1 to ("A" = %A_plus : i32) : !accfg.state<"simple">
-// CHECK-RESET-NEXT:  "accfg.reset"(%s2) : (!accfg.state<"simple">) -> ()
+// CHECK-RESET-NEXT:  accfg.reset %s2 : !accfg.state<"simple">
 
 
 // -----
@@ -94,7 +94,7 @@ func.func @simple_negative(%A: i32, %B: i32, %i1: i1) {
 
 
 // CHECK-RESET:       %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
-// CHECK-RESET-NEXT:  "accfg.reset"(%s2) : (!accfg.state<"simple">) -> ()
+// CHECK-RESET-NEXT:  accfg.reset %s2 : !accfg.state<"simple">
 
 
 // -----
@@ -129,7 +129,7 @@ func.func @single_loop(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 
 
 // CHECK-RESET:   %2 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %1) -> (!accfg.state<"simple">) : i32 {
-// CHECK-RESET:  "accfg.reset"(%2) : (!accfg.state<"simple">) -> ()
+// CHECK-RESET:  accfg.reset %2 : !accfg.state<"simple">
 
 
 // -----
@@ -177,7 +177,7 @@ func.func @complex_loop(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 
 
 // CHECK-RESET:   %3 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %2) -> (!accfg.state<"simple">) : i32 {
-// CHECK-RESET:  "accfg.reset"(%3) : (!accfg.state<"simple">) -> ()
+// CHECK-RESET:  accfg.reset %3 : !accfg.state<"simple">
 
 
 // -----
@@ -221,7 +221,7 @@ func.func @nested_loops(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 
 
 // CHECK-RESET:  %1 = scf.for %i = %lb to %ub step %step iter_args(%2 = %0) -> (!accfg.state<"simple">) : i32 {
-// CHECK-RESET:  "accfg.reset"(%1) : (!accfg.state<"simple">) -> ()
+// CHECK-RESET:  accfg.reset %1 : !accfg.state<"simple">
 
 
 // -----
@@ -284,4 +284,4 @@ func.func @double_setup_loop(%A : i32, %B : i32, %lb : i32, %ub : i32, %step : i
 
 
 // CHECK-RESET:  %3 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %2) -> (!accfg.state<"simple">) : i32 {
-// CHECK-RESET:  "accfg.reset"(%3) : (!accfg.state<"simple">) -> ()
+// CHECK-RESET:  accfg.reset %3 : !accfg.state<"simple">
