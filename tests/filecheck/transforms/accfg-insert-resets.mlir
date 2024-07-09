@@ -47,3 +47,65 @@ func.func @with_uses(%i : i32) {
 // CHECK-NEXT: [[token:%\S+]] = "accfg.launch"(%state)
 // CHECK-NEXT: accfg.reset [[state]] : !accfg.state<"acc">
 // CHECK-NEXT: "accfg.await"([[token]])
+
+
+// -----
+
+func.func @scf_if_1(%i : i32, %cond: i1) {
+    %state = accfg.setup "acc" to ("i" = %i : i32) : !accfg.state<"acc">
+
+    "scf.if"(%cond) ({
+        %0 = "accfg.launch"(%state) <{"param_names" = [], "accelerator" = "acc"}> : (!accfg.state<"acc">) -> !accfg.token<"acc">
+        "accfg.await"(%0) : (!accfg.token<"acc">) -> ()
+
+        yield
+    }, {
+        %1 = "accfg.launch"(%state) <{"param_names" = [], "accelerator" = "acc"}> : (!accfg.state<"acc">) -> !accfg.token<"acc">
+        "accfg.await"(%1) : (!accfg.token<"acc">) -> ()
+
+        yield
+    }) : (i1) -> ()
+
+    return
+}
+
+// CHECK-LABEL: @scf_if_1
+// CHECK-NEXT:  [[state:%\S+]] = accfg.setup "acc" to ("i" = %i : i32) : !accfg.state<"acc">
+// CHECK:       "accfg.launch"([[state]])
+// CHECK-NEXT:  accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK:       yield
+// CHECK:       "accfg.launch"([[state]])
+// CHECK-NEXT:  accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK:       yield
+
+
+// -----
+
+func.func @scf_if_2(%i : i32, %cond: i1) {
+    %state = accfg.setup "acc" to ("i" = %i : i32) : !accfg.state<"acc">
+
+    %2 = "scf.if"(%cond) ({
+        %0 = "accfg.launch"(%state) <{"param_names" = [], "accelerator" = "acc"}> : (!accfg.state<"acc">) -> !accfg.token<"acc">
+        "accfg.await"(%0) : (!accfg.token<"acc">) -> ()
+
+        yield %state : !accfg.state<"acc">
+    }, {
+        %1 = "accfg.launch"(%state) <{"param_names" = [], "accelerator" = "acc"}> : (!accfg.state<"acc">) -> !accfg.token<"acc">
+        "accfg.await"(%1) : (!accfg.token<"acc">) -> ()
+
+        yield %state : !accfg.state<"acc">
+    }) : (i1) -> (!accfg.state<"acc">)
+
+    return
+}
+
+// CHECK-LABEL: @scf_if_2
+// CHECK-NEXT:  [[state:%\S+]] = accfg.setup "acc" to ("i" = %i : i32) : !accfg.state<"acc">
+// CHECK:       [[state2:%\S+]] = "scf.if"
+// CHECK:       "accfg.launch"([[state]])
+// CHECK-NOT:   accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK:       yield
+// CHECK:       "accfg.launch"([[state]])
+// CHECK-NOT:   accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK:       yield
+// CHECK:       accfg.reset [[state2]] : !accfg.state<"acc">
