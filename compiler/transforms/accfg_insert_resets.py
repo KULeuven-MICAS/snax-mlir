@@ -1,8 +1,10 @@
 import itertools
 
+from dataclasses import dataclass
 from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
 from xdsl.rewriter import InsertPoint
+from xdsl.traits import IsTerminator
 
 from compiler.dialects import accfg
 from xdsl.ir import Operation, MLContext, Attribute, SSAValue, Block
@@ -35,15 +37,65 @@ def ssa_val_rewrite_pattern(val_type: type[Attribute]):
     return wrapper
 
 
+@dataclass(frozen=True, slots=True)
+class InsertCandidate:
+    idx: int
+    op: Operation
+
+
+def get_insertion_points_where_val_dangles(val: SSAValue):
+    """
+    Return all insertion points where val dangles after it is used last.
+
+    """
+    # if no uses are found, just return the first position where the value is live:
+    if not val.uses:
+        if isinstance(val.owner, Operation):
+            yield InsertPoint.after(val.owner)
+        else:
+            yield InsertPoint.at_start(val.owner)
+        return
+
+    # remember insertion candidates and their positions
+    # we need to keep track of the last use of the value in each block it's used in.
+    inserts: dict[Block, InsertCandidate] = dict()
+    dead_blocks: set[Block] = set()
+    # check each use
+    for use in val.uses:
+        # grab the block
+        block = use.operation.parent_block()
+        if block is None or block in dead_blocks:
+            continue
+
+        candidate = inserts.get(block, None)
+        idx = block.get_operation_index(use.operation)
+
+        if candidate is not None:
+            if idx < candidate.idx:
+                continue
+        if candidate.op.has_trait(IsTerminator):
+            inserts.pop(block)
+            dead_blocks.add(block)
+
+        inserts[block] = InsertCandidate(idx, use.operation)
+
+    yield from (InsertPoint.after(cd.pt) for cd in inserts.values())
+
+
+
+
 class InsertResetsForDanglingStatesPattern(RewritePattern):
+    """
+    This inspects all SSA values and inserts a `reset` operation if the value has no uses outside of `launch` and
+    `reset` operations.
+    """
     @ssa_val_rewrite_pattern(accfg.StateType)
     def match_and_rewrite(self, val: SSAValue, rewriter: PatternRewriter, /):
-        if val.uses:
+        if all(isinstance(use.operation, accfg.LaunchOp | accfg.ResetOp) for use in val.uses):
             return
-        if isinstance(val.owner, Operation):
-            rewriter.insert_op(accfg.ResetOp(val), InsertPoint.after(val.owner))
-        else:
-            rewriter.insert_op(accfg.ResetOp(val), InsertPoint.at_start(val.owner))
+
+        for point in get_insertion_points_where_val_dangles(val):
+
 
 
 class InsertResetsPass(ModulePass):
