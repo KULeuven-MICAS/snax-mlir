@@ -6,9 +6,7 @@ from xdsl.dialects.arith import Constant, DivUI, Muli
 from xdsl.dialects.builtin import IndexType, MemrefLayoutAttr
 from xdsl.dialects.memref import Dim
 from xdsl.ir import Data, Dialect, Operation, SSAValue
-from xdsl.irdl import (
-    irdl_attr_definition,
-)
+from xdsl.irdl import irdl_attr_definition
 from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 

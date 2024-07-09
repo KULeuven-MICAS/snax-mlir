@@ -1,19 +1,19 @@
 import itertools
-
 from dataclasses import dataclass
+
 from xdsl.dialects import builtin
+from xdsl.ir import Attribute, Block, MLContext, Operation, SSAValue
 from xdsl.passes import ModulePass
+from xdsl.pattern_rewriter import (
+    PatternRewriter,
+    PatternRewriteWalker,
+    RewritePattern,
+    op_type_rewrite_pattern,
+)
 from xdsl.rewriter import InsertPoint
 from xdsl.traits import IsTerminator
 
 from compiler.dialects import accfg
-from xdsl.ir import Operation, MLContext, Attribute, SSAValue, Block
-from xdsl.pattern_rewriter import (
-    RewritePattern,
-    PatternRewriter,
-    op_type_rewrite_pattern,
-    PatternRewriteWalker,
-)
 
 
 def ssa_val_rewrite_pattern(val_type: type[Attribute]):
@@ -83,16 +83,17 @@ def get_insertion_points_where_val_dangles(val: SSAValue):
     yield from (InsertPoint.after(cd.op) for cd in inserts.values())
 
 
-
-
 class InsertResetsForDanglingStatesPattern(RewritePattern):
     """
     This inspects all SSA values and inserts a `reset` operation if the value has no uses outside of `launch` and
     `reset` operations.
     """
+
     @ssa_val_rewrite_pattern(accfg.StateType)
     def match_and_rewrite(self, val: SSAValue, rewriter: PatternRewriter, /):
-        if val.uses and all(isinstance(use.operation, accfg.SetupOp | accfg.ResetOp) for use in val.uses):
+        if val.uses and all(
+            isinstance(use.operation, accfg.SetupOp | accfg.ResetOp) for use in val.uses
+        ):
             return
 
         for point in get_insertion_points_where_val_dangles(val):
