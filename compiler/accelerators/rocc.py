@@ -48,6 +48,7 @@ class RoCCAccelerator(Accelerator, ABC):
 
     @staticmethod
     def lower_reset(rest_op: accfg.ResetOp, acc_op: accfg.AcceleratorOp):
+        # gemmini does not have a reset op
         return []
 
 
