@@ -66,19 +66,28 @@ def get_insertion_points_where_val_dangles(val: SSAValue):
         if block is None or block in dead_blocks:
             continue
 
+        # grab a the candidate for this block
         candidate = inserts.get(block, None)
+        # and the position of the current op in the block
         idx = block.get_operation_index(use.operation)
 
+        # if there is a candidate
         if candidate is not None:
+            # and the current op comes before the candidate
             if idx < candidate.idx:
-                continue
+                continue  # skip it
+        # if we are a terminator
         if use.operation.has_trait(IsTerminator):
+            # don't insert in this block
             inserts.pop(block, None)
+            # never insert in this block
             dead_blocks.add(block)
             continue
 
+        # put insertion candidate into candidate dict
         inserts[block] = InsertCandidate(idx, use.operation)
 
+    # return all insertion candidates that we have
     yield from (InsertPoint.after(cd.op) for cd in inserts.values())
 
 
@@ -90,6 +99,10 @@ class InsertResetsForDanglingStatesPattern(RewritePattern):
 
     @ssa_val_rewrite_pattern(accfg.StateType)
     def match_and_rewrite(self, val: SSAValue, rewriter: PatternRewriter, /):
+        # abort if:
+        #  - there are uses of the op
+        #  - and all of them are setups/reset ops
+        # this may not be correct, let's see...
         if val.uses and all(
             isinstance(use.operation, accfg.SetupOp | accfg.ResetOp) for use in val.uses
         ):
