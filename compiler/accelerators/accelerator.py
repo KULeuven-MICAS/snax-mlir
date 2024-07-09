@@ -74,10 +74,3 @@ class Accelerator(ABC):
         accelerator configuration.
         """
         raise NotImplementedError()
-
-    @staticmethod
-    @abstractmethod
-    def lower_reset(
-        rest_op: accfg.ResetOp, acc_op: accfg.AcceleratorOp
-    ) -> Sequence[Operation]:
-        raise NotImplementedError()

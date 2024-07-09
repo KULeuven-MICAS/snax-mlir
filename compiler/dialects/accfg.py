@@ -441,10 +441,6 @@ class ResetOp(IRDLOperation):
     def __init__(self, in_state: Operation | SSAValue):
         super().__init__(operands=[in_state])
 
-    def get_modified_fields(self) -> set[str]:
-        # TODO: implement this part
-        return set()
-
 
 ACCFG = Dialect(
     "accfg",
