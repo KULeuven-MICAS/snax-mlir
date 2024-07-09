@@ -21,15 +21,15 @@ jobs:
     - name: Install pytest
       shell: bash
       run: |
-        python3 -m pip install pytest
+        python3 -m pip install pytest --break-system-packages
     - name: Reinstall pip modules from requirements
       shell: bash
       run: |
-        python3 -m pip install -r requirements.txt
+        python3 -m pip install -r requirements.txt --break-system-packages
     - name: Install snax-mlir
       shell: bash
       run: |
-        python3 -m pip install -e .
+        python3 -m pip install -e . --break-system-packages
     - name: Test with pytest
       shell: bash
       run: |

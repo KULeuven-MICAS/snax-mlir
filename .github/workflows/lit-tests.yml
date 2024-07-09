@@ -21,11 +21,11 @@ jobs:
     - name: Install modules
       shell: bash
       run: |
-        pip3 install -e .
+        python3 -m pip install -e . --break-system-packages
     - name: Reinstall pip modules from requirements
       shell: bash
       run: |
-        pip3 install -r requirements.txt
+        pip3 install -r requirements.txt --break-system-packages
     - name: Test with lit
       shell: bash
       run: |

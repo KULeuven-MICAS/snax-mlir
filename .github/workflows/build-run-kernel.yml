@@ -14,9 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install snax compiler
-        run: python3 -m pip install -e .
+        run: python3 -m pip install -e . --break-system-packages
       - name: Reinstall pip modules from requirements
-        run: python3 -m pip install -r requirements.txt
+        run: python3 -m pip install -r requirements.txt --break-system-packages
       - name: Build and run kernels
         run: make allrun
         working-directory: kernels/${{ matrix.kernel }}
