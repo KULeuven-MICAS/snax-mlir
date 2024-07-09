@@ -8,7 +8,6 @@ from xdsl.pattern_rewriter import (
     PatternRewriter,
     PatternRewriteWalker,
     RewritePattern,
-    op_type_rewrite_pattern,
 )
 from xdsl.rewriter import InsertPoint
 from xdsl.traits import IsTerminator
@@ -105,8 +104,7 @@ class InsertResetsForDanglingStatesPattern(RewritePattern):
 
 class InsertResetsPass(ModulePass):
     """
-    Looks for dangling SSA values of type accfg.state
-
+    Looks for dangling SSA values of type accfg.state and adds an `accfg.reset` operation to reset these states.
     """
 
     name = "accfg-insert-resets"
