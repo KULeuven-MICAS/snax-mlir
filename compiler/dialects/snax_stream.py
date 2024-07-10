@@ -20,7 +20,7 @@ from xdsl.irdl import (
     var_operand_def,
 )
 from xdsl.parser import AttrParser
-
+from xdsl.printer import Printer
 
 @irdl_attr_definition
 class StridePattern(ParametrizedAttribute):
