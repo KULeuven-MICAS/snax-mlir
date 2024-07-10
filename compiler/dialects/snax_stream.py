@@ -14,13 +14,12 @@ from xdsl.irdl import (
     IRDLOperation,
     ParameterDef,
     irdl_attr_definition,
+    irdl_op_definition,
     prop_def,
     region_def,
     var_operand_def,
 )
-from xdsl.irdl.irdl import irdl_op_definition
 from xdsl.parser import AttrParser
-from xdsl.printer import Printer
 
 
 @irdl_attr_definition
