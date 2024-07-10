@@ -22,6 +22,7 @@ from xdsl.irdl import (
 from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 
+
 @irdl_attr_definition
 class StridePattern(ParametrizedAttribute):
     """
