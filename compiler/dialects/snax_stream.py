@@ -1,7 +1,14 @@
 from collections.abc import Sequence
 
 from xdsl.dialects.builtin import ArrayAttr, IndexType, IntAttr
-from xdsl.ir import Attribute, Dialect, NoTerminator, ParametrizedAttribute, Region, SSAValue
+from xdsl.ir import (
+    Attribute,
+    Dialect,
+    NoTerminator,
+    ParametrizedAttribute,
+    Region,
+    SSAValue,
+)
 from xdsl.irdl import (
     AttrSizedOperandSegments,
     IRDLOperation,
@@ -46,9 +53,13 @@ class StridePattern(ParametrizedAttribute):
             printer.print_string("ub = [")
             printer.print_list(self.upper_bounds, lambda attr: printer.print(attr.data))
             printer.print_string("], ts = [")
-            printer.print_list(self.temporal_strides, lambda attr: printer.print(attr.data))
+            printer.print_list(
+                self.temporal_strides, lambda attr: printer.print(attr.data)
+            )
             printer.print_string("], ss = [")
-            printer.print_list(self.spatial_strides, lambda attr: printer.print(attr.data))
+            printer.print_list(
+                self.spatial_strides, lambda attr: printer.print(attr.data)
+            )
             printer.print_string("]")
 
     @classmethod
@@ -57,19 +68,28 @@ class StridePattern(ParametrizedAttribute):
             parser.parse_identifier("ub")
             parser.parse_punctuation("=")
             ub = ArrayAttr(
-                IntAttr(i) for i in parser.parse_comma_separated_list(parser.Delimiter.SQUARE, parser.parse_integer)
+                IntAttr(i)
+                for i in parser.parse_comma_separated_list(
+                    parser.Delimiter.SQUARE, parser.parse_integer
+                )
             )
             parser.parse_punctuation(",")
             parser.parse_identifier("ts")
             parser.parse_punctuation("=")
             ts = ArrayAttr(
-                IntAttr(i) for i in parser.parse_comma_separated_list(parser.Delimiter.SQUARE, parser.parse_integer)
+                IntAttr(i)
+                for i in parser.parse_comma_separated_list(
+                    parser.Delimiter.SQUARE, parser.parse_integer
+                )
             )
             parser.parse_punctuation(",")
             parser.parse_identifier("ss")
             parser.parse_punctuation("=")
             ss = ArrayAttr(
-                IntAttr(i) for i in parser.parse_comma_separated_list(parser.Delimiter.SQUARE, parser.parse_integer)
+                IntAttr(i)
+                for i in parser.parse_comma_separated_list(
+                    parser.Delimiter.SQUARE, parser.parse_integer
+                )
             )
             return (ub, ts, ss)
 
@@ -102,7 +122,11 @@ class StreamingRegionOp(IRDLOperation):
     ) -> None:
         if not isinstance(stride_patterns, ArrayAttr):
             stride_patterns = ArrayAttr(stride_patterns)
-        super().__init__(operands=[inputs, outputs], regions=[body], properties={"stride_patterns": stride_patterns})
+        super().__init__(
+            operands=[inputs, outputs],
+            regions=[body],
+            properties={"stride_patterns": stride_patterns},
+        )
 
 
 SnaxStream = Dialect("snax_stream", [StreamingRegionOp], [StridePattern])
