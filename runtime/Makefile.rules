@@ -85,7 +85,7 @@ MLIRPREPROC2FLAGS += --empty-tensor-to-alloc-tensor
 
 MLIRPREPROC3FLAGS += --test-linalg-transform-patterns="test-generalize-pad-tensor"
 MLIRPREPROC3FLAGS += --linalg-generalize-named-ops
-MLIRPREPROC3FLAGS += --empty-tensor-to-alloc-tensor --one-shot-bufferize="bufferize-function-boundaries allow-return-allocs function-boundary-type-conversion=identity-layout-map"
+MLIRPREPROC3FLAGS += --empty-tensor-to-alloc-tensor --one-shot-bufferize="bufferize-function-boundaries function-boundary-type-conversion=identity-layout-map"
 MLIRPREPROC3FLAGS += --mlir-print-op-generic
 MLIRPREPROC3FLAGS += --mlir-print-local-scope
 
