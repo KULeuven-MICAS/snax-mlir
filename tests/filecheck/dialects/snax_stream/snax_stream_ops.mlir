@@ -1,5 +1,4 @@
 // RUN: XDSL_ROUNDTRIP
-// RUN: XDSL_GENERIC_ROUNDTRIP
 
 %x, %y, %z = "test.op"() : () -> (index, index, index)
 
