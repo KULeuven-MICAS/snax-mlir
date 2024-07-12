@@ -137,7 +137,8 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         # to handle the dynamic case, we must first find the largest
         # statically defined step, and then use that to calculate the
         # dynamic steps
-        max_key = None
+        # if everything is dynamic, default to the most right stride (row-major-like)
+        max_key = (tsl.dimension() - 1, tsl.tstrides[-1].depth() - 1)
         max_value = 0
         for dim, depth, stride in self.data:
             if stride.step and stride.step > max_value:
