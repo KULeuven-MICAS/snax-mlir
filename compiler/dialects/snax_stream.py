@@ -27,6 +27,12 @@ from xdsl.printer import Printer
 class StridePattern(ParametrizedAttribute):
     """
     Attribute representing a strided streaming pattern in SNAX.
+    A stride pattern coincides with the Data Streamers from the SNAX Framework.
+    For detailed information, see: https://github.com/KULeuven-MICAS/snax_cluster/blob/main/hw/chisel/doc/streamer.md
+    The upper bounds and temporal strides define a set of nested for loops
+    where data is accessed sequentially in a structured pattern. Every execution,
+    a number of data elements is acccessed in parallel. The distance between these
+    elements is denoted by the spatial strides.
     """
 
     name = "snax_stream.stride_pattern"
@@ -96,6 +102,11 @@ class StridePattern(ParametrizedAttribute):
 
 @irdl_op_definition
 class StreamingRegionOp(IRDLOperation):
+    """
+    An operation that creates streams from access patterns realized by SNAX Streamers.
+    These streams are accessable only to ops within the body of the operation.
+    """
+
     name = "snax_stream.streaming_region"
 
     # inputs and outputs are pointers to the base address of the data in memory
