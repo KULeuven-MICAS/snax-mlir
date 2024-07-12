@@ -41,7 +41,7 @@ uint32_t strideB = 0;
 uint32_t strideC = 0;
 
 // Kernel provided via external definition
-void _mlir_ciface_tiled_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
+void _mlir_ciface_simple_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
                                 TwoDMemrefI32_t *c);
 
 void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
@@ -85,7 +85,7 @@ int main() {
 
   (void)snrt_mcycle();
 
-  _mlir_ciface_tiled_matmul(&memrefA, &memrefB, &memrefC);
+  _mlir_ciface_simple_matmul(&memrefA, &memrefB, &memrefC);
 
   snrt_cluster_hw_barrier();
 
