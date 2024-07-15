@@ -1,13 +1,16 @@
-from abc import ABC
+import string
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, llvm
-from xdsl.dialects.builtin import i32
+from xdsl.dialects.builtin import IntAttr, i32
 from xdsl.dialects.scf import Condition, While, Yield
 from xdsl.ir import Operation
+from xdsl.parser import SSAValue
 
 from compiler.accelerators.accelerator import Accelerator
-from compiler.dialects import accfg
+from compiler.accelerators.streamers import StreamerConfiguration
+from compiler.dialects import accfg, snax_stream
 
 
 class SNAXAccelerator(Accelerator, ABC):
@@ -66,6 +69,22 @@ class SNAXAccelerator(Accelerator, ABC):
                 ]
             )
         return ops
+
+
+class SNAXStreamer(Accelerator, ABC):
+    """
+    Abstract base class for SNAX Accelerators with Streamer interfaces.
+    """
+
+    streamer_config: StreamerConfiguration
+    streamer_names: Sequence[str]
+
+    def __init__(self, streamer_config: StreamerConfiguration) -> None:
+        self.streamer_config = streamer_config
+
+        # set streamer names as a, b, c, d, ...
+        self.streamer_names = list(string.ascii_lowercase[: self.streamer_config.size()])
+
 
 
 class SNAXPollingBarrier(Accelerator, ABC):
