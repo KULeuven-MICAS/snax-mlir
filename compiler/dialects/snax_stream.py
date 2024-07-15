@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from xdsl.dialects.builtin import ArrayAttr, IndexType, IntAttr
+from xdsl.dialects.builtin import ArrayAttr, IndexType, IntAttr, ModuleOp, StringAttr
 from xdsl.ir import (
     Attribute,
     Dialect,
@@ -8,6 +8,7 @@ from xdsl.ir import (
     ParametrizedAttribute,
     Region,
     SSAValue,
+    VerifyException,
 )
 from xdsl.irdl import (
     AttrSizedOperandSegments,
@@ -21,6 +22,8 @@ from xdsl.irdl import (
 )
 from xdsl.parser import AttrParser
 from xdsl.printer import Printer
+
+from compiler.accelerators.streamers.streamers import StreamerConfiguration
 
 
 @irdl_attr_definition
@@ -105,6 +108,11 @@ class StreamingRegionOp(IRDLOperation):
     # the upper bounds of all stride patterns should be equal
     stride_pattern = prop_def(ArrayAttr[StridePattern])
 
+    accelerator = prop_def(StringAttr)
+    """
+    Name of the accelerator this region is for
+    """
+
     body = region_def("single_block")
 
     irdl_options = [AttrSizedOperandSegments(as_property=True)]
@@ -125,6 +133,39 @@ class StreamingRegionOp(IRDLOperation):
             regions=[body],
             properties={"stride_patterns": stride_patterns},
         )
+
+    def verify_(self):
+        # import only here to avoid circular import errors
+        from compiler.accelerators.registry import AcceleratorRegistry
+        from compiler.dialects.snax import StreamerConfigurationAttr
+
+        module_op = self
+        while module_op and not isinstance(module_op, ModuleOp):
+            module_op = module_op.parent_op()
+        if not module_op:
+            raise VerifyException("ModuleOp not found!")
+        accelerator_op, _ = AcceleratorRegistry().lookup_acc_info(self.accelerator, module_op)
+
+        if not accelerator_op:
+            raise VerifyException("AcceleratorOp for streaming_region not found!")
+
+        streamer_interface = accelerator_op.get_attr_or_prop("streamer_config")
+
+        if not streamer_interface or not isinstance(streamer_interface, StreamerConfigurationAttr):
+            raise VerifyException("Specified accelerator does not implement the streamer interface")
+
+        streamer_config: StreamerConfiguration = streamer_interface.data
+
+        if len(self.stride_pattern) != streamer_config.size():
+            raise VerifyException("Number of streamers does not equal number of stride patterns")
+
+        for stride_pattern, streamer in zip(self.stride_pattern, streamer_config.streamers):
+
+            if len(stride_pattern.temporal_strides) > streamer.temporal_dim:
+                raise VerifyException("Temporal stride pattern exceeds streamer dimensionality")
+
+            if len(stride_pattern.spatial_strides) > streamer.spatial_dim:
+                raise VerifyException("Spatial stride pattern exceeds streamer dimensionality")
 
 
 SnaxStream = Dialect("snax_stream", [StreamingRegionOp], [StridePattern])
