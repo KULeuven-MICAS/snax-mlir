@@ -87,11 +87,17 @@ class LayoutCast(IRDLOperation):
         source = cast(MemRefType[Attribute], self.source.type)
         dest = cast(MemRefType[Attribute], self.dest.type)
         if source.get_shape() != dest.get_shape():
-            raise VerifyException("Expected source and destination to have the same shape.")
+            raise VerifyException(
+                "Expected source and destination to have the same shape."
+            )
         if source.get_element_type() != dest.get_element_type():
-            raise VerifyException("Expected source and destination to have the same element type.")
+            raise VerifyException(
+                "Expected source and destination to have the same element type."
+            )
         if source.memory_space != dest.memory_space:
-            raise VerifyException("Expected source and destination to have the same memory space.")
+            raise VerifyException(
+                "Expected source and destination to have the same memory space."
+            )
 
 
 @irdl_op_definition
@@ -161,7 +167,9 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
                 streamer_type: StreamerType = parser.parse_str_enum(StreamerType)
 
                 # Determine temporal and spatial dimensions
-                dimensions = parser.parse_comma_separated_list(parser.Delimiter.SQUARE, parser.parse_integer)
+                dimensions = parser.parse_comma_separated_list(
+                    parser.Delimiter.SQUARE, parser.parse_integer
+                )
                 assert len(dimensions) == 2
                 streamers.append(Streamer(streamer_type, *dimensions))
 
@@ -183,4 +191,6 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
         printer.print_string(f"<{', '.join(streamer_strings)}>")
 
 
-Snax = Dialect("snax", [ClusterSyncOp, MCycleOp, LayoutCast, Alloc], [StreamerConfigurationAttr])
+Snax = Dialect(
+    "snax", [ClusterSyncOp, MCycleOp, LayoutCast, Alloc], [StreamerConfigurationAttr]
+)

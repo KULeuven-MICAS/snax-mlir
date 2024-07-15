@@ -1,16 +1,15 @@
 import string
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, llvm
-from xdsl.dialects.builtin import IntAttr, i32
+from xdsl.dialects.builtin import i32
 from xdsl.dialects.scf import Condition, While, Yield
 from xdsl.ir import Operation
-from xdsl.parser import SSAValue
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.streamers import StreamerConfiguration
-from compiler.dialects import accfg, snax_stream
+from compiler.dialects import accfg
 
 
 class SNAXAccelerator(Accelerator, ABC):
@@ -20,7 +19,9 @@ class SNAXAccelerator(Accelerator, ABC):
     """
 
     @staticmethod
-    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_launch(
+        launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
+    ) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.launch_field_items())
         ops: Sequence[Operation] = []
         for field, val in launch_op.iter_params():
@@ -52,7 +53,9 @@ class SNAXAccelerator(Accelerator, ABC):
         return ops
 
     @staticmethod
-    def lower_acc_setup(setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_setup(
+        setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp
+    ) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.field_items())
         ops: Sequence[Operation] = []
         for field, val in setup_op.iter_params():
@@ -83,8 +86,9 @@ class SNAXStreamer(Accelerator, ABC):
         self.streamer_config = streamer_config
 
         # set streamer names as a, b, c, d, ...
-        self.streamer_names = list(string.ascii_lowercase[: self.streamer_config.size()])
-
+        self.streamer_names = list(
+            string.ascii_lowercase[: self.streamer_config.size()]
+        )
 
 
 class SNAXPollingBarrier(Accelerator, ABC):
@@ -115,14 +119,18 @@ class SNAXPollingBarrier(Accelerator, ABC):
         # kernels/tiled_mult/tiled.preprocfinal.mlir only works
         # when at least 4 nops are introduced, due to hardware handshake issues.
         # this is will likely not be fixed in the future.
-        nops = [llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True) for _ in range(4)]
+        nops = [
+            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True) for _ in range(4)
+        ]
         return [
             While(
                 [],
                 [],
                 [
                     barrier := arith.Constant(acc_op.barrier),
-                    zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 32)),
+                    zero := arith.Constant(
+                        builtin.IntegerAttr.from_int_and_width(0, 32)
+                    ),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate
@@ -181,7 +189,9 @@ class SNAXPollingBarrier2(Accelerator, ABC):
                 [],
                 [
                     barrier := arith.Constant(acc_op.barrier),
-                    one := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 32)),
+                    one := arith.Constant(
+                        builtin.IntegerAttr.from_int_and_width(1, 32)
+                    ),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate

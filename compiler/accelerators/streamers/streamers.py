@@ -4,8 +4,8 @@ from xdsl.utils.str_enum import StrEnum
 
 
 class StreamerType(StrEnum):
-    Reader = 'r'
-    Writer = 'w'
+    Reader = "r"
+    Writer = "w"
 
 
 class Streamer:
@@ -13,9 +13,9 @@ class Streamer:
     A representation of a single SNAX Streamer
     """
 
-    type : StreamerType
-    temporal_dim : int
-    spatial_dim : int
+    type: StreamerType
+    temporal_dim: int
+    spatial_dim: int
 
     def __init__(self, type: StreamerType, temporal_dim: int, spatial_dim: int) -> None:
         self.type = type
@@ -57,4 +57,3 @@ class StreamerConfiguration:
         so just take the first
         """
         return self.streamers[0].spatial_dim
-

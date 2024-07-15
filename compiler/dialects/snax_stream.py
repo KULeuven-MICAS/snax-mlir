@@ -62,9 +62,13 @@ class StridePattern(ParametrizedAttribute):
             printer.print_string("ub = [")
             printer.print_list(self.upper_bounds, lambda attr: printer.print(attr.data))
             printer.print_string("], ts = [")
-            printer.print_list(self.temporal_strides, lambda attr: printer.print(attr.data))
+            printer.print_list(
+                self.temporal_strides, lambda attr: printer.print(attr.data)
+            )
             printer.print_string("], ss = [")
-            printer.print_list(self.spatial_strides, lambda attr: printer.print(attr.data))
+            printer.print_list(
+                self.spatial_strides, lambda attr: printer.print(attr.data)
+            )
             printer.print_string("]")
 
     @classmethod
@@ -73,19 +77,28 @@ class StridePattern(ParametrizedAttribute):
             parser.parse_identifier("ub")
             parser.parse_punctuation("=")
             ub = ArrayAttr(
-                IntAttr(i) for i in parser.parse_comma_separated_list(parser.Delimiter.SQUARE, parser.parse_integer)
+                IntAttr(i)
+                for i in parser.parse_comma_separated_list(
+                    parser.Delimiter.SQUARE, parser.parse_integer
+                )
             )
             parser.parse_punctuation(",")
             parser.parse_identifier("ts")
             parser.parse_punctuation("=")
             ts = ArrayAttr(
-                IntAttr(i) for i in parser.parse_comma_separated_list(parser.Delimiter.SQUARE, parser.parse_integer)
+                IntAttr(i)
+                for i in parser.parse_comma_separated_list(
+                    parser.Delimiter.SQUARE, parser.parse_integer
+                )
             )
             parser.parse_punctuation(",")
             parser.parse_identifier("ss")
             parser.parse_punctuation("=")
             ss = ArrayAttr(
-                IntAttr(i) for i in parser.parse_comma_separated_list(parser.Delimiter.SQUARE, parser.parse_integer)
+                IntAttr(i)
+                for i in parser.parse_comma_separated_list(
+                    parser.Delimiter.SQUARE, parser.parse_integer
+                )
             )
             return (ub, ts, ss)
 
@@ -144,28 +157,41 @@ class StreamingRegionOp(IRDLOperation):
             module_op = module_op.parent_op()
         if not module_op:
             raise VerifyException("ModuleOp not found!")
-        accelerator_op, _ = AcceleratorRegistry().lookup_acc_info(self.accelerator, module_op)
+        accelerator_op, _ = AcceleratorRegistry().lookup_acc_info(
+            self.accelerator, module_op
+        )
 
         if not accelerator_op:
             raise VerifyException("AcceleratorOp for streaming_region not found!")
 
         streamer_interface = accelerator_op.get_attr_or_prop("streamer_config")
 
-        if not streamer_interface or not isinstance(streamer_interface, StreamerConfigurationAttr):
-            raise VerifyException("Specified accelerator does not implement the streamer interface")
+        if not streamer_interface or not isinstance(
+            streamer_interface, StreamerConfigurationAttr
+        ):
+            raise VerifyException(
+                "Specified accelerator does not implement the streamer interface"
+            )
 
         streamer_config: StreamerConfiguration = streamer_interface.data
 
         if len(self.stride_pattern) != streamer_config.size():
-            raise VerifyException("Number of streamers does not equal number of stride patterns")
+            raise VerifyException(
+                "Number of streamers does not equal number of stride patterns"
+            )
 
-        for stride_pattern, streamer in zip(self.stride_pattern, streamer_config.streamers):
-
+        for stride_pattern, streamer in zip(
+            self.stride_pattern, streamer_config.streamers
+        ):
             if len(stride_pattern.temporal_strides) > streamer.temporal_dim:
-                raise VerifyException("Temporal stride pattern exceeds streamer dimensionality")
+                raise VerifyException(
+                    "Temporal stride pattern exceeds streamer dimensionality"
+                )
 
             if len(stride_pattern.spatial_strides) > streamer.spatial_dim:
-                raise VerifyException("Spatial stride pattern exceeds streamer dimensionality")
+                raise VerifyException(
+                    "Spatial stride pattern exceeds streamer dimensionality"
+                )
 
 
 SnaxStream = Dialect("snax_stream", [StreamingRegionOp], [StridePattern])
