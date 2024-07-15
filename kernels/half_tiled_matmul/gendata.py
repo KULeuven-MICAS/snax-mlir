@@ -13,11 +13,11 @@ if __name__ == "__main__":
     np.random.seed(0)
 
     # C = A.B
-    # A = np.random.randint(low_bound, high_bound, size=A_size, dtype=np.dtype("int8"))
-    # B = np.random.randint(low_bound, high_bound, size=B_size, dtype=np.dtype("int8"))
+    A = np.random.randint(low_bound, high_bound, size=A_size, dtype=np.dtype("int8"))
+    B = np.random.randint(low_bound, high_bound, size=B_size, dtype=np.dtype("int8"))
 
-    A = np.ones(shape=A_size, dtype=np.dtype("int8"))
-    B = np.ones(shape=B_size, dtype=np.dtype("int8"))
+    # A = np.ones(shape=A_size, dtype=np.dtype("int8"))
+    # B = np.ones(shape=B_size, dtype=np.dtype("int8"))
 
     # Make sure the product is possible!
     assert A.shape[1] == B.shape[0]
