@@ -3,13 +3,14 @@ from abc import ABC
 from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, llvm
-from xdsl.dialects.builtin import i32
+from xdsl.dialects.builtin import IntAttr, i32
 from xdsl.dialects.scf import Condition, While, Yield
-from xdsl.ir import Operation
+from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.streamers import StreamerConfiguration
 from compiler.dialects import accfg
+from compiler.dialects.snax_stream import StreamingRegionOp
 
 
 class SNAXAccelerator(Accelerator, ABC):
@@ -81,14 +82,83 @@ class SNAXStreamer(Accelerator, ABC):
 
     streamer_config: StreamerConfiguration
     streamer_names: Sequence[str]
+    streamer_setup_fields: Sequence[str]
+    streamer_launch_fields: Sequence[str]
 
     def __init__(self, streamer_config: StreamerConfiguration) -> None:
         self.streamer_config = streamer_config
 
         # set streamer names as a, b, c, d, ...
-        self.streamer_names = list(
-            string.ascii_lowercase[: self.streamer_config.size()]
+        self.streamer_names = list(string.ascii_lowercase[: self.streamer_config.size()])
+
+        self.streamer_setup_fields = self.get_streamer_setup_fields()
+        self.streamer_launch_fields = self.get_streamer_launch_fields()
+
+    def generate_setup_vals(self, op: StreamingRegionOp) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+        result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
+
+        # loop bound registers
+        loop_bounds: Sequence[IntAttr] = op.stride_pattern.data[0].upper_bounds.data
+        result.extend(
+            [
+                ([cst := arith.Constant.from_int_and_width(loop_bound.data, i32)], cst.result)
+                for loop_bound in loop_bounds
+            ]
         )
+
+        # temporal strides
+        for dim in range(self.streamer_config.temporal_dim()):
+            for streamer in range(self.streamer_config.size()):
+                cst = arith.Constant.from_int_and_width(
+                    op.stride_pattern.data[dim].temporal_strides.data[streamer], i32
+                )
+                result.append(([cst], cst.result))
+
+        # spatial strides
+        for dim in range(self.streamer_config.spatial_dim()):
+            for streamer in range(self.streamer_config.size()):
+                cst = arith.Constant.from_int_and_width(
+                    op.stride_pattern.data[dim].spatial_strides.data[streamer], i32
+                )
+                result.append(([cst], cst.result))
+
+        # input & output base pointers
+        result.extend(([], x) for x in op.inputs)
+        result.extend(([], x) for x in op.outputs)
+
+        return result
+
+    def get_streamer_setup_fields(self) -> Sequence[str]:
+        result: list[str] = []
+
+        # loop bound registers
+        result.extend([f"loop_bound_{i}" for i in range(self.streamer_config.temporal_dim())])
+
+        # temporal strides
+        result.extend(
+            [
+                f"{streamer}_tstride_{i}"
+                for streamer in self.streamer_names
+                for i in range(self.streamer_config.temporal_dim())
+            ]
+        )
+
+        # spatial strides
+        result.extend(
+            [
+                f"{streamer}_sstride_{i}"
+                for streamer in self.streamer_names
+                for i in range(self.streamer_config.spatial_dim())
+            ]
+        )
+
+        # base pointers
+        result.extend([f"{streamer}_ptr" for streamer in self.streamer_names])
+
+        return result
+
+    def get_streamer_launch_fields(self) -> Sequence[str]:
+        return ["launch_streamer"]
 
 
 class SNAXPollingBarrier(Accelerator, ABC):
