@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import cast
 
 from xdsl.dialects.builtin import (
@@ -7,25 +8,31 @@ from xdsl.dialects.builtin import (
     IndexType,
     IntegerAttr,
     IntegerType,
+    MemRefType,
     NoneAttr,
+    UnrankedMemrefType,
     i32,
 )
 from xdsl.dialects.llvm import LLVMStructType
-from xdsl.dialects.memref import MemRefType, UnrankedMemrefType
-from xdsl.ir import Attribute, Dialect, Operation, SSAValue
+from xdsl.ir import Attribute, Data, Dialect, Operation, SSAValue
 from xdsl.irdl import (
     IRDLOperation,
     Operand,
     OpResult,
     VarOperand,
+    irdl_attr_definition,
     irdl_op_definition,
     operand_def,
     opt_prop_def,
     result_def,
     var_operand_def,
 )
+from xdsl.parser import AttrParser
+from xdsl.printer import Printer
 from xdsl.utils.exceptions import VerifyException
 
+from compiler.accelerators.streamers import StreamerConfiguration
+from compiler.accelerators.streamers.streamers import Streamer, StreamerType
 from compiler.util.memref_descriptor import LLVMMemrefDescriptor
 
 
@@ -135,4 +142,45 @@ class Alloc(IRDLOperation):
         descriptor.verify()
 
 
-Snax = Dialect("snax", [ClusterSyncOp, MCycleOp, LayoutCast, Alloc], [])
+@irdl_attr_definition
+class StreamerConfigurationAttr(Data[StreamerConfiguration]):
+    name = "snax.streamer_config"
+
+    @classmethod
+    def parse_parameter(cls, parser: AttrParser) -> StreamerConfiguration:
+        # parse a streamer config in the following format:
+        # for a streamer with 2 readers, 1 writer, each with
+        # a temporal and spatial dimension:
+        # snax.streamer_config<r[5, 4], r[2, 5], w[1, 1]>
+
+        with parser.in_angle_brackets():
+            streamers: Sequence[Streamer] = []
+
+            while True:
+                # Determine streamer type
+                streamer_type: StreamerType = parser.parse_str_enum(StreamerType)
+
+                # Determine temporal and spatial dimensions
+                dimensions = parser.parse_comma_separated_list(parser.Delimiter.SQUARE, parser.parse_integer)
+                assert len(dimensions) == 2
+                streamers.append(Streamer(streamer_type, *dimensions))
+
+                if not parser.parse_optional_punctuation(","):
+                    break
+
+            return StreamerConfiguration(streamers)
+
+    def print_parameter(self, printer: Printer) -> None:
+        # print a streamer config in the following format:
+        # for a streamer with 2 readers, 1 writer, each with
+        # a temporal and spatial dimension:
+        # snax.streamer_config<r[5, 4], r[2, 5], w[1, 1]>
+
+        streamer_strings = [
+            f"{streamer.type.value}[{streamer.temporal_dim}, {streamer.spatial_dim}]"
+            for streamer in self.data.streamers
+        ]
+        printer.print_string(f"<{', '.join(streamer_strings)}>")
+
+
+Snax = Dialect("snax", [ClusterSyncOp, MCycleOp, LayoutCast, Alloc], [StreamerConfigurationAttr])
