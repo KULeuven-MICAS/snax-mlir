@@ -42,7 +42,7 @@ uint32_t strideC = 0;
 
 // Kernel provided via external definition
 void _mlir_ciface_half_tiled_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
-                               TwoDMemrefI32_t *c);
+                                    TwoDMemrefI32_t *c);
 
 void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
                             int32_t zpb, TwoDMemrefI32_t *c) {
@@ -100,11 +100,10 @@ int main() {
   int nerr = 0;
   for (int i = 0; i < M_size * N_size; i++) {
     int32_t error = memrefC.aligned_data[i] - C_golden[i];
-    printf("%d) %d -> %d\n",i, (int32_t)memrefC.aligned_data[i],
-     (int32_t)C_golden[i]);
+    printf("%d) %d -> %d\n", i, (int32_t)memrefC.aligned_data[i],
+           (int32_t)C_golden[i]);
     if (error != 0)
       nerr += 1;
-    
   }
   return nerr;
 }
