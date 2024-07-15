@@ -287,6 +287,8 @@ class TransformDMA(RewritePattern):
             tsl_dest.data, op.source.type.element_type.width.data // 8
         )
 
+        pass
+
         # step 3: generate ops for the strides and bounds of the TSL
         # except for the strides in the LCB, the other strides are used
         # to calculate the bounds of the nested for loops for these Strides

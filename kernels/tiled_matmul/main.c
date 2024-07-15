@@ -85,7 +85,7 @@ int main() {
 
   (void)snrt_mcycle();
 
-  _mlir_ciface_simple_matmul(&memrefA, &memrefB, &memrefC);
+  _mlir_ciface_tiled_matmul(&memrefA, &memrefB, &memrefC);
 
   snrt_cluster_hw_barrier();
 
