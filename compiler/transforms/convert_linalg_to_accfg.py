@@ -49,6 +49,8 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
         _, acc_info = acc_reg.lookup_acc_info(
             StringAttr(library_call_name), self.module
         )
+        if not acc_info:
+            raise RuntimeError(f"{library_call_name} is not a registered Accelerator")
         rewriter.replace_matched_op(acc_info().convert_to_acc_ops(op))
 
 

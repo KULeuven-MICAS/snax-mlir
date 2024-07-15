@@ -26,7 +26,7 @@ class AcceleratorRegistry:
 
     def lookup_acc_info(
         self, acc_query: StringAttr, module: ModuleOp
-    ) -> tuple[AcceleratorOp, type[Accelerator]]:
+    ) -> tuple[AcceleratorOp, type[Accelerator] | None]:
         """
         Perform a symbol table lookup for the accelerator op in the IR
         and then get the corresponding the Accelerator interface from
@@ -46,11 +46,11 @@ class AcceleratorRegistry:
 
     def get_acc_info(
         self, acc_op: AcceleratorOp | StringAttr | str
-    ) -> type[Accelerator]:
+    ) -> type[Accelerator] | None:
         """
         Get a reference to an Accelerator interface based on an AcceleratorOp,
         string or StringAttr.
-        If the requested symbol name is not available, throw a RuntimeError
+        If the requested symbol name is not available, return None
         """
         if isinstance(acc_op, str):
             acc_name = acc_op
@@ -61,10 +61,7 @@ class AcceleratorRegistry:
         try:
             acc_info = self.registered_accelerators[acc_name]
         except KeyError:
-            raise RuntimeError(
-                f"'{acc_name}' is not a registered accelerator."
-                f"Registered accelerators: {','.join(self.get_names())}"
-            )
+            return None
         return acc_info
 
     def get_names(self) -> Iterable[str]:

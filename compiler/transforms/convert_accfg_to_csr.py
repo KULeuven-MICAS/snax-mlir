@@ -36,6 +36,8 @@ class LowerAccfgBasePattern(RewritePattern, ABC):
         acc_op, acc_info = AcceleratorRegistry().lookup_acc_info(
             accelerator, self.module
         )
+        if not acc_info:
+            raise RuntimeError(f"{accelerator.data} is not a registered Accelerator")
         return acc_op, acc_info
 
     def __hash__(self):
