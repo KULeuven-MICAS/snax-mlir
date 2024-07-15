@@ -59,13 +59,9 @@ class StridePattern(ParametrizedAttribute):
             printer.print_string("ub = [")
             printer.print_list(self.upper_bounds, lambda attr: printer.print(attr.data))
             printer.print_string("], ts = [")
-            printer.print_list(
-                self.temporal_strides, lambda attr: printer.print(attr.data)
-            )
+            printer.print_list(self.temporal_strides, lambda attr: printer.print(attr.data))
             printer.print_string("], ss = [")
-            printer.print_list(
-                self.spatial_strides, lambda attr: printer.print(attr.data)
-            )
+            printer.print_list(self.spatial_strides, lambda attr: printer.print(attr.data))
             printer.print_string("]")
 
     @classmethod
@@ -74,28 +70,19 @@ class StridePattern(ParametrizedAttribute):
             parser.parse_identifier("ub")
             parser.parse_punctuation("=")
             ub = ArrayAttr(
-                IntAttr(i)
-                for i in parser.parse_comma_separated_list(
-                    parser.Delimiter.SQUARE, parser.parse_integer
-                )
+                IntAttr(i) for i in parser.parse_comma_separated_list(parser.Delimiter.SQUARE, parser.parse_integer)
             )
             parser.parse_punctuation(",")
             parser.parse_identifier("ts")
             parser.parse_punctuation("=")
             ts = ArrayAttr(
-                IntAttr(i)
-                for i in parser.parse_comma_separated_list(
-                    parser.Delimiter.SQUARE, parser.parse_integer
-                )
+                IntAttr(i) for i in parser.parse_comma_separated_list(parser.Delimiter.SQUARE, parser.parse_integer)
             )
             parser.parse_punctuation(",")
             parser.parse_identifier("ss")
             parser.parse_punctuation("=")
             ss = ArrayAttr(
-                IntAttr(i)
-                for i in parser.parse_comma_separated_list(
-                    parser.Delimiter.SQUARE, parser.parse_integer
-                )
+                IntAttr(i) for i in parser.parse_comma_separated_list(parser.Delimiter.SQUARE, parser.parse_integer)
             )
             return (ub, ts, ss)
 

@@ -17,9 +17,7 @@ class SNAXAccelerator(Accelerator, ABC):
     """
 
     @staticmethod
-    def lower_acc_launch(
-        launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
-    ) -> Sequence[Operation]:
+    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.launch_field_items())
         ops: Sequence[Operation] = []
         for field, val in launch_op.iter_params():
@@ -51,9 +49,7 @@ class SNAXAccelerator(Accelerator, ABC):
         return ops
 
     @staticmethod
-    def lower_acc_setup(
-        setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp
-    ) -> Sequence[Operation]:
+    def lower_acc_setup(setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.field_items())
         ops: Sequence[Operation] = []
         for field, val in setup_op.iter_params():
@@ -100,18 +96,14 @@ class SNAXPollingBarrier(Accelerator, ABC):
         # kernels/tiled_mult/tiled.preprocfinal.mlir only works
         # when at least 4 nops are introduced, due to hardware handshake issues.
         # this is will likely not be fixed in the future.
-        nops = [
-            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True) for _ in range(4)
-        ]
+        nops = [llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True) for _ in range(4)]
         return [
             While(
                 [],
                 [],
                 [
                     barrier := arith.Constant(acc_op.barrier),
-                    zero := arith.Constant(
-                        builtin.IntegerAttr.from_int_and_width(0, 32)
-                    ),
+                    zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 32)),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate
@@ -170,9 +162,7 @@ class SNAXPollingBarrier2(Accelerator, ABC):
                 [],
                 [
                     barrier := arith.Constant(acc_op.barrier),
-                    one := arith.Constant(
-                        builtin.IntegerAttr.from_int_and_width(1, 32)
-                    ),
+                    one := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 32)),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate
