@@ -3,38 +3,42 @@ from collections.abc import Sequence
 from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.ir import Operation, SSAValue
 
-from compiler.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier
-from compiler.dialects import accfg
+from compiler.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer
+from compiler.accelerators.streamers import Streamer, StreamerConfiguration, StreamerType
+from compiler.dialects import accfg, snax_stream
+
+default_streamer = StreamerConfiguration(
+    [Streamer(StreamerType.Reader, 1, 1), Streamer(StreamerType.Reader, 1, 1), Streamer(StreamerType.Reader, 1, 1)]
+)
 
 
-class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
+class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer):
     """
     Accelerator interface class for the SNAX Alu accelerator.
     """
 
     name = "snax_alu"
-    fields = (
-        "loop_bound_streamer",
-        "a_tstride",
-        "b_tstride",
-        "o_tstride",
-        "a_sstride",
-        "b_sstride",
-        "o_sstride",
-        "a_ptr",
-        "b_ptr",
-        "o_ptr",
-        "alu_mode",
-        "loop_bound_alu",
-    )
-    launch_fields = ("launch_streamer", "launch_alu")
 
-    def convert_to_acc_ops(self, op: linalg.Generic) -> Sequence[Operation]:
+    def __init__(self, streamer_config: StreamerConfiguration = default_streamer) -> None:
+        SNAXStreamer.__init__(self, streamer_config)
+
+        self.fields = (*self.get_streamer_setup_fields(), "alu_mode", "loop_bound_alu")
+
+        self.launch_fields = (*self.get_streamer_launch_fields(), "launch_alu")
+
+    def convert_to_acc_ops(self, op: Operation) -> Sequence[Operation]:
         """
         Lowers the operation to a sequence of acc_ops.
         """
 
-        args = self._generate_setup_vals(op)
+        # linalg.generic lowering is stil hardcoded, but kept until
+        # lowering from linalg -> snax_stream is complete
+        if isinstance(op, linalg.Generic):
+            args = self._generate_setup_vals(op)
+        elif isinstance(op, snax_stream.StreamingRegionOp):
+            args = self._generate_stream_setup_vals(op)
+        else:
+            return []
 
         ops_to_insert = []
         for new_ops, _ in args:
@@ -44,22 +48,16 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
             *ops_to_insert,
             setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
             launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
-            token := accfg.LaunchOp(
-                [launch_val, launch_val], self.launch_fields, setup
-            ),
+            token := accfg.LaunchOp([launch_val, launch_val], self.launch_fields, setup),
             accfg.AwaitOp(token),
         ]
 
-    def _generate_setup_vals(
-        self, op: linalg.Generic
-    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def _generate_setup_vals(self, op: linalg.Generic) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         a, b, o = op.operands
 
         c0_index = arith.Constant.from_int_and_width(0, builtin.IndexType())
         dim_0 = memref.Dim.from_source_and_index(a, c0_index)
-        design_time_parallelism = arith.Constant.from_int_and_width(
-            4, builtin.IndexType()
-        )
+        design_time_parallelism = arith.Constant.from_int_and_width(4, builtin.IndexType())
         loop_bound = arith.DivUI(dim_0, design_time_parallelism)
         loop_bound_i32 = arith.IndexCastOp(loop_bound, builtin.i32)
         c0 = arith.Constant.from_int_and_width(0, 32)
@@ -75,9 +73,7 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
                         ref.type.element_type.width.data // 8, builtin.IndexType()
                     ),
                     byte_offset := arith.Muli(metadata.offset, el_bytes),
-                    ptr_plus_byte_offset := arith.Addi(
-                        ptr, byte_offset, builtin.IndexType()
-                    ),
+                    ptr_plus_byte_offset := arith.Addi(ptr, byte_offset, builtin.IndexType()),
                     ptr_i32 := arith.IndexCastOp(ptr_plus_byte_offset, builtin.i32),
                 ],
                 ptr_i32.result,
@@ -109,23 +105,39 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier):
             ([], loop_bound_i32.result),
         ]
 
+    def _generate_stream_setup_vals(
+        self, op: snax_stream.StreamingRegionOp
+    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+        c0 = arith.Constant.from_int_and_width(0, 32)
+        loop_bound = arith.Constant.from_int_and_width(op.stride_pattern.data[0].upper_bounds.data[0], 32)
+
+        return [
+            *self._generate_streamer_setup_vals(op),
+            ([c0], c0.result),
+            ([loop_bound], loop_bound.result),
+        ]
+
     def generate_acc_op(self) -> accfg.AcceleratorOp:
-        return accfg.AcceleratorOp(
+        # base address:
+        addr = 0x3C0
+
+        # streamer setup addresses
+        addr, streamer_setup = self.get_streamer_setup_dict(addr)
+        # streamer launch addresses
+        addr, streamer_launch = self.get_streamer_launch_dict(addr)
+
+        op = accfg.AcceleratorOp(
             self.name,
             {
-                "loop_bound_streamer": 0x3C0,
-                "a_tstride": 0x3C1,
-                "b_tstride": 0x3C2,
-                "o_tstride": 0x3C3,
-                "a_sstride": 0x3C4,
-                "b_sstride": 0x3C5,
-                "o_sstride": 0x3C6,
-                "a_ptr": 0x3C7,
-                "b_ptr": 0x3C8,
-                "o_ptr": 0x3C9,
-                "alu_mode": 0x3CC,
-                "loop_bound_alu": 0x3CD,
+                **streamer_setup,
+                "alu_mode": addr + 0,
+                "loop_bound_alu": addr + 1,
             },
-            {"launch_streamer": 0x3CA, "launch_alu": 0x3CE},
-            0x3CF,
+            {**streamer_launch, "launch_alu": addr + 2},
+            addr + 3,
         )
+
+        # add snax streamer interface
+        op.attributes['streamer_config'] = self.streamer_config
+
+        return op
