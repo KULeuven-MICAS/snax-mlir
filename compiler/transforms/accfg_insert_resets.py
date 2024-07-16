@@ -3,14 +3,16 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TypeVar
 
-from xdsl.dialects import builtin
-from xdsl.ir import Attribute, Block, MLContext, Operation, SSAValue
+from xdsl.dialects import builtin, scf
+from xdsl.ir import Attribute, MLContext, Operation, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern
-from xdsl.rewriter import InsertPoint
-from xdsl.traits import IsTerminator
 
 from compiler.dialects import accfg
+from compiler.inference.dataflow import (
+    get_insertion_points_where_val_dangles,
+    uses_through_controlflow,
+)
 
 _RewritePatternT = TypeVar("_RewritePatternT", bound=RewritePattern)
 
@@ -50,83 +52,51 @@ def ssa_val_rewrite_pattern(
     return wrapper
 
 
-@dataclass(frozen=True, slots=True)
-class InsertCandidate:
-    idx: int
-    op: Operation
-
-
-def get_insertion_points_where_val_dangles(val: SSAValue):
-    """
-    Return all insertion points where val dangles after it is used last.
-
-    """
-    # if no uses are found, just return the first position where the value is live:
-    if not val.uses:
-        if isinstance(val.owner, Operation):
-            yield InsertPoint.after(val.owner)
-        else:
-            yield InsertPoint.at_start(val.owner)
-        return
-
-    # remember insertion candidates and their positions
-    # we need to keep track of the last use of the value in each block it's used in.
-    inserts: dict[Block, InsertCandidate] = dict()
-    dead_blocks: set[Block] = set()
-    # check each use
-    for use in val.uses:
-        # grab the block
-        block = use.operation.parent_block()
-        if block is None or block in dead_blocks:
-            continue
-
-        # grab a the candidate for this block
-        candidate = inserts.get(block, None)
-        # and the position of the current op in the block
-        idx = block.get_operation_index(use.operation)
-
-        # if there is a candidate
-        if candidate is not None:
-            # and the current op comes before the candidate
-            if idx < candidate.idx:
-                continue  # skip it
-        # if we are a terminator
-        if use.operation.has_trait(IsTerminator):
-            # don't insert in this block
-            inserts.pop(block, None)
-            # never insert in this block
-            dead_blocks.add(block)
-            continue
-
-        # put insertion candidate into candidate dict
-        inserts[block] = InsertCandidate(idx, use.operation)
-
-    # return all insertion candidates that we have
-    yield from (InsertPoint.after(cd.op) for cd in inserts.values())
-
-
+@dataclass(frozen=True)
 class InsertResetsForDanglingStatesPattern(RewritePattern):
     """
-    This inspects all SSA values and inserts a `reset` operation if the value has no uses outside of `launch` and
-    `reset` operations.
+    This inspects all SSA values and inserts a `reset` operation if the value is not consumed by a `reset`,
+    `setup` or `scf.yield` operation.
+
+    if `reset_after_await` is given, it inserts a reset operation after the last await of the last launch instead.
+    (this might be wonky if there's complex control flow involved, lol)
     """
+
+    reset_after_await: bool
 
     @ssa_val_rewrite_pattern(accfg.StateType)
     def match_and_rewrite(self, val: SSAValue, rewriter: PatternRewriter, /):
-        # abort if
-        # any use is a reset or another setup op
+        # get uses through ctrlflow:
+        uses = tuple(uses_through_controlflow(val))
+        # abort if any use is a reset or another setup op (or returned from control flow)
+        # if it's returned from control flow, we should instead worry about the return value.
         if any(
-            isinstance(use.operation, accfg.ResetOp | accfg.SetupOp) for use in val.uses
+            isinstance(use.operation, accfg.ResetOp | accfg.SetupOp | scf.Yield)
+            for use in uses
         ):
             return
 
-        for point in get_insertion_points_where_val_dangles(val):
+        # if reset_after_await is given, reset after the tokens of the launch ops are no longer dangling
+        # (i.e. have been awaited)
+        if self.reset_after_await:
+            vals = []
+            for use in uses:
+                if isinstance(use.operation, accfg.LaunchOp):
+                    vals.append(use.operation.token)
+            if not vals:
+                vals.append(val)
+        else:
+            # by default just run on val
+            vals = [val]
+
+        for point in get_insertion_points_where_val_dangles(vals):
             rewriter.insert_op(
                 accfg.ResetOp(val),
                 point,
             )
 
 
+@dataclass(frozen=True)
 class InsertResetsPass(ModulePass):
     """
     Looks for dangling SSA values of type accfg.state and adds an `accfg.reset` operation to reset these states.
@@ -134,5 +104,9 @@ class InsertResetsPass(ModulePass):
 
     name = "accfg-insert-resets"
 
+    reset_after_await: bool = False
+
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(InsertResetsForDanglingStatesPattern()).rewrite_module(op)
+        PatternRewriteWalker(
+            InsertResetsForDanglingStatesPattern(self.reset_after_await)
+        ).rewrite_module(op)

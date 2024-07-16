@@ -1,4 +1,5 @@
-// RUN: snax-opt --split-input-file -p accfg-insert-resets %s | filecheck %s
+// RUN: snax-opt --split-input-file -p accfg-insert-resets %s | filecheck %s --check-prefixes=CHECK,BEFORE
+// RUN: snax-opt --split-input-file -p "accfg-insert-resets{reset-after-await=true}" %s | filecheck %s --check-prefixes=CHECK,AFTER
 
 func.func @args(%state: !accfg.state<"simple">) {
     return
@@ -43,10 +44,11 @@ func.func @with_uses(%i : i32) {
 }
 
 // CHECK-LABEL: @with_uses
-// CHECK-NEXT: [[state:%\S+]] = accfg.setup "acc" to ("i" = %i : i32) : !accfg.state<"acc">
-// CHECK-NEXT: [[token:%\S+]] = "accfg.launch"(%state)
-// CHECK-NEXT: accfg.reset [[state]] : !accfg.state<"acc">
-// CHECK-NEXT: "accfg.await"([[token]])
+// CHECK-NEXT:  [[state:%\S+]] = accfg.setup "acc" to ("i" = %i : i32) : !accfg.state<"acc">
+// CHECK-NEXT:  [[token:%\S+]] = "accfg.launch"(%state)
+// BEFORE-NEXT: accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK-NEXT:  "accfg.await"([[token]])
+// AFTER-NEXT:  accfg.reset [[state]] : !accfg.state<"acc">
 
 
 // -----
@@ -72,10 +74,14 @@ func.func @scf_if_1(%i : i32, %cond: i1) {
 // CHECK-LABEL: @scf_if_1
 // CHECK-NEXT:  [[state:%\S+]] = accfg.setup "acc" to ("i" = %i : i32) : !accfg.state<"acc">
 // CHECK:       "accfg.launch"([[state]])
-// CHECK-NEXT:  accfg.reset [[state]] : !accfg.state<"acc">
+// BEFORE-NEXT: accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK-NEXT:  "accfg.await"
+// AFTER-NEXT:  accfg.reset [[state]] : !accfg.state<"acc">
 // CHECK:       yield
 // CHECK:       "accfg.launch"([[state]])
-// CHECK-NEXT:  accfg.reset [[state]] : !accfg.state<"acc">
+// BEFORE-NEXT: accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK-NEXT:  "accfg.await"
+// AFTER-NEXT:  accfg.reset [[state]] : !accfg.state<"acc">
 // CHECK:       yield
 
 

@@ -1,5 +1,5 @@
 // RUN: snax-opt --split-input-file -p accfg-config-overlap %s | filecheck %s
-// RUN: snax-opt --split-input-file -p accfg-config-overlap,accfg-insert-resets %s | filecheck %s --check-prefix CHECK-RESET
+// RUN: snax-opt --split-input-file -p accfg-config-overlap,accfg-insert-resets %s | filecheck %s --check-prefix CHECK --check-prefix RESET
 
 func.func @simple(%A: i32, %B: i32) {
     %s1 = accfg.setup "simple" to ("A" = %A : i32) : !accfg.state<"simple">
@@ -17,14 +17,14 @@ func.func @simple(%A: i32, %B: i32) {
 // CHECK-NEXT:    %t = "accfg.launch"(%s1) <{"param_names" = [], "accelerator" = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
 //                      ∨∨∨∨∨ setup comes right after launch ∧∧∧∧∧
 // CHECK-NEXT:    %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
+// reset right after setup
+// RESET-NEXT:    accfg.reset %s2 : !accfg.state<"simple">
 // CHECK-NEXT:    "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
 //                 ∧∧∧∧∧∧∧∧∧∧∧ await now after next setup
+// reset after await otherwise
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
 
-
-// CHECK-RESET:      %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
-// CHECK-RESET-NEXT: accfg.reset %s2 : !accfg.state<"simple">
 
 
 // -----
@@ -51,16 +51,13 @@ func.func @computed(%A: i32) {
 // CHECK-NEXT:    %A_plus = arith.addi %A, %c : i32
 //                                                              ∨∨∨∨∨∨∨ this SSA value is valid (the ops that calculate it have been moved)
 // CHECK-NEXT:    %s2 = accfg.setup "simple" from %s1 to ("A" = %A_plus : i32) : !accfg.state<"simple">
+// RESET-NEXT:    accfg.reset %s2 : !accfg.state<"simple">
 //                ∨∨∨∨∨ await pushed down
 // CHECK-NEXT:    "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
 // CHECK-NEXT:    %irrelevant = arith.constant 42 : i32
 //                ∧∧∧∧∧∧∧∧∧∧∧ Irrelevant constant was not moved up
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
-
-
-// CHECK-RESET:       %s2 = accfg.setup "simple" from %s1 to ("A" = %A_plus : i32) : !accfg.state<"simple">
-// CHECK-RESET-NEXT:  accfg.reset %s2 : !accfg.state<"simple">
 
 
 // -----
@@ -86,15 +83,12 @@ func.func @simple_negative(%A: i32, %B: i32, %i1: i1) {
 // CHECK-NEXT:    "scf.if"(%i1) ({
 // CHECK-NEXT:      %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
 //                        ∧∧∧∧∧∧∧∧∧∧∧ yep, op is still here!
+// RESET-NEXT:      accfg.reset %s2 : !accfg.state<"simple">
 // CHECK-NEXT:      scf.yield
 // CHECK-NEXT:    }, {
 // CHECK-NEXT:    }) : (i1) -> ()
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
-
-
-// CHECK-RESET:       %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
-// CHECK-RESET-NEXT:  accfg.reset %s2 : !accfg.state<"simple">
 
 
 // -----
@@ -124,12 +118,9 @@ func.func @single_loop(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 // CHECK-NEXT:       "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
 // CHECK-NEXT:       scf.yield %4 : !accfg.state<"simple">
 // CHECK-NEXT:     }
+// RESET-NEXT:     accfg.reset %2 : !accfg.state<"simple">
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
-
-
-// CHECK-RESET:   %2 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %1) -> (!accfg.state<"simple">) : i32 {
-// CHECK-RESET:  accfg.reset %2 : !accfg.state<"simple">
 
 
 // -----
@@ -171,13 +162,10 @@ func.func @complex_loop(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 // CHECK-NEXT:       "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
 // CHECK-NEXT:       scf.yield %6 : !accfg.state<"simple">
 // CHECK-NEXT:     }
+// RESET-NEXT:     accfg.reset %3 : !accfg.state<"simple">
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
-
-
-// CHECK-RESET:   %3 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %2) -> (!accfg.state<"simple">) : i32 {
-// CHECK-RESET:  accfg.reset %3 : !accfg.state<"simple">
 
 
 // -----
@@ -216,12 +204,9 @@ func.func @nested_loops(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 // CHECK-NEXT:      }
 // CHECK-NEXT:      scf.yield %4 : !accfg.state<"simple">
 // CHECK-NEXT:    }
+// RESET-NEXT:    accfg.reset %1 : !accfg.state<"simple">
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
-
-
-// CHECK-RESET:  %1 = scf.for %i = %lb to %ub step %step iter_args(%2 = %0) -> (!accfg.state<"simple">) : i32 {
-// CHECK-RESET:  accfg.reset %1 : !accfg.state<"simple">
 
 
 // -----
@@ -279,9 +264,6 @@ func.func @double_setup_loop(%A : i32, %B : i32, %lb : i32, %ub : i32, %step : i
 // CHECK-NEXT:      "accfg.await"(%t2) : (!accfg.token<"simple">) -> ()
 // CHECK-NEXT:      scf.yield %6 : !accfg.state<"simple">
 // CHECK-NEXT:    }
+// RESET-NEXT:    accfg.reset %3 : !accfg.state<"simple">
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
-
-
-// CHECK-RESET:  %3 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %2) -> (!accfg.state<"simple">) : i32 {
-// CHECK-RESET:  accfg.reset %3 : !accfg.state<"simple">
