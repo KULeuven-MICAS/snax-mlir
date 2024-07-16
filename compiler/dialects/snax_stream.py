@@ -61,9 +61,10 @@ class StridePattern(ParametrizedAttribute):
         super().__init__(parameters)
 
     def verify(self):
-
         if len(self.upper_bounds) != len(self.temporal_strides):
-            raise VerifyException("Number of upper bounds should be equal to number of strides")
+            raise VerifyException(
+                "Number of upper bounds should be equal to number of strides"
+            )
 
     def print_parameters(self, printer: Printer) -> None:
         with printer.in_angle_brackets():
@@ -155,7 +156,6 @@ class StreamingRegionOp(IRDLOperation):
         )
 
     def verify_(self):
-
         module_op = self
         while module_op and not isinstance(module_op, ModuleOp):
             module_op = module_op.parent_op()
