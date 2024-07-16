@@ -7,6 +7,7 @@ include ../../runtime/Makefile.rules
 
 TESTS =
 TESTS += streamer_add.x
+TESTS += streamer_add_stream.x
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
