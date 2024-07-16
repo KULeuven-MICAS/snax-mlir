@@ -30,7 +30,7 @@ def ssa_val_rewrite_pattern(
     """
 
     def wrapper(
-        old_match_and_rewrite: Callable[
+        wrapped_match_and_rewrite: Callable[
             [_RewritePatternT, SSAValue, PatternRewriter], None
         ]
     ) -> Callable[[_RewritePatternT, Operation, PatternRewriter], None]:
@@ -45,7 +45,7 @@ def ssa_val_rewrite_pattern(
             ):
                 if not isinstance(val.type, val_type):
                     continue
-                old_match_and_rewrite(self, val, rewriter)
+                wrapped_match_and_rewrite(self, val, rewriter)
 
         return match_and_rewrite
 
