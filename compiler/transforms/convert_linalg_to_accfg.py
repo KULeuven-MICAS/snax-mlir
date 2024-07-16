@@ -13,6 +13,7 @@ from xdsl.pattern_rewriter import (
 
 from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.dialects import accfg
+from compiler.dialects.snax_stream import StreamingRegionOp
 from compiler.inference.helpers import (
     calc_if_state_delta,
     find_all_acc_names_in_region,
@@ -49,6 +50,23 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
         _, acc_info = acc_reg.lookup_acc_info(
             StringAttr(library_call_name), self.module
         )
+        rewriter.replace_matched_op(acc_info().convert_to_acc_ops(op))
+
+@dataclass
+class ConvertSnaxStreamToAcceleratorPattern(RewritePattern):
+    """
+    This pattern converts snax streaming region ops to the accfg dialect.
+    """
+
+    module: builtin.ModuleOp
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: StreamingRegionOp, rewriter: PatternRewriter):
+
+        _, acc_info = AcceleratorRegistry().lookup_acc_info(
+            op.accelerator, self.module
+        )
+
         rewriter.replace_matched_op(acc_info().convert_to_acc_ops(op))
 
 
@@ -260,6 +278,7 @@ class ConvertLinalgToAccPass(ModulePass):
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(ConvertLinalgToAcceleratorPattern(op)).rewrite_module(op)
+        PatternRewriteWalker(ConvertSnaxStreamToAcceleratorPattern(op)).rewrite_module(op)
         # run these strictly sequentially, otherwise stuff breaks
         PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
             op
