@@ -22,8 +22,11 @@ from xdsl.irdl import (
 )
 from xdsl.parser import AttrParser
 from xdsl.printer import Printer
+from xdsl.traits import SymbolTable
 
 from compiler.accelerators.streamers.streamers import StreamerConfiguration
+from compiler.dialects.accfg import AcceleratorOp
+from compiler.dialects.snax import StreamerConfigurationAttr
 
 
 @irdl_attr_definition
@@ -148,24 +151,21 @@ class StreamingRegionOp(IRDLOperation):
         )
 
     def verify_(self):
-        # import only here to avoid circular import errors
-        from compiler.accelerators.registry import AcceleratorRegistry
-        from compiler.dialects.snax import StreamerConfigurationAttr
 
         module_op = self
         while module_op and not isinstance(module_op, ModuleOp):
             module_op = module_op.parent_op()
         if not module_op:
             raise VerifyException("ModuleOp not found!")
-        accelerator_op, _ = AcceleratorRegistry().lookup_acc_info(
-            self.accelerator, module_op
-        )
 
-        if not accelerator_op:
-            raise VerifyException("AcceleratorOp for streaming_region not found!")
+        trait = module_op.get_trait(SymbolTable)
+        assert trait is not None
+        acc_op = trait.lookup_symbol(module_op, self.accelerator)
 
-        streamer_interface = accelerator_op.get_attr_or_prop("streamer_config")
+        if not isinstance(acc_op, AcceleratorOp):
+            raise VerifyException("AcceleratorOp not found!")
 
+        streamer_interface = acc_op.get_attr_or_prop("streamer_config")
         if not streamer_interface or not isinstance(
             streamer_interface, StreamerConfigurationAttr
         ):
