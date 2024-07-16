@@ -24,7 +24,7 @@ from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 from xdsl.traits import SymbolTable
 
-from compiler.accelerators.streamers.streamers import StreamerConfiguration
+from compiler.accelerators.streamers import StreamerConfiguration
 from compiler.dialects.accfg import AcceleratorOp
 from compiler.dialects.snax import StreamerConfigurationAttr
 
@@ -174,7 +174,7 @@ class StreamingRegionOp(IRDLOperation):
             streamer_interface, StreamerConfigurationAttr
         ):
             raise VerifyException(
-                "Specified accelerator does not implement the streamer interface"
+                "Specified accelerator does not contain a StreamerConfigurationAttr"
             )
 
         streamer_config: StreamerConfiguration = streamer_interface.data
