@@ -60,6 +60,11 @@ class StridePattern(ParametrizedAttribute):
             parameters.append(arg)
         super().__init__(parameters)
 
+    def verify(self):
+
+        if len(self.upper_bounds) != len(self.temporal_strides):
+            raise VerifyException("Number of upper bounds should be equal to number of strides")
+
     def print_parameters(self, printer: Printer) -> None:
         with printer.in_angle_brackets():
             printer.print_string("ub = [")
@@ -121,7 +126,6 @@ class StreamingRegionOp(IRDLOperation):
 
     # streaming stride pattern
     # there should be one stride pattern for every input/output
-    # the upper bounds of all stride patterns should be equal
     stride_pattern = prop_def(ArrayAttr[StridePattern])
 
     accelerator = prop_def(StringAttr)
