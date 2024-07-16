@@ -1,9 +1,8 @@
 import string
 from abc import ABC
 from collections.abc import Sequence
-from typing import Dict
-from typing_extensions import Tuple
 
+from typing_extensions import Tuple
 from xdsl.dialects import arith, builtin, llvm
 from xdsl.dialects.builtin import IntAttr, i32
 from xdsl.dialects.scf import Condition, While, Yield
@@ -12,7 +11,7 @@ from xdsl.ir import Operation, SSAValue
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.streamers import StreamerConfiguration
 from compiler.dialects import accfg
-from compiler.dialects.snax_stream import StreamingRegionOp, StreamerConfigurationAttr
+from compiler.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
 
 
 class SNAXAccelerator(Accelerator, ABC):
@@ -91,27 +90,35 @@ class SNAXStreamer(ABC):
     streamer_setup_fields: Sequence[str]
     streamer_launch_fields: Sequence[str]
 
-    def __init__(self, streamer_config: StreamerConfiguration | StreamerConfigurationAttr) -> None:
-
+    def __init__(
+        self, streamer_config: StreamerConfiguration | StreamerConfigurationAttr
+    ) -> None:
         if isinstance(streamer_config, StreamerConfiguration):
             streamer_config = StreamerConfigurationAttr(streamer_config)
 
         self.streamer_config = streamer_config
 
         # set streamer names as a, b, c, d, ...
-        self.streamer_names = list(string.ascii_lowercase[: self.streamer_config.data.size()])
+        self.streamer_names = list(
+            string.ascii_lowercase[: self.streamer_config.data.size()]
+        )
 
         self.streamer_setup_fields = self.get_streamer_setup_fields()
         self.streamer_launch_fields = self.get_streamer_launch_fields()
 
-    def _generate_streamer_setup_vals(self, op: StreamingRegionOp) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def _generate_streamer_setup_vals(
+        self, op: StreamingRegionOp
+    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
 
         # loop bound registers
         loop_bounds: Sequence[IntAttr] = op.stride_pattern.data[0].upper_bounds.data
         result.extend(
             [
-                ([cst := arith.Constant.from_int_and_width(loop_bound.data, i32)], cst.result)
+                (
+                    [cst := arith.Constant.from_int_and_width(loop_bound.data, i32)],
+                    cst.result,
+                )
                 for loop_bound in loop_bounds
             ]
         )
@@ -142,7 +149,9 @@ class SNAXStreamer(ABC):
         result: list[str] = []
 
         # loop bound registers
-        result.extend([f"loop_bound_{i}" for i in range(self.streamer_config.data.temporal_dim())])
+        result.extend(
+            [f"loop_bound_{i}" for i in range(self.streamer_config.data.temporal_dim())]
+        )
 
         # temporal strides
         result.extend(
@@ -181,7 +190,9 @@ class SNAXStreamer(ABC):
         int: The next usable CSR address
         dict[str, int]: The dictionary mapping setup field to csr address
         """
-        streamer_setup = {key: base_addr + i for i, key in enumerate(self.streamer_setup_fields)}
+        streamer_setup = {
+            key: base_addr + i for i, key in enumerate(self.streamer_setup_fields)
+        }
         base_addr += len(self.streamer_setup_fields)
         return base_addr, streamer_setup
 
@@ -196,7 +207,9 @@ class SNAXStreamer(ABC):
         int: The next usable CSR address
         dict[str, int]: The dictionary mapping setup field to csr address
         """
-        streamer_launch = {key: base_addr + i for i, key in enumerate(self.streamer_launch_fields)}
+        streamer_launch = {
+            key: base_addr + i for i, key in enumerate(self.streamer_launch_fields)
+        }
         base_addr += len(self.streamer_launch_fields)
 
         # 1 performance counter after launch field

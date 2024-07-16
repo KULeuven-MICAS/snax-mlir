@@ -4,11 +4,19 @@ from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer
-from compiler.accelerators.streamers import Streamer, StreamerConfiguration, StreamerType
+from compiler.accelerators.streamers import (
+    Streamer,
+    StreamerConfiguration,
+    StreamerType,
+)
 from compiler.dialects import accfg, snax_stream
 
 default_streamer = StreamerConfiguration(
-    [Streamer(StreamerType.Reader, 1, 1), Streamer(StreamerType.Reader, 1, 1), Streamer(StreamerType.Reader, 1, 1)]
+    [
+        Streamer(StreamerType.Reader, 1, 1),
+        Streamer(StreamerType.Reader, 1, 1),
+        Streamer(StreamerType.Reader, 1, 1),
+    ]
 )
 
 
@@ -19,12 +27,13 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer):
 
     name = "snax_alu"
 
-    def __init__(self, streamer_config: StreamerConfiguration = default_streamer) -> None:
-        SNAXStreamer.__init__(self, streamer_config)
+    def __init__(
+        self, streamer_config: StreamerConfiguration = default_streamer
+    ) -> None:
+        super().__init__(streamer_config)
 
-        self.fields = (*self.get_streamer_setup_fields(), "alu_mode", "loop_bound_alu")
-
-        self.launch_fields = (*self.get_streamer_launch_fields(), "launch_alu")
+        self.fields = (*self.streamer_setup_fields, "alu_mode", "loop_bound_alu")
+        self.launch_fields = (*self.streamer_launch_fields, "launch_alu")
 
     def convert_to_acc_ops(self, op: Operation) -> Sequence[Operation]:
         """
@@ -48,16 +57,22 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer):
             *ops_to_insert,
             setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
             launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
-            token := accfg.LaunchOp([launch_val, launch_val], self.launch_fields, setup),
+            token := accfg.LaunchOp(
+                [launch_val, launch_val], self.launch_fields, setup
+            ),
             accfg.AwaitOp(token),
         ]
 
-    def _generate_setup_vals(self, op: linalg.Generic) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def _generate_setup_vals(
+        self, op: linalg.Generic
+    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         a, b, o = op.operands
 
         c0_index = arith.Constant.from_int_and_width(0, builtin.IndexType())
         dim_0 = memref.Dim.from_source_and_index(a, c0_index)
-        design_time_parallelism = arith.Constant.from_int_and_width(4, builtin.IndexType())
+        design_time_parallelism = arith.Constant.from_int_and_width(
+            4, builtin.IndexType()
+        )
         loop_bound = arith.DivUI(dim_0, design_time_parallelism)
         loop_bound_i32 = arith.IndexCastOp(loop_bound, builtin.i32)
         c0 = arith.Constant.from_int_and_width(0, 32)
@@ -73,7 +88,9 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer):
                         ref.type.element_type.width.data // 8, builtin.IndexType()
                     ),
                     byte_offset := arith.Muli(metadata.offset, el_bytes),
-                    ptr_plus_byte_offset := arith.Addi(ptr, byte_offset, builtin.IndexType()),
+                    ptr_plus_byte_offset := arith.Addi(
+                        ptr, byte_offset, builtin.IndexType()
+                    ),
                     ptr_i32 := arith.IndexCastOp(ptr_plus_byte_offset, builtin.i32),
                 ],
                 ptr_i32.result,
@@ -109,7 +126,9 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer):
         self, op: snax_stream.StreamingRegionOp
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         c0 = arith.Constant.from_int_and_width(0, 32)
-        loop_bound = arith.Constant.from_int_and_width(op.stride_pattern.data[0].upper_bounds.data[0], 32)
+        loop_bound = arith.Constant.from_int_and_width(
+            op.stride_pattern.data[0].upper_bounds.data[0], 32
+        )
 
         return [
             *self._generate_streamer_setup_vals(op),
@@ -138,6 +157,6 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer):
         )
 
         # add snax streamer interface
-        op.attributes['streamer_config'] = self.streamer_config
+        op.attributes["streamer_config"] = self.streamer_config
 
         return op

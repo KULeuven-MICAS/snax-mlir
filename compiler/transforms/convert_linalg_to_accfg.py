@@ -52,6 +52,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
         )
         rewriter.replace_matched_op(acc_info().convert_to_acc_ops(op))
 
+
 @dataclass
 class ConvertSnaxStreamToAcceleratorPattern(RewritePattern):
     """
@@ -62,10 +63,7 @@ class ConvertSnaxStreamToAcceleratorPattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: StreamingRegionOp, rewriter: PatternRewriter):
-
-        _, acc_info = AcceleratorRegistry().lookup_acc_info(
-            op.accelerator, self.module
-        )
+        _, acc_info = AcceleratorRegistry().lookup_acc_info(op.accelerator, self.module)
 
         rewriter.replace_matched_op(acc_info().convert_to_acc_ops(op))
 
@@ -278,7 +276,9 @@ class ConvertLinalgToAccPass(ModulePass):
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(ConvertLinalgToAcceleratorPattern(op)).rewrite_module(op)
-        PatternRewriteWalker(ConvertSnaxStreamToAcceleratorPattern(op)).rewrite_module(op)
+        PatternRewriteWalker(ConvertSnaxStreamToAcceleratorPattern(op)).rewrite_module(
+            op
+        )
         # run these strictly sequentially, otherwise stuff breaks
         PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
             op
