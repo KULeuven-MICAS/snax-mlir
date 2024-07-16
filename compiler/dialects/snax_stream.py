@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from xdsl.dialects.builtin import ArrayAttr, IndexType, IntAttr
+from xdsl.dialects.builtin import ArrayAttr, IndexType, IntAttr, ModuleOp, StringAttr
 from xdsl.ir import (
     Attribute,
     Dialect,
@@ -8,6 +8,7 @@ from xdsl.ir import (
     ParametrizedAttribute,
     Region,
     SSAValue,
+    VerifyException,
 )
 from xdsl.irdl import (
     AttrSizedOperandSegments,
@@ -21,6 +22,11 @@ from xdsl.irdl import (
 )
 from xdsl.parser import AttrParser
 from xdsl.printer import Printer
+from xdsl.traits import SymbolTable
+
+from compiler.accelerators.streamers import StreamerConfiguration
+from compiler.dialects.accfg import AcceleratorOp
+from compiler.dialects.snax import StreamerConfigurationAttr
 
 
 @irdl_attr_definition
@@ -53,6 +59,12 @@ class StridePattern(ParametrizedAttribute):
                 arg = ArrayAttr([IntAttr(x) for x in arg])
             parameters.append(arg)
         super().__init__(parameters)
+
+    def verify(self):
+        if len(self.upper_bounds) != len(self.temporal_strides):
+            raise VerifyException(
+                "Number of upper bounds should be equal to number of strides"
+            )
 
     def print_parameters(self, printer: Printer) -> None:
         with printer.in_angle_brackets():
@@ -115,8 +127,12 @@ class StreamingRegionOp(IRDLOperation):
 
     # streaming stride pattern
     # there should be one stride pattern for every input/output
-    # the upper bounds of all stride patterns should be equal
     stride_pattern = prop_def(ArrayAttr[StridePattern])
+
+    accelerator = prop_def(StringAttr)
+    """
+    Name of the accelerator this region is for
+    """
 
     body = region_def("single_block")
 
@@ -138,6 +154,48 @@ class StreamingRegionOp(IRDLOperation):
             regions=[body],
             properties={"stride_patterns": stride_patterns},
         )
+
+    def verify_(self):
+        module_op = self
+        while module_op and not isinstance(module_op, ModuleOp):
+            module_op = module_op.parent_op()
+        if not module_op:
+            raise VerifyException("ModuleOp not found!")
+
+        trait = module_op.get_trait(SymbolTable)
+        assert trait is not None
+        acc_op = trait.lookup_symbol(module_op, self.accelerator)
+
+        if not isinstance(acc_op, AcceleratorOp):
+            raise VerifyException("AcceleratorOp not found!")
+
+        streamer_interface = acc_op.get_attr_or_prop("streamer_config")
+        if not streamer_interface or not isinstance(
+            streamer_interface, StreamerConfigurationAttr
+        ):
+            raise VerifyException(
+                "Specified accelerator does not contain a StreamerConfigurationAttr"
+            )
+
+        streamer_config: StreamerConfiguration = streamer_interface.data
+
+        if len(self.stride_pattern) != streamer_config.size():
+            raise VerifyException(
+                "Number of streamers does not equal number of stride patterns"
+            )
+
+        for stride_pattern, streamer in zip(
+            self.stride_pattern, streamer_config.streamers
+        ):
+            if len(stride_pattern.temporal_strides) > streamer.temporal_dim:
+                raise VerifyException(
+                    "Temporal stride pattern exceeds streamer dimensionality"
+                )
+
+            if len(stride_pattern.spatial_strides) > streamer.spatial_dim:
+                raise VerifyException(
+                    "Spatial stride pattern exceeds streamer dimensionality"
+                )
 
 
 SnaxStream = Dialect("snax_stream", [StreamingRegionOp], [StridePattern])
