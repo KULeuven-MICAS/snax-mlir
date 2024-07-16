@@ -21,7 +21,6 @@ func.func @simple(%A: i32, %B: i32) {
 // RESET-NEXT:    accfg.reset %s2 : !accfg.state<"simple">
 // CHECK-NEXT:    "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
 //                 ∧∧∧∧∧∧∧∧∧∧∧ await now after next setup
-// reset after await otherwise
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
 
