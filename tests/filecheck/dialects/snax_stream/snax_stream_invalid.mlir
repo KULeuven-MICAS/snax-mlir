@@ -23,7 +23,7 @@
 ^0():
 }) : () -> ()
 
-// CHECK: Operation does not verify: Specified accelerator does not implement the streamer interface
+// CHECK: Operation does not verify: Specified accelerator does not contain a StreamerConfigurationAttr
 
 // -----
 
