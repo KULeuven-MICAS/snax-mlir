@@ -15,7 +15,7 @@ default_streamer = StreamerConfiguration(
     [
         Streamer(StreamerType.Reader, 1, 1),
         Streamer(StreamerType.Reader, 1, 1),
-        Streamer(StreamerType.Reader, 1, 1),
+        Streamer(StreamerType.Writer, 1, 1),
     ]
 )
 
@@ -138,22 +138,22 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer):
 
     def generate_acc_op(self) -> accfg.AcceleratorOp:
         # base address:
-        addr = 0x3C0
+        base_addr = 0x3C0
 
         # streamer setup addresses
-        addr, streamer_setup = self.get_streamer_setup_dict(addr)
+        addr_next, streamer_setup = self.get_streamer_setup_dict(base_addr)
         # streamer launch addresses
-        addr, streamer_launch = self.get_streamer_launch_dict(addr)
+        addr_next, streamer_launch = self.get_streamer_launch_dict(addr_next)
 
         op = accfg.AcceleratorOp(
             self.name,
             {
                 **streamer_setup,
-                "alu_mode": addr + 0,
-                "loop_bound_alu": addr + 1,
+                "alu_mode": addr_next + 0,
+                "loop_bound_alu": addr_next + 1,
             },
-            {**streamer_launch, "launch_alu": addr + 2},
-            addr + 3,
+            {**streamer_launch, "launch_alu": addr_next + 2},
+            addr_next + 3,
         )
 
         # add snax streamer interface
