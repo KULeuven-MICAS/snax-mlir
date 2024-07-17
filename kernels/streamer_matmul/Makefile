@@ -7,7 +7,7 @@ include ../../runtime/Makefile.rules
 
 TESTS =
 TESTS += half_tiled_matmul.x
-TESTS += half_tiled_matmul.acc_dialect.x
+TESTS += matmul.x
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra

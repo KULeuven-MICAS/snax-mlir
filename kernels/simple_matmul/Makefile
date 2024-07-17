@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := all
 
-include ../../runtime/snax-streamer-gemm.rules
+include ../../runtime/snax-gemm.rules
 include ../../runtime/Makefile.rules
 
 TESTS =

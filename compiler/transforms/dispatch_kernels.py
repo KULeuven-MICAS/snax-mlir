@@ -113,7 +113,7 @@ class DispatchQMatMul(RewritePattern):
         ):
             return
 
-        op.library_call = builtin.StringAttr("snax_qgemm")
+        op.library_call = builtin.StringAttr("snax_gemm")
 
         return
 

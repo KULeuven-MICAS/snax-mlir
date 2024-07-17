@@ -44,17 +44,17 @@ uint32_t strideB = 0;
 uint32_t strideC = 0;
 
 // Kernel provided via external definition
-void _mlir_ciface_half_tiled_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
-                                    TwoDMemrefI32_t *c);
+void _mlir_ciface_streamer_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
+                                  TwoDMemrefI32_t *c);
 
-void _mlir_ciface_snax_qgemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
-                             int32_t zpb, TwoDMemrefI32_t *c) {
+void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
+                            int32_t zpb, TwoDMemrefI32_t *c) {
   {
 
     int local_delta_a = (int)a->aligned_data - (int)snrt_l1_next();
     int local_delta_b = (int)b->aligned_data - (int)snrt_l1_next();
     int local_delta_c = (int)c->aligned_data - (int)snrt_l1_next();
-    printf("Executing snax_qgemm with a=%p, b=%p, c=%p \n",
+    printf("Executing snax_gemm with a=%p, b=%p, c=%p \n",
            (int8_t)a->aligned_data, (int8_t)b->aligned_data,
            (int32_t)c->aligned_data);
 
@@ -68,13 +68,13 @@ void _mlir_ciface_snax_qgemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
 
     set_block_gemm_start();
 
-    printf("Waiting for snax_qgemm\n");
+    printf("Waiting for snax_gemm\n");
 
     wait_streamer_gemm();
 
     snrt_mcycle();
 
-    printf("Finished executing snax_qgemm\n");
+    printf("Finished executing snax_gemm\n");
   }
 }
 
@@ -99,7 +99,7 @@ int main() {
 
     (void)snrt_mcycle();
 
-    _mlir_ciface_half_tiled_matmul(&memrefA, &memrefB, &memrefC);
+    _mlir_ciface_streamer_matmul(&memrefA, &memrefB, &memrefC);
 
     snrt_cluster_hw_barrier();
 
@@ -115,8 +115,8 @@ int main() {
     for (int i = 0; i < M_size * N_size; i++) {
       {
         int32_t error = memrefC.aligned_data[i] - C_golden[i];
-        printf("%d) %d -> %d\n", i, (int32_t)memrefC.aligned_data[i],
-               (int32_t)C_golden[i]);
+        // printf("%d) %d -> %d\n", i, (int32_t)memrefC.aligned_data[i],
+        //        (int32_t)C_golden[i]);
         if (error != 0)
           nerr += 1;
       }
