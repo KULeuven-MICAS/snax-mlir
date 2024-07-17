@@ -9,6 +9,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.rewriter import InsertPoint
 from xdsl.traits import SymbolTable
 
 from compiler.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
@@ -30,10 +31,7 @@ class DispatchRegionsRewriter(RewritePattern):
             ops_to_dispatch: Iterable[Operation] = []
 
             # walk through the block
-            for op in block.walk():
-                # only consider top level operations
-                if op.parent is not block:
-                    continue
+            for op in block.walk(region_first=True):
 
                 # if op is dispatchable, add to existing list
                 # of dispatchable ops to include in scf.if body
@@ -50,7 +48,7 @@ class DispatchRegionsRewriter(RewritePattern):
                     ops_to_dispatch.append(scf.Yield())
                     # create and insert scf.if op
                     if_op = scf.If(core_cond, [], ops_to_dispatch)
-                    rewriter.insert_op_before(if_op, op)
+                    rewriter.insert_op(if_op, InsertPoint.before(op))
 
                     # reset dispatchable ops list
                     ops_to_dispatch = []
@@ -67,7 +65,9 @@ class DispatchRegionsRewriter(RewritePattern):
             dispatcher(block, func_call_dm.res[0], dispatch_to_dm)
             for block in func_op.body.blocks
         ):
-            rewriter.insert_op_at_start(func_call_dm, func_op.body.blocks[0])
+            rewriter.insert_op(
+                func_call_dm, InsertPoint.at_start(func_op.body.blocks[0])
+            )
 
         ## dispatch compute core ops, insert function call
         # in dominator block if changes made
@@ -77,7 +77,9 @@ class DispatchRegionsRewriter(RewritePattern):
             for block in func_op.body.blocks
         ):
             # insert function call in dominator block (first one)
-            rewriter.insert_op_at_start(func_call_compute, func_op.body.blocks[0])
+            rewriter.insert_op(
+                func_call_compute, InsertPoint.at_start(func_op.body.blocks[0])
+            )
 
 
 class InsertFunctionDeclaration(RewritePattern):
