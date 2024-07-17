@@ -2,3 +2,4 @@
 SNITCH_SW_PATH = /opt/snax-streamer-gemm
 VLTSIM        = /opt/snax-streamer-gemm-rtl/bin/snitch_cluster.vlt
 CFLAGS += -I$(SNITCH_SW_PATH)/target/snitch_cluster/sw/snax/streamer-gemm/include
+LDFLAGS += $(SNITCH_SW_PATH)/target/snitch_cluster/sw/snax/streamer-gemm/build/snax-streamer-gemm-lib.o

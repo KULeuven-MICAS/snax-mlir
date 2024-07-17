@@ -17,10 +17,12 @@
 /* These libraries are included from github.com/KULeuven-MICAS/snitch_cluster
  * Interested users, might want to look at:
  *
- * /target/snitch_cluster/sw/snax/gemm/include"
+ * /target/snitch_cluster/sw/snax/streamer-gemm/include"
  * /target/snitch_cluster/sw/snax/mac/include"
  *
  * */
+#include "snax-streamer-gemm-lib.h"
+
 #define tileSize 8
 #define meshRow 8
 #define meshCol 8
@@ -41,89 +43,6 @@ uint32_t strideA = 0;
 uint32_t strideB = 0;
 uint32_t strideC = 0;
 
-// Set STREAMER configuration CSR
-void set_streamer_csr(int8_t *a_ptr, int8_t *b_ptr, int32_t *c_ptr) {
-  {
-    // loop bounds, from innermost to outermost
-    write_csr(960, K_param);
-    write_csr(961, N_param);
-    write_csr(962, M_param);
-
-    // temporal strides for A
-    write_csr(963, 256);
-    write_csr(964, 0);
-    write_csr(965, 512);
-
-    // temporal strides for B
-    write_csr(966, 256);
-    write_csr(967, 512);
-    write_csr(968, 0);
-
-    // temporal strides for C
-    write_csr(969, 0);
-    write_csr(970, 256);
-    write_csr(971, 512);
-
-    // spatial strides for A
-    write_csr(972, 1);
-    write_csr(973, 8);
-
-    // spatial strides for B
-    write_csr(974, 1);
-    write_csr(975, 8);
-
-    // spatial strides for C
-    write_csr(976, 4);
-    write_csr(977, 32);
-
-    // base ptr for A
-    write_csr(978, (uint32_t)(a_ptr));
-
-    // base ptr for B
-    write_csr(979, (uint32_t)(b_ptr));
-
-    // base ptr for C
-    write_csr(980, (uint32_t)(c_ptr));
-  }
-}
-
-// Set CSR to start STREAMER
-void set_streamer_start() {
-  { write_csr(981, 1); }
-}
-
-// Set GEMM configuration CSR
-void set_block_gemm_csr() {
-  {
-    // set loop bounds, from M to K to N
-    write_csr(983, K_param);
-    write_csr(984, N_param);
-    write_csr(985, M_param);
-
-    // set subtraction a and b
-    write_csr(986, 0);
-  }
-}
-
-// Set CSR to start GEMM
-void set_block_gemm_start() {
-  { write_csr(987, 1); }
-}
-
-// Poll until Streamer and GEMM accelerator finish
-void wait_streamer_gemm() {
-  {
-    write_csr(987, 0);
-    write_csr(987, 0);
-    write_csr(981, 0);
-
-    // // implement some artificial delay
-    // for (int i = 0; i < 1000; i++) {{
-    //     asm volatile("nop");
-    // }}
-  }
-}
-
 // Kernel provided via external definition
 void _mlir_ciface_simple_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
                                 TwoDMemrefI32_t *c);
@@ -132,15 +51,18 @@ void _mlir_ciface_snax_qgemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
                              int32_t zpb, TwoDMemrefI32_t *c) {
   {
 
-    int8_t *a_ptr = (int8_t *)((int)a->aligned_data + 0);
-    int8_t *b_ptr = (int8_t *)((int)b->aligned_data + 0);
-    int32_t *c_ptr = (int32_t *)((int)c->aligned_data + 0);
-    printf("Executing snax_qgemm with a=%p, b=%p, c=%p \n", a_ptr, b_ptr,
-           c_ptr);
+    int local_delta_a = (int)a->aligned_data - (int)snrt_l1_next();
+    int local_delta_b = (int)b->aligned_data - (int)snrt_l1_next();
+    int local_delta_c = (int)c->aligned_data - (int)snrt_l1_next();
+    printf("Executing snax_qgemm with a=%p, b=%p, c=%p \n",
+           (int8_t)a->aligned_data, (int8_t)b->aligned_data,
+           (int32_t)c->aligned_data);
 
-    set_streamer_csr(a_ptr, b_ptr, c_ptr);
+    set_streamer_csr(K_param, N_param, M_param, strideInnermostA, ldA, 8,
+                     strideInnermostB, ldB, 8, strideInnermostC, ldC, 32,
+                     local_delta_a, local_delta_b, local_delta_c);
     set_streamer_start();
-    set_block_gemm_csr();
+    set_block_gemm_csr(K_param, N_param, M_param, 0);
 
     snrt_mcycle();
 
