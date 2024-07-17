@@ -125,6 +125,7 @@ MLIROPTFLAGS += --llvm-request-c-wrappers
 MLIROPTFLAGS += --expand-strided-metadata
 MLIROPTFLAGS += --convert-index-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --convert-cf-to-llvm=index-bitwidth=32
+MLIROPTFLAGS += --lower-affine
 MLIROPTFLAGS += --convert-arith-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --convert-func-to-llvm='index-bitwidth=32'
 MLIROPTFLAGS += --finalize-memref-to-llvm='use-generic-functions index-bitwidth=32'
