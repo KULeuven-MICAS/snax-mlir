@@ -32,7 +32,6 @@ class DispatchRegionsRewriter(RewritePattern):
 
             # walk through the block
             for op in block.walk(region_first=True):
-
                 # if op is dispatchable, add to existing list
                 # of dispatchable ops to include in scf.if body
                 if dispatch_rule(op):
