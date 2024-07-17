@@ -131,3 +131,33 @@ func.func @simple_sequence(%A: i32) {
 // CHECK-NEXT: %s1 = accfg.setup "acc" to ("A" = %A : i32) : !accfg.state<"acc">
 // CHECK-NEXT: %s2 = accfg.setup "acc" from %s1 to ("A" = %A : i32) : !accfg.state<"acc">
 // CHECK-NEXT: accfg.reset %s2
+
+
+// -----
+
+func.func @simple_loop() {
+    %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
+    %lb, %ub, %step, %carry = "test.op"() : () -> (i32, i32, i32, i32)
+    %0 = accfg.setup "snax_hwpe_mult" to () : !accfg.state<"snax_hwpe_mult">
+    %res, %1 = scf.for %i = %lb to %ub step %step iter_args(%arg0 = %carry, %2 = %0) -> (i32, !accfg.state<"snax_hwpe_mult">) : i32 {
+        %s2 = accfg.setup "snax_hwpe_mult" from %2 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+        %t = "accfg.launch"(%s2) <{accelerator = "snax_hwpe_mult", param_names = []}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+        "accfg.await"(%t) : (!accfg.token<"snax_hwpe_mult">) -> ()
+        scf.yield %arg0, %s2 : i32, !accfg.state<"snax_hwpe_mult">
+    }
+    func.return
+}
+
+// CHECK-LABEL: func.func @simple_loop() {
+// CHECK-NEXT:    %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
+// CHECK-NEXT:    %lb, %ub, %step, %carry = "test.op"() : () -> (i32, i32, i32, i32)
+// CHECK-NEXT:    %0 = accfg.setup "snax_hwpe_mult" to () : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:    %res, %1 = scf.for %i = %lb to %ub step %step iter_args(%arg0 = %carry, %2 = %0) -> (i32, !accfg.state<"snax_hwpe_mult">) : i32 {
+// CHECK-NEXT:      %s2 = accfg.setup "snax_hwpe_mult" from %2 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:      %t = "accfg.launch"(%s2) <{"accelerator" = "snax_hwpe_mult", "param_names" = []}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:      "accfg.await"(%t) : (!accfg.token<"snax_hwpe_mult">) -> ()
+// CHECK-NEXT:      scf.yield %arg0, %s2 : i32, !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:    }
+// CHECK-NEXT:    accfg.reset %1 : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:    func.return
+// CHECK-NEXT:  }
