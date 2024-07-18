@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from xdsl.dialects import builtin, memref, memref_stream
-from xdsl.dialects.builtin import ModuleOp, StringAttr
+from xdsl.dialects.builtin import MemRefType, ModuleOp, StringAttr
 from xdsl.ir import MLContext
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
@@ -85,6 +85,13 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         for operand in range(len(op.operands)):
             # Mapping from data to memory:
             data_mem_map: AffineMap = AffineMap.identity(1)
+
+            assert isinstance(type := op.operands[operand].type, MemRefType)
+            assert isinstance(el_type := type.element_type, builtin.IntegerType)
+            element_width = el_type.width.data // 8
+            data_mem_map = AffineMap.from_callable(
+                lambda d0: ((element_width * d0),), dim_symbol_split=(1, 0)
+            )
 
             # Mapping from access to data:
             access_data_map: AffineMap = op.patterns.data[operand].index_map.data
