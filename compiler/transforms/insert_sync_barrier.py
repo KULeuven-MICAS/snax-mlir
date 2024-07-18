@@ -34,6 +34,10 @@ class InsertSyncBarrierRewriter(RewritePattern):
                 # clear the list
                 ops_to_sync = []
 
+            if isinstance(op, snax.ClusterSyncOp):
+                # synchronisation ok, clear list
+                ops_to_sync = []
+
             # check all operands of current op
             for operand in [*op.operands, *op.results]:
                 # check all ops that use the operand -> dependency with current op
