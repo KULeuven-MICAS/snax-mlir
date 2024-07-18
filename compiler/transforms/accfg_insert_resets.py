@@ -79,13 +79,15 @@ class InsertResetsForDanglingStatesPattern(RewritePattern):
         # (i.e. have been awaited)
         if self.reset_after_await:
             vals = []
+            # collect the tokens from all launch ops in vals
             for use in uses:
                 if isinstance(use.operation, accfg.LaunchOp):
                     vals.append(use.operation.token)
+            # if no launch ops are found, reset immediately after setup op
             if not vals:
                 vals.append(val)
         else:
-            # by default just run on val
+            # by default just run on val, inserting the reset after the last use of the setup state
             vals = [val]
 
         for point in get_insertion_points_where_val_dangles(vals):
