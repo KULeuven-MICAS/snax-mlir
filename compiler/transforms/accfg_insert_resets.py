@@ -35,7 +35,6 @@ def ssa_val_rewrite_pattern(
         ]
     ) -> Callable[[_RewritePatternT, Operation, PatternRewriter], None]:
         # this is the function that actually wraps the match_and_rewrite method
-
         def match_and_rewrite(
             self: _RewritePatternT, op: Operation, rewriter: PatternRewriter
         ):
