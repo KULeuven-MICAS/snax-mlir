@@ -10,7 +10,7 @@
 %x, %y, %z = "test.op"() : () -> (index, index, index)
 
 "snax_stream.streaming_region"(%x, %y, %z) <{
-      "stride_pattern" = [
+      "stride_patterns" = [
               #snax_stream.stride_pattern<ub = [16, 8], ts = [13, 7], ss = [8, 1]>, 
               #snax_stream.stride_pattern<ub = [19, 7], ts = [13, 7], ss = [8, 1]>, 
               #snax_stream.stride_pattern<ub = [13, 2], ts = [13, 7], ss = [8, 1]>

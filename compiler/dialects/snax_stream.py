@@ -5,6 +5,7 @@ from xdsl.ir import (
     Attribute,
     Dialect,
     NoTerminator,
+    Operation,
     ParametrizedAttribute,
     Region,
     SSAValue,
@@ -127,7 +128,7 @@ class StreamingRegionOp(IRDLOperation):
 
     # streaming stride pattern
     # there should be one stride pattern for every input/output
-    stride_pattern = prop_def(ArrayAttr[StridePattern])
+    stride_patterns = prop_def(ArrayAttr[StridePattern])
 
     accelerator = prop_def(StringAttr)
     """
@@ -142,17 +143,20 @@ class StreamingRegionOp(IRDLOperation):
 
     def __init__(
         self,
-        inputs: Sequence[SSAValue],
-        outputs: Sequence[SSAValue],
+        inputs: Sequence[SSAValue | Operation],
+        outputs: Sequence[SSAValue | Operation],
         stride_patterns: ArrayAttr[StridePattern] | Sequence[StridePattern],
+        accelerator: StringAttr | str,
         body: Region,
     ) -> None:
         if not isinstance(stride_patterns, ArrayAttr):
             stride_patterns = ArrayAttr(stride_patterns)
+        if not isinstance(accelerator, StringAttr):
+            accelerator = StringAttr(accelerator)
         super().__init__(
             operands=[inputs, outputs],
             regions=[body],
-            properties={"stride_patterns": stride_patterns},
+            properties={"stride_patterns": stride_patterns, "accelerator": accelerator},
         )
 
     def verify_(self):
@@ -179,13 +183,13 @@ class StreamingRegionOp(IRDLOperation):
 
         streamer_config: StreamerConfiguration = streamer_interface.data
 
-        if len(self.stride_pattern) != streamer_config.size():
+        if len(self.stride_patterns) != streamer_config.size():
             raise VerifyException(
                 "Number of streamers does not equal number of stride patterns"
             )
 
         for stride_pattern, streamer in zip(
-            self.stride_pattern, streamer_config.streamers
+            self.stride_patterns, streamer_config.streamers
         ):
             if len(stride_pattern.temporal_strides) > streamer.temporal_dim:
                 raise VerifyException(
