@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 from xdsl.dialects import builtin, memref, memref_stream
 from xdsl.dialects.builtin import ModuleOp, StringAttr
-from xdsl.ir import MLContext, Region
-from xdsl.ir.affine import AffineDimExpr, AffineMap
+from xdsl.ir import MLContext
+from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -21,49 +21,32 @@ from compiler.dialects.snax import StreamerConfigurationAttr
 @dataclass
 class MemrefStreamToSnaxPattern(RewritePattern):
     """
-    This pattern converts memref_stream streaming
-    region ops into snax_stream streaming region ops.
+    A pass to convert memref_stream operations to snax stream.
+
+    This boils down to combining the data access patterns of a memref_stream op (operation -> data),
+    with a certain data layout: an affine map from (data -> memory) into a mapping (operation -> memory).
+
+    This takes the form of a snax_stream access pattern, mapping (operation -> memory)
+    which, in hardware, is  realized by the Streamers.
+
+    Current restrictions:
+        We are only handling default memory layouts for now (NoneAttr)
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: memref_stream.StreamingRegionOp, rewriter: PatternRewriter):
-        """
-        Current restrictions:
-            - only allow default memref layouts
-        """
+    def match_and_rewrite(
+        self, op: memref_stream.StreamingRegionOp, rewriter: PatternRewriter
+    ):
+        # Compliance checks:
 
-        # only memref stream ops dispatched to an accelerator:
+        # Handle only memref stream ops dispatched to an accelerator:
         if "accelerator" not in op.attributes:
             return
 
+        # Go and fetch the accelerator op
         accelerator_str = op.attributes["accelerator"]
         assert isinstance(accelerator_str, StringAttr)
 
-        shaped_operands = [*op.inputs, *op.outputs]
-
-        # make sure there are as much shaped operands as access patterns
-        assert len(shaped_operands) == len(op.patterns)
-
-        # make sure the operands are memrefs with default layout
-        for memref_operand in shaped_operands:
-            if not isinstance(memref_operand.type, builtin.MemRefType):
-                return
-            if not isinstance(memref_operand.type.layout, builtin.NoneAttr):
-                return
-
-        # construct the strided patterns for SNAX Streamers
-
-        # get the affine mapping from data to memory:
-        data_mem_maps = [AffineMap.identity(1) for _ in shaped_operands]
-
-        # combine the maps access -> data and data -> memory to access -> memory
-        access_mem_maps = [
-            data_mem_map.compose(memref_stride_pattern.index_map.data)
-            for data_mem_map, memref_stride_pattern in zip(data_mem_maps, op.patterns.data)
-        ]
-
-        # now we have a mapping from access to memory, this can be used to program the streamers
-        # first, find the streamer config
         module_op = op
         while module_op and not isinstance(module_op, ModuleOp):
             module_op = module_op.parent_op()
@@ -81,43 +64,59 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         if not isinstance(streamer_config, StreamerConfigurationAttr):
             raise RuntimeError("Streamer interface not found for given accelerator op")
 
+        # Make sure the operands are memrefs with a default layout
+        for memref_operand in op.operands:
+            if not isinstance(memref_operand.type, builtin.MemRefType):
+                return
+            if not isinstance(memref_operand.type.layout, builtin.NoneAttr):
+                return
+
+        # We are now ready to convert the stream access patterns into snax stride patterns
+        # construct the strided patterns for SNAX Streamers
+
+        snax_stride_patterns = []
+
         # small function to generate a list of n zeros with the i-th element 1
+        # for example n = 4, i = 1  -> [0, 1, 0, 0]
         def generate_one_list(n: int, i: int):
             return [1 if j == i else 0 for j in range(n)]
 
+        # Do this for every operand:
+        for operand in range(len(op.operands)):
+            # Mapping from data to memory:
+            data_mem_map: AffineMap = AffineMap.identity(1)
 
-        snax_stride_patterns = []
-        for access_mem_map, memref_stride_pattern in zip(access_mem_maps, op.patterns.data):
-            # find accelerator in attribute, look up accelerator op in the ir.
-            # get the streamer access patterns from the interface attribute of the accfg op
-            # map the access pattern to stride pattern spatial first, then temporal
+            # Mapping from access to data:
+            access_data_map: AffineMap = op.patterns.data[operand].index_map.data
+
+            # Mapping from access to memory:
+            access_mem_map: AffineMap = data_mem_map.compose(access_data_map)
+
+            # Make sure no symbols are used (not supported yet)
+            if access_mem_map.num_symbols != 0:
+                raise RuntimeError(
+                    "Access patterns with symbols are not supported yet."
+                )
+
+            temp_dim = streamer_config.data.temporal_dim()
+            spat_dim = streamer_config.data.spatial_dim()
 
             temporal_strides = []
             spatial_strides = []
             upper_bounds = []
-            access_mem_map_dim = access_mem_map.num_dims
 
-            # do not consider symbols yet
-            if access_mem_map.num_symbols != 0:
-                raise RuntimeError("Access patterns with symbols are not supported yet.")
-
-            # first, fill up the spatial strides
-            for i in reversed(
-                range(
-                    streamer_config.data.temporal_dim(),
-                    streamer_config.data.temporal_dim() + streamer_config.data.spatial_dim(),
+            # First fill up the spatial strides, then temporal strides, back to front
+            for i in reversed(range(temp_dim + spat_dim)):
+                stride = access_mem_map.eval(
+                    generate_one_list(access_mem_map.num_dims, i), ()
                 )
-            ):
-                stride = access_mem_map.eval(generate_one_list(access_mem_map_dim, i), ())
-                spatial_strides.append(stride[0])
+                if i >= temp_dim:
+                    spatial_strides.append(stride[0])
+                else:
+                    temporal_strides.append(stride[0])
+                    upper_bounds.append(op.patterns.data[operand].ub.data[i].data)
 
-            # then, fill up the temporal strides
-            for i in range(streamer_config.data.temporal_dim()):
-                stride = access_mem_map.eval(generate_one_list(access_mem_map_dim, i), ())
-                temporal_strides.append(stride[0])
-                upper_bounds.append(memref_stride_pattern.ub.data[i].data)
-
-            # create the stride pattern
+            # create the stride pattern for this operand
             snax_stride_pattern = snax_stream.StridePattern(
                 upper_bounds=upper_bounds,
                 temporal_strides=temporal_strides,
@@ -125,18 +124,14 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             )
             snax_stride_patterns.append(snax_stride_pattern)
 
-
         # get base addresses of the streaming region ops
         # TODO: generalize and fix for offsets
 
         new_inputs = [
-            memref.ExtractAlignedPointerAsIndexOp.get(input)
-            for input in op.inputs
+            memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs
         ]
-
         new_outputs = [
-            memref.ExtractAlignedPointerAsIndexOp.get(output)
-            for output in op.outputs
+            memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs
         ]
 
         # now create snax_streaming region op
@@ -153,14 +148,6 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
 @dataclass(frozen=True)
 class StreamSnaxify(ModulePass):
-    """
-    A pass to convert memref_stream operations to snax stream. This
-    boils down to combining the data access patterns of a memref_stream
-    op (operation -> data), with a certain data layout (data -> memory)
-    and realizing this by a snax_stream access pattern
-    (operation -> memory), which is then realized by the Streamers.
-    """
-
     name = "stream-snaxify"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
