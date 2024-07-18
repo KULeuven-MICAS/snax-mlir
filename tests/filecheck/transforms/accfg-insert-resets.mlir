@@ -73,16 +73,20 @@ func.func @scf_if_1(%i : i32, %cond: i1) {
 
 // CHECK-LABEL: @scf_if_1
 // CHECK-NEXT:  [[state:%\S+]] = accfg.setup "acc" to ("i" = %i : i32) : !accfg.state<"acc">
-// CHECK:       "accfg.launch"([[state]])
-// BEFORE-NEXT: accfg.reset [[state]] : !accfg.state<"acc">
-// CHECK-NEXT:  "accfg.await"
-// AFTER-NEXT:  accfg.reset [[state]] : !accfg.state<"acc">
-// CHECK:       yield
-// CHECK:       "accfg.launch"([[state]])
-// BEFORE-NEXT: accfg.reset [[state]] : !accfg.state<"acc">
-// CHECK-NEXT:  "accfg.await"
-// AFTER-NEXT:  accfg.reset [[state]] : !accfg.state<"acc">
-// CHECK:       yield
+// CHECK-NEXT:  "scf.if"
+// CHECK-NEXT:    "accfg.launch"([[state]])
+// BEFORE-NEXT:   accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK-NEXT:    "accfg.await"
+// AFTER-NEXT:    accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK-NEXT:    yield
+// CHECK-NEXT:  }, {
+// CHECK-NEXT:    "accfg.launch"([[state]])
+// BEFORE-NEXT:   accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK-NEXT:    "accfg.await"
+// AFTER-NEXT:    accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK-NEXT:    yield
+// CHECK-NEXT:  })
+// CHECK-NEXT:  return
 
 
 // -----
@@ -107,13 +111,15 @@ func.func @scf_if_2(%i : i32, %cond: i1) {
 
 // CHECK-LABEL: @scf_if_2
 // CHECK-NEXT:  [[state:%\S+]] = accfg.setup "acc" to ("i" = %i : i32) : !accfg.state<"acc">
-// CHECK:       [[state2:%\S+]] = "scf.if"
-// CHECK:       "accfg.launch"([[state]])
-// CHECK-NOT:   accfg.reset [[state]] : !accfg.state<"acc">
-// CHECK:       yield
-// CHECK:       "accfg.launch"([[state]])
-// CHECK-NOT:   accfg.reset [[state]] : !accfg.state<"acc">
-// CHECK:       yield
+// CHECK-NEXT:  [[state2:%\S+]] = "scf.if"
+// CHECK-NEXT:    "accfg.launch"([[state]])
+// CHECK-NOT:     accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK:         yield [[state]]
+// CHECK-NEXT:  }, {
+// CHECK:         "accfg.launch"([[state]])
+// CHECK-NOT:     accfg.reset [[state]] : !accfg.state<"acc">
+// CHECK:         yield [[state]]
+// CHECK-NEXT:  })
 // CHECK:       accfg.reset [[state2]] : !accfg.state<"acc">
 
 
