@@ -8,6 +8,8 @@ include ../../runtime/Makefile.rules
 TESTS =
 TESTS += half_tiled_matmul.x
 TESTS += matmul.x
+TESTS += transform_matmul.x
+
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra

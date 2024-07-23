@@ -83,7 +83,7 @@ MLIRTRANSFORM = --pass-pipeline='builtin.module(test-transform-dialect-interpret
 
 # MLIR Preprocessing
 
-MLIRPREPROCFLAGS = --pass-pipeline='builtin.module( func.func(tosa-to-linalg-named, tosa-to-tensor, tosa-to-scf, tosa-to-linalg))'
+MLIRPREPROCFLAGS = --pass-pipeline='builtin.module(func.func(tosa-to-linalg-named, tosa-to-tensor, tosa-to-scf, tosa-to-linalg))'
 MLIRPREPROCFLAGS += --mlir-print-op-generic
 MLIRPREPROCFLAGS += --mlir-print-local-scope
 
