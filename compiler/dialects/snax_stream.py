@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from xdsl.dialects.builtin import ArrayAttr, IndexType, IntAttr, ModuleOp, StringAttr
+from xdsl.dialects.builtin import ArrayAttr, IndexType, IntAttr, StringAttr
 from xdsl.ir import (
     Attribute,
     Dialect,
@@ -23,10 +23,9 @@ from xdsl.irdl import (
 )
 from xdsl.parser import AttrParser
 from xdsl.printer import Printer
-from xdsl.traits import SymbolTable
 
+from compiler.accelerators import find_accelerator_op
 from compiler.accelerators.streamers import StreamerConfiguration
-from compiler.dialects.accfg import AcceleratorOp
 from compiler.dialects.snax import StreamerConfigurationAttr
 
 
@@ -160,17 +159,8 @@ class StreamingRegionOp(IRDLOperation):
         )
 
     def verify_(self):
-        module_op = self
-        while module_op and not isinstance(module_op, ModuleOp):
-            module_op = module_op.parent_op()
-        if not module_op:
-            raise VerifyException("ModuleOp not found!")
-
-        trait = module_op.get_trait(SymbolTable)
-        assert trait is not None
-        acc_op = trait.lookup_symbol(module_op, self.accelerator)
-
-        if not isinstance(acc_op, AcceleratorOp):
+        acc_op = find_accelerator_op(self, self.accelerator)
+        if not acc_op:
             raise VerifyException("AcceleratorOp not found!")
 
         streamer_interface = acc_op.get_attr_or_prop("streamer_config")

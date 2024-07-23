@@ -1,8 +1,8 @@
 from collections.abc import Iterable
 
 from xdsl.dialects.builtin import ModuleOp, StringAttr
-from xdsl.traits import SymbolTable
 
+from compiler.accelerators import find_accelerator_op
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.gemmini import GemminiAccelerator
 from compiler.accelerators.snax_alu import SNAXAluAccelerator
@@ -33,10 +33,8 @@ class AcceleratorRegistry:
         the accelerator registry.
         Returns both the looked up accelerator op and the Accelerator interface
         """
-        trait = module.get_trait(SymbolTable)
-        assert trait is not None
-        acc_op = trait.lookup_symbol(module, acc_query)
-        if not isinstance(acc_op, AcceleratorOp):
+        acc_op = find_accelerator_op(module, acc_query)
+        if not acc_op:
             raise RuntimeError(
                 f"Symbol Table lookup failed for accelerator '{acc_query.data}'. "
                 "Is the symbol declared by an accfg.accelerator op in the module?"
