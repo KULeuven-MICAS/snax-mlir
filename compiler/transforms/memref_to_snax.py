@@ -1,7 +1,13 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, memref
 from xdsl.dialects.arith import Addi, Constant, Muli, Subi
-from xdsl.dialects.builtin import FixedBitwidthType, IndexType, MemRefType, NoneAttr, UnrealizedConversionCastOp
+from xdsl.dialects.builtin import (
+    FixedBitwidthType,
+    IndexType,
+    MemRefType,
+    NoneAttr,
+    UnrealizedConversionCastOp,
+)
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -71,7 +77,9 @@ class AllocOpRewrite(RewritePattern):
             # multiply all the dimensions with the element width
             # to get the size we need to allocate
             assert isinstance(element_type, FixedBitwidthType)
-            element_size_op = Constant.from_int_and_width(element_type.size, IndexType())
+            element_size_op = Constant.from_int_and_width(
+                element_type.size, IndexType()
+            )
             total_size_op = element_size_op
             ops_to_add.append(element_size_op)
 
@@ -112,7 +120,9 @@ class AllocOpRewrite(RewritePattern):
 
             # add final + element_width
             assert isinstance(element_type, FixedBitwidthType)
-            element_size_op = Constant.from_int_and_width(element_type.size, IndexType())
+            element_size_op = Constant.from_int_and_width(
+                element_type.size, IndexType()
+            )
             stride_max = Addi(stride_max, element_size_op)
             ops_to_add.extend([element_size_op, stride_max])
 
