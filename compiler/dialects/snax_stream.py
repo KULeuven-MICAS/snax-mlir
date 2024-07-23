@@ -151,7 +151,7 @@ class StreamingRegionOp(IRDLOperation):
     ) -> None:
         if not isinstance(stride_patterns, ArrayAttr):
             stride_patterns = ArrayAttr(stride_patterns)
-        if not isinstance(accelerator, StringAttr):
+        if isinstance(accelerator, str):
             accelerator = StringAttr(accelerator)
         super().__init__(
             operands=[inputs, outputs],
