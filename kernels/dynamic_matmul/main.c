@@ -107,8 +107,8 @@ int main() {
     // Shape and Stride need to be defined for dynamic case
     memrefC.shape[0] = M_size;
     memrefC.shape[1] = N_size;
-    memrefC.stride[0] = 64;
-    memrefC.stride[1] = 4;
+    memrefC.stride[0] = 16;
+    memrefC.stride[1] = 1;
     memrefC.offset = 0;
 
     (void)snrt_mcycle();
