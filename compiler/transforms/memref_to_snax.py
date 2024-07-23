@@ -1,7 +1,7 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, memref
 from xdsl.dialects.arith import Addi, Constant, Muli, Subi
-from xdsl.dialects.builtin import IndexType, NoneAttr, UnrealizedConversionCastOp
+from xdsl.dialects.builtin import FixedBitwidthType, IndexType, MemRefType, NoneAttr, UnrealizedConversionCastOp
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -22,7 +22,7 @@ class AllocOpRewrite(RewritePattern):
         NoneType layouts and TSL Layouts, and a memory space of L1"""
 
         # get the memref type
-        memref_type: memref.MemRefType = alloc_op.memref.type
+        memref_type: MemRefType = alloc_op.memref.type
 
         # get the element type
         element_type = memref_type.get_element_type()
@@ -70,13 +70,8 @@ class AllocOpRewrite(RewritePattern):
 
             # multiply all the dimensions with the element width
             # to get the size we need to allocate
-            if isinstance(element_type, builtin.AnyFloat):
-                element_width = element_type.get_bitwidth
-            else:
-                element_width = element_type.width.data
-            assert element_width % 8 == 0
-            element_size = element_width // 8
-            element_size_op = Constant.from_int_and_width(element_size, IndexType())
+            assert isinstance(element_type, FixedBitwidthType)
+            element_size_op = Constant.from_int_and_width(element_type.size, IndexType())
             total_size_op = element_size_op
             ops_to_add.append(element_size_op)
 
@@ -116,13 +111,8 @@ class AllocOpRewrite(RewritePattern):
                 ops_to_add.extend([bound_op_minus_1, mul_op, stride_max])
 
             # add final + element_width
-            if isinstance(element_type, builtin.AnyFloat):
-                element_width = element_type.get_bitwidth
-            else:
-                element_width = element_type.width.data
-            assert element_width % 8 == 0
-            element_size = element_width // 8
-            element_size_op = Constant.from_int_and_width(element_size, IndexType())
+            assert isinstance(element_type, FixedBitwidthType)
+            element_size_op = Constant.from_int_and_width(element_type.size, IndexType())
             stride_max = Addi(stride_max, element_size_op)
             ops_to_add.extend([element_size_op, stride_max])
 

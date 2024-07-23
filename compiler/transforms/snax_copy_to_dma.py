@@ -2,6 +2,7 @@ from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, scf
 from xdsl.dialects.arith import Addi, Constant, Muli
 from xdsl.dialects.builtin import (
+    FixedBitwidthType,
     IndexType,
     IntAttr,
     IntegerType,
@@ -51,9 +52,8 @@ def get_total_size_op(source: SSAValue):
     # multiyply the # elements by the (element size // 8) to get the
     # total size in bytes
     element_type: IntegerType = source.type.get_element_type()
-    assert element_type.width.data % 8 == 0
-    element_size = element_type.width.data // 8
-    element_size_op = Constant.from_int_and_width(element_size, IndexType())
+    assert isinstance(element_type, FixedBitwidthType)
+    element_size_op = Constant.from_int_and_width(element_type.size, IndexType())
     total_size_op = Muli(
         total_size_op.result,
         element_size_op.result,
@@ -126,14 +126,16 @@ def extract_strides(memreftype: MemRefType):
     if isinstance(memreftype.layout, StridedLayoutAttr):
         strides = memreftype.layout.strides.data
         # bits to bytes:
-        element_stride = memreftype.element_type.width.data // 8
+        assert isinstance(memreftype.element_type, FixedBitwidthType)
+        element_stride = memreftype.element_type.size
         strides = [
             x.data * element_stride if isinstance(x, IntAttr) else None for x in strides
         ]
     elif isinstance(memreftype.layout, NoneAttr):
         # default to row-major layout, construct strides
         # based on shape of the memref type
-        strides = [memreftype.element_type.width.data // 8]
+        assert isinstance(memreftype.element_type, FixedBitwidthType)
+        strides = [memreftype.element_type.size]
         for size in reversed(memreftype.shape.data[1:]):
             if size.data == -1 or strides[0] is None:
                 strides = [None] + strides
@@ -156,7 +158,8 @@ def extract_offset(memreftype: MemRefType):
         # Dynamic offset
         if isinstance(memreftype.layout.offset, NoneAttr):
             return None
-        el_bytes = memreftype.element_type.width.data // 8
+        assert isinstance(memreftype.element_type, FixedBitwidthType)
+        el_bytes = memreftype.element_type.size
         return memreftype.layout.offset.data * el_bytes
 
     return 0
@@ -244,7 +247,8 @@ class TransformDMA(RewritePattern):
                 assert isinstance(op.source.type.layout, StridedLayoutAttr)
                 offset_op = ExtractStridedMetaDataOp(op.source)
                 # Calculate number of bytes in type
-                el_bytes = op.source.type.element_type.width.data // 8
+                assert isinstance(op.source.type.element_type, FixedBitwidthType)
+                el_bytes = op.source.type.element_type.size
                 el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
                 calc_offset_op = Muli(el_bytes_op, offset_op.offset, IndexType())
                 pointer_src = Addi(pointer_src, calc_offset_op, IndexType())
@@ -265,7 +269,8 @@ class TransformDMA(RewritePattern):
                 assert isinstance(op.destination.type.layout, StridedLayoutAttr)
                 offset_op = ExtractStridedMetaDataOp(op.destination)
                 # Calculate number of bytes in type
-                el_bytes = op.source.type.element_type.width.data // 8
+                assert isinstance(op.source.type.element_type, FixedBitwidthType)
+                el_bytes = op.source.type.element_type.size
                 el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
                 calc_offset_op = Muli(el_bytes_op, offset_op.offset, IndexType())
                 pointer_dst = Addi(pointer_dst, calc_offset_op, IndexType())
@@ -283,9 +288,9 @@ class TransformDMA(RewritePattern):
         # step 2: find largest common contiguous block, to be used for dma transfers
 
         # lcb is completely static
-        assert op.source.type.element_type.width.data % 8 == 0
+        assert isinstance(op.source.type.element_type, FixedBitwidthType)
         lcb = tsl_source.data.largest_common_contiguous_block(
-            tsl_dest.data, op.source.type.element_type.width.data // 8
+            tsl_dest.data, op.source.type.element_type.size
         )
 
         # step 3: generate ops for the strides and bounds of the TSL
