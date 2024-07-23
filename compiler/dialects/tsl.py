@@ -6,6 +6,7 @@ from xdsl.dialects.arith import Constant, DivUI, Muli
 from xdsl.dialects.builtin import IndexType, MemrefLayoutAttr
 from xdsl.dialects.memref import Dim
 from xdsl.ir import Data, Dialect, Operation, SSAValue
+from xdsl.ir.affine import AffineMap
 from xdsl.irdl import (
     irdl_attr_definition,
 )
@@ -30,6 +31,9 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
 
     def print_parameter(self, printer: Printer) -> None:
         printer.print_string(f"<{self.data}>")
+
+    def get_affine_map(self) -> AffineMap:
+        raise NotImplementedError("Still to do!")
 
     def get_bound_ops(
         self, memref_op_or_shapes: SSAValue | Operation | list[Operation]

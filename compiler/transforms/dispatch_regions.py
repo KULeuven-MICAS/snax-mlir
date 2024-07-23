@@ -1,7 +1,8 @@
 from collections.abc import Callable, Iterable
 
+from xdsl.context import MLContext
 from xdsl.dialects import builtin, func, scf
-from xdsl.ir import Block, MLContext, Operation
+from xdsl.ir import Block, Operation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,

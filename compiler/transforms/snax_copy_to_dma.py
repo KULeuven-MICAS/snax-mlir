@@ -1,3 +1,4 @@
+from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, scf
 from xdsl.dialects.arith import Addi, Constant, Muli
 from xdsl.dialects.builtin import (
@@ -14,7 +15,7 @@ from xdsl.dialects.memref import (
     ExtractAlignedPointerAsIndexOp,
     ExtractStridedMetaDataOp,
 )
-from xdsl.ir import Block, MLContext, Region, SSAValue
+from xdsl.ir import Block, Region, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,

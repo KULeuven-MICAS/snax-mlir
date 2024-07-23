@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
+from xdsl.context import MLContext
 from xdsl.dialects import builtin, memref, memref_stream
-from xdsl.dialects.builtin import MemRefType, StringAttr
-from xdsl.ir import MLContext
+from xdsl.dialects.builtin import MemRefType, ModuleOp, StringAttr
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -111,7 +111,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     spatial_strides.append(stride[0])
                 else:
                     temporal_strides.append(stride[0])
-                    upper_bounds.append(op.patterns.data[operand].ub.data[i].data)
+                    upper_bounds.append(op.patterns.data[operand].ub.data[i].value)
 
             # create the stride pattern for this operand
             snax_stride_pattern = snax_stream.StridePattern(
