@@ -1,7 +1,7 @@
 // RUN: XDSL_VERIFY_DIAG
 
 "snax_stream.streaming_region"() <{
-  "stride_pattern" = [],
+  "stride_patterns" = [],
   "operandSegmentSizes" = array<i32: 0, 0>,
   "accelerator" = "accelerator_with_streamers"}> ({
 ^0():
@@ -17,7 +17,7 @@
 }> {} : () -> ()
 
 "snax_stream.streaming_region"() <{
-  "stride_pattern" = [],
+  "stride_patterns" = [],
   "operandSegmentSizes" = array<i32: 0, 0>,
   "accelerator" = "accelerator_without_streamers"}> ({
 ^0():
@@ -35,7 +35,7 @@
 } : () -> ()
 
 "snax_stream.streaming_region"() <{
-  "stride_pattern" = [],
+  "stride_patterns" = [],
   "operandSegmentSizes" = array<i32: 0, 0>,
   "accelerator" = "accelerator_with_streamers"}> ({
 ^0():
@@ -53,7 +53,7 @@
 } : () -> ()
 
 "snax_stream.streaming_region"() <{
-  "stride_pattern" = [
+  "stride_patterns" = [
               #snax_stream.stride_pattern<ub = [16, 8, 3], ts = [13, 7, 5], ss = [8, 1]>,
               #snax_stream.stride_pattern<ub = [19, 7], ts = [13, 7], ss = [8, 1]>,
               #snax_stream.stride_pattern<ub = [13, 2], ts = [13, 7], ss = [8, 1]>
@@ -74,7 +74,7 @@
 } : () -> ()
 
 "snax_stream.streaming_region"() <{
-  "stride_pattern" = [
+  "stride_patterns" = [
               #snax_stream.stride_pattern<ub = [16, 8], ts = [13, 7], ss = [9, 8, 1]>,
               #snax_stream.stride_pattern<ub = [19, 7], ts = [13, 7], ss = [8, 1]>,
               #snax_stream.stride_pattern<ub = [13, 2], ts = [13, 7], ss = [8, 1]>

@@ -127,7 +127,7 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer):
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         c0 = arith.Constant.from_int_and_width(0, 32)
         loop_bound = arith.Constant.from_int_and_width(
-            op.stride_pattern.data[0].upper_bounds.data[0], 32
+            op.stride_patterns.data[0].upper_bounds.data[0], 32
         )
 
         return [

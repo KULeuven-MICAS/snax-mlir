@@ -112,7 +112,7 @@ class SNAXStreamer(ABC):
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
 
         # loop bound registers
-        loop_bounds: Sequence[IntAttr] = op.stride_pattern.data[0].upper_bounds.data
+        loop_bounds: Sequence[IntAttr] = op.stride_patterns.data[0].upper_bounds.data
         result.extend(
             [
                 (
@@ -127,7 +127,7 @@ class SNAXStreamer(ABC):
         for dim in range(self.streamer_config.data.temporal_dim()):
             for streamer in range(self.streamer_config.data.size()):
                 cst = arith.Constant.from_int_and_width(
-                    op.stride_pattern.data[streamer].temporal_strides.data[dim], i32
+                    op.stride_patterns.data[streamer].temporal_strides.data[dim], i32
                 )
                 result.append(([cst], cst.result))
 
@@ -135,7 +135,7 @@ class SNAXStreamer(ABC):
         for dim in range(self.streamer_config.data.spatial_dim()):
             for streamer in range(self.streamer_config.data.size()):
                 cst = arith.Constant.from_int_and_width(
-                    op.stride_pattern.data[streamer].spatial_strides.data[dim], i32
+                    op.stride_patterns.data[streamer].spatial_strides.data[dim], i32
                 )
                 result.append(([cst], cst.result))
 
