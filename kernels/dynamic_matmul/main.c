@@ -55,7 +55,6 @@ void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
     int local_delta_a = (int)a->aligned_data - (int)snrt_l1_next();
     int local_delta_b = (int)b->aligned_data - (int)snrt_l1_next();
     int local_delta_c = (int)c->aligned_data - (int)snrt_l1_next();
-    printf("K: %d, N: %d, M: %d\n", K_param, N_param, M_param);
 
     set_streamer_csr(K_param, N_param, M_param, strideInnermostA, ldA, 8,
                      strideInnermostB, ldB, 8, strideInnermostC, ldC, 32,
@@ -100,6 +99,7 @@ int main() {
     memrefB.stride[0] = 1;
     memrefB.stride[1] = N_size;
     memrefB.offset = 0;
+    printf("M_size: %d, K_size: %d, N_size: %d\n", M_size, K_size, N_size);
 
     TwoDMemrefI32_t memrefC;
     memrefC.data = &C;
