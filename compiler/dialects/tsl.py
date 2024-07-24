@@ -5,8 +5,8 @@ from math import prod
 from xdsl.dialects.arith import Constant, DivUI, Muli
 from xdsl.dialects.builtin import (
     IndexType,
-    MemRefType,
     MemrefLayoutAttr,
+    MemRefType,
     StridedLayoutAttr,
 )
 from xdsl.dialects.memref import Dim, ExtractStridedMetaDataOp
