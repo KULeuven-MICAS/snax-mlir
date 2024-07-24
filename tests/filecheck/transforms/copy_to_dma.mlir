@@ -79,17 +79,19 @@
 //CHECK-NEXT:     %16 = "arith.constant"() <{"value" = 0 : index}> : () -> index
 //CHECK-NEXT:     %17 = "memref.dim"(%arg0, %16) : (memref<5xi32, strided<[1], offset: ?>, "L3">, index) -> index
 //CHECK-NEXT:     %18 = "arith.constant"() <{"value" = 5 : index}> : () -> index
-//CHECK-NEXT:     %19 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %20 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %21 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %22 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %19, %20, %21, %22 = "memref.extract_strided_metadata"(%arg0) {"resultSegmentSizes" = array<i32: 1, 1, 1, 1>} : (memref<5xi32, strided<[1], offset: ?>, "L3">) -> (memref<i32, "L3">, index, index, index)
 //CHECK-NEXT:     %23 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %24 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %25 = "arith.constant"() <{"value" = 0 : index}> : () -> index
-//CHECK-NEXT:     %26 = "memref.dim"(%arg0, %25) : (memref<5xi32, strided<[1], offset: ?>, "L3">, index) -> index
-//CHECK-NEXT:     %27 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %28 = "arith.muli"(%26, %27) : (index, index) -> index
-//CHECK-NEXT:     "func.call"(%8, %15, %28) <{"callee" = @snax_dma_1d_transfer}> : (index, index, index) -> ()
+//CHECK-NEXT:     %25 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %26, %27, %28, %29 = "memref.extract_strided_metadata"(%arg1) {"resultSegmentSizes" = array<i32: 1, 1, 1, 1>} : (memref<5xi32, strided<[1], offset: ?>, "L1">) -> (memref<i32, "L1">, index, index, index)
+//CHECK-NEXT:     %30 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %31 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %32 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %33 = "arith.constant"() <{"value" = 0 : index}> : () -> index
+//CHECK-NEXT:     %34 = "memref.dim"(%arg0, %33) : (memref<5xi32, strided<[1], offset: ?>, "L3">, index) -> index
+//CHECK-NEXT:     %35 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %36 = "arith.muli"(%34, %35) : (index, index) -> index
+//CHECK-NEXT:     "func.call"(%8, %15, %36) <{"callee" = @snax_dma_1d_transfer}> : (index, index, index) -> ()
 //CHECK-NEXT:     "func.return"() : () -> ()
 //CHECK-NEXT:   }) : () -> ()
 //CHECK-NEXT:   "func.func"() <{"sym_name" = "snax_dma_1d_transfer", "function_type" = (index, index, index) -> (), "sym_visibility" = "private"}> ({
@@ -119,16 +121,16 @@
 //CHECK-NEXT:     %7 = "arith.divui"(%3, %6) : (index, index) -> index
 //CHECK-NEXT:     %8 = "arith.constant"() <{"value" = 1 : index}> : () -> index
 //CHECK-NEXT:     %9 = "arith.divui"(%5, %8) : (index, index) -> index
-//CHECK-NEXT:     %10 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %11 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %12 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %13, %14, %15, %16, %17, %18 = "memref.extract_strided_metadata"(%arg0) {"resultSegmentSizes" = array<i32: 1, 1, 2, 2>} : (memref<?x?xi32, strided<[?, 1]>, "L3">) -> (memref<i32, "L3">, index, index, index, index, index)
-//CHECK-NEXT:     %19 = "arith.muli"(%17, %10) : (index, index) -> index
-//CHECK-NEXT:     %20 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %21 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %22 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %23, %24, %25, %26, %27, %28 = "memref.extract_strided_metadata"(%arg1) {"resultSegmentSizes" = array<i32: 1, 1, 2, 2>} : (memref<?x?xi32, strided<[?, 1]>, "L1">) -> (memref<i32, "L1">, index, index, index, index, index)
-//CHECK-NEXT:     %29 = "arith.muli"(%27, %20) : (index, index) -> index
+//CHECK-NEXT:     %10, %11, %12, %13, %14, %15 = "memref.extract_strided_metadata"(%arg0) {"resultSegmentSizes" = array<i32: 1, 1, 2, 2>} : (memref<?x?xi32, strided<[?, 1]>, "L3">) -> (memref<i32, "L3">, index, index, index, index, index)
+//CHECK-NEXT:     %16 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %17 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %18 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %19 = "arith.muli"(%14, %16) : (index, index) -> index
+//CHECK-NEXT:     %20, %21, %22, %23, %24, %25 = "memref.extract_strided_metadata"(%arg1) {"resultSegmentSizes" = array<i32: 1, 1, 2, 2>} : (memref<?x?xi32, strided<[?, 1]>, "L1">) -> (memref<i32, "L1">, index, index, index, index, index)
+//CHECK-NEXT:     %26 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %27 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %28 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %29 = "arith.muli"(%24, %26) : (index, index) -> index
 //CHECK-NEXT:     %30 = "arith.constant"() <{"value" = 0 : index}> : () -> index
 //CHECK-NEXT:     %31 = "memref.dim"(%arg0, %30) : (memref<?x?xi32, strided<[?, 1]>, "L3">, index) -> index
 //CHECK-NEXT:     %32 = "arith.constant"() <{"value" = 1 : index}> : () -> index
@@ -164,16 +166,18 @@
 //CHECK-NEXT:     %5 = "memref.dim"(%arg0, %4) : (memref<5x5xi32, strided<[10, 1]>>, index) -> index
 //CHECK-NEXT:     %6 = "arith.constant"() <{"value" = 5 : index}> : () -> index
 //CHECK-NEXT:     %7 = "arith.constant"() <{"value" = 5 : index}> : () -> index
-//CHECK-NEXT:     %8 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %9 = "arith.constant"() <{"value" = 40 : index}> : () -> index
-//CHECK-NEXT:     %10 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %11 = "arith.constant"() <{"value" = 40 : index}> : () -> index
-//CHECK-NEXT:     %12 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %13 = "arith.constant"() <{"value" = 80 : index}> : () -> index
+//CHECK-NEXT:     %8, %9, %10, %11, %12, %13 = "memref.extract_strided_metadata"(%arg0) {"resultSegmentSizes" = array<i32: 1, 1, 2, 2>} : (memref<5x5xi32, strided<[10, 1]>>) -> (memref<i32>, index, index, index, index, index)
 //CHECK-NEXT:     %14 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %15 = "arith.constant"() <{"value" = 80 : index}> : () -> index
-//CHECK-NEXT:     %16 = "arith.constant"() <{"value" = 20 : index}> : () -> index
-//CHECK-NEXT:     "func.call"(%0, %1, %16, %11, %15, %6) <{"callee" = @snax_dma_2d_transfer}> : (index, index, index, index, index, index) -> ()
+//CHECK-NEXT:     %15 = "arith.constant"() <{"value" = 40 : index}> : () -> index
+//CHECK-NEXT:     %16 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %17 = "arith.constant"() <{"value" = 40 : index}> : () -> index
+//CHECK-NEXT:     %18, %19, %20, %21, %22, %23 = "memref.extract_strided_metadata"(%arg1) {"resultSegmentSizes" = array<i32: 1, 1, 2, 2>} : (memref<5x5xi32, strided<[20, 1]>>) -> (memref<i32>, index, index, index, index, index)
+//CHECK-NEXT:     %24 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %25 = "arith.constant"() <{"value" = 80 : index}> : () -> index
+//CHECK-NEXT:     %26 = "arith.constant"() <{"value" = 4 : index}> : () -> index
+//CHECK-NEXT:     %27 = "arith.constant"() <{"value" = 80 : index}> : () -> index
+//CHECK-NEXT:     %28 = "arith.constant"() <{"value" = 20 : index}> : () -> index
+//CHECK-NEXT:     "func.call"(%0, %1, %28, %17, %27, %6) <{"callee" = @snax_dma_2d_transfer}> : (index, index, index, index, index, index) -> ()
 //CHECK-NEXT:     "func.return"() : () -> ()
 //CHECK-NEXT:   }) : () -> ()
 //CHECK-NEXT:   "func.func"() <{"sym_name" = "snax_dma_2d_transfer", "function_type" = (index, index, index, index, index, index) -> (), "sym_visibility" = "private"}> ({
