@@ -23,6 +23,7 @@ if __name__ == "__main__":
         "run0": "matmul.x",
         "run1": "half_tiled_matmul.x",
         "run2": "transform_matmul.x",
+        "run3": "dynamic_matmul.x",
     }
 
     for folder, binary in binaries.items():

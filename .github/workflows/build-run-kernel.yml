@@ -22,4 +22,4 @@ jobs:
         working-directory: kernels/${{ matrix.kernel }}
     strategy:
       matrix:
-        kernel: [simple_mult, simple_copy, transform_copy, simple_matmul, streamer_alu, tiled_add, streamer_matmul, dynamic_matmul]
+        kernel: [simple_mult, simple_copy, transform_copy, simple_matmul, streamer_alu, tiled_add, streamer_matmul]
