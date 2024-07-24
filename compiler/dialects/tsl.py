@@ -119,8 +119,10 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         return result, result_mapping
 
     def get_step_ops(
-        self, bound_ops: dict[(int, int), Operation], memref_op: SSAValue | None = None
-    ) -> tuple[list[Operation], dict[(int, int), Operation]]:
+        self,
+        bound_ops: dict[tuple[int, int], Operation],
+        memref_op: SSAValue | None = None,
+    ) -> tuple[list[Operation], dict[tuple[int, int], Operation]]:
         """Generate ops to get the steps of the Strides in the TSL
         The function handles dynamic strides as well
 
@@ -139,29 +141,29 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             and depth
         """
         result: list[Operation] = []
-        result_mapping: dict[(int, int), Operation] = {}
-
-        handle_strided_special_case = False
-        element_size_op = None
-
-        if memref_op:
-            assert isinstance(memref_op.type, MemRefType)
-            if isinstance(memref_op.type.layout, StridedLayoutAttr):
-                # the special case we need to handle
-                pass
-                handle_strided_special_case = True
-                element_size_op = Constant.from_int_and_width(
-                    memref_op.type.element_type.width.data // 8, IndexType()
-                )
-                result.append(element_size_op)
-
-        # in this function, for dynamic strides, the contiguity assumption is made
-        # however, there is a special case for constructed TSLs from StridedLayoutAttrs.
-        # then, the contiguity assumption is not valid
-        # in this case, we can extract the dynamic strides as the offset given
-        # by the extract_strided_metadata_op
-
+        result_mapping: dict[tuple[int, int], Operation] = {}
         tsl = self.data
+
+        # Handle the special case where a tsl is constructed from a stridedlayoutattr
+        # In this case, if there are dynamic strides, we cannot perform
+        # the TSL contiguity assumptions. Instead, dynamic strides are
+        # fetched from the extract strided metadata operation.
+        if (
+            memref_op
+            and isinstance(memref_op.type, MemRefType)
+            and isinstance(memref_op.type.layout, StridedLayoutAttr)
+        ):
+            metadata_op = ExtractStridedMetaDataOp(memref_op)
+            element_size_op = Constant.from_int_and_width(
+                memref_op.type.element_type.width.data // 8, IndexType()
+            )
+            result.extend([metadata_op, element_size_op])
+            for dim in range(tsl.dimension()):
+                depth = tsl.tstrides[dim].depth() - 1  # get last depth
+                if tsl.get_stride(dim, depth).step is None:
+                    # dynamic stride, assign to result of metadata op
+                    stride = Muli(metadata_op.strides[dim], element_size_op)
+                    result_mapping[(dim, depth)] = stride
 
         # to handle the dynamic case, we must first find the largest
         # statically defined step, and then use that to calculate the
@@ -199,28 +201,15 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
 
                 # dynamic case
                 else:
-                    if handle_strided_special_case:
-                        if depth == tsl.tstrides[dim].depth() - 1:
-                            # do not calculate contiguously, ask result from extract strided metadata
-                            metadata_op = ExtractStridedMetaDataOp(memref_op)
-                            extracted_stride = metadata_op.strides[dim]
-                            assert element_size_op
-                            extracted_stride_bytes = Muli(
-                                extracted_stride, element_size_op
-                            )
-                            result.extend([metadata_op, extracted_stride_bytes])
-                            result_mapping[(dim, depth)] = extracted_stride_bytes
-                            dynamic_step = Muli(
-                                extracted_stride_bytes,
-                                bound_ops[(dim, depth)],
-                                IndexType(),
-                            )
-                            continue
-                    step_op = dynamic_step
+                    if (dim, depth) in result_mapping:
+                        # perhaps dynamic stride previously set
+                        step_op = result_mapping[(dim, depth)]
+                    else:
+                        # else, follow contiguity assumption
+                        step_op = dynamic_step
                     dynamic_step = Muli(step_op, bound_ops[(dim, depth)], IndexType())
                     result.append(step_op)
                     result_mapping[(dim, depth)] = step_op
-
         return result, result_mapping
 
 
