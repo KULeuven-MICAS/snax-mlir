@@ -3,7 +3,12 @@ from __future__ import annotations
 from math import prod
 
 from xdsl.dialects.arith import Constant, DivUI, Muli
-from xdsl.dialects.builtin import IndexType, MemRefType, MemrefLayoutAttr, StridedLayoutAttr
+from xdsl.dialects.builtin import (
+    IndexType,
+    MemRefType,
+    MemrefLayoutAttr,
+    StridedLayoutAttr,
+)
 from xdsl.dialects.memref import Dim, ExtractStridedMetaDataOp
 from xdsl.ir import Data, Dialect, Operation, SSAValue
 from xdsl.ir.affine import AffineMap
@@ -136,8 +141,6 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         result: list[Operation] = []
         result_mapping: dict[(int, int), Operation] = {}
 
-
-
         handle_strided_special_case = False
         element_size_op = None
 
@@ -147,17 +150,16 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
                 # the special case we need to handle
                 pass
                 handle_strided_special_case = True
-                element_size_op = Constant.from_int_and_width(memref_op.type.element_type.width.data // 8, IndexType())
+                element_size_op = Constant.from_int_and_width(
+                    memref_op.type.element_type.width.data // 8, IndexType()
+                )
                 result.append(element_size_op)
-
-
 
         # in this function, for dynamic strides, the contiguity assumption is made
         # however, there is a special case for constructed TSLs from StridedLayoutAttrs.
         # then, the contiguity assumption is not valid
         # in this case, we can extract the dynamic strides as the offset given
         # by the extract_strided_metadata_op
-
 
         tsl = self.data
 
@@ -200,21 +202,26 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
                     if handle_strided_special_case:
                         if depth == tsl.tstrides[dim].depth() - 1:
                             # do not calculate contiguously, ask result from extract strided metadata
-                                metadata_op = ExtractStridedMetaDataOp(memref_op)
-                                extracted_stride = metadata_op.strides[dim]
-                                assert element_size_op
-                                extracted_stride_bytes = Muli(extracted_stride, element_size_op)
-                                result.extend([metadata_op, extracted_stride_bytes])
-                                result_mapping[(dim, depth)] = extracted_stride_bytes
-                                dynamic_step = Muli(extracted_stride_bytes, bound_ops[(dim, depth)], IndexType())
-                                continue
+                            metadata_op = ExtractStridedMetaDataOp(memref_op)
+                            extracted_stride = metadata_op.strides[dim]
+                            assert element_size_op
+                            extracted_stride_bytes = Muli(
+                                extracted_stride, element_size_op
+                            )
+                            result.extend([metadata_op, extracted_stride_bytes])
+                            result_mapping[(dim, depth)] = extracted_stride_bytes
+                            dynamic_step = Muli(
+                                extracted_stride_bytes,
+                                bound_ops[(dim, depth)],
+                                IndexType(),
+                            )
+                            continue
                     step_op = dynamic_step
                     dynamic_step = Muli(step_op, bound_ops[(dim, depth)], IndexType())
                     result.append(step_op)
                     result_mapping[(dim, depth)] = step_op
 
         return result, result_mapping
-
 
 
 TSL = Dialect("tsl", [], [TiledStridedLayoutAttr])
