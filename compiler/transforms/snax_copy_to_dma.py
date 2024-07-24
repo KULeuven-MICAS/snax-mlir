@@ -322,11 +322,11 @@ class TransformDMA(RewritePattern):
         ops_to_insert.extend(ops_to_add)
 
         # generate the step ops for the source tsl
-        ops_to_add, step_ops_src = tsl_source.get_step_ops(bound_ops)
+        ops_to_add, step_ops_src = tsl_source.get_step_ops(bound_ops, op.source)
         ops_to_insert.extend(ops_to_add)
 
         # generate the step ops for the destination tsl
-        ops_to_add, step_ops_dst = tsl_dest.get_step_ops(bound_ops)
+        ops_to_add, step_ops_dst = tsl_dest.get_step_ops(bound_ops, op.destination)
         ops_to_insert.extend(ops_to_add)
 
         # construct the dict. we only need the strides not yet present in the lcb

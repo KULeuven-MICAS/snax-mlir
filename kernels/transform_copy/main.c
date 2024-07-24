@@ -22,6 +22,8 @@ int main() {
   memrefA.aligned_data = A;
   memrefA.shape[0] = N_sqrt;
   memrefA.shape[1] = N_sqrt;
+  memrefA.stride[0] = N_sqrt;
+  memrefA.stride[1] = 1;
 
   // allocate memory in L1 for copy target
   TwoDMemrefI32_t memrefB;

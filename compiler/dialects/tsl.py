@@ -3,8 +3,13 @@ from __future__ import annotations
 from math import prod
 
 from xdsl.dialects.arith import Constant, DivUI, Muli
-from xdsl.dialects.builtin import IndexType, MemrefLayoutAttr
-from xdsl.dialects.memref import Dim
+from xdsl.dialects.builtin import (
+    IndexType,
+    MemrefLayoutAttr,
+    MemRefType,
+    StridedLayoutAttr,
+)
+from xdsl.dialects.memref import Dim, ExtractStridedMetaDataOp
 from xdsl.ir import Data, Dialect, Operation, SSAValue
 from xdsl.ir.affine import AffineMap
 from xdsl.irdl import (
@@ -114,8 +119,10 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         return result, result_mapping
 
     def get_step_ops(
-        self, bound_ops: dict[(int, int), Operation]
-    ) -> tuple[list[Operation], dict[(int, int), Operation]]:
+        self,
+        bound_ops: dict[tuple[int, int], Operation],
+        memref_op: SSAValue | None = None,
+    ) -> tuple[list[Operation], dict[tuple[int, int], Operation]]:
         """Generate ops to get the steps of the Strides in the TSL
         The function handles dynamic strides as well
 
@@ -134,9 +141,29 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             and depth
         """
         result: list[Operation] = []
-        result_mapping: dict[(int, int), Operation] = {}
-
+        result_mapping: dict[tuple[int, int], Operation] = {}
         tsl = self.data
+
+        # Handle the special case where a tsl is constructed from a stridedlayoutattr
+        # In this case, if there are dynamic strides, we cannot perform
+        # the TSL contiguity assumptions. Instead, dynamic strides are
+        # fetched from the extract strided metadata operation.
+        if (
+            memref_op
+            and isinstance(memref_op.type, MemRefType)
+            and isinstance(memref_op.type.layout, StridedLayoutAttr)
+        ):
+            metadata_op = ExtractStridedMetaDataOp(memref_op)
+            element_size_op = Constant.from_int_and_width(
+                memref_op.type.element_type.width.data // 8, IndexType()
+            )
+            result.extend([metadata_op, element_size_op])
+            for dim in range(tsl.dimension()):
+                depth = tsl.tstrides[dim].depth() - 1  # get last depth
+                if tsl.get_stride(dim, depth).step is None:
+                    # dynamic stride, assign to result of metadata op
+                    stride = Muli(metadata_op.strides[dim], element_size_op)
+                    result_mapping[(dim, depth)] = stride
 
         # to handle the dynamic case, we must first find the largest
         # statically defined step, and then use that to calculate the
@@ -174,11 +201,15 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
 
                 # dynamic case
                 else:
-                    step_op = dynamic_step
+                    if (dim, depth) in result_mapping:
+                        # perhaps dynamic stride previously set
+                        step_op = result_mapping[(dim, depth)]
+                    else:
+                        # else, follow contiguity assumption
+                        step_op = dynamic_step
                     dynamic_step = Muli(step_op, bound_ops[(dim, depth)], IndexType())
                     result.append(step_op)
                     result_mapping[(dim, depth)] = step_op
-
         return result, result_mapping
 
 

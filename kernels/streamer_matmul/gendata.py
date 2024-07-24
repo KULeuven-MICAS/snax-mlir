@@ -6,13 +6,20 @@ from util.gendata import create_data, create_header
 
 if __name__ == "__main__":
     # Reset random seed for reproducible behavior
-    low_bound = 0
-    high_bound = 127
-    A_size = [16, 16]
-    B_size = [16, 16]
+
     np.random.seed(0)
 
+    min_size = 1
+    max_size = 4
+    n_random = 16  # 8 * np.random.randint(min_size, max_size)
+    m_random = 16  # 8 * np.random.randint(min_size, max_size)
+    k_random = 16  # 8 * np.random.randint(min_size, max_size)
+    A_size = [n_random, k_random]
+    B_size = [k_random, m_random]
+
     # C = A.B
+    low_bound = -128
+    high_bound = 127
     A = np.random.randint(low_bound, high_bound, size=A_size, dtype=np.dtype("int8"))
     B = np.random.randint(low_bound, high_bound, size=B_size, dtype=np.dtype("int8"))
 
