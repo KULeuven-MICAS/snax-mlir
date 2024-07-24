@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from xdsl.dialects import builtin, memref, memref_stream
-from xdsl.dialects.builtin import MemRefType, ModuleOp, StringAttr
+from xdsl.dialects.builtin import MemRefType, StringAttr
 from xdsl.ir import MLContext
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
@@ -11,10 +11,9 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.traits import SymbolTable
 
+from compiler.accelerators import find_accelerator_op
 from compiler.dialects import snax_stream
-from compiler.dialects.accfg import AcceleratorOp
 from compiler.dialects.snax import StreamerConfigurationAttr
 
 
@@ -44,25 +43,16 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             return
 
         # Go and fetch the accelerator op
-        accelerator_str = op.attributes["accelerator"]
-        assert isinstance(accelerator_str, StringAttr)
+        assert isinstance((accelerator_str := op.attributes["accelerator"]), StringAttr)
+        acc_op = find_accelerator_op(op, accelerator_str)
 
-        module_op = op
-        while module_op and not isinstance(module_op, ModuleOp):
-            module_op = module_op.parent_op()
-        if not module_op:
-            raise RuntimeError("Module Op not found")
-
-        trait = module_op.get_trait(SymbolTable)
-        assert trait is not None
-        acc_op = trait.lookup_symbol(module_op, accelerator_str)
-
-        if not isinstance(acc_op, AcceleratorOp):
+        if not acc_op:
             raise RuntimeError("AcceleratorOp not found!")
 
-        streamer_config = acc_op.attributes["streamer_config"]
-        if not isinstance(streamer_config, StreamerConfigurationAttr):
+        if "streamer_config" not in acc_op.attributes:
             raise RuntimeError("Streamer interface not found for given accelerator op")
+        streamer_config = acc_op.attributes["streamer_config"]
+        assert isinstance(streamer_config, StreamerConfigurationAttr)
 
         # Make sure the operands are memrefs with a default layout
         for memref_operand in op.operands:
