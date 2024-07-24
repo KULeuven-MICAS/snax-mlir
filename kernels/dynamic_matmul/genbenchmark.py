@@ -6,7 +6,7 @@ if __name__ == "__main__":
 
     def run_all(binary: str, folder: str):
         bm = SNAXBenchmark(
-            kernel="streamer_matmul",
+            kernel="dynamic_matmul",
             binary=binary,
             src_dir=str(pathlib.Path.cwd()),
             export_dir=str(pathlib.Path.cwd()),
@@ -19,11 +19,7 @@ if __name__ == "__main__":
         bm.copy_binary(folder)
         bm.copy_logs(folder)
 
-    binaries = {
-        "run0": "matmul.x",
-        "run1": "half_tiled_matmul.x",
-        "run2": "transform_matmul.x",
-    }
+    binaries = {"run0": "dynamic_matmul.x"}
 
     for folder, binary in binaries.items():
         run_all(binary, folder)
