@@ -28,6 +28,7 @@ from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.memref_to_snax import MemrefToSNAX
 from compiler.transforms.realize_memref_casts import RealizeMemrefCastsPass
 from compiler.transforms.reuse_memref_allocs import ReuseMemrefAllocs
+from compiler.transforms.schedule_memref_linalg import ScheduleMemrefLinalg
 from compiler.transforms.set_memory_layout import SetMemoryLayout
 from compiler.transforms.set_memory_space import SetMemorySpace
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
@@ -91,6 +92,7 @@ class SNAXOptMain(xDSLOptMain):
             GuardedLinalgToMemrefStreamPass.name,
             lambda: GuardedLinalgToMemrefStreamPass,
         )
+        super().register_pass(ScheduleMemrefLinalg.name, lambda: ScheduleMemrefLinalg)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
