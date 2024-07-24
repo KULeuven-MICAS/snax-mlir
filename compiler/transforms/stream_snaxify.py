@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
+from xdsl.context import MLContext
 from xdsl.dialects import builtin, memref, memref_stream
-from xdsl.dialects.builtin import MemRefType, StringAttr
-from xdsl.ir import MLContext
+from xdsl.dialects.builtin import FixedBitwidthType, MemRefType, StringAttr
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -77,8 +77,8 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             data_mem_map: AffineMap = AffineMap.identity(1)
 
             assert isinstance(type := op.operands[operand].type, MemRefType)
-            assert isinstance(el_type := type.element_type, builtin.IntegerType)
-            element_width = el_type.width.data // 8
+            assert isinstance(el_type := type.element_type, FixedBitwidthType)
+            element_width = el_type.size
             data_mem_map = AffineMap.from_callable(
                 lambda d0: ((element_width * d0),), dim_symbol_split=(1, 0)
             )
@@ -111,7 +111,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     spatial_strides.append(stride[0])
                 else:
                     temporal_strides.append(stride[0])
-                    upper_bounds.append(op.patterns.data[operand].ub.data[i].data)
+                    upper_bounds.append(op.patterns.data[operand].ub.data[i].value)
 
             # create the stride pattern for this operand
             snax_stride_pattern = snax_stream.StridePattern(

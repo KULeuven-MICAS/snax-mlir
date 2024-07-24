@@ -1,6 +1,7 @@
+from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, linalg, memref
 from xdsl.dialects.memref import MemorySpaceCast
-from xdsl.ir import MLContext, Operation, OpResult
+from xdsl.ir import Operation, OpResult
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,

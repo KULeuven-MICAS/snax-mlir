@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
 
+from xdsl.context import MLContext
 from xdsl.dialects import builtin, func, linalg, scf
-from xdsl.ir import Block, MLContext, Operation, OpResult, Region, SSAValue
+from xdsl.ir import Block, Operation, OpResult, Region, SSAValue
 from xdsl.parser import StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (

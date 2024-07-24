@@ -56,7 +56,7 @@ class StridePattern(ParametrizedAttribute):
         parameters: Sequence[Attribute] = []
         for arg in (upper_bounds, temporal_strides, spatial_strides):
             if not isinstance(arg, ArrayAttr):
-                arg = ArrayAttr([IntAttr(x) for x in arg])
+                arg = ArrayAttr([IntAttr(x) if isinstance(x, int) else x for x in arg])
             parameters.append(arg)
         super().__init__(parameters)
 

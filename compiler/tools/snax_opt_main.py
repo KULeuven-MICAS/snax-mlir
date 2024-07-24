@@ -1,7 +1,7 @@
 import argparse
 from collections.abc import Sequence
 
-from xdsl.ir import MLContext
+from xdsl.context import MLContext
 from xdsl.xdsl_opt_main import xDSLOptMain
 
 from compiler.dialects.accfg import ACCFG

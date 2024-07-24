@@ -1,6 +1,6 @@
+from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg
 from xdsl.dialects.memref import MemRefType
-from xdsl.ir import MLContext
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (

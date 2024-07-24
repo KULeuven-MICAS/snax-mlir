@@ -85,7 +85,7 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer):
                     ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref),
                     metadata := memref.ExtractStridedMetaDataOp(ref),
                     el_bytes := arith.Constant.from_int_and_width(
-                        ref.type.element_type.width.data // 8, builtin.IndexType()
+                        ref.type.element_type.size, builtin.IndexType()
                     ),
                     byte_offset := arith.Muli(metadata.offset, el_bytes),
                     ptr_plus_byte_offset := arith.Addi(
