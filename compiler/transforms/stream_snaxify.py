@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, memref, memref_stream
-from xdsl.dialects.builtin import FixedBitwidthType, MemRefType, ModuleOp, StringAttr
+from xdsl.dialects.builtin import FixedBitwidthType, MemRefType, StringAttr
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
