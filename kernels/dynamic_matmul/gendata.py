@@ -11,10 +11,7 @@ if __name__ == "__main__":
 
     min_size = 1
     max_size = 4
-    n_random = 8 * np.random.randint(
-        min_size,
-        max_size,
-    )
+    n_random = 8 * np.random.randint(min_size, max_size)
     m_random = 8 * np.random.randint(min_size, max_size)
     k_random = 8 * np.random.randint(min_size, max_size)
     A_size = [n_random, k_random]

@@ -84,9 +84,9 @@ int main() {
     memrefA.data = &A;
     memrefA.aligned_data = memrefA.data;
     // Shape and Stride need to be defined for dynamic case
-    memrefA.shape[0] = M_size;
+    memrefA.shape[0] = N_size;
     memrefA.shape[1] = K_size;
-    memrefA.stride[0] = M_size;
+    memrefA.stride[0] = K_size;
     memrefA.stride[1] = 1;
     memrefA.offset = 0;
 
@@ -95,9 +95,9 @@ int main() {
     memrefB.aligned_data = memrefB.data;
     // Shape and Stride need to be defined for dynamic case
     memrefB.shape[0] = K_size;
-    memrefB.shape[1] = N_size;
+    memrefB.shape[1] = M_size;
     memrefB.stride[0] = 1;
-    memrefB.stride[1] = N_size;
+    memrefB.stride[1] = K_size;
     memrefB.offset = 0;
     printf("M_size: %d, K_size: %d, N_size: %d\n", M_size, K_size, N_size);
 
@@ -105,9 +105,9 @@ int main() {
     memrefC.data = &C;
     memrefC.aligned_data = memrefC.data;
     // Shape and Stride need to be defined for dynamic case
-    memrefC.shape[0] = M_size;
-    memrefC.shape[1] = N_size;
-    memrefC.stride[0] = 16;
+    memrefC.shape[0] = N_size;
+    memrefC.shape[1] = M_size;
+    memrefC.stride[0] = M_size;
     memrefC.stride[1] = 1;
     memrefC.offset = 0;
 
@@ -129,8 +129,8 @@ int main() {
     for (int i = 0; i < M_size * N_size; i++) {
       {
         int32_t error = memrefC.aligned_data[i] - C_golden[i];
-        printf("%d) %d -> %d\n", i, (int32_t)memrefC.aligned_data[i],
-               (int32_t)C_golden[i]);
+        // printf("%d) %d -> %d\n", i, (int32_t)memrefC.aligned_data[i],
+        //        (int32_t)C_golden[i]);
         if (error != 0)
           nerr += 1;
       }
