@@ -1,6 +1,6 @@
 import pytest
 from xdsl.builder import Builder
-from xdsl.dialects import arith, linalg, memref
+from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.dialects.builtin import AffineMapAttr, IndexType
 from xdsl.ir.affine import AffineMap
 from xdsl.utils.test_value import TestSSAValue
@@ -13,8 +13,8 @@ def linalg_operands():
     mem_a = memref.Alloc.get(IndexType(), shape=[8, 8])
     mem_b = memref.Alloc.get(IndexType(), shape=[8, 8])
     mem_c = memref.Alloc.get(IndexType(), shape=[8, 8])
-    const_a = arith.Constant(IndexType(), 1)
-    const_b = arith.Constant(IndexType(), 1)
+    const_a = arith.Constant.from_int_and_width(1, IndexType())
+    const_b = arith.Constant.from_int_and_width(1, IndexType())
     inputs = [mem_a, mem_b, const_a, const_b]
     outputs = [mem_c]
 
@@ -32,6 +32,19 @@ def linalg_empty(linalg_operands):
     @Builder.implicit_region([IndexType()] * 5)
     def body(args):
         linalg.YieldOp(args[0])
+
+    inputs, outputs, imap, itype = linalg_operands
+    linalg_op = linalg.Generic(inputs, outputs, body, imap, itype)
+    return linalg_op
+
+
+@pytest.fixture()
+def linalg_add(linalg_operands):
+    @Builder.implicit_region([IndexType()] * 5)
+    def body(args):
+        a, b = args[0:2]
+        d = arith.Addi(a, b)
+        linalg.YieldOp(d)
 
     inputs, outputs, imap, itype = linalg_operands
     linalg_op = linalg.Generic(inputs, outputs, body, imap, itype)
@@ -133,11 +146,11 @@ def test_parse_inputs(linalg_mult):
     assert isinstance(types, dict)
     assert len(types.keys()) == 5
     operands = linalg_mult.body.block.args
-    assert isinstance(types[operands[0]], memref.MemRefType)
-    assert isinstance(types[operands[1]], memref.MemRefType)
-    assert isinstance(types[operands[2]], int)
-    assert isinstance(types[operands[3]], int)
-    assert isinstance(types[operands[4]], memref.MemRefType)
+    assert isinstance(types[operands[0]], builtin.MemRefType)
+    assert isinstance(types[operands[1]], builtin.MemRefType)
+    assert isinstance(types[operands[2]], builtin.IndexType)
+    assert isinstance(types[operands[3]], builtin.IndexType)
+    assert isinstance(types[operands[4]], builtin.MemRefType)
 
 
 def test_match_inputs(linalg_mult):
@@ -151,8 +164,9 @@ def test_match_inputs(linalg_mult):
         KernelType.match_inputs(a, b, types)
 
 
-def test_get_type(linalg_empty, linalg_mult, linalg_mac, linalg_qmac):
+def test_get_type(linalg_empty, linalg_add, linalg_mult, linalg_mac, linalg_qmac):
     assert KernelType.get_kernel(linalg_empty) is None
+    assert KernelType.get_kernel(linalg_add) == KernelType.ADD
     assert KernelType.get_kernel(linalg_mult) == KernelType.MUL
     assert KernelType.get_kernel(linalg_mac) == KernelType.MAC
     assert KernelType.get_kernel(linalg_qmac) == KernelType.QMAC
