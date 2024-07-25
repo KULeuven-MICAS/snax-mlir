@@ -6,6 +6,7 @@ from xdsl.dialects.builtin import FixedBitwidthType, MemRefType, StringAttr
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
+    GreedyRewritePatternApplier,
     PatternRewriter,
     PatternRewriteWalker,
     RewritePattern,
@@ -15,6 +16,40 @@ from xdsl.pattern_rewriter import (
 from compiler.accelerators import find_accelerator_op
 from compiler.dialects import snax_stream
 from compiler.dialects.snax import StreamerConfigurationAttr
+
+
+@dataclass
+class HoistAcceleratorAttribute(RewritePattern):
+    """
+    A pattern to hoist the library call from within a memref
+    streaming region as an attribute of the op.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: memref_stream.StreamingRegionOp, _):
+        # attribute already assigned to op
+        if getattr(op.attributes, "accelerator", None):
+            return
+
+        accelerator = None
+
+        for inner_op in op.body.walk():
+            # look for memref_stream.generic with library call
+            if not isinstance(inner_op, memref_stream.GenericOp):
+                continue
+
+            if not inner_op.library_call:
+                continue
+
+            if accelerator and inner_op.library_call != accelerator:
+                raise RuntimeError(
+                    "multiple different accelerator dispatches found in streaming region op"
+                )
+
+            accelerator = inner_op.library_call.data
+
+        if accelerator:
+            op.attributes["accelerator"] = StringAttr(accelerator)
 
 
 @dataclass
@@ -148,4 +183,8 @@ class StreamSnaxify(ModulePass):
     name = "stream-snaxify"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(MemrefStreamToSnaxPattern()).rewrite_module(op)
+        PatternRewriteWalker(
+            GreedyRewritePatternApplier(
+                [HoistAcceleratorAttribute(), MemrefStreamToSnaxPattern()]
+            )
+        ).rewrite_module(op)
