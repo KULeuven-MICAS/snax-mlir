@@ -38,12 +38,13 @@ class KernelType(Enum):
             out += (a - zp_a) * (b - zp_b)
     """
 
+    ADD = "add"
     MUL = "mul"
     MAC = "mac"
     QMAC = "qmac"
 
     @staticmethod
-    def parse_mult(op: Operation) -> tuple[Operation, Operation]:
+    def parse_mult(op: Operation) -> tuple[Operation | SSAValue, Operation | SSAValue]:
         """
         Parses a multiplication operation and returns the two operands.
 
@@ -171,7 +172,7 @@ class KernelType(Enum):
         return (linalg_block.last_op, types)
 
     @staticmethod
-    def match_inputs(a: Operation, b: Operation, types: dict):
+    def match_inputs(a: Operation | SSAValue, b: Operation | SSAValue, types: dict):
         """
         Matches the operands a and b with the input types of the linalg kernel.
         This is mainly used as a check to see if we have reached the top
@@ -226,6 +227,15 @@ class KernelType(Enum):
             val_a, val_b = KernelType.parse_mult(yielded_op.op)
             KernelType.match_inputs(val_a, val_b, types)
             return KernelType.MUL
+        except KernelException:
+            pass
+
+        # check: ADD
+        # a = b + c
+        try:
+            val_a, val_b = KernelType.parse_add(yielded_op.op)
+            KernelType.match_inputs(val_a, val_b, types)
+            return KernelType.ADD
         except KernelException:
             pass
 
