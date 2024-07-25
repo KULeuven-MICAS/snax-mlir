@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from xdsl.dialects import affine, arith, builtin, memref, scf
-from xdsl.ir import MLContext, SSAValue, OpResult, Operation
+from xdsl.ir import MLContext, Operation, OpResult, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -136,13 +136,18 @@ class MoveMemrefAllocations(RewritePattern):
             ops_to_add = []
             alloc_op.detach()
             new_alloc_op = memref.Alloc(
-                get_dynamic_sizes_and_add(alloc_op, ops_to_add), ...
-            )  # TODO: Find all correct arguments
+                dynamic_sizes=get_dynamic_sizes_and_add(alloc_op, ops_to_add),
+                symbol_operands=alloc_op.symbol_operands,
+                result_type=alloc_op.result_type,
+                alignment=alloc_op.alignment,
+            )
             ops_to_add.append(new_alloc_op)
+            # TODO: find a way to transfer all uses of alloc_op to new_alloc_op
 
             for_op = find_parent_for_loop(alloc_op)
             for op in ops_to_add:
                 rewriter.insert_op(op, InsertPoint.before(for_op))
+            alloc_op.erase()
 
 
 class ReuseMemrefSpace(ModulePass):
