@@ -23,13 +23,13 @@ from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.memref_to_snax import MemrefToSNAX
 from compiler.transforms.realize_memref_casts import RealizeMemrefCastsPass
+from compiler.transforms.reuse_memref_space import ReuseMemrefSpace
 from compiler.transforms.set_memory_layout import SetMemoryLayout
 from compiler.transforms.set_memory_space import SetMemorySpace
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.stream_snaxify import StreamSnaxify
-from compiler.transforms.reuse_memref_space import ReuseMemrefSpace
 
 
 class SNAXOptMain(xDSLOptMain):
