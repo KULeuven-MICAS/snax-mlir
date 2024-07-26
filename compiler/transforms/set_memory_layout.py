@@ -34,7 +34,7 @@ class AddMemoryLayout(RewritePattern):
             library_call = linalg_op.library_call.data
 
         # check for library call
-        if library_call == "snax_gemm":
+        if library_call == "snax_gemm" or library_call == "snax_gemm_stream":
             tsl_input_a = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
