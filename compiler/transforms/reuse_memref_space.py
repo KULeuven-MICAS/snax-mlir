@@ -222,8 +222,11 @@ class MoveMemrefAllocations(RewritePattern):
                 result_type=alloc_op.results[0].type,
                 alignment=alloc_op.alignment,
             )
-            rewriter._replace_all_uses_with(  # This is a private function of Rewriter Class and should be replaced with a public function, but for now it works
-                alloc_op.results[0], new_alloc_op.results[0]
+            rewriter._replace_all_uses_with(
+                # This is a private function of Rewriter Class and should be replaced with a public function,
+                # but for now it works
+                alloc_op.results[0],
+                new_alloc_op.results[0],
             )
             ops_to_add.append(new_alloc_op)
 
@@ -242,5 +245,6 @@ class ReuseMemrefSpace(ModulePass):
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             MoveMemrefAllocations(),
-            apply_recursively=True,  # First elevate outside first for-loop, then move outside the second for-loop (and optionally more)
+            apply_recursively=True,
+            # First elevate outside first for-loop, then move outside the second for-loop (and optionally more)
         ).rewrite_module(op)
