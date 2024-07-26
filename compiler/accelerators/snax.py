@@ -124,16 +124,16 @@ class SNAXStreamer(ABC):
         )
 
         # temporal strides
-        for dim in range(self.streamer_config.data.temporal_dim()):
-            for streamer in range(self.streamer_config.data.size()):
+        for streamer in range(self.streamer_config.data.size()):
+            for dim in range(self.streamer_config.data.temporal_dim()):
                 cst = arith.Constant.from_int_and_width(
                     op.stride_patterns.data[streamer].temporal_strides.data[dim], i32
                 )
                 result.append(([cst], cst.result))
 
         # spatial strides
-        for dim in range(self.streamer_config.data.spatial_dim()):
-            for streamer in range(self.streamer_config.data.size()):
+        for streamer in range(self.streamer_config.data.size()):
+            for dim in range(self.streamer_config.data.spatial_dim()):
                 cst = arith.Constant.from_int_and_width(
                     op.stride_patterns.data[streamer].spatial_strides.data[dim], i32
                 )
