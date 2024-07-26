@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from enum import Enum
+from typing_extensions import Self
 
 from xdsl.dialects.builtin import (
     ArrayAttr,
@@ -351,7 +352,7 @@ class SetupOp(IRDLOperation):
 
 
 class AcceleratorSymbolOpTrait(SymbolOpInterface):
-    def get_sym_attr_name(self, op: Operation) -> StringAttr | None:
+    def get_sym_attr_name(self, op: Operation) -> StringAttr:
         assert isinstance(op, AcceleratorOp)
         return StringAttr(op.name_prop.string_value())
 
@@ -428,6 +429,30 @@ class AcceleratorOp(IRDLOperation):
         for name, val in self.launch_fields.data.items():
             assert isinstance(val, IntegerAttr)
             yield name, val
+
+    def print(self, printer: Printer):
+        printer.print_string(" {")
+        with printer.indented():
+            printer.print_string("\nname = ")
+            printer.print_attribute(self.name_prop)
+            printer.print_string(",\nfields = [")
+            with printer.indented():
+                printer.print_string("\n")
+                fields = [f"{field} = {value.value.data}" for field, value in self.field_items()]
+                printer.print_list(fields, lambda x: printer.print_string(x), ",\n")
+            printer.print_string("\n]")
+            printer.print_string(",\nlaunch_fields = [")
+            with printer.indented():
+                printer.print_string("\n")
+                fields = [f"{field} = {value.value.data}" for field, value in self.launch_field_items()]
+                printer.print_list(fields, lambda x: printer.print_string(x), ",\n")
+            printer.print_string("\n]")
+            printer.print_string(f",\nbarrier = {self.barrier.value.data}")
+            if self.attributes:
+                printer.print(",\nattrs = ")
+                printer.print_op_attributes(self.attributes)
+        printer.print_string("\n}")
+
 
 
 ACCFG = Dialect(
