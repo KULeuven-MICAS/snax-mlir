@@ -64,14 +64,10 @@ class MoveMemrefAllocations(RewritePattern):
                 return True
             if isinstance(expr, arith.Constant):
                 return True
-            if isinstance(
-                expr, affine.MinOp
-            ):  # TODO: this should extract sizes in both dimensions, not sure if done correctly
-                if can_be_constant(
-                    expr.VarOperand[0]
-                ):  # TODO: This needs to be replaced by expr.map.data.results[0].value
+            if isinstance(expr, affine.MinOp):
+                if can_be_constant(expr.map.data.results[0]):
                     return True
-                if can_be_constant(expr.VarOperand[1]):
+                if can_be_constant(expr.map.data.results[1]):
                     return True
             if isinstance(expr, memref.Dim):
                 # Assuming this Dim operands themselves can be constant troughout the loop (Not necessarily true, TODO: Check if this is the case)
@@ -169,7 +165,6 @@ class MoveMemrefAllocations(RewritePattern):
             If the size is defined before the loop, it is kept as is.
             If the size can be derived from a constant, the constant is created and added to ops_to_add.
             """
-            # TODO: Add constants of which Dim is dependant
             dynamic_sizes = []
             for size in alloc_op.dynamic_sizes:
                 assert isinstance(size.owner, Operation)
