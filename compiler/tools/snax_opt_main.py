@@ -29,6 +29,7 @@ from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.stream_snaxify import StreamSnaxify
+from compiler.transforms.reuse_memref_space import ReuseMemrefSpace
 
 
 class SNAXOptMain(xDSLOptMain):
@@ -80,6 +81,7 @@ class SNAXOptMain(xDSLOptMain):
             AccfgConfigOverlapPass.name, lambda: AccfgConfigOverlapPass
         )
         super().register_pass(StreamSnaxify.name, lambda: StreamSnaxify)
+        super().register_pass(ReuseMemrefSpace.name, lambda: ReuseMemrefSpace)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
