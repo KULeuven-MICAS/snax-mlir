@@ -94,6 +94,10 @@ class MoveMemrefAllocations(RewritePattern):
             return False
 
         def used_outside_parent_for(use: OpResult) -> bool:
+            """
+            Check if the allocated memref is used outside the loop.
+            checks all parent-for loops of the use operation.
+            """
             current_op = use.operation
             parent_for = find_parent_for_loop(alloc_op)
             while current_op is not None:
