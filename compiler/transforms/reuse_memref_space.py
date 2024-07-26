@@ -48,6 +48,26 @@ class MoveMemrefAllocations(RewritePattern):
             """
             return find_parent_for_loop(op) is not None
 
+        def can_move_dim(dim: memref.Dim) -> bool:
+            """
+            Check if the Dim operation can be moved outside the loop.
+            """
+            if before_loop(dim):
+                return True
+            subview = dim.source.owner
+            if isinstance(subview, Block):
+                # This happens when the dim is called on an input argument
+                return True
+            assert isinstance(subview, memref.Subview)
+            index = int(dim.index.owner.value.value.data)
+            new_op = subview.sizes[index].owner
+            if isinstance(new_op, arith.Constant) or isinstance(new_op, affine.MinOp):
+                return True
+            elif isinstance(new_op, memref.Dim):
+                return can_move_dim(new_op)
+            else:
+                return False
+
         def can_be_constant(val: SSAValue) -> bool:
             """
             Check if all operands are defined outside for loop or can be derived.
@@ -70,8 +90,7 @@ class MoveMemrefAllocations(RewritePattern):
                 if can_be_constant(expr.map.data.results[1]):
                     return True
             if isinstance(expr, memref.Dim):
-                # Assuming this Dim operands themselves can be constant troughout the loop (Not necessarily true, TODO: Check if this is the case)
-                return True
+                return can_move_dim(expr)
             return False
 
         def used_outside_parent_for(use: OpResult) -> bool:
@@ -134,14 +153,13 @@ class MoveMemrefAllocations(RewritePattern):
 
         def replace_dim(dim: memref.Dim) -> Operation:
             """
-            Replace Dim operation with Dim outside the loop, or a new Constant.
+            Replace Dim operation with either Dim outside the loop, or a new Constant.
             """
             if before_loop(dim):
                 return dim
             subview = dim.source.owner
-            if isinstance(
-                subview, Block
-            ):  # This happens when the dim is called on an input argument
+            if isinstance(subview, Block):
+                # This happens when the dim is called on an input argument
                 return dim
             assert isinstance(subview, memref.Subview)
             index = int(dim.index.owner.value.value.data)
@@ -204,7 +222,7 @@ class MoveMemrefAllocations(RewritePattern):
                 result_type=alloc_op.results[0].type,
                 alignment=alloc_op.alignment,
             )
-            rewriter._replace_all_uses_with(  # This is an internal function of Rewriter Class and should be replaced with a public function, but for now it works
+            rewriter._replace_all_uses_with(  # This is a private function of Rewriter Class and should be replaced with a public function, but for now it works
                 alloc_op.results[0], new_alloc_op.results[0]
             )
             ops_to_add.append(new_alloc_op)
