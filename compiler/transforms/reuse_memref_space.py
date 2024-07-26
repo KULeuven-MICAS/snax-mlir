@@ -1,8 +1,10 @@
 from collections.abc import Sequence
 
-from xdsl.dialects import affine, arith, builtin, memref, scf
 from xdsl.context import MLContext
+from xdsl.dialects import affine, arith, builtin, memref, scf
+from xdsl.dialects.builtin import IndexType
 from xdsl.ir import Operation, OpResult, SSAValue
+from xdsl.ir.affine import AffineConstantExpr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -50,6 +52,12 @@ class MoveMemrefAllocations(RewritePattern):
             """
             Check if all operands are defined outside for loop or can be derived.
             """
+
+            if isinstance(val, int):
+                return True
+            if isinstance(val, AffineConstantExpr):
+                return True
+
             # Use the owner of the value to check what kind of operation it is
             expr = val.owner
             if before_loop(expr):
@@ -106,18 +114,35 @@ class MoveMemrefAllocations(RewritePattern):
             """
             Returns the constant value of the expression.
             """
+            if isinstance(expr, int):
+                return arith.Constant.from_int_and_width(expr, IndexType())
             if isinstance(expr, arith.Constant):
                 return expr.clone_without_regions()
             # If the expression is a MinOp, we can extract the maximum constant value from the operands
             if isinstance(expr, affine.MinOp):
-                if can_be_constant(expr.VarOperand[0]) and not can_be_constant(
-                    expr.VarOperand[1]
+                if can_be_constant(expr.map.data.results[0]) and not can_be_constant(
+                    expr.map.data.results[0]
                 ):
-                    return get_constant_value(expr.VarOperand[0])
-                if can_be_constant(expr.VarOperand[1]):
-                    return get_constant_value(expr.VarOperand[1])
+                    return get_constant_value(expr.map.data.results[0].value)
+                if can_be_constant(expr.map.data.results[0]):
+                    return get_constant_value(expr.map.data.results[0].value)
 
-        def get_source_before_for_loop(memref_val: SSAValue) -> Operation:
+        def replace_dim(dim: memref.Dim) -> Operation:
+            """
+            Replace Dim operation with Dim outside the loop, or a new Constant.
+            """
+            if before_loop(dim):
+                return dim
+            subview = dim.source.owner
+            assert isinstance(subview, memref.Subview)
+            index = int(dim.index.owner.value.value.data)
+            new_op = subview.sizes[index].owner
+            if isinstance(new_op, arith.Constant) or isinstance(new_op, affine.MinOp):
+                return get_constant_value(new_op)
+            else:
+                return replace_dim(new_op)
+
+        def get_source_before_for_loop(memref_val: SSAValue) -> SSAValue:
             """
             Returns the source of the old source before the for-loop.
             """
@@ -140,13 +165,17 @@ class MoveMemrefAllocations(RewritePattern):
                 elif isinstance(size.owner, memref.Dim):
                     new_constant = size.owner.index.owner.clone_without_regions()
                     ops_to_add.append(new_constant)
-                    dim_source = get_source_before_for_loop(size.owner.source)
-                    new_dim = memref.Dim.from_source_and_index(
-                        dim_source,
-                        new_constant.results[0],  # Source is still wrong
-                    )
-                    ops_to_add.append(new_dim)
-                    dynamic_sizes.append(new_dim.results[0])
+                    source_op = replace_dim(size.owner)
+                    if isinstance(source_op, arith.Constant):
+                        dynamic_sizes.append(source_op.results[0])
+                        ops_to_add.append(source_op)
+                    else:
+                        new_dim = memref.Dim.from_source_and_index(
+                            get_source_before_for_loop(size.owner.source),
+                            new_constant.results[0],
+                        )
+                        ops_to_add.append(new_dim)
+                        dynamic_sizes.append(new_dim.results[0])
                 else:
                     new_constant = get_constant_value(size)
                     ops_to_add.append(new_constant)
