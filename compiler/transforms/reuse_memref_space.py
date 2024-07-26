@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from xdsl.context import MLContext
 from xdsl.dialects import affine, arith, builtin, memref, scf
 from xdsl.dialects.builtin import IndexType
-from xdsl.ir import Operation, OpResult, SSAValue
+from xdsl.ir import Operation, OpResult, SSAValue, Block, BlockArgument
 from xdsl.ir.affine import AffineConstantExpr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -29,7 +29,7 @@ class MoveMemrefAllocations(RewritePattern):
             Find the parent for-loop of the operation.
             If no for-loop is found, return None.
             """
-
+            op = op.parent_op()
             while not isinstance(op, scf.For):
                 if op.parent_op() is None:
                     return None
@@ -67,7 +67,9 @@ class MoveMemrefAllocations(RewritePattern):
             if isinstance(
                 expr, affine.MinOp
             ):  # TODO: this should extract sizes in both dimensions, not sure if done correctly
-                if can_be_constant(expr.VarOperand[0]):
+                if can_be_constant(
+                    expr.VarOperand[0]
+                ):  # TODO: This needs to be replaced by expr.map.data.results[0].value
                     return True
                 if can_be_constant(expr.VarOperand[1]):
                     return True
@@ -76,17 +78,24 @@ class MoveMemrefAllocations(RewritePattern):
                 return True
             return False
 
+        def used_outside_parent_for(use: OpResult) -> bool:
+            current_op = use.operation
+            parent_for = find_parent_for_loop(alloc_op)
+            while current_op is not None:
+                if current_op is parent_for:
+                    return False
+                current_op = find_parent_for_loop(current_op)
+            return True
+
         def used_outside_loop(op_results: list[OpResult]) -> bool:
             """
             Check if the allocated memref is used outside the loop.
             """
             for op_result in op_results:
                 for use in op_result.uses:
-                    if find_parent_for_loop(use.operation) is not find_parent_for_loop(
-                        alloc_op
-                    ):
+                    if used_outside_parent_for(use):
                         return True
-                return False
+            return False
 
         def can_move_alloc(op: Operation) -> bool:
             """
@@ -134,6 +143,10 @@ class MoveMemrefAllocations(RewritePattern):
             if before_loop(dim):
                 return dim
             subview = dim.source.owner
+            if isinstance(
+                subview, Block
+            ):  # This happens when the dim is called on an input argument
+                return dim
             assert isinstance(subview, memref.Subview)
             index = int(dim.index.owner.value.value.data)
             new_op = subview.sizes[index].owner
@@ -177,7 +190,7 @@ class MoveMemrefAllocations(RewritePattern):
                         ops_to_add.append(new_dim)
                         dynamic_sizes.append(new_dim.results[0])
                 else:
-                    new_constant = get_constant_value(size)
+                    new_constant = get_constant_value(size.owner)
                     ops_to_add.append(new_constant)
                     dynamic_sizes.append(new_constant.results[0])
             return dynamic_sizes
