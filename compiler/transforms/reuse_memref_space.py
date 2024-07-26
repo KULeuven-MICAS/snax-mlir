@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from xdsl.context import MLContext
 from xdsl.dialects import affine, arith, builtin, memref, scf
 from xdsl.dialects.builtin import IndexType
-from xdsl.ir import Operation, OpResult, SSAValue, Block, BlockArgument
+from xdsl.ir import Block, Operation, OpResult, SSAValue
 from xdsl.ir.affine import AffineConstantExpr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
