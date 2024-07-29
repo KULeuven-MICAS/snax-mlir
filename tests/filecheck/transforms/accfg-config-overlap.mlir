@@ -117,7 +117,7 @@ func.func @single_loop(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 // CHECK-NEXT:       "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
 // CHECK-NEXT:       scf.yield %l1_1 : !accfg.state<"simple">
 // CHECK-NEXT:     }
-// RESET-NEXT:     accfg.reset %2 : !accfg.state<"simple">
+// RESET-NEXT:     accfg.reset %1 : !accfg.state<"simple">
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 
@@ -161,7 +161,7 @@ func.func @complex_loop(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 // CHECK-NEXT:       "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
 // CHECK-NEXT:       scf.yield %l1_1 : !accfg.state<"simple">
 // CHECK-NEXT:     }
-// RESET-NEXT:     accfg.reset %3 : !accfg.state<"simple">
+// RESET-NEXT:     accfg.reset %1 : !accfg.state<"simple">
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
@@ -263,6 +263,6 @@ func.func @double_setup_loop(%A : i32, %B : i32, %lb : i32, %ub : i32, %step : i
 // CHECK-NEXT:      "accfg.await"(%t2) : (!accfg.token<"simple">) -> ()
 // CHECK-NEXT:      scf.yield %l1_1 : !accfg.state<"simple">
 // CHECK-NEXT:    }
-// RESET-NEXT:    accfg.reset %3 : !accfg.state<"simple">
+// RESET-NEXT:    accfg.reset %1 : !accfg.state<"simple">
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
