@@ -78,7 +78,6 @@ class LowerPureOperations(RewritePattern):
         # When constants or maximal values where found from inside the loop, we need to insert these before the alloc.
         # Only the first for-loop is considered, the algorithm can be repeated to elevate the alloc-op higher.
         if can_move_operation(main_op):
-
             for_op = find_parent_for_loop(main_op)
             main_op.detach()
 
