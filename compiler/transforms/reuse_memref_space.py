@@ -1,72 +1,104 @@
-from collections.abc import Sequence
-
 from xdsl.context import MLContext
 from xdsl.dialects import affine, arith, builtin, memref, scf
 from xdsl.dialects.builtin import IndexType
-from xdsl.ir import Block, Operation, OpResult, SSAValue
+from xdsl.ir import Block, Operation, SSAValue
 from xdsl.ir.affine import AffineConstantExpr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
+    GreedyRewritePatternApplier,
     PatternRewriter,
     PatternRewriteWalker,
     RewritePattern,
     op_type_rewrite_pattern,
 )
 from xdsl.rewriter import InsertPoint
+from xdsl.traits import Pure
 
 
-class MoveMemrefAllocations(RewritePattern):
+def find_parent_for_loop(op: Operation) -> scf.For | None:
     """
-    This class represents a rewrite pattern for moving memref allocations outside
-    a double for-loop. This is possible when each loop a new memref-space is allocated with
-    identical sizes and the space is not used outside the loop.
+    Find the parent for-loop of the operation.
+    If no for-loop is found, return None.
+    """
+    op = op.parent_op()
+    if op is None:
+        return None
+    while not isinstance(op, scf.For):
+        if op.parent_op() is None:
+            return None
+        op = op.parent_op()
+    return op
+
+
+def is_in_loop(op: Operation) -> bool:
+    """
+    Check if the operation is inside a loop.
+    """
+    return find_parent_for_loop(op) is not None
+
+
+def defined_outside_loop(op: Operation) -> bool:
+    """
+    Check if all operands of the operation are defined outside the loop.
+    """
+    for operand in op.operands:
+        if find_parent_for_loop(operand.owner) is find_parent_for_loop(op):
+            return False
+    return True
+
+
+class LowerPureOperations(RewritePattern):
+    """
+    This class represents a rewrite pattern for moving any Operation outside
+    a (nested) for-loop. An Oparation can be moved if it is pure, that is, it
+    does not have any side-effects within the loop and is not dependent on any loop variable.
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, alloc_op: memref.Alloc, rewriter: PatternRewriter):
-        def find_parent_for_loop(op: Operation) -> scf.For:
+    def match_and_rewrite(self, main_op: Operation, rewriter: PatternRewriter):
+        def can_move_operation(op: Operation) -> bool:
             """
-            Find the parent for-loop of the operation.
-            If no for-loop is found, return None.
+            Operations can be moved if they comply with the following conditions:
+            1. The operation is inside a loop.
+            2. All operands are defined outside the loop.
+            3. The operation is Pure, it doesnt have any side effects.
             """
-            op = op.parent_op()
-            while not isinstance(op, scf.For):
-                if op.parent_op() is None:
-                    return None
-                op = op.parent_op()
-            return op
+            if all(
+                [
+                    is_in_loop(op),
+                    defined_outside_loop(op),
+                    Pure() in op.traits or isinstance(op, memref.Alloc),
+                    not isinstance(op, scf.Yield),
+                ]
+            ):
+                return True
+            return False
 
+        # if the alloc can be moved, detach it from the parent and insert new Alloc Object in front of the for-loop
+        # When constants or maximal values where found from inside the loop, we need to insert these before the alloc.
+        # Only the first for-loop is considered, the algorithm can be repeated to elevate the alloc-op higher.
+        if can_move_operation(main_op):
+
+            for_op = find_parent_for_loop(main_op)
+            main_op.detach()
+
+            rewriter.insert_op(main_op, InsertPoint.before(for_op))
+
+
+class MoveMemrefDims(RewritePattern):
+    """
+    This class represents a rewrite pattern for moving Dim operations outside
+    a (nested) for-loop. This is possible the dimensions of a memref are not dependent
+    on the loop variables, or a maximum possible value can be derived.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, dim_op: memref.Dim, rewriter: PatternRewriter):
         def before_loop(op: Operation) -> bool:
             """
             Check if the operation is defined before the loop.
             """
-            return find_parent_for_loop(op) is not find_parent_for_loop(alloc_op)
-
-        def is_in_loop(op: Operation) -> bool:
-            """
-            Check if the operation is inside a loop.
-            """
-            return find_parent_for_loop(op) is not None
-
-        def can_move_dim(dim: memref.Dim) -> bool:
-            """
-            Check if the Dim operation can be moved outside the loop.
-            """
-            if before_loop(dim):
-                return True
-            subview = dim.source.owner
-            if isinstance(subview, Block):
-                # This happens when the dim is called on an input argument
-                return True
-            assert isinstance(subview, memref.Subview)
-            index = int(dim.index.owner.value.value.data)
-            new_op = subview.sizes[index].owner
-            if isinstance(new_op, arith.Constant) or isinstance(new_op, affine.MinOp):
-                return True
-            elif isinstance(new_op, memref.Dim):
-                return can_move_dim(new_op)
-            else:
-                return False
+            return find_parent_for_loop(op) is not find_parent_for_loop(dim_op)
 
         def can_be_constant(val: SSAValue) -> bool:
             """
@@ -82,165 +114,129 @@ class MoveMemrefAllocations(RewritePattern):
             expr = val.owner
             if before_loop(expr):
                 return True
-            if isinstance(expr, arith.Constant):
+            return False
+
+        def dimension_outside_loop(dim_op: memref.Dim) -> bool:
+            """
+            Check if the dimension is defined outside the loop.
+            """
+            if before_loop(dim_op):
                 return True
-            if isinstance(expr, affine.MinOp):
-                if can_be_constant(expr.map.data.results[0]):
+            memref_op = dim_op.source.owner
+            if isinstance(memref_op, Block):
+                # This happens when the dim is called on an input argument
+                return True
+            if isinstance(memref_op, memref.Subview):
+                index = int(dim_op.index.owner.value.value.data)
+                new_op = memref_op.sizes[index].owner
+                if isinstance(new_op, arith.Constant) or isinstance(
+                    new_op, affine.MinOp
+                ):
                     return True
-                if can_be_constant(expr.map.data.results[1]):
-                    return True
-            if isinstance(expr, memref.Dim):
-                return can_move_dim(expr)
-            return False
-
-        def used_outside_parent_for(use: OpResult) -> bool:
-            """
-            Check if the allocated memref is used outside the loop.
-            checks all parent-for loops of the use operation.
-            """
-            current_op = use.operation
-            parent_for = find_parent_for_loop(alloc_op)
-            while current_op is not None:
-                if current_op is parent_for:
+                elif isinstance(new_op, memref.Dim):
+                    return dimension_outside_loop(new_op)
+                else:
                     return False
-                current_op = find_parent_for_loop(current_op)
-            return True
-
-        def used_outside_loop(op_results: list[OpResult]) -> bool:
-            """
-            Check if the allocated memref is used outside the loop.
-            """
-            for op_result in op_results:
-                for use in op_result.uses:
-                    if used_outside_parent_for(use):
-                        return True
+            # TODO: Add support for other memref operations, like matmul
             return False
 
-        def can_move_alloc(op: Operation) -> bool:
+        def can_move_dim(dim_op: memref.Dim) -> bool:
             """
             Allocs can be moved if they comply with the following conditions:
-            1. The operation is an Alloc.
-            2. The operation is inside a loop.
-            3. All alloc sizes are defined outside the loop or a maximum possible value can be derived.
-            4. The resulting memref is not used outside the loop.
+            1.  The operation is a Dim operation.
+            2.  The operation is inside a loop.
+            3.  The memref uppon which the dimension is taken is defined outside the loop,
+                or the asked size can be determined outside the loop.
+            4.  The index is given by a constant operation, which will already be outside the loop.
             """
-            assert isinstance(op, Operation)
+            pass
             if all(
                 [
-                    isinstance(op, memref.Alloc),
-                    is_in_loop(op),
-                    not used_outside_loop(op.results),
+                    isinstance(dim_op, memref.Dim),
+                    is_in_loop(dim_op),
+                    isinstance(dim_op.index.owner, arith.Constant),
                 ]
             ):
-                for size in op.dynamic_sizes:
-                    if not can_be_constant(size):
-                        return False
-                return True
+                return dimension_outside_loop(dim_op)
             return False
 
-        def get_constant_value(expr) -> arith.Constant:
+        def get_constant_value_from_other_constant(expr) -> arith.Constant:
             """
             Returns the constant value of the expression.
             """
             if isinstance(expr, int):
                 return arith.Constant.from_int_and_width(expr, IndexType())
             if isinstance(expr, arith.Constant):
-                return expr.clone_without_regions()
-            # If the expression is a MinOp, we can extract the maximum constant value from the operands
-            if isinstance(expr, affine.MinOp):
-                if can_be_constant(expr.map.data.results[0]) and not can_be_constant(
-                    expr.map.data.results[0]
-                ):
-                    return get_constant_value(expr.map.data.results[0].value)
-                if can_be_constant(expr.map.data.results[0]):
-                    return get_constant_value(expr.map.data.results[0].value)
+                return expr
 
-        def replace_dim(dim: memref.Dim) -> Operation:
+        def get_constant_value_from_affine_min(expr: affine.MinOp) -> arith.Constant:
             """
-            Replace Dim operation with either Dim outside the loop, or a new Constant.
+            Returns the constant value of the expression.
             """
-            if before_loop(dim):
-                return dim
-            subview = dim.source.owner
-            if isinstance(subview, Block):
+            if can_be_constant(expr.map.data.results[0]) and not can_be_constant(
+                expr.map.data.results[0]
+            ):
+                return get_constant_value_from_other_constant(
+                    expr.map.data.results[0].value
+                )
+            if can_be_constant(expr.map.data.results[0]):
+                return get_constant_value_from_other_constant(
+                    expr.map.data.results[0].value
+                )
+
+        def get_new_dim_op(
+            dim_op: memref.Dim,
+        ) -> memref.Dim | arith.Constant | affine.MinOp:
+            """
+            Returns the operation out of which the size can be determined outside the loop
+            """
+            if before_loop(dim_op):
+                return dim_op
+            memref_op = dim_op.source.owner
+            if isinstance(memref_op, Block):
                 # This happens when the dim is called on an input argument
-                return dim
-            assert isinstance(subview, memref.Subview)
-            index = int(dim.index.owner.value.value.data)
-            new_op = subview.sizes[index].owner
-            if isinstance(new_op, arith.Constant) or isinstance(new_op, affine.MinOp):
-                return get_constant_value(new_op)
-            else:
-                return replace_dim(new_op)
-
-        def get_source_before_for_loop(memref_val: SSAValue) -> SSAValue:
-            """
-            Returns the source of the old source before the for-loop.
-            """
-            while not before_loop(memref_val.owner):
-                memref_val = memref_val.owner.source
-            return memref_val
-
-        def get_dynamic_sizes_and_add(alloc_op, ops_to_add) -> Sequence[SSAValue]:
-            """
-            Returns the dynamic sizes of the alloc operation.
-            If the size is defined before the loop, it is kept as is.
-            If the size can be derived from a constant, the constant is created and added to ops_to_add.
-            """
-            dynamic_sizes = []
-            for size in alloc_op.dynamic_sizes:
-                assert isinstance(size.owner, Operation)
-                if before_loop(size.owner):
-                    dynamic_sizes.append(size)
-                elif isinstance(size.owner, memref.Dim):
-                    new_constant = size.owner.index.owner.clone_without_regions()
-                    ops_to_add.append(new_constant)
-                    source_op = replace_dim(size.owner)
-                    if isinstance(source_op, arith.Constant):
-                        dynamic_sizes.append(source_op.results[0])
-                        ops_to_add.append(source_op)
-                    else:
-                        new_dim = memref.Dim.from_source_and_index(
-                            get_source_before_for_loop(size.owner.source),
-                            new_constant.results[0],
-                        )
-                        ops_to_add.append(new_dim)
-                        dynamic_sizes.append(new_dim.results[0])
+                return dim_op
+            if isinstance(memref_op, memref.Subview):
+                index = int(dim_op.index.owner.value.value.data)
+                new_op = memref_op.sizes[index].owner
+                if isinstance(new_op, arith.Constant) or isinstance(
+                    new_op, affine.MinOp
+                ):
+                    return new_op
                 else:
-                    new_constant = get_constant_value(size.owner)
-                    ops_to_add.append(new_constant)
-                    dynamic_sizes.append(new_constant.results[0])
-            return dynamic_sizes
+                    return get_new_dim_op(new_op)
+            # TODO: Add support for other memref operations, like matmul
+            AssertionError("This Dim Operation is not replaceable")
 
-        # Repeat When Changes are made.
-        changes_made = False
         # if the alloc can be moved, detach it from the parent and insert new Alloc Object in front of the for-loop
         # When constants or maximal values where found from inside the loop, we need to insert these before the alloc.
         # Only the first for-loop is considered, the algorithm can be repeated to elevate the alloc-op higher.
-        if can_move_alloc(alloc_op):
-            changes_made = True
-            ops_to_add = []
-            new_alloc_op = memref.Alloc(
-                dynamic_sizes=get_dynamic_sizes_and_add(alloc_op, ops_to_add),
-                symbol_operands=alloc_op.symbol_operands,
-                result_type=alloc_op.results[0].type,
-                alignment=alloc_op.alignment,
-            )
-            rewriter._replace_all_uses_with(
-                # This is a private function of Rewriter Class and should be replaced with a public function,
-                # but for now it works
-                alloc_op.results[0],
-                new_alloc_op.results[0],
-            )
-            ops_to_add.append(new_alloc_op)
+        if can_move_dim(dim_op):
+            new_dim_op = get_new_dim_op(dim_op)
+            if isinstance(new_dim_op, affine.MinOp):
+                temp_dim_op = get_constant_value_from_affine_min(new_dim_op)
+                rewriter._replace_all_uses_with(
+                    new_dim_op.results[0],
+                    temp_dim_op.results[0],
+                )
+                new_dim_op = temp_dim_op
+            if new_dim_op is not dim_op:
+                rewriter._replace_all_uses_with(
+                    # This is a private function of Rewriter Class and should be replaced with a public function,
+                    # but for now it works
+                    dim_op.results[0],
+                    new_dim_op.results[0],
+                )
+            for_op = find_parent_for_loop(dim_op)
 
-            for_op = find_parent_for_loop(alloc_op)
-            alloc_op.detach()
+            if is_in_loop(new_dim_op):
+                new_dim_op.detach()
 
-            for op in ops_to_add:
-                rewriter.insert_op(op, InsertPoint.before(for_op))
-            alloc_op.erase(safe_erase=True)
-        return changes_made
+            if new_dim_op.parent_op() is None:
+                rewriter.insert_op(new_dim_op, InsertPoint.before(for_op))
+            if new_dim_op is not dim_op:
+                dim_op.detach()
+                dim_op.erase(safe_erase=True)
 
 
 class ReuseMemrefSpace(ModulePass):
@@ -248,7 +244,12 @@ class ReuseMemrefSpace(ModulePass):
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
-            MoveMemrefAllocations(),
+            GreedyRewritePatternApplier(
+                [
+                    LowerPureOperations(),
+                    MoveMemrefDims(),
+                ]
+            ),
             apply_recursively=True,
             # First elevate outside first for-loop, then move outside the second for-loop (and optionally more)
         ).rewrite_module(op)
