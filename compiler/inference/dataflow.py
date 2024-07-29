@@ -40,11 +40,11 @@ def uses_through_controlflow(val: SSAValue) -> Generator[Use, None, None]:
         # if it's an scf.for, recurse on block arg
         if isinstance(use.operation, scf.For):
             for_op = use.operation
-            # continue tracing from the block arg of the for loop:
-            # use.index is the arg index for the scf.for op. Since ub and step are not passed as block args
-            # (but lb as loop index, and all others as loop carried values), we decrement the index by 2
-            # to get the corresponding block arg in the scf.for loops body.
-            yield from uses_through_controlflow(for_op.body.block.args[use.index - 2])
+            # if val is an iter_arg, continue tracing in the loop
+            if val in for_op.iter_args:
+                yield from uses_through_controlflow(
+                    for_op.body.block.args[for_op.iter_args.index(val) + 1]
+                )
         # if it's a yield, recurse on parent op result
         elif isinstance(use.operation, scf.Yield):
             # assume yield argument order is the same as the parent ops results
