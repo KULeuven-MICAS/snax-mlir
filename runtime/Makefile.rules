@@ -74,6 +74,13 @@ LDFLAGS += -lsnRuntime
 %.o: %.S
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# TRANSFORM Pre-Preprocessing
+
+MLIRTRANSFORM = --pass-pipeline='builtin.module(test-transform-dialect-interpreter{bind-first-extra-to-ops=linalg.quantized_matmul}, test-transform-dialect-erase-schedule)'
+
+%.mlir: %.transform.mlir
+	$(MLIROPT) $(MLIRTRANSFORM) -o $@ $<
+
 # MLIR Preprocessing
 
 MLIRPREPROCFLAGS = --pass-pipeline='builtin.module(func.func(tosa-to-linalg-named, tosa-to-tensor, tosa-to-scf, tosa-to-linalg))'
@@ -123,6 +130,7 @@ MLIROPTFLAGS += --cse
 MLIROPTFLAGS += --convert-math-to-llvm
 MLIROPTFLAGS += --llvm-request-c-wrappers
 MLIROPTFLAGS += --expand-strided-metadata
+MLIROPTFLAGS += --lower-affine
 MLIROPTFLAGS += --convert-index-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --convert-cf-to-llvm=index-bitwidth=32
 MLIROPTFLAGS += --convert-arith-to-llvm=index-bitwidth=32

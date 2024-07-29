@@ -1,5 +1,5 @@
+from xdsl.context import MLContext
 from xdsl.dialects import builtin
-from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -32,6 +32,10 @@ class InsertSyncBarrierRewriter(RewritePattern):
                 rewriter.insert_op_before(sync_op, op)
 
                 # clear the list
+                ops_to_sync = []
+
+            if isinstance(op, snax.ClusterSyncOp):
+                # synchronisation ok, clear list
                 ops_to_sync = []
 
             # check all operands of current op

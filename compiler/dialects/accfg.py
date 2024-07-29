@@ -359,7 +359,7 @@ class AcceleratorSymbolOpTrait(SymbolOpInterface):
 @irdl_op_definition
 class AcceleratorOp(IRDLOperation):
     """
-    Declares an accelerator that can be configures, launched, etc.
+    Declares an accelerator that can be configured, launched, etc.
     `fields` is a dictionary mapping accelerator configuration names to
     CSR addresses.
     """

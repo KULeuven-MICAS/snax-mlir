@@ -1,5 +1,5 @@
+from xdsl.context import MLContext
 from xdsl.dialects import builtin, func, memref
-from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
 
 from compiler.dialects.tsl import TiledStridedLayoutAttr

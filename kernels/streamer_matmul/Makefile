@@ -2,18 +2,18 @@
 
 .DEFAULT_GOAL := all
 
-include ../../runtime/snax-alu.rules
+include ../../runtime/snax-streamer-gemm.rules
 include ../../runtime/Makefile.rules
 
 TESTS =
-TESTS += streamer_add.x
-TESTS += streamer_add_stream.x
+TESTS += matmul.x
+TESTS += half_tiled_matmul.x
+TESTS += transform_matmul.x
+TESTS += dynamic_matmul.x
+
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
-
-SNAXOPTFLAGS = -p dispatch-kernels,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions,insert-accfg-op{accelerator=snax_alu},stream-snaxify,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
-
 
 data.c data.h:
 	$(PYTHON) gendata.py

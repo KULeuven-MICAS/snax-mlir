@@ -10,7 +10,7 @@ jobs:
   build-and-run-kernels:
     runs-on: ubuntu-latest
     container: 
-      image: ghcr.io/kuleuven-micas/snax:v0.1.4
+      image: ghcr.io/kuleuven-micas/snax:v0.1.6
     steps:
       - uses: actions/checkout@v3
       - name: Install snax compiler
@@ -22,4 +22,4 @@ jobs:
         working-directory: kernels/${{ matrix.kernel }}
     strategy:
       matrix:
-        kernel: [simple_mult, simple_copy, transform_copy, simple_matmul, streamer_alu, tiled_add]
+        kernel: [simple_mult, simple_copy, transform_copy, simple_matmul, streamer_alu, tiled_add, streamer_matmul]

@@ -1,5 +1,6 @@
+from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, scf
-from xdsl.ir import Block, BlockArgument, MLContext, Operation, Use
+from xdsl.ir import Block, BlockArgument, Operation, Use
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     GreedyRewritePatternApplier,

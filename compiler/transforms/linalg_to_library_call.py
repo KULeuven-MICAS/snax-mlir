@@ -1,6 +1,6 @@
+from xdsl.context import MLContext
 from xdsl.dialects import builtin, func, linalg
 from xdsl.dialects.memref import Cast, MemRefType
-from xdsl.ir import MLContext
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,

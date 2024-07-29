@@ -1,7 +1,7 @@
 import argparse
 from collections.abc import Sequence
 
-from xdsl.ir import MLContext
+from xdsl.context import MLContext
 from xdsl.xdsl_opt_main import xDSLOptMain
 
 from compiler.dialects.accfg import ACCFG
@@ -29,6 +29,7 @@ from compiler.transforms.set_memory_space import SetMemorySpace
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
+from compiler.transforms.stream_snaxify import StreamSnaxify
 
 
 class SNAXOptMain(xDSLOptMain):
@@ -80,6 +81,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(
             AccfgConfigOverlapPass.name, lambda: AccfgConfigOverlapPass
         )
+        super().register_pass(StreamSnaxify.name, lambda: StreamSnaxify)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
