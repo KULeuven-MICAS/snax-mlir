@@ -1,5 +1,5 @@
 from xdsl.context import MLContext
-from xdsl.dialects import affine, arith, builtin, linalg, memref, scf
+from xdsl.dialects import affine, arith, builtin, memref, scf
 from xdsl.dialects.builtin import IndexType
 from xdsl.ir import Block, Operation, SSAValue
 from xdsl.ir.affine import AffineConstantExpr
