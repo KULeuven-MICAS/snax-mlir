@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p reuse-memref-space | filecheck %s
+// RUN: ./compiler/snax-opt --split-input-file %s -p reuse-memref-allocs | filecheck %s
 
 builtin.module {
   func.func @streamer_matmul(%arg0 : memref<?x?xi8, "L3">, %arg1 : memref<?x?xi32, "L3">) {
