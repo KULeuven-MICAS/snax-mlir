@@ -1,5 +1,5 @@
 from xdsl.context import MLContext
-from xdsl.dialects import affine, arith, builtin, memref, scf
+from xdsl.dialects import affine, arith, builtin, memref, scf, linalg
 from xdsl.dialects.builtin import IndexType
 from xdsl.ir import Block, Operation, SSAValue
 from xdsl.ir.affine import AffineConstantExpr
@@ -123,11 +123,14 @@ class MoveMemrefDims(RewritePattern):
             if before_loop(dim_op):
                 return True
             memref_op = dim_op.source.owner
+            index = int(dim_op.index.owner.value.value.data)
+            return memref_op_outside_loop(memref_op, index)
+
+        def memref_op_outside_loop(memref_op: Operation, index: int) -> bool:
             if isinstance(memref_op, Block):
                 # This happens when the dim is called on an input argument
                 return True
             if isinstance(memref_op, memref.Subview):
-                index = int(dim_op.index.owner.value.value.data)
                 new_op = memref_op.sizes[index].owner
                 if isinstance(new_op, arith.Constant) or isinstance(
                     new_op, affine.MinOp
@@ -137,6 +140,9 @@ class MoveMemrefDims(RewritePattern):
                     return dimension_outside_loop(new_op)
                 else:
                     return False
+            if isinstance(memref_op, linalg.MatmulOp):
+                new_memref_op = memref_op.inputs[index].owner
+                return memref_op_outside_loop(new_memref_op, index)
             # TODO: Add support for other memref operations, like matmul
             return False
 
@@ -205,12 +211,19 @@ class MoveMemrefDims(RewritePattern):
             """
             if before_loop(dim_op):
                 return dim_op
-            memref_op = dim_op.source.owner
+            memref_ssa = dim_op.source
+            index_constant = dim_op.index.owner
+            return get_new_memref_op(memref_ssa, index_constant)
+
+        def get_new_memref_op(
+            memref_ssa: SSAValue, index_constant: arith.Constant
+        ) -> memref.Dim | arith.Constant | affine.MinOp:
+            memref_op = memref_ssa.owner
+            index = index_constant.value.value.data
             if isinstance(memref_op, Block):
                 # This happens when the dim is called on an input argument
-                return dim_op
+                return memref.Dim.from_source_and_index(memref_ssa, index_constant)
             if isinstance(memref_op, memref.Subview):
-                index = int(dim_op.index.owner.value.value.data)
                 new_op = memref_op.sizes[index].owner
                 if isinstance(new_op, arith.Constant) or isinstance(
                     new_op, affine.MinOp
@@ -218,6 +231,9 @@ class MoveMemrefDims(RewritePattern):
                     return new_op
                 else:
                     return get_new_dim_op(new_op)
+            if isinstance(memref_op, linalg.MatmulOp):
+                new_memref_ssa = memref_op.inputs[index]
+                return memref_op_outside_loop(new_memref_ssa, index_constant)
             # TODO: Add support for other memref operations, like matmul
             AssertionError("This Dim Operation is not replaceable")
 
