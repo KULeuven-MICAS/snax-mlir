@@ -157,10 +157,6 @@ class MoveMemrefDims(RewritePattern):
                     return dimension_outside_loop(new_op)
                 else:
                     return False
-            if isinstance(memref_op, linalg.MatmulOp):
-                new_memref_op = memref_op.inputs[index].owner
-                return memref_op_outside_loop(new_memref_op, index)
-            # TODO: Add support for other memref operations, like matmul
             return False
 
         def used_by_neither_alloc_nor_subview(dim_op: memref.Dim) -> bool:
@@ -248,10 +244,6 @@ class MoveMemrefDims(RewritePattern):
                     return new_op
                 else:
                     return get_new_dim_op(new_op)
-            if isinstance(memref_op, linalg.Generic):
-                new_memref_ssa = memref_op.inputs[index]
-                return memref_op_outside_loop(new_memref_ssa, index_constant)
-            # TODO: Add support for other memref operations, like matmul
             AssertionError("This Dim Operation is not replaceable")
 
         # if the alloc can be moved, detach it from the parent and insert new Alloc Object in front of the for-loop
@@ -285,8 +277,8 @@ class MoveMemrefDims(RewritePattern):
                 dim_op.erase(safe_erase=True)
 
 
-class ReuseMemrefSpace(ModulePass):
-    name = "reuse-memref-space"
+class ReuseMemrefAllocs(ModulePass):
+    name = "reuse-memref-allocs"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
