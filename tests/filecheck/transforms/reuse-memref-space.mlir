@@ -265,3 +265,37 @@ builtin.module {
 //CHECK-NEXT:     func.return
 //CHECK-NEXT:   }
 //CHECK-NEXT: }
+// -----
+
+builtin.module {
+  func.func @streamer_matmul(%arg0 : memref<?x?xi8, "L3">, %arg1 : memref<?x?xi32, "L3">) {
+    %0 = arith.constant 8 : index
+    %1 = arith.constant 1 : index
+    %2 = arith.constant 0 : i32
+    %3 = arith.constant 0 : index
+    scf.for %arg2 = %3 to %0 step %1{
+        %4 = "memref.dim"(%arg0, %3) :(memref<?x?xi8, "L3">, index) -> index
+        %5 = "memref.dim"(%arg0, %1) :(memref<?x?xi8, "L3">, index) -> index
+        %6 = memref.alloc(%4, %5) {"alignment" = 64 : i64} : memref<?x?xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, "L1">
+        %7 = arith.addi %4, %5 : index
+        }
+    func.return
+  }
+}
+
+// Nothing should happen when the Dim result is used by operations other than subviews and allocs
+//CHECK: builtin.module {
+//CHECK-NEXT:   func.func @streamer_matmul(%arg0 : memref<?x?xi8, "L3">, %arg1 : memref<?x?xi32, "L3">) {
+//CHECK-NEXT:     %0 = arith.constant 8 : index
+//CHECK-NEXT:     %1 = arith.constant 1 : index
+//CHECK-NEXT:     %2 = arith.constant 0 : i32
+//CHECK-NEXT:     %3 = arith.constant 0 : index
+//CHECK-NEXT:     scf.for %arg2 = %3 to %0 step %1 {
+//CHECK-NEXT:       %4 = "memref.dim"(%arg0, %3) : (memref<?x?xi8, "L3">, index) -> index
+//CHECK-NEXT:       %5 = "memref.dim"(%arg0, %1) : (memref<?x?xi8, "L3">, index) -> index
+//CHECK-NEXT:       %6 = memref.alloc(%4, %5) {"alignment" = 64 : i64} : memref<?x?xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, "L1">
+//CHECK-NEXT:       %7 = arith.addi %4, %5 : index
+//CHECK-NEXT:     }
+//CHECK-NEXT:     func.return
+//CHECK-NEXT:   }
+//CHECK-NEXT: }

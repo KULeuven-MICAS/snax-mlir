@@ -52,6 +52,7 @@ class LowerPureOperations(RewritePattern):
     This class represents a rewrite pattern for moving any Operation outside
     a (nested) for-loop. An Oparation can be moved if it is pure, that is, it
     does not have any side-effects within the loop and is not dependent on any loop variable.
+    Alloc operations are a special case, as they are not pure, but can be moved as well for optimization purposes.
     """
 
     @op_type_rewrite_pattern
@@ -61,7 +62,7 @@ class LowerPureOperations(RewritePattern):
             Operations can be moved if they comply with the following conditions:
             1. The operation is inside a loop.
             2. All operands are defined outside the loop.
-            3. The operation is Pure, it doesnt have any side effects.
+            3. The operation is Pure, it doesnt have any side effects, or it is an Alloc operation.
             """
             if all(
                 [
@@ -87,7 +88,7 @@ class LowerPureOperations(RewritePattern):
 class MoveMemrefDims(RewritePattern):
     """
     This class represents a rewrite pattern for moving Dim operations outside
-    a (nested) for-loop. This is possible the dimensions of a memref are not dependent
+    a (nested) for-loop. This is possible if the dimensions of a memref are not dependent
     on the loop variables, or a maximum possible value can be derived.
     """
 
@@ -117,7 +118,7 @@ class MoveMemrefDims(RewritePattern):
 
         def dimension_outside_loop(dim_op: memref.Dim) -> bool:
             """
-            Check if the dimension is defined outside the loop.
+            Check if the dimension can be derived outside of this for-loop.
             """
             if before_loop(dim_op):
                 return True
@@ -139,14 +140,26 @@ class MoveMemrefDims(RewritePattern):
             # TODO: Add support for other memref operations, like matmul
             return False
 
+        def used_by_not_alloc_subview(dim_op: memref.Dim) -> bool:
+            """
+            Check if the Dim operation is used by an operation that is not an Alloc or Subview operation.
+            """
+            for use in dim_op.results[0].uses:
+                if not isinstance(use.operation, memref.Alloc) and not isinstance(
+                    use.operation, memref.Subview
+                ):
+                    return True
+            return False
+
         def can_move_dim(dim_op: memref.Dim) -> bool:
             """
             Allocs can be moved if they comply with the following conditions:
             1.  The operation is a Dim operation.
             2.  The operation is inside a loop.
-            3.  The memref uppon which the dimension is taken is defined outside the loop,
+            3.  The memref of which the dimension is taken is defined outside the loop,
                 or the asked size can be determined outside the loop.
             4.  The index is given by a constant operation, which will already be outside the loop.
+            5.  The Dim result is only used by Alloc operations and subview operations.
             """
             pass
             if all(
@@ -154,6 +167,7 @@ class MoveMemrefDims(RewritePattern):
                     isinstance(dim_op, memref.Dim),
                     is_in_loop(dim_op),
                     isinstance(dim_op.index.owner, arith.Constant),
+                    not used_by_not_alloc_subview(dim_op),
                 ]
             ):
                 return dimension_outside_loop(dim_op)
