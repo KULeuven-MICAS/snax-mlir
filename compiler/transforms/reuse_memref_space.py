@@ -64,7 +64,6 @@ class LoopHoistPureOperations(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, main_op: Operation, rewriter: PatternRewriter):
-
         def is_whitelisted(op: Operation) -> bool:
             """
             Check if the operation is whitelisted.
