@@ -47,16 +47,34 @@ def defined_outside_loop(op: Operation) -> bool:
     return True
 
 
-class LowerPureOperations(RewritePattern):
+class LoopHoistPureOperations(RewritePattern):
     """
     This class represents a rewrite pattern for moving any Operation outside
-    a (nested) for-loop. An Oparation can be moved if it is pure, that is, it
+    a (nested) for-loop. An Operation can be moved if it is pure, that is, it
     does not have any side-effects within the loop and is not dependent on any loop variable.
     Alloc operations are a special case, as they are not pure, but can be moved as well for optimization purposes.
     """
 
+    # Add operations that are allowed to be moved, even if they are not pure
+    whitelisted_ops: list[Operation | None]
+
+    def __init__(self, whitelisted_ops: list[Operation | None]) -> None:
+        self.whitelisted_ops = whitelisted_ops.copy()
+        super().__init__()
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, main_op: Operation, rewriter: PatternRewriter):
+
+        def is_whitelisted(op: Operation) -> bool:
+            """
+            Check if the operation is whitelisted.
+            It can be moved even if it is not pure.
+            """
+            for op_type in self.whitelisted_ops:
+                if isinstance(op, op_type):
+                    return True
+            return False
+
         def can_move_operation(op: Operation) -> bool:
             """
             Operations can be moved if they comply with the following conditions:
@@ -68,7 +86,7 @@ class LowerPureOperations(RewritePattern):
                 [
                     is_in_loop(op),
                     defined_outside_loop(op),
-                    Pure() in op.traits or isinstance(op, memref.Alloc),
+                    Pure() in op.traits or is_whitelisted(main_op),
                     not isinstance(op, scf.Yield),
                 ]
             ):
@@ -146,7 +164,7 @@ class MoveMemrefDims(RewritePattern):
             # TODO: Add support for other memref operations, like matmul
             return False
 
-        def used_by_not_alloc_subview(dim_op: memref.Dim) -> bool:
+        def used_by_neither_alloc_nor_subview(dim_op: memref.Dim) -> bool:
             """
             Check if the Dim operation is used by an operation that is not an Alloc or Subview operation.
             """
@@ -159,7 +177,7 @@ class MoveMemrefDims(RewritePattern):
 
         def can_move_dim(dim_op: memref.Dim) -> bool:
             """
-            Allocs can be moved if they comply with the following conditions:
+            Dims can be moved if they comply with the following conditions:
             1.  The operation is a Dim operation.
             2.  The operation is inside a loop.
             3.  The memref of which the dimension is taken is defined outside the loop,
@@ -173,7 +191,7 @@ class MoveMemrefDims(RewritePattern):
                     isinstance(dim_op, memref.Dim),
                     is_in_loop(dim_op),
                     isinstance(dim_op.index.owner, arith.Constant),
-                    not used_by_not_alloc_subview(dim_op),
+                    not used_by_neither_alloc_nor_subview(dim_op),
                 ]
             ):
                 return dimension_outside_loop(dim_op)
@@ -231,7 +249,7 @@ class MoveMemrefDims(RewritePattern):
                     return new_op
                 else:
                     return get_new_dim_op(new_op)
-            if isinstance(memref_op, linalg.MatmulOp):
+            if isinstance(memref_op, linalg.Generic):
                 new_memref_ssa = memref_op.inputs[index]
                 return memref_op_outside_loop(new_memref_ssa, index_constant)
             # TODO: Add support for other memref operations, like matmul
@@ -275,7 +293,7 @@ class ReuseMemrefSpace(ModulePass):
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
                 [
-                    LowerPureOperations(),
+                    LoopHoistPureOperations([memref.Alloc]),
                     MoveMemrefDims(),
                 ]
             ),
