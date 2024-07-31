@@ -162,7 +162,9 @@ class TiledStridedLayout:
             next_stride = next(
                 (
                     (dim, depth, stride_self)
-                    for dim, depth, stride_self in self_strides
+                    for dim, depth, stride_self in sorted(
+                        self_strides, key=lambda x: x[2].bound is None
+                    )
                     if stride_self.step == current_stride
                 ),
                 None,

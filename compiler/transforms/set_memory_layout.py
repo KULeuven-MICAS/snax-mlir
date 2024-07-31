@@ -1,5 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg
+from xdsl.parser import MemRefType
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -34,12 +35,39 @@ class AddMemoryLayout(RewritePattern):
             library_call = linalg_op.library_call.data
 
         # check for library call
-        if library_call == "snax_gemm":
+        if library_call == "snax_gemm" or library_call == "snax_gemm_stream":
+            # the layout should be as static as the memref is. no more, no less
+            # get i, j, k
+
+            shaped_operands: list[MemRefType] = [
+                op.type
+                for op in linalg_op.operands
+                if isinstance(op.type, builtin.MemRefType)
+            ]
+
+            m = shaped_operands[0].get_shape()[0]
+            n = shaped_operands[1].get_shape()[1]
+            k = shaped_operands[0].get_shape()[1]
+
+            if m == -1:
+                m = None
+            if n == -1:
+                n = None
+            if k == -1:
+                k = None
+
             tsl_input_a = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
-                        TiledStride([Stride(None, None), Stride(8, 8)]),
-                        TiledStride([Stride(256, None), Stride(1, 8)]),
+                        TiledStride(
+                            [
+                                Stride(
+                                    256 * k // 8 if k else None, m // 8 if m else None
+                                ),
+                                Stride(8, 8),
+                            ]
+                        ),
+                        TiledStride([Stride(256, k // 8 if k else None), Stride(1, 8)]),
                     ]
                 )
             )
@@ -49,8 +77,15 @@ class AddMemoryLayout(RewritePattern):
             tsl_input_b = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
-                        TiledStride([Stride(256, None), Stride(1, 8)]),
-                        TiledStride([Stride(None, None), Stride(8, 8)]),
+                        TiledStride([Stride(256, k // 8 if k else None), Stride(1, 8)]),
+                        TiledStride(
+                            [
+                                Stride(
+                                    256 * k // 8 if k else None, n // 8 if n else None
+                                ),
+                                Stride(8, 8),
+                            ]
+                        ),
                     ],
                     # offset=64,
                 )
@@ -59,8 +94,15 @@ class AddMemoryLayout(RewritePattern):
             tsl_output = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
-                        TiledStride([Stride(None, None), Stride(32, 8)]),
-                        TiledStride([Stride(256, None), Stride(4, 8)]),
+                        TiledStride(
+                            [
+                                Stride(
+                                    256 * n // 8 if n else None, m // 8 if m else None
+                                ),
+                                Stride(32, 8),
+                            ]
+                        ),
+                        TiledStride([Stride(256, n // 8 if n else None), Stride(4, 8)]),
                     ]
                 )
             )
