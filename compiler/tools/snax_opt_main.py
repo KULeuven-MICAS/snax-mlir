@@ -18,10 +18,12 @@ from compiler.transforms.convert_linalg_to_accfg import (
 )
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
+from compiler.transforms.guarded_linalg_to_memref_stream import GuardedLinalgToMemrefStreamPass
 from compiler.transforms.insert_accfg_op import InsertAccOp
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.memref_to_snax import MemrefToSNAX
+from compiler.transforms.preprocess_mlperftiny import PreprocessMLPerfTiny
 from compiler.transforms.realize_memref_casts import RealizeMemrefCastsPass
 from compiler.transforms.schedule_memref_linalg import ScheduleMemrefLinalg
 from compiler.transforms.set_memory_layout import SetMemoryLayout
@@ -30,7 +32,6 @@ from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.stream_snaxify import StreamSnaxify
-from compiler.transforms.guarded_linalg_to_memref_stream import GuardedLinalgToMemrefStreamPass
 
 
 class SNAXOptMain(xDSLOptMain):
@@ -84,6 +85,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(StreamSnaxify.name, lambda: StreamSnaxify)
         super().register_pass(ScheduleMemrefLinalg.name, lambda: ScheduleMemrefLinalg)
         super().register_pass(GuardedLinalgToMemrefStreamPass.name, lambda: GuardedLinalgToMemrefStreamPass)
+        super().register_pass(PreprocessMLPerfTiny.name, lambda: PreprocessMLPerfTiny)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)

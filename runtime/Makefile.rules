@@ -88,6 +88,8 @@ MLIRPREPROCFLAGS += --mlir-print-op-generic
 MLIRPREPROCFLAGS += --mlir-print-local-scope
 
 MLIRPREPROC2FLAGS = --tosa-to-arith="include-apply-rescale" 
+MLIRPREPROC2FLAGS += --mlir-print-op-generic
+MLIRPREPROC2FLAGS += --mlir-print-local-scope
 MLIRPREPROC2FLAGS += --empty-tensor-to-alloc-tensor
 
 MLIRPREPROC3FLAGS += --test-linalg-transform-patterns="test-generalize-pad-tensor"
