@@ -7,6 +7,7 @@ from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, Rewrite
 from xdsl.rewriter import InsertPoint
 
 from compiler.util.canonicalize_affine import canonicalize_map
+from compiler.util.latexprint_affine import LaTeXPrinter
 
 
 def disable_dims(map: AffineMap, dim: int) -> AffineMap:
@@ -131,6 +132,13 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
 
         schedule_bounds: list[int | None] = [bound.value.data for bound in op.bounds.data]
 
+        printer = LaTeXPrinter()
+        template_boundnames = ['m_0','n_0', 'k_0', 'm_1', 'n_1', 'k_1']
+        schedule_boundnames = ['a', 'b', 'c']
+
+        printer.print(template, template_boundnames, template_bounds, comment="full template")
+        printer.print(schedule, schedule_boundnames, schedule_bounds, comment="full initial schedule")
+
         for i in range(template[0].num_dims):
             # i = 0: look at the last dimension
             template_dim = template[0].num_dims - i - 1
@@ -146,6 +154,10 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
 
                 # print(f"i = {i}, template_dim = {template_dim}, schedule_dim = {schedule_dim}, attempt = {it}")
 
+                printer.print(schedule, schedule_boundnames, schedule_bounds, comment='full schedule')
+                printer.print(template_check, template_boundnames[-(i+1):], template_bounds[-(i+1):], comment="template check")
+                printer.print(schedule_check, schedule_boundnames[-(i+1):], schedule_bounds[-(i+1):], comment="schedule check")
+
                 # for j in range(3):
                 #     print(f"schedule-{j}: {str(schedule[j])}")
 
@@ -159,7 +171,6 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
 
                 # print(f"template_check == schedule_check: {template_check == schedule_check}")
 
-                # breakpoint()
 
                 if template_check == schedule_check:
                     match = True
@@ -168,6 +179,10 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                 # else rotate the for loops
                 schedule = tuple(rotate_dims(map, schedule_dim + 1) for map in schedule)
                 schedule_bounds = rotate_bounds(schedule_bounds, schedule_dim + 1)
+
+                # rotate bounds
+                schedule_boundnames = rotate_bounds(schedule_boundnames, schedule_dim + 1)
+
 
             if not match:
                 raise RuntimeError("failed to match template and schedule")
@@ -192,6 +207,15 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                 schedule = [split_dim(schedule_map, schedule_dim, template_bound) for schedule_map in schedule]
                 schedule_bounds = split_bounds(schedule_bounds, schedule_dim, template_bound)
 
+                breakpoint()
+                if '_' not in schedule_boundnames[schedule_dim]:
+                    schedule_boundnames[schedule_dim] = schedule_boundnames[schedule_dim] + '_0'
+                schedule_boundname_place = schedule_boundnames[schedule_dim]
+                name_i = int(schedule_boundname_place[-1]) + 1
+                schedule_boundnames.insert(schedule_dim+1, schedule_boundname_place[:-1] + str(name_i))
+
+        with open('algorithm.tex', 'w') as algo_file:
+            algo_file.write(printer.get_result())
 
         # if we get here, we're lucky, because nothing broke yet :-)
         # we have now successfully determined a schedule for the operator
