@@ -9,6 +9,11 @@ from xdsl.ir.affine import (
 
 
 def get_dim(expr: AffineExpr) -> int | None:
+    # get the dimension of this expression. If d0 appears, return 0.
+    # If d1 appears, return 1. This will fail for nested additions in
+    # which multiple dimension expressions appear. This happens quite
+    # often, but can only be solved with a full flattening of the affine map.
+    # this is todo
     if isinstance(expr, AffineDimExpr):
         return expr.position
     if isinstance(expr, AffineBinaryOpExpr):
@@ -21,22 +26,25 @@ def get_dim(expr: AffineExpr) -> int | None:
 
 
 def canonicalize_addition(expr: AffineBinaryOpExpr) -> AffineExpr:
+    # always put the constant on rhs
     assert expr.kind is AffineBinaryOpKind.Add
     if isinstance(expr.lhs, AffineConstantExpr):
         # lhs is constant
         if isinstance(expr.rhs, AffineConstantExpr):
-            # both are constants
+            # both are constants: fold constants
             return AffineConstantExpr(expr.lhs.value + expr.rhs.value)
         else:
             # move constant to rhs
             expr = AffineBinaryOpExpr(expr.kind, expr.rhs, expr.lhs)
     if isinstance(expr.rhs, AffineConstantExpr):
         # rhs is constant, lhs is not
+        # addition by 0 can be omitted
         if expr.rhs.value == 0:
             return expr.lhs
     # order by minimum dimension first
-    dim_lhs = get_dim(expr.lhs)  # 3
-    dim_rhs = get_dim(expr.rhs)  # 0
+    # d0 + d1: good. d1 + d0: bad
+    dim_lhs = get_dim(expr.lhs)
+    dim_rhs = get_dim(expr.rhs)
     if dim_rhs is not None:
         if dim_lhs is None or dim_lhs > dim_rhs:
             return expr.rhs + expr.lhs
@@ -44,17 +52,19 @@ def canonicalize_addition(expr: AffineBinaryOpExpr) -> AffineExpr:
 
 
 def canonicalize_multiplication(expr: AffineBinaryOpExpr) -> AffineExpr:
+    # always put the constant on rhs
     assert expr.kind is AffineBinaryOpKind.Mul
     if isinstance(expr.lhs, AffineConstantExpr):
         # lhs is constant
         if isinstance(expr.rhs, AffineConstantExpr):
-            # both are constants
+            # both are constants: fold constants
             return AffineConstantExpr(expr.lhs.value * expr.rhs.value)
         else:
             # move constant to rhs
             return AffineBinaryOpExpr(expr.kind, expr.rhs, expr.lhs)
     if isinstance(expr.rhs, AffineConstantExpr):
         # rhs is constant, lhs is not
+        # multiplication by 1 can be omitted
         if expr.rhs.value == 1:
             return expr.lhs
     return expr
@@ -63,7 +73,7 @@ def canonicalize_multiplication(expr: AffineBinaryOpExpr) -> AffineExpr:
 def canonicalize_floordiv(expr: AffineBinaryOpExpr) -> AffineExpr:
     assert expr.kind is AffineBinaryOpKind.FloorDiv
     if isinstance(expr.rhs, AffineConstantExpr):
-        # rhs is constant, lhs is not
+        # division by 1 can be omitted
         if expr.rhs.value == 1:
             return expr.lhs
     return expr
@@ -72,14 +82,14 @@ def canonicalize_floordiv(expr: AffineBinaryOpExpr) -> AffineExpr:
 def canonicalize_mod(expr: AffineBinaryOpExpr) -> AffineExpr:
     assert expr.kind is AffineBinaryOpKind.Mod
     if isinstance(expr.rhs, AffineConstantExpr):
-        # rhs is constant, lhs is not
+        # module 1 is always 0
         if expr.rhs.value == 1:
             return AffineConstantExpr(0)
     return expr
 
 
 def canonicalize_binary_op(expr: AffineBinaryOpExpr) -> AffineExpr:
-    # canonicalize childern
+    # canonicalize children
     expr = AffineBinaryOpExpr(
         expr.kind, canonicalize_expr(expr.lhs), canonicalize_expr(expr.rhs)
     )
