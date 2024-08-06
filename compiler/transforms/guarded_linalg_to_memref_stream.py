@@ -9,11 +9,13 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.transforms.convert_linalg_to_memref_stream import ConvertGenericOpPattern, ConvertYieldOpPattern
+from xdsl.transforms.convert_linalg_to_memref_stream import (
+    ConvertGenericOpPattern,
+    ConvertYieldOpPattern,
+)
 
 
 class GuardedGenericOpPattern(RewritePattern):
-
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter) -> None:
         """
@@ -25,10 +27,9 @@ class GuardedGenericOpPattern(RewritePattern):
         if not op.library_call:
             return
 
-        if op.library_call.data.endswith('_stream'):
-            op.library_call = StringAttr(op.library_call.data[:-len('_stream')])
+        if op.library_call.data.endswith("_stream"):
+            op.library_call = StringAttr(op.library_call.data[: -len("_stream")])
             ConvertGenericOpPattern().match_and_rewrite(op, rewriter)
-
 
 
 class GuardedLinalgToMemrefStreamPass(ModulePass):
@@ -36,6 +37,8 @@ class GuardedLinalgToMemrefStreamPass(ModulePass):
 
     def apply(self, ctx: MLContext, op: ModuleOp) -> None:
         PatternRewriteWalker(
-            GreedyRewritePatternApplier([GuardedGenericOpPattern(), ConvertYieldOpPattern()]),
+            GreedyRewritePatternApplier(
+                [GuardedGenericOpPattern(), ConvertYieldOpPattern()]
+            ),
             apply_recursively=False,
         ).rewrite_module(op)
