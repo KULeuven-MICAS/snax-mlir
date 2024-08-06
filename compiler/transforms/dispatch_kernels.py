@@ -1,7 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg
 from xdsl.dialects.memref import MemRefType
-from xdsl.ir import Operation
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -17,7 +16,6 @@ from compiler.util.kernel_type import KernelType
 class DispatchSnaxALU(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
-
         ## conditions for library call:
         # (1) kernel type must be add
         # (2) data type must be 1D integer memref of i64
@@ -38,7 +36,7 @@ class DispatchSnaxALU(RewritePattern):
                     not isinstance(inp.type, MemRefType),
                     len(inp.type.get_shape()) != 1,
                     not isinstance(inp.type.get_element_type(), builtin.IntegerType),
-                    #TODO: check for i64
+                    # TODO: check for i64
                 ]
             ):
                 return
@@ -52,7 +50,6 @@ class DispatchSnaxALU(RewritePattern):
                 return
 
         op.library_call = builtin.StringAttr("snax_alu")
-
 
 
 class DispatchElementwiseMult(RewritePattern):
