@@ -1,6 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg
-from xdsl.dialects.memref import MemRefType
+from xdsl.dialects.builtin import MemRefType
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -31,14 +31,15 @@ class DispatchSnaxALU(RewritePattern):
             return
 
         for inp in op.inputs:
-            if any(
-                [
-                    not isinstance(inp.type, MemRefType),
-                    len(inp.type.get_shape()) != 1,
-                    not isinstance(inp.type.get_element_type(), builtin.IntegerType),
-                    # TODO: check for i64
-                ]
+            if not isinstance((itype := inp.type), MemRefType):
+                return
+            if len(itype.get_shape()) != 1:
+                return
+            if not isinstance(
+                (el_type := itype.get_element_type()), builtin.IntegerType
             ):
+                return
+            if not el_type.bitwidth == 64:
                 return
 
         # check if maybe possible to use stream dialect?
