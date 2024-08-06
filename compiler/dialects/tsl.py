@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from math import prod
 
 from xdsl.dialects.arith import Constant, DivUI, Muli
@@ -52,8 +51,10 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             for depth in range(max_depth):
                 strides = self.data.tstrides[dim].strides
                 mod = prod([stride.bound for stride in strides[depth:] if stride.bound])
-                fdiv = prod([stride.bound for stride in strides[depth + 1:] if stride.bound])
-                assert (step := self.data.get_stride(dim,depth).step)
+                fdiv = prod(
+                    [stride.bound for stride in strides[depth + 1 :] if stride.bound]
+                )
+                assert (step := self.data.get_stride(dim, depth).step)
                 if depth > 0:
                     result += step * ((AffineDimExpr(dim) % mod) // fdiv)
                 else:
