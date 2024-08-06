@@ -37,7 +37,6 @@ def test_tsl_attr_get_affine(example_tsl_attr):
     tsl = example_tsl_attr
     breakpoint()
     map = canonicalize_map(tsl.get_affine_map())
-    # turns out it is very difficult to check the equality of affine maps :(
     assert map == AffineMap.from_callable(
         lambda d0, d1: (
             (((((d0 // 4) * 32) + ((d0 % 4) * 4)) + ((d1 // 4) * 16)) + (d1 % 4)),
