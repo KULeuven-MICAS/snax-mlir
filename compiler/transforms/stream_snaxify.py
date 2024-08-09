@@ -132,7 +132,8 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             spat_dim = streamer_config.data.spatial_dim()
 
             # extremely dirty fix:
-            if spat_dim == 2:
+            # FIXME: integrate virtual spatial dimensions to solve this problem
+            if op.body.block.first_op.library_call.data == 'snax_gemm': #pyright: ignore
                 spat_dim = 3
 
             temporal_strides = []

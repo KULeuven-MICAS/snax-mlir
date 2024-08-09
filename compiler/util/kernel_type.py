@@ -2,7 +2,7 @@ from enum import Enum
 
 from xdsl.dialects import arith, linalg
 from xdsl.dialects.builtin import ShapedType
-from xdsl.ir import Block, Operation, OpResult, SSAValue
+from xdsl.ir import Block, BlockArgument, Operation, OpResult, SSAValue
 
 
 class KernelException(Exception):
@@ -38,10 +38,13 @@ class KernelType(Enum):
             out += (a - zp_a) * (b - zp_b)
     """
 
+    YIELD = "yield"
     ADD = "add"
     MUL = "mul"
     MAC = "mac"
     QMAC = "qmac"
+    CLAMP = "clamp"
+    RESCALE = "rescale"
 
     @staticmethod
     def parse_mult(op: Operation) -> tuple[Operation | SSAValue, Operation | SSAValue]:
@@ -94,6 +97,21 @@ class KernelType(Enum):
         return a, b
 
     @staticmethod
+    def parse_trunc(op: Operation) -> Operation | SSAValue:
+
+        if not isinstance(op, arith.TruncIOp):
+            raise KernelException
+        return op.input
+
+    @staticmethod
+    def parse_shift(op: Operation) -> tuple[SSAValue, SSAValue]:
+
+        if not isinstance(op, arith.ShRSI | arith.ShLI):
+            raise KernelException
+        value, shift = op.lhs, op.rhs
+        return value, shift
+
+    @staticmethod
     def parse_zpa(op: Operation) -> tuple[Operation | SSAValue, Operation | SSAValue]:
         """
         Parses a zero point adjustment operation and returns the two operands.
@@ -126,6 +144,103 @@ class KernelType(Enum):
             value = value.op.operands[0]
 
         return value, adjustment
+
+    @staticmethod
+    def parse_clamp(op: Operation) -> tuple[SSAValue, Operation, Operation]:
+        """
+        Parses a clamping operation on a single operand, and returns the original op.
+        A clamping consists of two comparisons and selects, one for a lower bound,
+        one for an upper bound.
+
+        Also returns the upper and lower bound
+        """
+
+
+        # we must find a comparison for greater then and lower then
+        # this corresponds to predicates 2 and 4
+        tofind = set([2, 4])
+
+        input = None
+        lower = None
+        upper = None
+
+        while tofind:
+
+            if not isinstance(op, arith.Select):
+                raise KernelException
+
+            constant = op.lhs
+            value = op.rhs
+
+            if not isinstance(op.cond.owner, arith.Cmpi):
+                raise KernelException
+
+            if op.cond.owner.predicate.value.data not in tofind:
+                raise KernelException
+
+            if op.cond.owner.rhs is not constant:
+                raise KernelException
+
+            tofind.remove(op.cond.owner.predicate.value.data)
+            if not isinstance(constant.owner, Operation):
+                raise KernelException
+            if op.cond.owner.predicate.value.data == 2: #slt
+                lower = constant.owner
+            else: #sgt
+                upper = constant.owner
+
+            input = value
+
+            if not isinstance(value.owner, Operation):
+                if tofind:
+                    raise KernelException
+                break
+
+            op = value.owner
+
+        if not input:
+            raise KernelException
+
+        assert lower
+        assert upper
+
+        return input, lower, upper
+
+    @staticmethod
+    def parse_rescale(op: Operation) -> tuple[Operation | SSAValue, tuple[Operation | SSAValue, ...]]:
+
+        clamped_op = KernelType.parse_trunc(op)
+        if not isinstance(clamped_op, OpResult):
+            raise KernelException
+        zpa, _, _ = KernelType.parse_clamp(clamped_op.owner)
+        if not isinstance(zpa, OpResult):
+            raise KernelException
+        trunc_op, zp_out_val = KernelType.parse_add(zpa.owner)
+        if not isinstance(trunc_op, OpResult):
+            raise KernelException
+        shift_op = KernelType.parse_trunc(trunc_op.owner)
+        if not isinstance(shift_op, OpResult):
+            raise KernelException
+        add_op, shift_val = KernelType.parse_shift(shift_op.owner)
+        if not isinstance(add_op, OpResult):
+            raise KernelException
+        # now the rounding
+        _, add_op = KernelType.parse_add(add_op.owner)
+        if not isinstance(add_op, OpResult):
+            raise KernelException
+        add_op, _ = KernelType.parse_add(add_op.owner)
+        if not isinstance(add_op, OpResult):
+            raise KernelException
+        extsi_op, mult_val = KernelType.parse_mult(add_op.owner)
+        if not isinstance(extsi_op, OpResult):
+            raise KernelException
+        if not isinstance(extsi_op.owner, arith.ExtSIOp):
+            raise KernelException
+        init_op = extsi_op.owner.input
+
+
+        return init_op, (zp_out_val, shift_val, mult_val)
+
 
     @staticmethod
     def parse_inputs(linalg_op: linalg.Generic) -> tuple[linalg.YieldOp, dict]:
@@ -161,7 +276,8 @@ class KernelType(Enum):
         # (input a, input b, output c)  other operands may be integer types used for
         # constant values, such as zero-point offsets
         if len([type for type in types.values() if isinstance(type, ShapedType)]) != 3:
-            raise KernelException("Wrong number of shaped operands")
+            pass
+            # raise KernelException("Wrong number of shaped operands")
 
         # there should only be one output and it should be shaped
         if len(linalg_op.outputs) != 1:
@@ -172,7 +288,7 @@ class KernelType(Enum):
         return (linalg_block.last_op, types)
 
     @staticmethod
-    def match_inputs(a: Operation | SSAValue, b: Operation | SSAValue, types: dict):
+    def match_inputs(a: Operation | SSAValue, b: Operation | SSAValue | None, types: dict):
         """
         Matches the operands a and b with the input types of the linalg kernel.
         This is mainly used as a check to see if we have reached the top
@@ -190,8 +306,9 @@ class KernelType(Enum):
         # check if the operands a and b are shaped inputs of the linalg kernel
         if a not in types or not isinstance(types[a], ShapedType):
             raise InputException("Operand a is not a shaped input")
-        if b not in types or not isinstance(types[b], ShapedType):
-            raise InputException("Operand b is not a shaped input")
+        if b:
+            if b not in types or not isinstance(types[b], ShapedType):
+                raise InputException("Operand b is not a shaped input")
 
         # matching successful, return
         return
@@ -219,7 +336,8 @@ class KernelType(Enum):
         # yielded_op.op would result in an AttributeError
         yielded_op = yield_op.operands[0]
         if not isinstance(yielded_op, OpResult):
-            return None
+            assert isinstance(yielded_op, BlockArgument)
+            return KernelType.YIELD
 
         # check: MUL
         # a = b * c
@@ -269,5 +387,23 @@ class KernelType(Enum):
                 return KernelType.QMAC
         except KernelException:
             pass
+
+        # check: CLAMP
+        try:
+            op, lower, upper = KernelType.parse_clamp(yielded_op.op)
+            KernelType.match_inputs(op, None, types)
+            return KernelType.CLAMP
+        except KernelException:
+            pass
+
+
+        # check: RESCALE:
+        try:
+            op, _ = KernelType.parse_rescale(yielded_op.op)
+            KernelType.match_inputs(op, None, types)
+            return KernelType.RESCALE
+        except KernelException:
+            pass
+
 
         return None

@@ -10,6 +10,7 @@ from xdsl.dialects.builtin import (
     IntegerType,
     MemRefType,
     NoneAttr,
+    StringAttr,
     UnrankedMemrefType,
     i32,
 )
@@ -24,9 +25,11 @@ from xdsl.irdl import (
     irdl_op_definition,
     operand_def,
     opt_prop_def,
+    prop_def,
     result_def,
     var_operand_def,
 )
+from xdsl.irdl.operations import OperandDef, opt_operand_def
 from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 from xdsl.utils.exceptions import VerifyException
@@ -147,6 +150,36 @@ class Alloc(IRDLOperation):
         descriptor = LLVMMemrefDescriptor(self.result.type)
         descriptor.verify()
 
+@irdl_op_definition
+class DumpL1(IRDLOperation):
+    """
+    Basically perform a full memory dump of L1.
+    Every allocated memref in L1 is now invalidated.
+    """
+    name = "snax.dump_l1"
+
+
+@irdl_op_definition
+class Debug(IRDLOperation):
+    """
+    Run a debug statement, passing operands to a C function
+    """
+    name = "snax.debug"
+
+    op_a = operand_def(MemRefType[Attribute])
+    op_b = operand_def(MemRefType[Attribute])
+    op_c = operand_def(MemRefType[Attribute])
+
+    debug_type = prop_def(StringAttr)
+    when = prop_def(StringAttr)
+
+    def __init__(self, op_a: SSAValue, op_b: SSAValue, op_c: SSAValue, debug_type: str, when: str):
+        assert when in ('before', 'after')
+        super().__init__(
+            operands = [op_a, op_b, op_c],
+            result_types=[],
+            properties={"debug_type": StringAttr(debug_type), "when": StringAttr(when)}
+        )
 
 @irdl_attr_definition
 class StreamerConfigurationAttr(Data[StreamerConfiguration]):
@@ -192,5 +225,5 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
 
 
 Snax = Dialect(
-    "snax", [ClusterSyncOp, MCycleOp, LayoutCast, Alloc], [StreamerConfigurationAttr]
+    "snax", [ClusterSyncOp, MCycleOp, LayoutCast, Alloc, DumpL1, Debug], [StreamerConfigurationAttr]
 )

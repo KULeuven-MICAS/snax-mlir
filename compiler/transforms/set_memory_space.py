@@ -144,15 +144,17 @@ class InitLinalgMemorySpace(RewritePattern):
                 return None
 
             # cast required: find previous cast or create new one
+            # edit: always create new one bad practice but necessary because of memory dumps
             cast_op = None
-            for use in operand.uses:
-                if (
-                    isinstance(use.operation, memref.MemorySpaceCast)
-                    and isinstance(use.operation.dest.type, builtin.MemRefType)
-                    and use.operation.dest.type.memory_space == L1
-                ):
-                    cast_op = use.operation
-                    break
+            # for use in operand.uses:
+            #     if (
+            #         isinstance(use.operation, memref.MemorySpaceCast)
+            #         and isinstance(use.operation.dest.type, builtin.MemRefType)
+            #         and use.operation.dest.type.memory_space == L1
+            #     ):
+            #         cast_op = use.operation
+            #         break
+            # make sure there is no memory dump between cast op and this op
             # If cast op not found, create and insert new one
             if cast_op is None:
                 cast_op = memref.MemorySpaceCast.from_type_and_target_space(

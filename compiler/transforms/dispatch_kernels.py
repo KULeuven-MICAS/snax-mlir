@@ -1,7 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg
-from xdsl.dialects.memref import MemRefType
-from xdsl.ir import Operation
+from xdsl.dialects.builtin import MemRefType
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -13,6 +12,15 @@ from xdsl.pattern_rewriter import (
 
 from compiler.util.kernel_type import KernelType
 
+
+class DispatchSIMD(RewritePattern):
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
+
+        kernel_type = KernelType.get_kernel(op)
+        if kernel_type == KernelType.RESCALE:
+            op.library_call = builtin.StringAttr("snax_simd_stream")
 
 class DispatchSnaxALU(RewritePattern):
     @op_type_rewrite_pattern
@@ -180,3 +188,4 @@ class DispatchKernels(ModulePass):
         PatternRewriteWalker(DispatchElementwiseMult()).rewrite_module(op)
         PatternRewriteWalker(DispatchQMatMul()).rewrite_module(op)
         PatternRewriteWalker(DispatchSnaxALU()).rewrite_module(op)
+        PatternRewriteWalker(DispatchSIMD()).rewrite_module(op)

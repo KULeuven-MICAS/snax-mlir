@@ -1,6 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, linalg, memref
-from xdsl.dialects.memref import MemorySpaceCast
+from xdsl.dialects.memref import GetGlobal, MemorySpaceCast
 from xdsl.ir import Operation, OpResult
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -32,6 +32,8 @@ class RealizeMemrefCasts(RewritePattern):
         # if the casting is not used anymore (perhaps made useless by previous
         # cast realizations), we do not need to do anything. dce will remove it later
         if not op.dest.uses:
+            # do dce ourselves
+            rewriter.erase_matched_op()
             return
 
         # due to previous passes, it is common for multiple memref casting
@@ -83,7 +85,14 @@ class RealizeMemrefCasts(RewritePattern):
         )
         ops_to_add.append(alloc_op)
 
+        if isinstance(op.source, OpResult):
+            if isinstance(op.source.op, GetGlobal):
+                name_ = op.source.op.name_.root_reference.data
+                if name_ == 'abc':
+                    breakpoint()
+
         # Insert copy ops if newly allocated memref is used as
+        # k
         # input or output, list to visit all uses of allocated memrefs:
         uses = [x.operation for x in op.dest.uses]
 

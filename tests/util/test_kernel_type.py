@@ -1,7 +1,7 @@
 import pytest
 from xdsl.builder import Builder
 from xdsl.dialects import arith, linalg, memref
-from xdsl.dialects.builtin import AffineMapAttr, IndexType
+from xdsl.dialects.builtin import AffineMapAttr, IndexType, IntegerType
 from xdsl.ir.affine import AffineMap
 from xdsl.utils.test_value import TestSSAValue
 
@@ -84,6 +84,22 @@ def linalg_qmac(linalg_operands):
     linalg_op = linalg.Generic(inputs, outputs, body, imap, itype)
     return linalg_op
 
+@pytest.fixture()
+def linalg_clamp(linalg_operands):
+    @Builder.implicit_region([IndexType()] * 5)
+    def body(args):
+        lower = arith.Constant.from_int_and_width(-69, IndexType())
+        upper = arith.Constant.from_int_and_width(69, IndexType())
+        islower = arith.Cmpi(args[0], lower, 'slt')
+        clamped_lower = arith.Select(islower, lower, args[0])
+        ishigher = arith.Cmpi(clamped_lower, upper, 'sgt')
+        clamped = arith.Select(ishigher, upper, clamped_lower)
+        linalg.YieldOp(clamped)
+    inputs, outputs, imap, itype = linalg_operands
+    linalg_op = linalg.Generic(inputs, outputs, body, imap, itype)
+    return linalg_op
+
+
 
 def test_parse_mult():
     a = TestSSAValue(IndexType())
@@ -151,8 +167,9 @@ def test_match_inputs(linalg_mult):
         KernelType.match_inputs(a, b, types)
 
 
-def test_get_type(linalg_empty, linalg_mult, linalg_mac, linalg_qmac):
-    assert KernelType.get_kernel(linalg_empty) is None
+def test_get_type(linalg_empty, linalg_mult, linalg_mac, linalg_qmac, linalg_clamp):
+    assert KernelType.get_kernel(linalg_empty) == KernelType.YIELD
     assert KernelType.get_kernel(linalg_mult) == KernelType.MUL
     assert KernelType.get_kernel(linalg_mac) == KernelType.MAC
     assert KernelType.get_kernel(linalg_qmac) == KernelType.QMAC
+    assert KernelType.get_kernel(linalg_clamp) == KernelType.CLAMP

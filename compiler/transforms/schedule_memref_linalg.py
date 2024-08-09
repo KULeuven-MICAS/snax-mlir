@@ -107,7 +107,7 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             # Already streamified
             return
 
-        if not (isinstance(op.library_call, builtin.StringAttr) and op.library_call.data in ("snax_alu", "snax_gemm")):
+        if not (isinstance(op.library_call, builtin.StringAttr) and op.library_call.data in ("snax_alu", "snax_gemm", "snax_simd")):
             raise NotImplementedError("panic!")
 
         # only handle snax_alu for now
@@ -122,6 +122,13 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                 AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
             ]
             template_bounds = (None, None, None, 8, 8, 8)
+        elif op.library_call.data == "snax_simd":
+            M, K, m, k = (AffineDimExpr(i) for i in range(4))
+            template = [
+                AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
+                AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
+            ]
+            template_bounds = (None, None, 8, 8)
         else:
             raise RuntimeError("panic!")
 
@@ -154,9 +161,9 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
 
                 # print(f"i = {i}, template_dim = {template_dim}, schedule_dim = {schedule_dim}, attempt = {it}")
 
-                printer.print(schedule, schedule_boundnames, schedule_bounds, comment='full schedule')
-                printer.print(template_check, template_boundnames[-(i+1):], template_bounds[-(i+1):], comment="template check")
-                printer.print(schedule_check, schedule_boundnames[-(i+1):], schedule_bounds[-(i+1):], comment="schedule check")
+                # printer.print(schedule, schedule_boundnames, schedule_bounds, comment='full schedule')
+                # printer.print(template_check, template_boundnames[-(i+1):], template_bounds[-(i+1):], comment="template check")
+                # printer.print(schedule_check, schedule_boundnames[-(i+1):], schedule_bounds[-(i+1):], comment="schedule check")
 
                 # for j in range(3):
                 #     print(f"schedule-{j}: {str(schedule[j])}")
@@ -197,25 +204,20 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             if schedule_bound < template_bound:
                 # need to apply padding
                 raise NotImplementedError("padding not supported")
-            elif schedule_bound == template_bound:
-                # perfect!
-                # (i think?)
-                raise NotImplementedError("need to check behaviour in this case")
-            elif schedule_bound > template_bound:
+            elif schedule_bound >= template_bound:
                 # need to split up the schedule
                 assert schedule_bound % template_bound == 0
                 schedule = [split_dim(schedule_map, schedule_dim, template_bound) for schedule_map in schedule]
                 schedule_bounds = split_bounds(schedule_bounds, schedule_dim, template_bound)
 
-                breakpoint()
-                if '_' not in schedule_boundnames[schedule_dim]:
-                    schedule_boundnames[schedule_dim] = schedule_boundnames[schedule_dim] + '_0'
-                schedule_boundname_place = schedule_boundnames[schedule_dim]
-                name_i = int(schedule_boundname_place[-1]) + 1
-                schedule_boundnames.insert(schedule_dim+1, schedule_boundname_place[:-1] + str(name_i))
+                # if '_' not in schedule_boundnames[schedule_dim]:
+                #     schedule_boundnames[schedule_dim] = schedule_boundnames[schedule_dim] + '_0'
+                # schedule_boundname_place = schedule_boundnames[schedule_dim]
+                # name_i = int(schedule_boundname_place[-1]) + 1
+                # schedule_boundnames.insert(schedule_dim+1, schedule_boundname_place[:-1] + str(name_i))
 
-        with open('algorithm.tex', 'w') as algo_file:
-            algo_file.write(printer.get_result())
+        # with open('algorithm.tex', 'w') as algo_file:
+        #     algo_file.write(printer.get_result())
 
         # if we get here, we're lucky, because nothing broke yet :-)
         # we have now successfully determined a schedule for the operator

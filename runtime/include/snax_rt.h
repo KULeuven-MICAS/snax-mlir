@@ -44,6 +44,10 @@ alloc_result_t *_mlir_ciface_snax_alloc_l1(uint32_t size, uint32_t alignment) {
   return allocated_result;
 }
 
+void _mlir_ciface_snax_dump_l1() {
+  printf("You still have to implement this function, Joren\n");
+}
+
 void _mlir_ciface_snax_cluster_hw_barrier() {
   snrt_cluster_hw_barrier();
   return;
