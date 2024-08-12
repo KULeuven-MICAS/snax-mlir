@@ -10,6 +10,7 @@ from compiler.dialects.snax_stream import SnaxStream
 from compiler.dialects.tsl import TSL
 from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 from compiler.transforms.accfg_dedup import AccfgDeduplicate
+from compiler.transforms.accfg_insert_resets import InsertResetsPass
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
 from compiler.transforms.convert_linalg_to_accfg import (
@@ -70,6 +71,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(
             RealizeMemrefCastsPass.name, lambda: RealizeMemrefCastsPass
         )
+        super().register_pass(InsertResetsPass.name, lambda: InsertResetsPass)
         super().register_pass(MemrefToSNAX.name, lambda: MemrefToSNAX)
         super().register_pass(AccfgDeduplicate.name, lambda: AccfgDeduplicate)
         super().register_pass(
