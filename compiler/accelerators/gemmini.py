@@ -126,7 +126,6 @@ class GemminiAccelerator(RoCCAccelerator):
         ]
 
     def convert_to_acc_ops(self, op: linalg.Generic) -> Sequence[Operation]:
-        breakpoint()
         a, b, _, _, c = op.operands  # Don't use zero point adjustments
         ops_to_insert = []
         pointer_values = []
