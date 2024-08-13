@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 
-from xdsl.dialects import arith, linalg
+from xdsl.dialects import arith, linalg, memref
+from xdsl.dialects.builtin import IndexType, i64
 from xdsl.ir import Operation
 
 from compiler.accelerators.rocc import RoCCAccelerator
@@ -125,24 +126,56 @@ class GemminiAccelerator(RoCCAccelerator):
         ]
 
     def convert_to_acc_ops(self, op: linalg.Generic) -> Sequence[Operation]:
-        cst_0 = arith.Constant.from_int_and_width(0, 64)
+        breakpoint()
+        a, b, _, _, c = op.operands  # Don't use zero point adjustments
+        ops_to_insert = []
+        pointer_values = []
+        stride_values = []
+        size_values = []
+        for operand in a, b, c:
+            if operand == a:
+                # to select size[0] for a
+                i = 0
+            else:
+                # To select size[1] for b and c
+                i = 1
+            ops_to_insert.extend(
+                [
+                    metadata := memref.ExtractStridedMetaDataOp(operand),
+                    pointer := memref.ExtractAlignedPointerAsIndexOp.get(operand),
+                    offset_ptr := arith.Addi(pointer, metadata.offset),
+                    offset_ptr_i64 := arith.IndexCastOp(offset_ptr, i64),
+                    # Only add stride at index 0 for our experiments
+                    stride_i64 := arith.IndexCastOp(metadata.strides[0], i64),
+                    cst_16 := arith.Constant.from_int_and_width(16, IndexType()),
+                    divided_size := arith.DivUI(metadata.sizes[i], cst_16),
+                    size_i64 := arith.IndexCastOp(divided_size, i64),
+                ]
+            )
+            pointer_values.append(offset_ptr_i64.result)
+            stride_values.append(stride_i64.result)
+            size_values.append(size_i64.result)
 
-        return [
-            cst_0,
-            *self._gemmini_loop_ws(
-                cst_0,
-                cst_0,
-                cst_0,
-                cst_0,
-                cst_0,
-                cst_0,
-                cst_0,
-                cst_0,
-                cst_0,
-                cst_0,
-                cst_0,
-                cst_0,
-                cst_0,
-                cst_0,
-            ),
-        ]
+        ops_to_insert.extend(
+            [
+                cst_0 := arith.Constant.from_int_and_width(0, 64),
+                *self._gemmini_loop_ws(
+                    cst_0,
+                    cst_0,
+                    cst_0,
+                    size_values[2],  # K
+                    size_values[1],  # J
+                    size_values[0],  # I
+                    pointer_values[0],  # a
+                    pointer_values[1],  # b
+                    cst_0,  # d
+                    pointer_values[2],  # c
+                    stride_values[0],  # a
+                    stride_values[1],  # b
+                    stride_values[2],  # d --> use same as C
+                    stride_values[2],  # c
+                ),
+            ]
+        )
+
+        return ops_to_insert
