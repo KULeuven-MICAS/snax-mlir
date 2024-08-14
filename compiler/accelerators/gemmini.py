@@ -130,18 +130,10 @@ class GemminiAccelerator(RoCCAccelerator):
         ops_to_insert = []
         pointer_values = []
         stride_values = []
-        size_values = []
         for operand in a, b, c:
-            if operand == a:
-                # to select size[0] for a
-                i = 0
-                no_bytes = 1
-            elif operand == b:
-                # To select size[1] for b and c
-                i = 1
+            if operand == a or operand == b:
                 no_bytes = 1
             else:  # operand == c:
-                i = 1
                 no_bytes = 4
             ops_to_insert.extend(
                 [
@@ -155,14 +147,21 @@ class GemminiAccelerator(RoCCAccelerator):
                     offset_ptr_i64 := arith.IndexCastOp(offset_ptr, i64),
                     # Only add stride at index 0 for our experiments
                     stride_i64 := arith.IndexCastOp(metadata.strides[0], i64),
-                    # 16 pertains to the accelerator array size
-                    cst_16 := arith.Constant.from_int_and_width(16, IndexType()),
-                    divided_size := arith.DivUI(metadata.sizes[i], cst_16),
-                    size_i64 := arith.IndexCastOp(divided_size, i64),
                 ]
             )
             pointer_values.append(offset_ptr_i64.result)
             stride_values.append(stride_i64.result)
+
+        size_values = []
+        for operand, i in zip([a, b, a], [0, 1, 1]):
+            ops_to_insert.extend(
+                [
+                    cst_16 := arith.Constant.from_int_and_width(16, IndexType()),
+                    metadata := memref.ExtractStridedMetaDataOp(operand),
+                    divided_size := arith.DivUI(metadata.sizes[i], cst_16),
+                    size_i64 := arith.IndexCastOp(divided_size, i64),
+                ]
+            )
             size_values.append(size_i64.result)
 
         ops_to_insert.extend(
