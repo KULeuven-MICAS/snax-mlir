@@ -10,6 +10,7 @@ from compiler.dialects.snax_stream import SnaxStream
 from compiler.dialects.tsl import TSL
 from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 from compiler.transforms.accfg_dedup import AccfgDeduplicate
+from compiler.transforms.add_tiling_sequence import AddTilingSequence
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
 from compiler.transforms.convert_linalg_to_accfg import (
@@ -82,6 +83,7 @@ class SNAXOptMain(xDSLOptMain):
         )
         super().register_pass(StreamSnaxify.name, lambda: StreamSnaxify)
         super().register_pass(ReuseMemrefAllocs.name, lambda: ReuseMemrefAllocs)
+        super().register_pass(AddTilingSequence.name, lambda: AddTilingSequence)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)

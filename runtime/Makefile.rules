@@ -74,12 +74,21 @@ LDFLAGS += -lsnRuntime
 %.o: %.S
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# TRANSFORM Pre-Preprocessing
 
-MLIRTRANSFORM = --pass-pipeline='builtin.module(test-transform-dialect-interpreter{bind-first-extra-to-ops=linalg.quantized_matmul}, test-transform-dialect-erase-schedule)'
 
-%.mlir: %.transform.mlir
+# TRANSFORM pre-Preprocessing
+
+SNAXTRANSFORM = -p add-tiling-sequence
+
+# TRANSFORMED Pre-Preprocessing
+
+MLIRTRANSFORM = --pass-pipeline='builtin.module(test-transform-dialect-interpreter, test-transform-dialect-erase-schedule)'
+
+%.transformed.mlir: %.transform.mlir
 	$(MLIROPT) $(MLIRTRANSFORM) -o $@ $<
+
+%.transform.mlir:  %.mlir
+	$(SNAXOPT) $(SNAXTRANSFORM) -o $@ $<
 
 # MLIR Preprocessing
 
@@ -92,11 +101,11 @@ MLIRPREPROC2FLAGS += --empty-tensor-to-alloc-tensor
 
 MLIRPREPROC3FLAGS += --test-linalg-transform-patterns="test-generalize-pad-tensor"
 MLIRPREPROC3FLAGS += --linalg-generalize-named-ops
-MLIRPREPROC3FLAGS += --empty-tensor-to-alloc-tensor --one-shot-bufferize="bufferize-function-boundaries allow-return-allocs function-boundary-type-conversion=identity-layout-map"
+MLIRPREPROC3FLAGS += --empty-tensor-to-alloc-tensor --one-shot-bufferize="bufferize-function-boundaries allow-return-allocs-from-loops function-boundary-type-conversion=identity-layout-map"
 MLIRPREPROC3FLAGS += --mlir-print-op-generic
 MLIRPREPROC3FLAGS += --mlir-print-local-scope
 
-%.preproc1.mlir: %.mlir
+%.preproc1.mlir: %.transformed.mlir
 	$(MLIROPT) $(MLIRPREPROCFLAGS) -o $@ $<
 
 %.preproc2.mlir: %.preproc1.mlir

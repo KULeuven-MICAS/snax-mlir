@@ -2,5 +2,6 @@ pre-commit
 filecheck==1.0.0
 lit
 numpy<2.0.0
-xdsl @ git+https://github.com/xdslproject/xdsl.git@04bdfc0d3186d4451423eb308d7fea232ba77435
-tensorflow-cpu==2.14.0
+xdsl @ git+https://github.com/JonasCrols/xdsl.git@cb21fde7c37203c9c36929306cd45a0ff1be0a54
+zigzag-dse @ git+https://github.com/KULeuven-MICAS/zigzag.git@ccb3c14aa30e1db365b6351566f549a584e33851
+#tensorflow-cpu==2.14.0
