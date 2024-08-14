@@ -30,7 +30,7 @@ tiled_matmul.mlir: tiled_matmul.transform.mlir
 	${MLIRTRANSLATE} --mlir-to-llvmir -o $@ $<
 
 %.x: %.ll
-	cat $< | ${CC} -x ir - -c -O3 -o $@ -Wno-override-module --target=riscv64-unknown-elf -mcpu=generic-rv64 -march=rv64gc
+	${CC} -x ir $< -c -O3 -o $@ -Wno-override-module --target=riscv64-unknown-elf -mcpu=generic-rv64 -march=rv64gc
 
 
 all: $(TESTS)
