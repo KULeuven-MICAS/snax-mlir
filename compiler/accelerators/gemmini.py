@@ -131,19 +131,11 @@ class GemminiAccelerator(RoCCAccelerator):
         pointer_values = []
         stride_values = []
         for operand in a, b, c:
-            if operand == a or operand == b:
-                no_bytes = 1
-            else:  # operand == c:
-                no_bytes = 4
             ops_to_insert.extend(
                 [
                     metadata := memref.ExtractStridedMetaDataOp(operand),
                     pointer := memref.ExtractAlignedPointerAsIndexOp.get(operand),
-                    cst_no_bytes := arith.Constant.from_int_and_width(
-                        no_bytes, IndexType()
-                    ),
-                    divided_offset := arith.Muli(metadata.offset, cst_no_bytes),
-                    offset_ptr := arith.Addi(pointer, divided_offset),
+                    offset_ptr := arith.Addi(pointer, metadata.offset),
                     offset_ptr_i64 := arith.IndexCastOp(offset_ptr, i64),
                     # Only add stride at index 0 for our experiments
                     stride_i64 := arith.IndexCastOp(metadata.strides[0], i64),
