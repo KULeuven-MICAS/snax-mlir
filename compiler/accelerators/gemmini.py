@@ -142,7 +142,7 @@ class GemminiAccelerator(RoCCAccelerator):
                     cst_no_bytes := arith.Constant.from_int_and_width(
                         no_bytes, IndexType()
                     ),
-                    divided_offset := arith.DivUI(metadata.offset, cst_no_bytes),
+                    divided_offset := arith.Muli(metadata.offset, cst_no_bytes),
                     offset_ptr := arith.Addi(pointer, divided_offset),
                     offset_ptr_i64 := arith.IndexCastOp(offset_ptr, i64),
                     # Only add stride at index 0 for our experiments
