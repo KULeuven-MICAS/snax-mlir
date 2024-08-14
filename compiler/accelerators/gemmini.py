@@ -135,17 +135,27 @@ class GemminiAccelerator(RoCCAccelerator):
             if operand == a:
                 # to select size[0] for a
                 i = 0
-            else:
+                no_bytes = 1
+            elif operand == b:
                 # To select size[1] for b and c
                 i = 1
+                no_bytes = 1
+            else:  # operand == c:
+                i = 1
+                no_bytes = 4
             ops_to_insert.extend(
                 [
                     metadata := memref.ExtractStridedMetaDataOp(operand),
                     pointer := memref.ExtractAlignedPointerAsIndexOp.get(operand),
-                    offset_ptr := arith.Addi(pointer, metadata.offset),
+                    cst_no_bytes := arith.Constant.from_int_and_width(
+                        no_bytes, IndexType()
+                    ),
+                    divided_offset := arith.DivUI(metadata.offset, cst_no_bytes),
+                    offset_ptr := arith.Addi(pointer, divided_offset),
                     offset_ptr_i64 := arith.IndexCastOp(offset_ptr, i64),
                     # Only add stride at index 0 for our experiments
                     stride_i64 := arith.IndexCastOp(metadata.strides[0], i64),
+                    # 16 pertains to the accelerator array size
                     cst_16 := arith.Constant.from_int_and_width(16, IndexType()),
                     divided_size := arith.DivUI(metadata.sizes[i], cst_16),
                     size_i64 := arith.IndexCastOp(divided_size, i64),
