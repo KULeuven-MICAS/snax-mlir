@@ -1,4 +1,5 @@
 include ../../runtime/Makefile.rules
+include ../../runtime/snax-streamer-gemm.rules
 
 ad01_int8.tflite:
 	../../runtime/get_model.py anomaly_detection $@
@@ -9,6 +10,13 @@ SNAXOPTFLAGS = -p dispatch-kernels,set-memory-space,set-memory-layout,realize-me
 
 data.c data.h:
 	$(PYTHON) gendata.py
+
+%.x: %.o main.o data.o
+	$(LD) $(LDFLAGS) $^ -o $@
+
+sim_%: %
+	rm -fr ./logs/
+	$(VLTSIM) $<
 
 ad01_int8.preproc3.mlir: ad01_int8.preproc2.mlir
 	$(SNAXOPT) $(SNAXPREPROCFLAGS) -o $@ $<

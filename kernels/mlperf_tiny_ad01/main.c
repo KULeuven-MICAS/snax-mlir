@@ -15,6 +15,38 @@
 #include <snrt.h>
 
 
+void _mlir_ciface_run_network(TwoDMemrefI8_t *output, TwoDMemrefI8_t *input);
+
+void _mlir_ciface_snax_debug_gemm(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr_c, int32_t when) {
+  int8_t *ptr_a, *ptr_b, *ptr_c;
+  ptr_a = (int8_t*) _ptr_a;
+  ptr_b = (int8_t*) _ptr_b;
+  ptr_c = (int8_t*) _ptr_c;
+
+  printf("Debugging GeMM at t = %d with A at %p, B at %p, C at %p\n", when, ptr_a, ptr_b, ptr_c);
+
+}
+
+void _mlir_ciface_snax_debug_bias(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr_c, int32_t when) {
+  int8_t *ptr_a, *ptr_b, *ptr_c;
+  ptr_a = (int8_t*) _ptr_a;
+  ptr_b = (int8_t*) _ptr_b;
+  ptr_c = (int8_t*) _ptr_c;
+
+  printf("Debugging bias at t = %d with A at %p, B at %p, C at %p\n", when, ptr_a, ptr_b, ptr_c);
+
+}
+
+void _mlir_ciface_snax_debug_simd(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr_c, int32_t when) {
+  int8_t *ptr_a, *ptr_b, *ptr_c;
+  ptr_a = (int8_t*) _ptr_a;
+  ptr_b = (int8_t*) _ptr_b;
+  ptr_c = (int8_t*) _ptr_c;
+
+  printf("Debugging SIMD at t = %d with A at %p, B at %p, C at %p\n", when, ptr_a, ptr_b, ptr_c);
+
+}
+
 int main() {
   {
 
@@ -29,9 +61,11 @@ int main() {
     memrefA.stride[1] = 1;
     memrefA.offset = 0;
 
+    TwoDMemrefI8_t memrefB;
+
     (void)snrt_mcycle();
 
-    _mlir_ciface_streamer_matmul(&memrefA, &memrefB, &memrefC);
+    _mlir_ciface_run_network(&memrefB, &memrefA);
 
     snrt_cluster_hw_barrier();
 
