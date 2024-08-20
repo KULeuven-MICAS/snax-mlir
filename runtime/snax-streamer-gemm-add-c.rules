@@ -1,0 +1,5 @@
+# Specific settings for snax-streamer-gemm-add-c RTL
+SNITCH_SW_PATH = /opt/snax-streamer-gemm-add-c
+VLTSIM        = /opt/snax-streamer-gemm-add-c-rtl/bin/snitch_cluster.vlt
+CFLAGS += -I$(SNITCH_SW_PATH)/target/snitch_cluster/sw/snax/streamer-gemm-add-c/include
+LDFLAGS += $(SNITCH_SW_PATH)/target/snitch_cluster/sw/snax/streamer-gemm-add-c/build/snax-streamer-gemm-add-c-lib.o

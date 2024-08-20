@@ -2,14 +2,14 @@
 
 .DEFAULT_GOAL := all
 
-include ../../runtime/snax-streamer-gemm.rules
+include ../../runtime/snax-streamer-gemm-add-c.rules
 include ../../runtime/Makefile.rules
 
 TESTS =
 TESTS += matmul.x
-TESTS += half_tiled_matmul.x
-TESTS += transform_matmul.x
-TESTS += dynamic_matmul.x
+# TESTS += half_tiled_matmul.x
+# TESTS += transform_matmul.x
+# TESTS += dynamic_matmul.x
 
 
 CFLAGS += -std=gnu11

@@ -98,7 +98,9 @@ class RealizeMemrefCasts(RewritePattern):
                 # don't know if input or output, default to yes
                 is_input = True
             else:
-                is_input = op.results[0] in use_op.inputs
+                is_input = (
+                    op.results[0] in use_op.inputs or op.results[0] in use_op.outputs
+                )
             if is_input:
                 # insert copy op
                 copy_op = memref.CopyOp(source_op.source, op.dest)
