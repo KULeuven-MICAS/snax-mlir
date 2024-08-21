@@ -32,17 +32,13 @@ uint8_t Batch = 1;
 /* M_param and N_param can be set to 1 for tiled versions, but not for simple
  version. 2 always works. however, it will impact performance significantly as
  computation cost doubles. For benchmarks, set to 1 */
-uint8_t M_param = 2;
-uint8_t K_param = 2;
-uint8_t N_param = 2;
-
+uint8_t M_param = 5;
+uint8_t K_param = 4;
+uint8_t N_param = 3;
 // Extracted from datagen.py in snitch_cluster repo
 uint32_t strideInnermostA = 256;
 uint32_t strideInnermostB = 256;
 uint32_t strideInnermostC = 256;
-uint32_t ldA = 512;
-uint32_t ldB = 512;
-uint32_t ldC = 512;
 uint32_t strideA = 0;
 uint32_t strideB = 0;
 uint32_t strideC = 0;
@@ -54,18 +50,23 @@ void _mlir_ciface_streamer_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
 void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
                             int32_t zpb, TwoDMemrefI32_t *c) {
   {
-    printf("Executing snax_gemm with a=%p, b=%p, c=%p \n", a->aligned_data,
-           b->aligned_data, c->aligned_data);
+    // printf("Executing snax_gemm with a=%p, b=%p, c=%p \n", a->aligned_data,
+    //        b->aligned_data, c->aligned_data);
     int local_delta_a = (int)a->aligned_data - (int)snrt_l1_next();
     int local_delta_b = (int)b->aligned_data - (int)snrt_l1_next();
     int local_delta_c = (int)c->aligned_data - (int)snrt_l1_next();
 
-    set_streamer_csr(K_param, N_param, M_param, strideInnermostA, ldA, 8,
+    uint32_t ldA = 256 * K_param;
+    uint32_t ldB = 256 * K_param;
+    uint32_t ldC = 256 * M_param;
+    printf("ldA: %d, ldB: %d, ldC: %d\n", ldA, ldB, ldC);
+
+    set_streamer_csr(K_param, M_param, N_param, strideInnermostA, ldA, 8,
                      strideInnermostB, ldB, 8, strideInnermostC, ldC, 32,
                      local_delta_a, local_delta_b, local_delta_c,
                      local_delta_c);
     set_streamer_start();
-    set_block_gemm_csr(K_param, N_param, M_param, 0);
+    set_block_gemm_csr(K_param, M_param, N_param, 0);
 
     snrt_mcycle();
 
@@ -104,8 +105,7 @@ int main() {
     memrefB.stride[0] = 1;
     memrefB.stride[1] = K_size;
     memrefB.offset = 0;
-    printf("M_size: %d, K_size: %d, N_size: %d hallo\n", M_size, K_size,
-           N_size);
+    printf("M_size: %d, K_size: %d, N_size: %d\n", M_size, K_size, N_size);
 
     TwoDMemrefI32_t memrefC;
     memrefC.data = &C;
@@ -122,8 +122,6 @@ int main() {
     _mlir_ciface_streamer_matmul(&memrefA, &memrefB, &memrefC);
 
     snrt_cluster_hw_barrier();
-
-    printf("M_size_final: %d, N_size_final: %d\n", M_size, N_size);
 
     (void)snrt_mcycle();
 
