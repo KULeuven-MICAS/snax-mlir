@@ -55,7 +55,7 @@ def rotate_bounds(bounds: list[int | None], dim: int) -> list[int | None]:
     Returns the bounds after rotating dims, as in rotate_dims
     """
     bounds = bounds.copy()
-    bounds.insert(0, bounds.pop(dim -1))
+    bounds.insert(0, bounds.pop(dim - 1))
     return bounds
 
 
@@ -107,7 +107,10 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             # Already streamified
             return
 
-        if not (isinstance(op.library_call, builtin.StringAttr) and op.library_call.data in ("snax_alu", "snax_gemm", "snax_simd")):
+        if not (
+            isinstance(op.library_call, builtin.StringAttr)
+            and op.library_call.data in ("snax_alu", "snax_gemm", "snax_simd", "snax_gemmx")
+        ):
             raise NotImplementedError("panic!")
 
         # only handle snax_alu for now
@@ -129,6 +132,14 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                 AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
             ]
             template_bounds = (None, None, 8, 8)
+        elif op.library_call.data == "snax_gemmx":
+            M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
+            template = [
+                AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
+                AffineMap(6, 0, (K * 8 + k, N * 8 + n)),
+                AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
+            ]
+            template_bounds = (None, None, None, 8, 8, 8)
         else:
             raise RuntimeError("panic!")
 
@@ -140,11 +151,13 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
         schedule_bounds: list[int | None] = [bound.value.data for bound in op.bounds.data]
 
         printer = LaTeXPrinter()
-        template_boundnames = ['m_0','n_0', 'k_0', 'm_1', 'n_1', 'k_1']
-        schedule_boundnames = ['a', 'b', 'c']
+        template_boundnames = ["m_0", "n_0", "k_0", "m_1", "n_1", "k_1"]
+        schedule_boundnames = ["a", "b", "c"]
 
         printer.print(template, template_boundnames, template_bounds, comment="full template")
         printer.print(schedule, schedule_boundnames, schedule_bounds, comment="full initial schedule")
+
+        # TODO: implement Steinhaus-Johnson-Trotter somehow
 
         for i in range(template[0].num_dims):
             # i = 0: look at the last dimension
@@ -178,7 +191,6 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
 
                 # print(f"template_check == schedule_check: {template_check == schedule_check}")
 
-
                 if template_check == schedule_check:
                     match = True
                     break
@@ -189,7 +201,6 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
 
                 # rotate bounds
                 schedule_boundnames = rotate_bounds(schedule_boundnames, schedule_dim + 1)
-
 
             if not match:
                 raise RuntimeError("failed to match template and schedule")
@@ -239,11 +250,22 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             if isinstance(output.type, builtin.MemRefType)
         ]
 
-        bounds_attr = builtin.ArrayAttr(
+        bounds_attr_list = [
             [builtin.IntegerAttr(val if val else -1, builtin.IndexType()) for val in schedule_bounds]
-        )
+            for _ in range(len(schedule))
+        ]
+
+        # FIXME: add support for stationarity and separate bounds
+        # for every operand
+        assert op.library_call
+        if op.library_call.data == "snax_gemmx":
+            bounds_attr_list[2][2] = builtin.IntegerAttr(1, builtin.IndexType())  # K stationarity
+
+        bounds_attr_list = [builtin.ArrayAttr(b) for b in bounds_attr_list]
+
         input_stride_patterns: list[memref_stream.StridePattern] = [
-            memref_stream.StridePattern(bounds_attr, builtin.AffineMapAttr(map)) for map in schedule
+            memref_stream.StridePattern(bounds, builtin.AffineMapAttr(map))
+            for map, bounds in zip(schedule, bounds_attr_list)
         ]
 
         streaming_region_op = memref_stream.StreamingRegionOp(
@@ -260,7 +282,6 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
         new_outputs = [
             streaming_args.pop(0) if isinstance(output.type, builtin.MemRefType) else output for output in op.outputs
         ]
-
 
         new_generic_op = memref_stream.GenericOp(
             inputs=new_inputs,

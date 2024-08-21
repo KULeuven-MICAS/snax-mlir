@@ -1,0 +1,4 @@
+# Specific settings for snax-mac RTL
+SNITCH_SW_PATH = /opt/snax-kul-cluster-all-narrow/
+VLTSIM        = /opt/snax-kul-cluster-all-narrow-rtl/bin/snitch_cluster.vlt
+CFLAGS += -I$(SNITCH_SW_PATH)/target/snitch_cluster/sw/snax/gemm/include

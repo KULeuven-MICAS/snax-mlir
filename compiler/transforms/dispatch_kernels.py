@@ -168,7 +168,7 @@ class DispatchQMatMul(RewritePattern):
             if isinstance(inp.type, MemRefType):
                 # all static shapes required for now
                 if -1 not in inp.type.get_shape():
-                    op.library_call = builtin.StringAttr("snax_gemm_stream")
+                    op.library_call = builtin.StringAttr("snax_gemmx_stream")
                     return
 
         op.library_call = builtin.StringAttr("snax_gemm")

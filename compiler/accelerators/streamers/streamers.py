@@ -1,11 +1,13 @@
 from collections.abc import Sequence
 
+from xdsl.ir import deprecated
 from xdsl.utils.str_enum import StrEnum
 
 
 class StreamerType(StrEnum):
     Reader = "r"
     Writer = "w"
+    ReadWrite = "rw"
 
 
 class Streamer:
@@ -31,10 +33,12 @@ class StreamerConfiguration:
     """
 
     streamers: Sequence[Streamer]
+    separate_loop_bounds = False
 
-    def __init__(self, streamers: Sequence[Streamer]):
+    def __init__(self, streamers: Sequence[Streamer], separate_loop_bounds: bool = False):
         assert len(streamers)
         self.streamers = streamers
+        self.separate_loop_bounds = separate_loop_bounds
 
     def size(self) -> int:
         """
@@ -42,6 +46,7 @@ class StreamerConfiguration:
         """
         return len(self.streamers)
 
+    @deprecated("Please do not use this function anymore, it is only valid in trivial cases")
     def temporal_dim(self) -> int:
         """
         Return the temporal dimension of the streamers
@@ -50,6 +55,7 @@ class StreamerConfiguration:
         """
         return self.streamers[0].temporal_dim
 
+    @deprecated("Please do not use this function anymore, it is only valid in trivial cases")
     def spatial_dim(self) -> int:
         """
         Return the spatial dimension of the streamers

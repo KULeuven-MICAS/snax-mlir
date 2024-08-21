@@ -21,7 +21,7 @@
  * /target/snitch_cluster/sw/snax/mac/include"
  *
  * */
-#include "snax-streamer-gemm-lib.h"
+//#include "snax-streamer-gemm-lib.h"
 
 #define tileSize 8
 #define meshRow 8
@@ -51,34 +51,7 @@ uint32_t strideC = 0;
 void _mlir_ciface_streamer_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
                                   TwoDMemrefI32_t *c);
 
-void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
-                            int32_t zpb, TwoDMemrefI32_t *c) {
-  {
-    printf("Executing snax_gemm with a=%p, b=%p, c=%p \n", a->aligned_data,
-           b->aligned_data, c->aligned_data);
-    int local_delta_a = (int)a->aligned_data - (int)snrt_l1_next();
-    int local_delta_b = (int)b->aligned_data - (int)snrt_l1_next();
-    int local_delta_c = (int)c->aligned_data - (int)snrt_l1_next();
-
-    set_streamer_csr(K_param, N_param, M_param, strideInnermostA, ldA, 8,
-                     strideInnermostB, ldB, 8, strideInnermostC, ldC, 32,
-                     local_delta_a, local_delta_b, local_delta_c);
-    set_streamer_start();
-    set_block_gemm_csr(K_param, N_param, M_param, 0);
-
-    snrt_mcycle();
-
-    set_block_gemm_start();
-
-    printf("Waiting for snax_gemm\n");
-
-    wait_streamer_gemm();
-
-    snrt_mcycle();
-
-    printf("Finished executing snax_gemm\n");
-  }
-}
+uint32_t *weird_value = (uint32_t*) 0x1001ff24;
 
 int main() {
   {
@@ -103,7 +76,7 @@ int main() {
     memrefB.stride[0] = 1;
     memrefB.stride[1] = K_size;
     memrefB.offset = 0;
-    printf("M_size: %d, K_size: %d, N_size: %d\n", M_size, K_size, N_size);
+
 
     TwoDMemrefI32_t memrefC;
     memrefC.data = &C;
@@ -115,34 +88,56 @@ int main() {
     memrefC.stride[1] = 1;
     memrefC.offset = 0;
 
-    (void)snrt_mcycle();
+    for(int i = 0; i < 20; i++) {
+      if (snrt_cluster_core_idx() == i) {
+        printf("Core %d present.\n", i);
+        printf("Value at %p: %u\n", weird_value, *weird_value);
+        if (snrt_is_dm_core()) {
+          printf("I am a dm core\n");
+        }
+      }
+      snrt_cluster_hw_barrier();
+    }
 
     _mlir_ciface_streamer_matmul(&memrefA, &memrefB, &memrefC);
 
     snrt_cluster_hw_barrier();
 
-    (void)snrt_mcycle();
+    snrt_mcycle();
+    int thisc = snrt_cluster_core_idx();
+
+    for(uint8_t i = 0; i < 20; i++) {
+      if (thisc == i) {
+        printf("Core %d present.\n", thisc);
+        printf("Value at %p: %u\n", weird_value, *weird_value);
+        if (snrt_is_dm_core()) {
+          printf("I am a dm core\n");
+        }
+      }
+      snrt_cluster_hw_barrier();
+    }
+
+    snrt_cluster_hw_barrier();
+
 
     // Correctness check -
     // from this point on only core 0 is required to be alive.
-    int thiscore = snrt_cluster_core_idx();
-    if (thiscore != 0)
-      return 0;
-
+    int thiscore = snrt_hartid();
     int nerr = 0;
-    for (int i = 0; i < M_size * N_size; i++) {
-      {
+    if (snrt_hartid() == 0) {
+
+      printf("Checking correctness\n");
+
+      for (int i = 0; i < M_size * N_size; i++) {
         int32_t error = memrefC.aligned_data[i] - C_golden[i];
-        // printf("%d) %d -> %d\n", i, (int32_t)memrefC.aligned_data[i],
-        //        (int32_t)C_golden[i]);
-        if (error != 0)
+        if (error != 0) {
           nerr += 1;
+          printf("%d) %d -> %d\n", i, (int32_t)memrefC.aligned_data[i], (int32_t)C_golden[i]);
+        }
       }
+
     }
 
-    // insert mcycle to show fault in trace
-    if (nerr != 0)
-      snrt_mcycle();
 
     return nerr;
   }

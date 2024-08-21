@@ -112,7 +112,16 @@ class SNAXStreamer(ABC):
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
 
         # loop bound registers
-        loop_bounds: Sequence[IntAttr] = op.stride_patterns.data[0].upper_bounds.data
+        if not self.streamer_config.data.separate_loop_bounds:
+            loop_bounds: Sequence[IntAttr] = op.stride_patterns.data[0].upper_bounds.data
+        else:
+            loop_bounds: Sequence[IntAttr] = []
+            for i in range(len(op.stride_patterns)):
+                upper_bounds = op.stride_patterns.data[i].upper_bounds.data
+                while self.streamer_config.data.streamers[i].temporal_dim > len(upper_bounds):
+                    # if not all temporal bounds are used, insert ones
+                    upper_bounds = (IntAttr(1),) + upper_bounds
+                loop_bounds.extend(upper_bounds)
         result.extend(
             [
                 (
@@ -125,15 +134,19 @@ class SNAXStreamer(ABC):
 
         # temporal strides
         for streamer in range(self.streamer_config.data.size()):
-            for dim in range(self.streamer_config.data.temporal_dim()):
+            temporal_strides = op.stride_patterns.data[streamer].temporal_strides.data
+            while self.streamer_config.data.streamers[streamer].temporal_dim > len(temporal_strides):
+                # if not all temporal strides are used, insert zeros
+                temporal_strides = (IntAttr(0),) + temporal_strides
+            for dim in range(self.streamer_config.data.streamers[streamer].temporal_dim):
                 cst = arith.Constant.from_int_and_width(
-                    op.stride_patterns.data[streamer].temporal_strides.data[dim], i32
+                    temporal_strides[dim], i32
                 )
                 result.append(([cst], cst.result))
 
         # spatial strides
         for streamer in range(self.streamer_config.data.size()):
-            for dim in range(self.streamer_config.data.spatial_dim()):
+            for dim in range(self.streamer_config.data.streamers[streamer].spatial_dim):
                 cst = arith.Constant.from_int_and_width(
                     op.stride_patterns.data[streamer].spatial_strides.data[dim], i32
                 )
@@ -149,27 +162,24 @@ class SNAXStreamer(ABC):
         result: list[str] = []
 
         # loop bound registers
-        result.extend(
-            [f"loop_bound_{i}" for i in range(self.streamer_config.data.temporal_dim())]
-        )
+        if not self.streamer_config.data.separate_loop_bounds:
+            result.extend(
+                [f"loop_bound_{i}" for i in range(self.streamer_config.data.temporal_dim())]
+            )
+        else:
+            for name, streamer in zip(self.streamer_names, self.streamer_config.data.streamers):
+                for i in range(streamer.temporal_dim):
+                    result.append(f"loop_bound_{name}_{i}")
 
         # temporal strides
-        result.extend(
-            [
-                f"{streamer}_tstride_{i}"
-                for streamer in self.streamer_names
-                for i in range(self.streamer_config.data.temporal_dim())
-            ]
-        )
+        for name, streamer in zip(self.streamer_names, self.streamer_config.data.streamers):
+            for i in range(streamer.temporal_dim):
+                result.append(f"{name}_tstride_{i}")
 
         # spatial strides
-        result.extend(
-            [
-                f"{streamer}_sstride_{i}"
-                for streamer in self.streamer_names
-                for i in range(self.streamer_config.data.spatial_dim())
-            ]
-        )
+        for name, streamer in zip(self.streamer_names, self.streamer_config.data.streamers):
+            for i in range(streamer.spatial_dim):
+                result.append(f"{name}_sstride_{i}")
 
         # base pointers
         result.extend([f"{streamer}_ptr" for streamer in self.streamer_names])
@@ -213,6 +223,8 @@ class SNAXStreamer(ABC):
         base_addr += len(self.streamer_launch_fields)
 
         # 1 performance counter after launch field
+        base_addr += 1
+        # 1 busy csr after this apperently
         base_addr += 1
 
         return base_addr, streamer_launch

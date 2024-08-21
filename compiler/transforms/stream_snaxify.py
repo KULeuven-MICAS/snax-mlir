@@ -43,9 +43,7 @@ class HoistAcceleratorAttribute(RewritePattern):
                 continue
 
             if accelerator and inner_op.library_call != accelerator:
-                raise RuntimeError(
-                    "multiple different accelerator dispatches found in streaming region op"
-                )
+                raise RuntimeError("multiple different accelerator dispatches found in streaming region op")
 
             accelerator = inner_op.library_call.data
 
@@ -69,9 +67,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: memref_stream.StreamingRegionOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: memref_stream.StreamingRegionOp, rewriter: PatternRewriter):
         # Compliance checks:
 
         # Handle only memref stream ops dispatched to an accelerator:
@@ -110,9 +106,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             # Mapping from data to memory:
             assert isinstance(memref_type := op.operands[operand].type, MemRefType)
 
-            #TODO: fix element offset in tsl to avoid this shit
+            # TODO: fix element offset in tsl to avoid this shit
             if isinstance(memref_type.layout, TiledStridedLayoutAttr):
-                data_mem_map : AffineMap = memref_type.get_affine_map()
+                data_mem_map: AffineMap = memref_type.get_affine_map()
             else:
                 data_mem_map: AffineMap = memref_type.get_affine_map_in_bytes()
 
@@ -124,28 +120,26 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
             # Make sure no symbols are used (not supported yet)
             if access_mem_map.num_symbols != 0:
-                raise RuntimeError(
-                    "Access patterns with symbols are not supported yet."
-                )
+                raise RuntimeError("Access patterns with symbols are not supported yet.")
 
             temp_dim = streamer_config.data.temporal_dim()
             spat_dim = streamer_config.data.spatial_dim()
 
             # extremely dirty fix:
             # FIXME: integrate virtual spatial dimensions to solve this problem
-            if op.body.block.first_op.library_call.data == 'snax_gemm': #pyright: ignore
+            if (
+                op.body.block.first_op.library_call.data == "snax_gemm"
+                or op.body.block.first_op.library_call.data == "snax_gemmx"
+            ):  # pyright: ignore
                 spat_dim = 3
 
             temporal_strides = []
             spatial_strides = []
             upper_bounds = []
 
-
             # First fill up the spatial strides, then temporal strides, back to front
             for i in reversed(range(access_mem_map.num_dims)):
-                stride = access_mem_map.eval(
-                    generate_one_list(access_mem_map.num_dims, i), ()
-                )
+                stride = access_mem_map.eval(generate_one_list(access_mem_map.num_dims, i), ())
                 if len(spatial_strides) < spat_dim:
                     # keep filling up spatial strides
                     spatial_strides.append(stride[0])
@@ -166,15 +160,29 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             )
             snax_stride_patterns.append(snax_stride_pattern)
 
+
         # get base addresses of the streaming region ops
         # TODO: generalize and fix for offsets
 
-        new_inputs = [
-            memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs
-        ]
-        new_outputs = [
-            memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs
-        ]
+        new_inputs = [memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs]
+        new_outputs = [memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs]
+
+        # FIXME: implement something better for virtual operands
+        # now, this is hardcoded to matmul on gemmx
+        if len(snax_stride_patterns) < len(streamer_config.data.streamers):
+            # create empty patterns for 2 and 3
+            empty_pattern = snax_stream.StridePattern(
+                upper_bounds=[0] * 3,
+                temporal_strides=[0] * 3,
+                spatial_strides=[0] * 2
+            )
+            snax_stride_patterns.insert(2, empty_pattern)
+            snax_stride_patterns.insert(2, empty_pattern)
+
+            # two dummy inputs
+            new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
+            new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
+
 
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(
@@ -194,7 +202,5 @@ class StreamSnaxify(ModulePass):
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
-            GreedyRewritePatternApplier(
-                [HoistAcceleratorAttribute(), MemrefStreamToSnaxPattern()]
-            )
+            GreedyRewritePatternApplier([HoistAcceleratorAttribute(), MemrefStreamToSnaxPattern()])
         ).rewrite_module(op)

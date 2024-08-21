@@ -178,7 +178,7 @@ class LaunchOp(IRDLOperation):
         # that len(values) == len(param_names)
         if len(self.values) != len(self.param_names):
             raise ValueError(
-                "Must have received same number of values as parameter names"
+                "Must have received same number of launch values as launch names"
             )
         # TODO: allow use in control flow
 
