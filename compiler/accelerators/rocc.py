@@ -1,8 +1,8 @@
 from abc import ABC
 from collections.abc import Iterable, Sequence
 
-from xdsl.dialects import llvm
-from xdsl.dialects.builtin import IntegerAttr
+from xdsl.dialects import arith, llvm
+from xdsl.dialects.builtin import IntegerAttr, i64
 from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.accelerator import Accelerator
@@ -36,6 +36,34 @@ class RoCCAccelerator(Accelerator, ABC):
     def lower_acc_setup(
         setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp
     ) -> Sequence[Operation]:
+        # If you have the first op, materialize a default value for the register values
+        # which are not set yet, otherwise create_pairs might not retrace a previous
+        # value
+        # Note: This assumes that the full pair was previously set, but it was
+        #   deduplicated. if one of the two values of the pair was not set, this fix
+        #   can not recover the previous value
+        optional_default_value = []
+        to_add_as_defaults: list[str] = []
+        if setup_op.in_state is None:
+            field_dict = dict(setup_op.iter_params())
+            instructions = set([name[:-4] for name, _ in setup_op.iter_params()])
+            for instruction in instructions:
+                if instruction + ".rs1" not in field_dict:
+                    to_add_as_defaults.append(instruction + ".rs1")
+                if instruction + ".rs2" not in field_dict:
+                    to_add_as_defaults.append(instruction + ".rs2")
+            # If there are additional defaults to be added, replace the current setup
+            # op with a new one that uses the defaults
+            if to_add_as_defaults:
+                optional_default_value.append(
+                    default_val := arith.Constant.from_int_and_width(0, i64)
+                )
+                new_params = list(field_dict.keys()) + to_add_as_defaults
+                new_values = list(field_dict.values()) + [default_val] * len(
+                    to_add_as_defaults
+                )
+                setup_op = accfg.SetupOp(new_values, new_params, setup_op.accelerator)
+
         xcustom_acc = 3  # hardcoded to 3 for now
         vals = create_pairs(setup_op)
         # Only pass on the field names that are set in the current setup
@@ -44,7 +72,10 @@ class RoCCAccelerator(Accelerator, ABC):
             key: val for key, val in acc_op.field_items() if key[:-4] in instructions
         }.items()
         # Create the sequence of all operations that need to be emitted
-        return combine_pairs_to_ops(current_fields, vals, xcustom_acc)
+        return [
+            *optional_default_value,
+            *combine_pairs_to_ops(current_fields, vals, xcustom_acc),
+        ]
 
 
 def create_pairs(
