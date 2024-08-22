@@ -73,16 +73,13 @@ class MergeSetupOps(RewritePattern):
 
         state = dict(prev_op.iter_params())
         state.update(dict(op.iter_params()))
+        rewriter.erase_op(prev_op, safe_erase=False)
 
-        rewriter.replace_op(
-            prev_op,
-            new_setup := accfg.SetupOp(
+        rewriter.replace_matched_op(
+            accfg.SetupOp(
                 state.values(), state.keys(), op.accelerator, prev_op.in_state
             ),
         )
-        op.out_state.replace_by(new_setup.out_state)
-
-        rewriter.erase_matched_op()
 
 
 class ElideEmptySetupOps(RewritePattern):
