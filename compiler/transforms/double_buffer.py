@@ -422,6 +422,8 @@ class AddDoubleBuffer(RewritePattern):
             double_subtracted_iteration_value,
             InsertPoint.at_start(for_op.body.blocks[0]),
         )
+        # if isinstance(for_op.parent_op(), scf.For):  # TODO: Chech if this might work
+        #     self.match_and_rewrite(for_op.parent_op(), rewriter)
 
 
 class DoubleBuffer(ModulePass):
