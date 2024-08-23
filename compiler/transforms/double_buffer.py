@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, linalg, memref, scf
 from xdsl.dialects.builtin import IndexType, NoneAttr
-from xdsl.ir import Block, Operation, Region, SSAValue
+from xdsl.ir import Block, ErasedSSAValue, Operation, Region, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -68,6 +68,31 @@ def operates_on_copied_out(op: Operation, copy_out_ops: list[memref.CopyOp]) -> 
 #     Check if the loop is uneven
 #     """
 #     return for_op.ub % for_op.step != 0  # TODO
+
+
+def outside_loop(dependant_op: Operation, loop: scf.For) -> bool:
+    """
+    Check if the operation is outside of the loop
+    """
+    if dependant_op.parent_op() is loop:
+        return False
+    if dependant_op.parent is None:
+        return True
+    return outside_loop(dependant_op.parent, loop)
+
+
+def replace_iter_value(
+    dependant_op: Operation, loop: scf.For, old_value: SSAValue, new_value: SSAValue
+):
+    if isinstance(dependant_op, Block):
+        return
+    if outside_loop(dependant_op, loop):
+        return
+    for index, operand in enumerate(dependant_op.operands):
+        if operand == old_value:
+            dependant_op.operands[index] = new_value
+        else:
+            replace_iter_value(operand.owner, loop, old_value, new_value)
 
 
 class AddDoubleBuffer(RewritePattern):
@@ -147,7 +172,7 @@ class AddDoubleBuffer(RewritePattern):
         # Replace in the original loop all computes with the cloned inputs and outputs
         for op in for_op.body.walk():
             if not isinstance(op, memref.CopyOp):
-                if operates_on_copied_in(op, copy_in_ops):  # TODO: NOT WORKING!!!
+                if operates_on_copied_in(op, copy_in_ops):
                     for index, input_with_clone in enumerate(inputs_with_clones):
                         for operand_index, operand in enumerate(op.operands):
                             if operand == input_with_clone[0]:
@@ -173,15 +198,10 @@ class AddDoubleBuffer(RewritePattern):
                             source=output_with_clone[1], destination=op.destination
                         )
                         rewriter.replace_op(op, new_copy_op)
-        # Replace in the cloned loop all iteration values with the one added to the original step size
-        added_iteration_value = arith.Addi(for_op.body.blocks[0].args[0], for_op.step)
-        for op in for_copy.body.walk():
-            for index, operand in enumerate(op.operands):
-                if operand == for_copy.body.blocks[0].args[0]:
-                    op.operands[index] = added_iteration_value.results[0]
 
         # Add initial copy in
-        initial_copy_in_ops = for_op.clone().body
+        initial_for_op = for_op.clone()
+        initial_copy_in_ops = initial_for_op.body
         # Remove all compute operations and copy out operations
         lower_bound = for_op.lb
         local_copy_in_ops = []
@@ -191,19 +211,25 @@ class AddDoubleBuffer(RewritePattern):
                 or has_memory_space(op.source, "L3")
             ):
                 local_copy_in_ops.append(op)
+                replace_iter_value(
+                    op.source.owner,
+                    initial_for_op,
+                    initial_copy_in_ops.blocks[0].args[0],
+                    lower_bound,
+                )
             elif isinstance(op, memref.CopyOp) and (
                 has_memory_space(op.source, "L1")
                 or has_memory_space(op.destination, "L3")
             ):
                 rewriter.erase_op(op)
-            elif isinstance(
-                op, linalg.Generic
-            ):  # TODO: shouldnt operate on copy_in_ops but its clone
+            elif isinstance(op, linalg.Generic):
                 rewriter.erase_op(op)
-            else:
-                for index, operand in enumerate(op.operands):
-                    if operand == initial_copy_in_ops.blocks[0].args[0]:
-                        op.operands[index] = lower_bound
+
+        for op in initial_copy_in_ops.walk():
+            for index, operand in enumerate(op.operands):
+                if operand == initial_copy_in_ops.blocks[0].args[0]:
+                    op.operands[index] = lower_bound
+
         for op in soft_walk_region(initial_copy_in_ops):
             # Add in front of the loop
             op.detach()
@@ -211,16 +237,34 @@ class AddDoubleBuffer(RewritePattern):
                 rewriter.insert_op(op, InsertPoint.before(for_op))
 
         # Add second iteration of copy in
-        second_copy_in_ops = for_copy.clone().body
+        second_clone_for = for_copy.clone()
+        second_copy_in_ops = second_clone_for.body
         # Remove all copy out operations
         one_more_than_lower_bound = for_op.step
         for op in second_copy_in_ops.walk():
+            if isinstance(op, memref.CopyOp) and (
+                has_memory_space(op.destination, "L1")
+                or has_memory_space(op.source, "L3")
+            ):
+                replace_iter_value(
+                    op.source.owner,
+                    second_clone_for,
+                    second_copy_in_ops.blocks[0].args[0],
+                    one_more_than_lower_bound,
+                )
+            if isinstance(op, linalg.Generic):
+                replace_iter_value(
+                    op,
+                    second_clone_for,
+                    second_copy_in_ops.blocks[0].args[0],
+                    lower_bound,
+                )
             if isinstance(op, memref.CopyOp) and has_memory_space(op.source, "L1"):
                 rewriter.erase_op(op)
-            else:
-                for index, operand in enumerate(op.operands):
-                    if operand == added_iteration_value.results[0]:
-                        op.operands[index] = one_more_than_lower_bound
+        for op in second_copy_in_ops.walk():
+            for index, operand in enumerate(op.operands):
+                if operand == second_copy_in_ops.blocks[0].args[0]:
+                    op.operands[index] = one_more_than_lower_bound
 
         for op in soft_walk_region(second_copy_in_ops):
             # Add in front of the loop
@@ -229,13 +273,14 @@ class AddDoubleBuffer(RewritePattern):
                 rewriter.insert_op(op, InsertPoint.before(for_op))
 
         # Add final copy out outside of the loop
-        final_copy_out_ops = for_copy.clone().body
+        final_copy_for = for_copy.clone()
+        final_copy_out_ops = final_copy_for.body
         # if is_uneven:
         #     final_copy_out_ops = for_copy.clone().body
         # else:
         #     final_copy_out_ops = for_op.clone().body
         # Remove all copy in and compute operations
-        one_less_than_upper_bound_op = arith.MinUI(for_op.ub, for_op.step, IndexType())
+        one_less_than_upper_bound_op = arith.Subi(for_op.ub, for_op.step, IndexType())
         rewriter.insert_op(one_less_than_upper_bound_op, InsertPoint.before(for_op))
         local_copy_out_ops = []
         for op in final_copy_out_ops.walk(reverse=False):
@@ -244,6 +289,12 @@ class AddDoubleBuffer(RewritePattern):
                 or has_memory_space(op.destination, "L3")
             ):
                 local_copy_out_ops.append(op)
+                replace_iter_value(
+                    op.destination.owner,
+                    final_copy_for,
+                    final_copy_out_ops.blocks[0].args[0],
+                    one_less_than_upper_bound_op.results[0],
+                )
             elif isinstance(op, memref.CopyOp) and (
                 has_memory_space(op.destination, "L1")
                 or has_memory_space(op.source, "L3")
@@ -251,13 +302,15 @@ class AddDoubleBuffer(RewritePattern):
                 rewriter.erase_op(op)
             elif isinstance(op, linalg.Generic):
                 rewriter.erase_op(op)
-            else:
-                for index, operand in enumerate(op.operands):
-                    if (
-                        operand == added_iteration_value.results[0]
-                        or operand == final_copy_out_ops.blocks[0].args[0]
-                    ):
-                        op.operands[index] = one_less_than_upper_bound_op.results[0]
+
+        for op in final_copy_out_ops.walk():
+            for index, operand in enumerate(op.operands):
+                if operand == final_copy_out_ops.blocks[0].args[0] or isinstance(
+                    operand, ErasedSSAValue
+                ):
+                    # op.attributes["This one"] = UnitAttr()
+                    rewriter.erase_op(op, safe_erase=False)
+
         for op in soft_walk_region(final_copy_out_ops, reverse=True):
             # Add in front of the loop
             op.detach()
@@ -265,23 +318,39 @@ class AddDoubleBuffer(RewritePattern):
                 rewriter.insert_op(op, InsertPoint.after(for_op))
 
         # Add second to last iteration of compute and copy out
-        second_to_last_compute_ops = for_op.clone().body
+        second_to_last_for = for_op.clone()
+        second_to_last_compute_ops = second_to_last_for.body
         # Remove all copy in operations
         const_2 = arith.Constant.from_int_and_width(2, IndexType())
         two_step = arith.Muli(for_op.step, const_2.results[0])
-        two_less_than_upper_bound_op = arith.MinUI(
+        two_less_than_upper_bound_op = arith.Subi(
             for_op.ub, two_step.results[0], IndexType()
         )
         for op in second_to_last_compute_ops.walk(reverse=False):
             if isinstance(op, memref.CopyOp) and has_memory_space(op.destination, "L1"):
                 rewriter.erase_op(op)
-            else:
-                for index, operand in enumerate(op.operands):
-                    if (
-                        operand == second_to_last_compute_ops.blocks[0].args[0]
-                        or operand == added_iteration_value.results[0]
-                    ):
-                        op.operands[index] = two_less_than_upper_bound_op.results[0]
+            elif isinstance(op, memref.CopyOp) and has_memory_space(op.source, "L1"):
+                replace_iter_value(
+                    op.destination.owner,
+                    second_to_last_for,
+                    second_to_last_compute_ops.blocks[0].args[0],
+                    two_less_than_upper_bound_op.results[0],
+                )
+            elif isinstance(op, linalg.Generic):
+                replace_iter_value(
+                    op,
+                    second_to_last_for,
+                    second_to_last_compute_ops.blocks[0].args[0],
+                    one_less_than_upper_bound_op.results[0],
+                )
+
+        for op in second_to_last_compute_ops.walk():
+            for index, operand in enumerate(op.operands):
+                if operand == second_to_last_compute_ops.blocks[0].args[
+                    0
+                ] or isinstance(operand, ErasedSSAValue):
+                    # utes["This one too"] = UnitAttr()
+                    rewriter.erase_op(op, safe_erase=False)
 
         for op in soft_walk_region(second_to_last_compute_ops, reverse=True):
             # Add in front of the loop
@@ -292,6 +361,38 @@ class AddDoubleBuffer(RewritePattern):
         rewriter.insert_op(const_2, InsertPoint.before(for_op))
         rewriter.insert_op(two_step, InsertPoint.before(for_op))
         rewriter.insert_op(two_less_than_upper_bound_op, InsertPoint.before(for_op))
+
+        added_iteration_value = arith.Addi(for_op.body.blocks[0].args[0], for_op.step)
+        subtracted_iteration_value = arith.Subi(
+            for_op.body.blocks[0].args[0], for_op.step, IndexType()
+        )
+        double_subtracted_iteration_value = arith.Subi(
+            for_op.body.blocks[0].args[0], two_step.results[0], IndexType()
+        )
+        # Replace in the copied loop all iteration values with the correct new iteration values
+        for op in for_copy.body.walk():
+            if isinstance(op, memref.CopyOp) and has_memory_space(op.destination, "L1"):
+                replace_iter_value(
+                    op.source.owner,
+                    for_copy,
+                    for_copy.body.blocks[0].args[0],
+                    added_iteration_value.results[0],
+                )
+            elif isinstance(op, memref.CopyOp) and has_memory_space(op.source, "L1"):
+                replace_iter_value(
+                    op.destination.owner,
+                    for_copy,
+                    for_copy.body.blocks[0].args[0],
+                    subtracted_iteration_value.results[0],
+                )
+        for op in for_op.body.walk():
+            if isinstance(op, memref.CopyOp) and has_memory_space(op.source, "L1"):
+                replace_iter_value(
+                    op.destination.owner,
+                    for_op,
+                    for_op.body.blocks[0].args[0],
+                    double_subtracted_iteration_value.results[0],
+                )
 
         # Add the cloned loop to the original loop
         for_op.body.blocks[0].erase_op(for_op.body.blocks[0].ops.last)
@@ -309,8 +410,17 @@ class AddDoubleBuffer(RewritePattern):
         # for_op.operands[1] = two_less_than_upper_bound_op.results[0]
         for_op.operands[2] = two_step.results[0]
 
+        # Replace in the cloned loop all iteration values with the one added to the original step size
+
         rewriter.insert_op(
             added_iteration_value, InsertPoint.at_start(for_op.body.blocks[0])
+        )
+        rewriter.insert_op(
+            subtracted_iteration_value, InsertPoint.at_start(for_op.body.blocks[0])
+        )
+        rewriter.insert_op(
+            double_subtracted_iteration_value,
+            InsertPoint.at_start(for_op.body.blocks[0]),
         )
 
 
