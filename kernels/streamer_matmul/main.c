@@ -32,9 +32,9 @@ uint8_t Batch = 1;
 /* M_param and N_param can be set to 1 for tiled versions, but not for simple
  version. 2 always works. however, it will impact performance significantly as
  computation cost doubles. For benchmarks, set to 1 */
-uint8_t M_param = 5;
-uint8_t K_param = 4;
-uint8_t N_param = 3;
+uint8_t M_param = 12;
+uint8_t K_param = 7;
+uint8_t N_param = 5;
 // Extracted from datagen.py in snitch_cluster repo
 uint32_t strideInnermostA = 256;
 uint32_t strideInnermostB = 256;
@@ -58,15 +58,15 @@ void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
 
     uint32_t ldA = 256 * K_param;
     uint32_t ldB = 256 * K_param;
-    uint32_t ldC = 256 * M_param;
+    uint32_t ldC = 256 * N_param;
     printf("ldA: %d, ldB: %d, ldC: %d\n", ldA, ldB, ldC);
 
-    set_streamer_csr(K_param, M_param, N_param, strideInnermostA, ldA, 8,
+    set_streamer_csr(K_param, N_param, M_param, strideInnermostA, ldA, 8,
                      strideInnermostB, ldB, 8, strideInnermostC, ldC, 32,
                      local_delta_a, local_delta_b, local_delta_c,
                      local_delta_c);
     set_streamer_start();
-    set_block_gemm_csr(K_param, M_param, N_param, 0);
+    set_block_gemm_csr(K_param, N_param, M_param, 0);
 
     snrt_mcycle();
 
@@ -90,7 +90,7 @@ int main() {
     memrefA.data = &A;
     memrefA.aligned_data = memrefA.data;
     // Shape and Stride need to be defined for dynamic case
-    memrefA.shape[0] = N_size;
+    memrefA.shape[0] = M_size;
     memrefA.shape[1] = K_size;
     memrefA.stride[0] = K_size;
     memrefA.stride[1] = 1;
@@ -101,7 +101,7 @@ int main() {
     memrefB.aligned_data = memrefB.data;
     // Shape and Stride need to be defined for dynamic case
     memrefB.shape[0] = K_size;
-    memrefB.shape[1] = M_size;
+    memrefB.shape[1] = N_size;
     memrefB.stride[0] = 1;
     memrefB.stride[1] = K_size;
     memrefB.offset = 0;
@@ -111,9 +111,9 @@ int main() {
     memrefC.data = &C;
     memrefC.aligned_data = memrefC.data;
     // Shape and Stride need to be defined for dynamic case
-    memrefC.shape[0] = N_size;
-    memrefC.shape[1] = M_size;
-    memrefC.stride[0] = M_size;
+    memrefC.shape[0] = M_size;
+    memrefC.shape[1] = N_size;
+    memrefC.stride[0] = N_size;
     memrefC.stride[1] = 1;
     memrefC.offset = 0;
 

@@ -71,10 +71,16 @@ def find_yield_op(sequence: transform.SequenceOp):
 
 
 def get_interchange(order: list[str]):
-    translation = {"M": 0, "K": 1, "N": 2}
-    return [translation[order_loop] for order_loop in order] + [
-        0 for _ in range(3 - len(order))
-    ]
+    translation = {"M": 0, "N": 1, "K": 2}
+    pre_translated = [translation[order[i]] for i in range(len(order))]
+    while len(pre_translated) != 3:
+        if 0 not in pre_translated:
+            pre_translated.insert(0, 0)
+        elif 1 not in pre_translated:
+            pre_translated.insert(0, 1)
+        elif 2 not in pre_translated:
+            pre_translated.insert(0, 2)
+    return pre_translated
 
 
 def get_tiling_ops(op: linalg.MatmulOp | linalg.QuantizedMatmulOp, target: SSAValue):
@@ -106,6 +112,8 @@ def reduce_order_sizes(order_sizes: list[tuple[str, int]]) -> list[tuple[str, in
     """
     Reduces the order sizes by combining consecutive tuples with the same string value.
     """
+    if order_sizes == []:
+        return []
     reduced_order_sizes = []
     reduced_order_sizes.append(order_sizes[0])
     for i in range(1, len(order_sizes)):
@@ -126,6 +134,8 @@ def find_next_tiling(
     Finds the next set of maximum 3 tiling pairs where both B, K and C can only be present once.
     """
     tiling_ops = []
+    if reduced_order_sizes == []:
+        return tiling_ops
     tiling_ops.append([])
     for i in range(0, len(reduced_order_sizes)):
         if any(
@@ -137,15 +147,31 @@ def find_next_tiling(
     return tiling_ops
 
 
+def keep_only_l3_loops(
+    loops: tuple[tuple[str, tuple[int, int], tuple[str, str, str]], ...]
+) -> tuple[tuple[str, tuple[int, int], tuple[str, str, str]], ...]:
+    """
+    Keeps only the L3 loops from the given loops.
+    """
+    l3_loops = []
+    for loop in loops:
+        if loop[2][0] == "l1" and loop[2][1] == "l1" and loop[2][2] == "l1":
+            return tuple(l3_loops)
+        l3_loops.append(loop)
+
+
 def get_loop_sizes(
     loops: tuple[tuple[str, tuple[int, int], tuple[str, str, str]], ...],
     MKN: tuple[int, int, int],
 ) -> list[tuple[list[str], list[int]]]:
     MKN = [MKN[0], MKN[1], MKN[2]]
-    order_sizes = [(loop[0].name, loop[1][1]) for loop in loops]
+    l3_loops = keep_only_l3_loops(loops)
+    order_sizes = [(loop[0].name, loop[1][1]) for loop in l3_loops]
     reduced_order_sizes = reduce_order_sizes(order_sizes)
     final_tiling = []
-    for tiling_op in find_next_tiling(reduced_order_sizes[:-3]):
+    # Static sizes follows order (M, N, K)
+    # Interchange follows order with M = 0, N = 1, K = 2, with the left most constant being the outermost loop
+    for tiling_op in find_next_tiling(reduced_order_sizes):
         order = []
         sizes = [0, 0, 0]
         for loop in tiling_op:
@@ -155,12 +181,12 @@ def get_loop_sizes(
                 MKN[0] = sizes[0]
             elif loop[0] == "K":
                 order.append("K")
-                sizes[1] = MKN[1] // loop[1]
-                MKN[1] = sizes[1]
+                sizes[2] = MKN[1] // loop[1]
+                MKN[1] = sizes[2]
             elif loop[0] == "C":
                 order.append("N")
-                sizes[2] = MKN[2] // loop[1]
-                MKN[2] = sizes[2]
+                sizes[1] = MKN[2] // loop[1]
+                MKN[2] = sizes[1]
         final_tiling.append((order, sizes))
     return final_tiling
 
@@ -213,7 +239,7 @@ class CreateTransformSequence(RewritePattern):
             ):
                 return
             self.sequence_op = transform.SequenceOp(
-                failure_propagation_mode=2,
+                failure_propagation_mode=1,
                 root=[],
                 extra_bindings=[],
                 body=Region(
