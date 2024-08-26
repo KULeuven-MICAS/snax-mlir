@@ -71,6 +71,9 @@ def find_yield_op(sequence: transform.SequenceOp):
 
 
 def get_interchange(order: list[str]):
+    """
+    Translate string order to a list of integers, where M = 0, N = 1, K = 2.
+    """
     translation = {"M": 0, "N": 1, "K": 2}
     pre_translated = [translation[order[i]] for i in range(len(order))]
     while len(pre_translated) != 3:
@@ -83,31 +86,6 @@ def get_interchange(order: list[str]):
     return pre_translated
 
 
-def get_tiling_ops(op: linalg.MatmulOp | linalg.QuantizedMatmulOp, target: SSAValue):
-    tiling_ops = get_zigzag_order(
-        MKN=getMKN(op), WIO_element_type=get_WIO_element_type(op)
-    )
-    all_tiling_ops = []
-    for index, (order, tile_sizes) in enumerate(tiling_ops):
-        all_tiling_ops.append(
-            transform.TileOp(
-                target=target if index == 0 else all_tiling_ops[-1].results[0],
-                dynamic_sizes=[],
-                scalable_sizes=DenseArrayBase.create_dense_int_or_index(
-                    IntegerType(1), [0, 0, 0]
-                ),
-                static_sizes=DenseArrayBase.create_dense_int_or_index(
-                    IntegerType(64), tile_sizes
-                ),
-                interchange=DenseArrayBase.create_dense_int_or_index(
-                    IntegerType(64),
-                    get_interchange(order),
-                ),
-            )
-        )
-    return all_tiling_ops
-
-
 def reduce_order_sizes(order_sizes: list[tuple[str, int]]) -> list[tuple[str, int]]:
     """
     Reduces the order sizes by combining consecutive tuples with the same string value.
@@ -117,11 +95,13 @@ def reduce_order_sizes(order_sizes: list[tuple[str, int]]) -> list[tuple[str, in
     reduced_order_sizes = []
     reduced_order_sizes.append(order_sizes[0])
     for i in range(1, len(order_sizes)):
+        # If the current string is the same as the previous, multiply their size
         if reduced_order_sizes[-1][0] == order_sizes[i][0]:
             reduced_order_sizes[-1] = (
                 reduced_order_sizes[-1][0],
                 reduced_order_sizes[-1][1] * order_sizes[i][1],
             )
+        # If the current string is different from the previous, add it to the list
         else:
             reduced_order_sizes.append(order_sizes[i])
     return reduced_order_sizes
@@ -138,10 +118,12 @@ def find_next_tiling(
         return tiling_ops
     tiling_ops.append([])
     for i in range(0, len(reduced_order_sizes)):
+        # If the current string is already present in the last tiling operation, start a new one
         if any(
             reduced_order_sizes[i][0] == tiling_op[0] for tiling_op in tiling_ops[-1]
         ):
             tiling_ops.append([reduced_order_sizes[i]])
+        # If the current string is different from any already present, add it to the last tiling operation
         else:
             tiling_ops[-1].append(reduced_order_sizes[i])
     return tiling_ops
@@ -155,7 +137,11 @@ def keep_only_l3_loops(
     """
     l3_loops = []
     for loop in loops:
-        if loop[2][0] == "l1" and loop[2][1] == "l1" and loop[2][2] == "l1":
+        if (
+            (loop[2][0] == "l1" or loop[2][0] == "reg_0")
+            and (loop[2][1] == "l1" or loop[2][1] == "reg_0")
+            and (loop[2][2] == "l1" or loop[2][2] == "reg_0")
+        ):
             return tuple(l3_loops)
         l3_loops.append(loop)
 
@@ -165,12 +151,21 @@ def get_loop_sizes(
     MKN: tuple[int, int, int],
 ) -> list[tuple[list[str], list[int]]]:
     MKN = [MKN[0], MKN[1], MKN[2]]
+
+    # Get only the loops that operate in L3
     l3_loops = keep_only_l3_loops(loops)
+
+    # Keep only usefull information, being the name and the size of the loop
     order_sizes = [(loop[0].name, loop[1][1]) for loop in l3_loops]
+
+    # Reduce the amount of loops by combining consecutive tuples with the same string value
     reduced_order_sizes = reduce_order_sizes(order_sizes)
     final_tiling = []
+
     # Static sizes follows order (M, N, K)
     # Interchange follows order with M = 0, N = 1, K = 2, with the left most constant being the outermost loop
+
+    # Find all groups of tilings that can be done at once
     for tiling_op in find_next_tiling(reduced_order_sizes):
         order = []
         sizes = [0, 0, 0]
@@ -194,7 +189,7 @@ def get_loop_sizes(
 def get_zigzag_order(MKN: tuple[int, int, int], WIO_element_type: str):
     file_paths = get_yaml_files(MKN, WIO_element_type)
     mainstage = MainStage(
-        [  # Initializes the MainStage as entry point
+        [
             WorkloadParserStage,  # Parses the manual definition into the workload
             AcceleratorParserStage,  # Parses the accelerator
             CompleteSaveStage,  # Saves all received CMEs information to a json
@@ -211,12 +206,43 @@ def get_zigzag_order(MKN: tuple[int, int, int], WIO_element_type: str):
         loma_lpf_limit=100,  # required by LomaStage
         loma_show_progress_bar=True,  # shows a progress bar while iterating over temporal mappings
     )
-
-    # Launch the MainStage
     answers = mainstage.run()
     remove_yaml_files(file_paths)
+
+    # Get the temporal mapping loops in an easy to use format
     loops = get_temporal_spatial_loops(answers[0][0])
+
+    # Return a list of loop sizes, sorted for each tiling operation
     return get_loop_sizes(loops[0], MKN)
+
+
+def get_tiling_ops(op: linalg.MatmulOp | linalg.QuantizedMatmulOp, target: SSAValue):
+    # Use ZigZag to get the tiling order
+    tiling_ops = get_zigzag_order(
+        MKN=getMKN(op), WIO_element_type=get_WIO_element_type(op)
+    )
+    all_tiling_ops = []
+    # Create a list of all tiling operations necessary
+    for index, (order, tile_sizes) in enumerate(tiling_ops):
+        all_tiling_ops.append(
+            transform.TileOp(
+                # The target is the matched op on the first iteration,
+                # and the result of the previous tiling op on the rest
+                target=target if index == 0 else all_tiling_ops[-1].results[0],
+                dynamic_sizes=[],
+                scalable_sizes=DenseArrayBase.create_dense_int_or_index(
+                    IntegerType(1), [0, 0, 0]
+                ),
+                static_sizes=DenseArrayBase.create_dense_int_or_index(
+                    IntegerType(64), tile_sizes
+                ),
+                interchange=DenseArrayBase.create_dense_int_or_index(
+                    IntegerType(64),
+                    get_interchange(order),
+                ),
+            )
+        )
+    return all_tiling_ops
 
 
 class CreateTransformSequence(RewritePattern):
@@ -227,7 +253,7 @@ class CreateTransformSequence(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: linalg.MatmulOp | linalg.QuantizedMatmulOp, rewriter: PatternRewriter
+        self, op: linalg.QuantizedMatmulOp, rewriter: PatternRewriter
     ):
         # Create a sequence on the first match
         if not self.already_created:
@@ -238,6 +264,7 @@ class CreateTransformSequence(RewritePattern):
                 for op in get_module(op).body.walk()
             ):
                 return
+            # Create a new empty sequence when none exist yet
             self.sequence_op = transform.SequenceOp(
                 failure_propagation_mode=1,
                 root=[],
@@ -255,7 +282,9 @@ class CreateTransformSequence(RewritePattern):
                 self.sequence_op,
                 insertion_point=InsertPoint.at_end(get_module(op).body.last_block),
             )
+        # Get the M, K, N dimensions of the matmul
         local_MKN = getMKN(op)
+
         # All dimensions must be known, and be a multiple of 8
         if all(
             local_M_K_N is not None
@@ -263,9 +292,11 @@ class CreateTransformSequence(RewritePattern):
             and not is_prime(local_M_K_N // 8)
             for local_M_K_N in local_MKN
         ):
+            # Add identifier to the op, used for matching the op in the sequence
             if not op.attributes:
                 op.attributes = {}
             op.attributes[f"qmatmul_{self.current_tag}"] = UnitAttr()
+            # Match op using the identifier attribute
             structured_match = transform.MatchOp(
                 target=self.sequence_op.body.first_block.args[0],
                 op_attrs={f"qmatmul_{self.current_tag}": UnitAttr()},
@@ -274,6 +305,7 @@ class CreateTransformSequence(RewritePattern):
                 structured_match,
                 insertion_point=InsertPoint.before(find_yield_op(self.sequence_op)),
             )
+            # Tile the operation, possibly multiple times
             tile_ops = get_tiling_ops(op, structured_match.results[0])
             for tile_op in tile_ops:
                 rewriter.insert_op(
