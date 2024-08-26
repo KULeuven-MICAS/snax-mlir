@@ -46,3 +46,25 @@ For example, if dealing with a 64x64 matrix, the layout would be adjusted accord
 `#tsl.tsl<[16, 4] -> (32, 4), [16, 4] -> (?, 1)>`
 
 Here, the missing stride is calculated as 32x16=512. This adjustment ensures that the dynamic shapes remain consistent with the fixed tile sizes and strides while accommodating the overall matrix dimensions.
+
+## Conversion to an affine map
+
+The TSL Layout attribute can be translated to an affine map, in the following manner:
+
+
+For a TSL with bounds
+
+$$
+    \left[b_{0,M}, ..., b_{0,1}, b_{0, 0}\right], \left[b_{1,K}, ..., b_{1,1}, b_{1, 0}\right], ...
+    $$
+
+and tiled strides for every dim $d$:
+
+$$
+    \left[b_{d,M}, ..., b_{d,1}, b_{d, 0}\right] \rightarrow \left(s_{d,M}, ..., s_{d,1}, s_{d, 0}\right)
+$$
+
+The affine map for a tsl of dim $N$ and depth $M$ is given by:
+
+$$(i_0, i_1, ..., i_n) \rightarrow
+\sum_{n=0}^{N-1}\sum_{m=0}^{M-1} s_{n,m} \cdot \left\lfloor\left( i_n \bmod \prod_{k=0}^{m}b_{n,k} \right) \div \prod_{k=0}^{m-1}b_{n,k}\right\rfloor$$
