@@ -65,7 +65,7 @@ def operates_on_copied_out(op: Operation, copy_out_ops: list[memref.CopyOp]) -> 
     return False
 
 
-def cam_double_buffer(for_op: scf.For) -> bool:
+def can_double_buffer(for_op: scf.For) -> bool:
     """Check if the loop can be double buffered"""
     if get_int(for_op.step) is None:
         return False
