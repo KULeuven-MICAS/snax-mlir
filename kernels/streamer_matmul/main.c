@@ -33,7 +33,7 @@ uint8_t Batch = 1;
  version. 2 always works. however, it will impact performance significantly as
  computation cost doubles. For benchmarks, set to 1 */
 uint8_t M_param = 2;
-uint8_t K_param = 2;
+uint8_t K_param = K_size / tileSize;
 uint8_t N_param = 2;
 
 // Extracted from datagen.py in snitch_cluster repo
