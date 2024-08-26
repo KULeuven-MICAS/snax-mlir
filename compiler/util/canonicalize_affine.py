@@ -9,11 +9,13 @@ from xdsl.ir.affine import (
 
 
 def get_dim(expr: AffineExpr) -> int | None:
-    # get the dimension of this expression. If d0 appears, return 0.
-    # If d1 appears, return 1. This will fail for nested additions in
-    # which multiple dimension expressions appear. This happens quite
-    # often, but can only be solved with a full flattening of the affine map.
-    # this is todo
+    """
+    Get the dimension of this expression. If d0 appears, return 0.
+    If d1 appears, return 1. This will fail for nested additions in
+    which multiple dimension expressions appear. This happens quite
+    often, but can only be solved with a full flattening of the affine map.
+    That is to do as future work.
+    """
     if isinstance(expr, AffineDimExpr):
         return expr.position
     if isinstance(expr, AffineBinaryOpExpr):
@@ -26,6 +28,13 @@ def get_dim(expr: AffineExpr) -> int | None:
 
 
 def canonicalize_addition(expr: AffineBinaryOpExpr) -> AffineExpr:
+    """
+    Canonicalizes an addition by:
+        putting the constant on rhs
+        folding the op if both operands are constant
+        omitting a + 0
+        ordering the operands by their dimension
+    """
     # always put the constant on rhs
     assert expr.kind is AffineBinaryOpKind.Add
     if isinstance(expr.lhs, AffineConstantExpr):
@@ -52,6 +61,13 @@ def canonicalize_addition(expr: AffineBinaryOpExpr) -> AffineExpr:
 
 
 def canonicalize_multiplication(expr: AffineBinaryOpExpr) -> AffineExpr:
+    """
+    Canonicalizes a multiplication by:
+        putting the constant on rhs
+        folding the op if both operands are constant
+        omitting a * 1
+        ordering the operands by their dimension
+    """
     # always put the constant on rhs
     assert expr.kind is AffineBinaryOpKind.Mul
     if isinstance(expr.lhs, AffineConstantExpr):
@@ -71,6 +87,10 @@ def canonicalize_multiplication(expr: AffineBinaryOpExpr) -> AffineExpr:
 
 
 def canonicalize_floordiv(expr: AffineBinaryOpExpr) -> AffineExpr:
+    """
+    Canonicalizes a floordiv by:
+        omitting a // 1
+    """
     assert expr.kind is AffineBinaryOpKind.FloorDiv
     if isinstance(expr.rhs, AffineConstantExpr):
         # division by 1 can be omitted
@@ -80,6 +100,10 @@ def canonicalize_floordiv(expr: AffineBinaryOpExpr) -> AffineExpr:
 
 
 def canonicalize_mod(expr: AffineBinaryOpExpr) -> AffineExpr:
+    """
+    Canonicalizes a module operation by:
+        replacing a % 1 by constant 0
+    """
     assert expr.kind is AffineBinaryOpKind.Mod
     if isinstance(expr.rhs, AffineConstantExpr):
         # module 1 is always 0
@@ -89,7 +113,6 @@ def canonicalize_mod(expr: AffineBinaryOpExpr) -> AffineExpr:
 
 
 def canonicalize_binary_op(expr: AffineBinaryOpExpr) -> AffineExpr:
-    # canonicalize children
     expr = AffineBinaryOpExpr(
         expr.kind, canonicalize_expr(expr.lhs), canonicalize_expr(expr.rhs)
     )
@@ -113,7 +136,7 @@ def canonicalize_expr(expr: AffineExpr) -> AffineExpr:
 
 # helper function to canonicalize affine maps
 def canonicalize_map(map: AffineMap) -> AffineMap:
-    # canonicalize each result and construct new affine map
+    # canonicalize each result expression of the map and construct new affine map
     return AffineMap(
         map.num_dims,
         map.num_symbols,
