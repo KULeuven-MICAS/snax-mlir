@@ -100,6 +100,9 @@ def outside_loop(dependant_op: Operation, loop: scf.For) -> bool:
 def replace_iter_value(
     dependant_op: Operation, loop: scf.For, old_value: SSAValue, new_value: SSAValue
 ):
+    """
+    replace the iteration value in the operation with the new value
+    """
     if isinstance(dependant_op, Block):
         return
     if outside_loop(dependant_op, loop):
@@ -163,7 +166,7 @@ class AddDoubleBuffer(RewritePattern):
                 ):
                     copy_out_ops.append(op)
 
-        # If either Copy In, Compute or Copy Out are empty, return
+        # If either Copy In or Copy Out are empty, return
         if not copy_in_ops or not copy_out_ops:
             return
 
@@ -171,6 +174,9 @@ class AddDoubleBuffer(RewritePattern):
         inputs_with_clones = []
         for copy_in_op in copy_in_ops:
             alloc: memref.Alloc = copy_in_op.destination.owner
+            # Buffer can't be duplicated when not found
+            if not isinstance(alloc, memref.Alloc):
+                return
             alloc_clone = alloc.clone()
             rewriter.insert_op(alloc_clone, InsertPoint.after(alloc))
             inputs_with_clones.append((alloc.results[0], alloc_clone.results[0]))
@@ -178,6 +184,9 @@ class AddDoubleBuffer(RewritePattern):
         outputs_with_clones = []
         for copy_out_op in copy_out_ops:
             alloc: memref.Alloc = copy_out_op.source.owner
+            # Buffer can't be duplicated when not found
+            if not isinstance(alloc, memref.Alloc):
+                return
             alloc_clone = alloc.clone()
             rewriter.insert_op(alloc_clone, InsertPoint.after(alloc))
             outputs_with_clones.append((alloc.results[0], alloc_clone.results[0]))
@@ -246,14 +255,13 @@ class AddDoubleBuffer(RewritePattern):
                 rewriter.erase_op(op)
             elif isinstance(op, linalg.Generic):
                 rewriter.erase_op(op)
-
+        # Replace the iteration value in the copy with static values
         for op in initial_copy_in_ops.walk():
             for index, operand in enumerate(op.operands):
                 if operand == initial_copy_in_ops.blocks[0].args[0]:
                     op.operands[index] = lower_bound
-
+        # Add the copy in front of the loop
         for op in soft_walk_region(initial_copy_in_ops):
-            # Add in front of the loop
             op.detach()
             if not isinstance(op, scf.Yield):
                 rewriter.insert_op(op, InsertPoint.before(for_op))
@@ -283,24 +291,24 @@ class AddDoubleBuffer(RewritePattern):
                 )
             if isinstance(op, memref.CopyOp) and has_memory_space(op.source, "L1"):
                 rewriter.erase_op(op)
+        # Replace the iteration value in the copy with static values
         for op in second_copy_in_ops.walk():
             for index, operand in enumerate(op.operands):
                 if operand == second_copy_in_ops.blocks[0].args[0]:
                     op.operands[index] = one_more_than_lower_bound
-
+        # Add the copy in front of the loop
         for op in soft_walk_region(second_copy_in_ops):
-            # Add in front of the loop
             op.detach()
             if not isinstance(op, scf.Yield):
                 rewriter.insert_op(op, InsertPoint.before(for_op))
 
         # Add final copy out outside of the loop
+        # Check unevenness to know which for loop to clone
         if is_uneven:
             final_copy_for = for_op.clone()
         else:
             final_copy_for = for_copy.clone()
         final_copy_out_ops = final_copy_for.body
-
         # Remove all copy in and compute operations
         one_less_than_upper_bound_op = arith.Subi(for_op.ub, for_op.step, IndexType())
         rewriter.insert_op(one_less_than_upper_bound_op, InsertPoint.before(for_op))
@@ -324,22 +332,21 @@ class AddDoubleBuffer(RewritePattern):
                 rewriter.erase_op(op)
             elif isinstance(op, linalg.Generic):
                 rewriter.erase_op(op)
-
+        # delete all remaining uses of the iteration value
         for op in final_copy_out_ops.walk():
             for index, operand in enumerate(op.operands):
                 if operand == final_copy_out_ops.blocks[0].args[0] or isinstance(
                     operand, ErasedSSAValue
                 ):
-                    # op.attributes["This one"] = UnitAttr()
                     rewriter.erase_op(op, safe_erase=False)
-
+        # Add the copy after the loop
         for op in soft_walk_region(final_copy_out_ops, reverse=True):
-            # Add in front of the loop
             op.detach()
             if not isinstance(op, scf.Yield):
                 rewriter.insert_op(op, InsertPoint.after(for_op))
 
         # Add second to last iteration of compute and copy out
+        # Check unevenness to know which for loop to clone
         if is_uneven:
             second_to_last_for = for_copy.clone()
         else:
@@ -368,17 +375,15 @@ class AddDoubleBuffer(RewritePattern):
                     second_to_last_compute_ops.blocks[0].args[0],
                     one_less_than_upper_bound_op.results[0],
                 )
-
+        # delete all remaining uses of the iteration value
         for op in second_to_last_compute_ops.walk():
             for index, operand in enumerate(op.operands):
                 if operand == second_to_last_compute_ops.blocks[0].args[
                     0
                 ] or isinstance(operand, ErasedSSAValue):
-                    # utes["This one too"] = UnitAttr()
                     rewriter.erase_op(op, safe_erase=False)
-
+        # Add the compute and copy out after the loop
         for op in soft_walk_region(second_to_last_compute_ops, reverse=True):
-            # Add in front of the loop
             op.detach()
             if not isinstance(op, scf.Yield):
                 rewriter.insert_op(op, InsertPoint.after(for_op))
@@ -401,7 +406,7 @@ class AddDoubleBuffer(RewritePattern):
                         op.destination.owner,
                         last_complete_for,
                         last_complete_ops.blocks[0].args[0],
-                        one_less_than_upper_bound_op.results[0],  # TODO
+                        one_less_than_upper_bound_op.results[0],
                     )
                 elif isinstance(op, memref.CopyOp) and (
                     has_memory_space(op.destination, "L1")
@@ -411,14 +416,14 @@ class AddDoubleBuffer(RewritePattern):
                         op.source.owner,
                         last_complete_for,
                         last_complete_ops.blocks[0].args[0],
-                        three_less_than_upper_bound_op.results[0],  # TODO
+                        three_less_than_upper_bound_op.results[0],
                     )
                 elif isinstance(op, linalg.Generic):
                     replace_iter_value(
                         op,
                         last_complete_for,
                         last_complete_ops.blocks[0].args[0],
-                        two_less_than_upper_bound_op.results[0],  # TODO
+                        two_less_than_upper_bound_op.results[0],
                     )
 
             for op in soft_walk_region(second_to_last_compute_ops, reverse=True):
@@ -427,7 +432,7 @@ class AddDoubleBuffer(RewritePattern):
                 if not isinstance(op, scf.Yield):
                     rewriter.insert_op(op, InsertPoint.after(for_op))
 
-        # adapt all the iteration values
+        # add all adapted iteration values before the loop
         rewriter.insert_op(const_2, InsertPoint.before(for_op))
         rewriter.insert_op(two_step, InsertPoint.before(for_op))
         rewriter.insert_op(two_less_than_upper_bound_op, InsertPoint.before(for_op))
@@ -481,7 +486,6 @@ class AddDoubleBuffer(RewritePattern):
 
         # rewrite iteration step and bounds
         for_op.operands[0] = two_step.results[0]
-        # for_op.operands[1] = two_less_than_upper_bound_op.results[0]
         for_op.operands[2] = two_step.results[0]
 
         # Replace in the cloned loop all iteration values with the one added to the original step size
@@ -496,8 +500,6 @@ class AddDoubleBuffer(RewritePattern):
             double_subtracted_iteration_value,
             InsertPoint.at_start(for_op.body.blocks[0]),
         )
-        # if isinstance(for_op.parent_op(), scf.For):  # TODO: Chech if this might work
-        #     self.match_and_rewrite(for_op.parent_op(), rewriter)
 
 
 class DoubleBuffer(ModulePass):
