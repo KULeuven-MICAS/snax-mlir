@@ -30,6 +30,8 @@ class KernelType(Enum):
     linalg generic body.
 
     Attributes:
+        ADD (str): Represents an addition operation.
+            out = a + b
         MUL (str): Represents a multiplication operation.
             out = a * b
         MAC (str): Represents a multiply-accumulate operation.
