@@ -65,6 +65,17 @@ def operates_on_copied_out(op: Operation, copy_out_ops: list[memref.CopyOp]) -> 
     return False
 
 
+def cam_double_buffer(for_op: scf.For) -> bool:
+    """Check if the loop can be double buffered"""
+    if get_int(for_op.step) is None:
+        return False
+    if get_int(for_op.ub) is None:
+        return False
+    if get_int(for_op.step) == get_int(for_op.ub):
+        return False
+    return True
+
+
 def get_int(value: SSAValue) -> int:
     """
     Get the integer value of a SSAValue
@@ -149,6 +160,8 @@ class AddDoubleBuffer(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, for_op: scf.For, rewriter: PatternRewriter):
         # Get all the Copy In operations
+        if not can_double_buffer(for_op):
+            return
         is_uneven = is_uneven_func(for_op)
         copy_in_ops = []
         for op in soft_walk_region(for_op.body):
