@@ -114,6 +114,7 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
     Takes a memref_stream.generic op as input and wraps it in a memref_stream streaming region op
     to determine the access patterns, the operation is scheduled to an accelerator template.
     """
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref_stream.GenericOp, rewriter: PatternRewriter):
         if any(isinstance(operand.type, stream.StreamType) for operand in op.operands):
