@@ -35,7 +35,6 @@ def test_tsl_attr_constructor(example_tsl_attr):
 
 def test_tsl_attr_get_affine(example_tsl_attr):
     tsl = example_tsl_attr
-    breakpoint()
     map = canonicalize_map(tsl.get_affine_map())
     assert map == AffineMap.from_callable(
         lambda d0, d1: (
