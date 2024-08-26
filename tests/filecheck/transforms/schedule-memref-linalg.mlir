@@ -20,8 +20,8 @@ builtin.module {
   }
 }
 
-// CHECK:      indexing_maps = [
-// CHECK-NEXT:   affine_map<(d0, d1) -> (((d0 * 4) + d1))>,
-// CHECK-NEXT:   affine_map<(d0, d1) -> (((d0 * 4) + d1))>,
-// CHECK-NEXT:   affine_map<(d0, d1) -> (((d0 * 4) + d1))>
-// CHECK-NEXT: ],
+//CHECK:      patterns = [
+//CHECK-NEXT:   #memref_stream.stride_pattern<ub = [4, 4], index_map = (d0, d1) -> (((d0 * 4) + d1))>,
+//CHECK-NEXT:   #memref_stream.stride_pattern<ub = [4, 4], index_map = (d0, d1) -> (((d0 * 4) + d1))>,
+//CHECK-NEXT:   #memref_stream.stride_pattern<ub = [4, 4], index_map = (d0, d1) -> (((d0 * 4) + d1))>
+//CHECK-NEXT: ]
