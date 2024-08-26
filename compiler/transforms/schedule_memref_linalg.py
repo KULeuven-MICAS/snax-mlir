@@ -4,7 +4,12 @@ from xdsl.context import MLContext
 from xdsl.dialects import builtin, memref_stream
 from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
+from xdsl.pattern_rewriter import (
+    PatternRewriter,
+    PatternRewriteWalker,
+    RewritePattern,
+    op_type_rewrite_pattern,
+)
 
 from compiler.util.canonicalize_affine import canonicalize_map
 
@@ -12,8 +17,10 @@ from compiler.util.canonicalize_affine import canonicalize_map
 class ScheduleMemrefLinalgRewriter(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref_stream.GenericOp, rewriter: PatternRewriter):
-
-        if not (isinstance(op.library_call, builtin.StringAttr) and op.library_call.data == "snax_alu"):
+        if not (
+            isinstance(op.library_call, builtin.StringAttr)
+            and op.library_call.data == "snax_alu"
+        ):
             return
 
         # only handle snax_alu for now
@@ -30,7 +37,10 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             # extract last n dims from template and pattern
             template_check = canonicalize_map(
                 template_alu_schedule.replace_dims_and_symbols(
-                    [AffineConstantExpr(0) for _ in range(template_alu_schedule.num_dims - dim)]
+                    [
+                        AffineConstantExpr(0)
+                        for _ in range(template_alu_schedule.num_dims - dim)
+                    ]
                     + [AffineDimExpr(i) for i in range(dim)],
                     [],
                     dim,
@@ -58,9 +68,14 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                 # bound detected, check if it is larger than the pattern bound
                 tb = template_alu_bounds[-dim]
                 assert isinstance(tb, int)
-                if op.bounds.data[-dim].value.data is None or op.bounds.data[-dim].value.data > tb:
+                if (
+                    op.bounds.data[-dim].value.data is None
+                    or op.bounds.data[-dim].value.data > tb
+                ):
                     # bound of operation exceeds bound of template, create transformation for pattern
-                    transform_map = AffineMap.from_callable(lambda x, y: (template_alu_bounds[-1] * x + y,))
+                    transform_map = AffineMap.from_callable(
+                        lambda x, y: (template_alu_bounds[-1] * x + y,)
+                    )
                     new_pattern = pattern.data.compose(transform_map)
 
                     # transform bounds
@@ -69,23 +84,30 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                         1,
                         0,
                         (
-                            (AffineDimExpr(0) - 1).floor_div(template_alu_bounds[-1]) + 1,
+                            (AffineDimExpr(0) - 1).floor_div(template_alu_bounds[-1])
+                            + 1,
                             ((AffineDimExpr(0) - 1) % template_alu_bounds[-1]) + 1,
                         ),
                     )
-                    new_bounds = transform_bounds_map.eval([op.bounds.data[0].value.data], [])
+                    new_bounds = transform_bounds_map.eval(
+                        [op.bounds.data[0].value.data], []
+                    )
 
                     # create new stride pattern
                     new_patterns.append(builtin.AffineMapAttr(new_pattern))
 
-                    new_bounds = builtin.ArrayAttr([builtin.IntegerAttr(b, builtin.IndexType()) for b in new_bounds])
+                    new_bounds = builtin.ArrayAttr(
+                        [
+                            builtin.IntegerAttr(b, builtin.IndexType())
+                            for b in new_bounds
+                        ]
+                    )
                 else:
                     new_patterns.append(pattern)
                     new_bounds = op.bounds
             else:
                 new_patterns.append(pattern)
                 new_bounds = op.bounds
-
 
         # TODO: fix this
         iterator_types = builtin.ArrayAttr(op.iterator_types.data * 2)
@@ -115,4 +137,6 @@ class ScheduleMemrefLinalg(ModulePass):
     name = "schedule-memref-linalg"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp):
-        PatternRewriteWalker(ScheduleMemrefLinalgRewriter(), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(
+            ScheduleMemrefLinalgRewriter(), apply_recursively=False
+        ).rewrite_module(op)
