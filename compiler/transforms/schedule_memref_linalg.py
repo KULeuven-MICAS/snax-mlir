@@ -84,8 +84,7 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                         1,
                         0,
                         (
-                            (AffineDimExpr(0) - 1).floor_div(template_alu_bounds[-1])
-                            + 1,
+                            (AffineDimExpr(0) - 1) // (template_alu_bounds[-1]) + 1,
                             ((AffineDimExpr(0) - 1) % template_alu_bounds[-1]) + 1,
                         ),
                     )
