@@ -20,3 +20,34 @@ memref_stream.streaming_region {
 //CHECK-NEXT:   ^0(%a : !stream.readable<i64>, %b : !stream.readable<i64>, %c : !stream.writable<i64>):
 //CHECK-NEXT:     "test.op"(%a, %b, %c) : (!stream.readable<i64>, !stream.readable<i64>, !stream.writable<i64>) -> ()
 //CHECK-NEXT:   }) : (index, index, index) -> ()
+
+// -----
+
+
+%0, %1, %2 = "test.op"() : () -> (memref<64xi32>, memref<64xi32>, memref<64xi32>)
+memref_stream.streaming_region {
+  patterns = [
+    #memref_stream.stride_pattern<ub = [64], index_map = (d0) -> (d0)>,
+    #memref_stream.stride_pattern<ub = [64], index_map = (d0) -> (d0)>,
+    #memref_stream.stride_pattern<ub = [64], index_map = (d0) -> (d0)>
+  ]
+} ins(%0, %1 : memref<64xi32>, memref<64xi32>) outs(%2 : memref<64xi32>) {
+^0(%3 : !stream.readable<i32>, %4 : !stream.readable<i32>, %5 : !stream.writable<i32>):
+  memref_stream.generic {
+    bounds = [64],
+    indexing_maps = [
+      affine_map<(d0) -> (d0)>,
+      affine_map<(d0) -> (d0)>,
+      affine_map<(d0) -> (d0)>
+    ],
+    iterator_types = ["parallel"],
+    library_call = "snax_alu"
+  } ins(%3, %4 : !stream.readable<i32>, !stream.readable<i32>) outs(%5 : !stream.writable<i32>) {
+  ^1(%arg0 : i32, %arg1 : i32, %arg2 : i32):
+    %6 = arith.muli %arg0, %arg1 : i32
+    memref_stream.yield %6 : i32
+  }
+}
+
+// CHECK: snax_stream.streaming_region
+// CHECK-SAME: "accelerator" = "snax_alu"
