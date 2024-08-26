@@ -14,6 +14,11 @@ from compiler.util.kernel_type import KernelType
 
 
 class DispatchSnaxALU(RewritePattern):
+    """
+    Dispatch eligible linalg.generic ops to SNAX ALU Accelerator
+    by altering the library call attribute
+    """
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
         ## conditions for library call:
