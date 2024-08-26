@@ -43,7 +43,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
 
         # TODO: the affine map should result in element offset, not byte offset
         # i will probably transition the tsl definition to element offset
-        # as well, to make everything more convenien
+        # as well, to make everything more convenient
 
         result = AffineConstantExpr(0)
         for dim in range(self.data.dimension()):
