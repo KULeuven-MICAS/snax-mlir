@@ -7,6 +7,7 @@ from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, Rewrite
 from xdsl.rewriter import InsertPoint
 
 from compiler.util.canonicalize_affine import canonicalize_map
+from compiler.util.kernel_type import KernelType
 from compiler.util.latexprint_affine import LaTeXPrinter
 
 
@@ -113,6 +114,7 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
         ):
             raise NotImplementedError("panic!")
 
+
         # only handle snax_alu for now
         if op.library_call.data == "snax_alu":
             template = [AffineMap.from_callable(lambda x, y: (4 * x + y,))] * 3
@@ -133,13 +135,23 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             ]
             template_bounds = (None, None, 8, 8)
         elif op.library_call.data == "snax_gemmx":
-            M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
-            template = [
-                AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
-                AffineMap(6, 0, (K * 8 + k, N * 8 + n)),
-                AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
-            ]
-            template_bounds = (None, None, None, 8, 8, 8)
+            #FIXME: find a better solution for this
+            if len(op.body.block.ops) < 15:
+                M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
+                template = [
+                    AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
+                    AffineMap(6, 0, (K * 8 + k, N * 8 + n)),
+                    AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
+                ]
+                template_bounds = (None, None, None, 8, 8, 8)
+            else:
+                # rescale function of gemmx
+                M, K, m, k = (AffineDimExpr(i) for i in range(4))
+                template = [
+                    AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
+                    AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
+                ]
+                template_bounds = (None, None, 8, 8)
         else:
             raise RuntimeError("panic!")
 
@@ -258,7 +270,7 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
         # FIXME: add support for stationarity and separate bounds
         # for every operand
         assert op.library_call
-        if op.library_call.data == "snax_gemmx":
+        if op.library_call.data == "snax_gemmx" and len(op.body.block.ops) < 15:
             bounds_attr_list[2][2] = builtin.IntegerAttr(1, builtin.IndexType())  # K stationarity
 
         bounds_attr_list = [builtin.ArrayAttr(b) for b in bounds_attr_list]

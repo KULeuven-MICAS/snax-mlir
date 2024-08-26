@@ -20,6 +20,7 @@ from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.guarded_linalg_to_memref_stream import GuardedLinalgToMemrefStreamPass
 from compiler.transforms.insert_accfg_op import InsertAccOp
+from compiler.transforms.insert_debugs import InsertDebugPass
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.memref_to_snax import MemrefToSNAX
@@ -86,6 +87,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(ScheduleMemrefLinalg.name, lambda: ScheduleMemrefLinalg)
         super().register_pass(GuardedLinalgToMemrefStreamPass.name, lambda: GuardedLinalgToMemrefStreamPass)
         super().register_pass(PreprocessMLPerfTiny.name, lambda: PreprocessMLPerfTiny)
+        super().register_pass(InsertDebugPass.name, lambda: InsertDebugPass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)

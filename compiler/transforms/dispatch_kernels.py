@@ -20,7 +20,7 @@ class DispatchSIMD(RewritePattern):
 
         kernel_type = KernelType.get_kernel(op)
         if kernel_type == KernelType.RESCALE:
-            op.library_call = builtin.StringAttr("snax_simd_stream")
+            op.library_call = builtin.StringAttr("snax_gemmx_stream")
 
 class DispatchSnaxALU(RewritePattern):
     @op_type_rewrite_pattern

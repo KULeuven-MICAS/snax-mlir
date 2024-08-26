@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := all
 
-include ../../runtime/snax-kul-narrow.rules
+include ../../runtime/snax-kul-cluster-mixed-narrow-wide.rules
 include ../../runtime/Makefile.rules
 
 TESTS =

@@ -1,0 +1,3 @@
+# Specific settings for custom RTL
+SNITCH_SW_PATH = /opt/custom/
+VLTSIM        = /opt/custom-rtl/bin/snitch_cluster.vlt

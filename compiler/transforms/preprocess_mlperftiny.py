@@ -4,7 +4,7 @@ from typing import cast
 from xdsl.builder import Builder
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, linalg, memref, tensor
-from xdsl.ir import BlockArgument, OpResult, Operation
+from xdsl.ir import BlockArgument, Operation, OpResult
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
@@ -13,6 +13,7 @@ from xdsl.traits import SymbolTable
 from xdsl.transforms.mlir_opt import MLIROptPass
 
 from compiler.dialects import snax
+from compiler.transforms.insert_debugs import InsertDebugStatements
 from compiler.util.kernel_type import KernelType
 
 
@@ -205,41 +206,12 @@ class RemoveIdioticClamps(RewritePattern):
 class InsertMemoryDumps(RewritePattern):
     """
     Until we have an established way of handling memory allocation,
-    just dump all memory after every linalg.generic.
+    just dump all memory before every linalg.generic.
     """
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
         dump = snax.DumpL1()
-        rewriter.insert_op(dump, InsertPoint.after(op))
-
-class InsertDebugStatements(RewritePattern):
-    """
-    Insert debugs :)
-    """
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
-        kernel_type = KernelType.get_kernel(op)
-
-        if kernel_type == KernelType.QMAC:
-            ## matmuls
-            debug = snax.Debug(op.inputs[0], op.inputs[1], op.outputs[0], "gemm", "before")
-            debug2 = snax.Debug(op.inputs[0], op.inputs[1], op.outputs[0], "gemm", "after")
-            rewriter.insert_op(debug, InsertPoint.before(op))
-            rewriter.insert_op(debug2, InsertPoint.after(op))
-
-        if kernel_type == KernelType.ADD:
-            ## bias add
-            debug = snax.Debug(op.inputs[0], op.inputs[1], op.outputs[0], "bias", "before")
-            debug2 = snax.Debug(op.inputs[0], op.inputs[1], op.outputs[0], "bias", "after")
-            rewriter.insert_op(debug, InsertPoint.before(op))
-            rewriter.insert_op(debug2, InsertPoint.after(op))
-
-        if kernel_type == KernelType.RESCALE:
-            ## rescale and clamp
-            debug = snax.Debug(op.inputs[0], op.inputs[0], op.outputs[0], "simd", "before")
-            debug2 = snax.Debug(op.inputs[0], op.inputs[0], op.outputs[0], "simd", "after")
-            rewriter.insert_op(debug, InsertPoint.before(op))
-            rewriter.insert_op(debug2, InsertPoint.after(op))
+        rewriter.insert_op(dump, InsertPoint.before(op))
 
 class OrganizeGetGlobals(RewritePattern):
     """
@@ -279,7 +251,7 @@ class PreprocessMLPerfTiny(ModulePass):
             '--test-linalg-transform-patterns=test-generalize-pad-tensor',
             "--linalg-generalize-named-ops",
             "--empty-tensor-to-alloc-tensor",
-            '--one-shot-bufferize=bufferize-function-boundaries allow-return-allocs'
+            '--one-shot-bufferize=bufferize-function-boundaries allow-return-allocs-from-loops'
             + ' function-boundary-type-conversion=identity-layout-map',
             "--mlir-print-op-generic",
             "--mlir-print-local-scope",
@@ -297,5 +269,5 @@ class PreprocessMLPerfTiny(ModulePass):
         self.mlir_bufferization_pass.apply(ctx, op)
         PatternRewriteWalker(AllocToGlobal()).rewrite_module(op)
         PatternRewriteWalker(InsertMemoryDumps(), apply_recursively=False).rewrite_module(op)
-        PatternRewriteWalker(InsertDebugStatements(), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(InsertDebugStatements(level="L3"), apply_recursively=False).rewrite_module(op)
         PatternRewriteWalker(OrganizeGetGlobals(), apply_recursively=False).rewrite_module(op)

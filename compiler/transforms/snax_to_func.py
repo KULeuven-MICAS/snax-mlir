@@ -66,7 +66,20 @@ class DebugToFunc(RewritePattern):
 
         ops_to_insert.extend([ptr_a, ptr_b, ptr_c])
 
-        when = arith.Constant.from_int_and_width(0 if op.when.data == 'before' else 1, 32)
+
+        match (op.when.data, op.level.data):
+            case "before", "L3":
+                whenparam = 0
+            case "before", "L1":
+                whenparam = 1
+            case "after", "L1":
+                whenparam = 2
+            case "after", "L3":
+                whenparam = 3
+            case _:
+                whenparam = 5
+
+        when = arith.Constant.from_int_and_width(whenparam, 32)
         ops_to_insert.append(when)
 
         func_call = func.Call(f"snax_debug_{op.debug_type.data}", [ptr_a, ptr_b, ptr_c, when], [])

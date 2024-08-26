@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 
 from xdsl.context import MLContext
-from xdsl.dialects import builtin, memref, memref_stream
+from xdsl.dialects import arith, builtin, memref, memref_stream
 from xdsl.dialects.builtin import FixedBitwidthType, MemRefType, StringAttr
+from xdsl.ir import Operation
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -94,7 +95,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         # We are now ready to convert the stream access patterns into snax stride patterns
         # construct the strided patterns for SNAX Streamers
 
-        snax_stride_patterns = []
+        snax_stride_patterns: list[snax_stream.StridePattern] = []
 
         # small function to generate a list of n zeros with the i-th element 1
         # for example n = 4, i = 1  -> [0, 1, 0, 0]
@@ -131,7 +132,10 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 op.body.block.first_op.library_call.data == "snax_gemm"
                 or op.body.block.first_op.library_call.data == "snax_gemmx"
             ):  # pyright: ignore
-                spat_dim = 3
+                if len(op.body.block.first_op.body.block.ops) < 15:
+                    spat_dim = 3
+                else:
+                    spat_dim = 2
 
             temporal_strides = []
             spatial_strides = []
@@ -164,25 +168,46 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         # get base addresses of the streaming region ops
         # TODO: generalize and fix for offsets
 
-        new_inputs = [memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs]
+        new_inputs: list[Operation] = [memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs]
         new_outputs = [memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs]
 
         # FIXME: implement something better for virtual operands
-        # now, this is hardcoded to matmul on gemmx
+        # now, this is hardcoded to matmul or simd on gemmx
         if len(snax_stride_patterns) < len(streamer_config.data.streamers):
-            # create empty patterns for 2 and 3
             empty_pattern = snax_stream.StridePattern(
                 upper_bounds=[0] * 3,
                 temporal_strides=[0] * 3,
                 spatial_strides=[0] * 2
             )
-            snax_stride_patterns.insert(2, empty_pattern)
-            snax_stride_patterns.insert(2, empty_pattern)
+            if len(snax_stride_patterns) == 3:
+                # gemm
+                # insert empty patterns for 2 and 3
+                snax_stride_patterns.insert(2, empty_pattern)
+                snax_stride_patterns.insert(2, empty_pattern)
 
-            # two dummy inputs
-            new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
-            new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
-
+                # two dummy inputs
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
+            else:
+                # simd
+                # create zero patterns for 0 and 1
+                zero_pattern = snax_stream.StridePattern(
+                    upper_bounds=snax_stride_patterns[0].upper_bounds,
+                    temporal_strides=[0] * len(snax_stride_patterns[0].upper_bounds),
+                    spatial_strides=[1, 8]
+                )
+                snax_stride_patterns.insert(0, zero_pattern)
+                new_inputs.insert(0, arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType()))
+                snax_stride_patterns.insert(0, zero_pattern)
+                new_inputs.insert(0, arith.Constant.from_int_and_width(0x1000_0080, builtin.IndexType()))
+                #
+                # flip 2 and 3
+                snax_stride_patterns.append(snax_stride_patterns.pop(2))
+                #
+                # empty pattern for 4
+                snax_stride_patterns.append(empty_pattern)
+                # dummy input for 4
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
 
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(

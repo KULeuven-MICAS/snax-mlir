@@ -38,6 +38,8 @@ alloc_result_t *_mlir_ciface_snax_alloc_l1(uint32_t size, uint32_t alignment) {
 
     allocated_result->pointer = allocated_pointer;
     allocated_result->aligned_pointer = aligned_pointer;
+
+    // printf("Allocated at %p. Next available pointer at %p\n", allocated_pointer, snrt_l1_next());
   }
 
   snrt_cluster_hw_barrier();
@@ -45,7 +47,9 @@ alloc_result_t *_mlir_ciface_snax_alloc_l1(uint32_t size, uint32_t alignment) {
 }
 
 void _mlir_ciface_snax_dump_l1() {
-  printf("You still have to implement this function, Joren\n");
+  snrt_alloc_init();
+  // keep first 256 bytes free for zero wizardry
+  snrt_l1alloc(256);
 }
 
 void _mlir_ciface_snax_cluster_hw_barrier() {

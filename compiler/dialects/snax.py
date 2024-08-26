@@ -172,13 +172,15 @@ class Debug(IRDLOperation):
 
     debug_type = prop_def(StringAttr)
     when = prop_def(StringAttr)
+    level = prop_def(StringAttr)
 
-    def __init__(self, op_a: SSAValue, op_b: SSAValue, op_c: SSAValue, debug_type: str, when: str):
+    def __init__(self, op_a: SSAValue, op_b: SSAValue, op_c: SSAValue, debug_type: str, when: str, level: str = "L1"):
         assert when in ('before', 'after')
+        assert level in ('L3', 'L1')
         super().__init__(
             operands = [op_a, op_b, op_c],
             result_types=[],
-            properties={"debug_type": StringAttr(debug_type), "when": StringAttr(when)}
+            properties={"debug_type": StringAttr(debug_type), "when": StringAttr(when), "level": StringAttr(level)}
         )
 
 @irdl_attr_definition
