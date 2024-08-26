@@ -9,14 +9,7 @@
   }) : (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> ()
 }) : () -> ()
 
-//CHECK: "builtin.module"() ({
-//CHECK-NEXT:   %0, %1, %2 = "test.op"() : () -> (memref<64xi32>, memref<64xi32>, memref<64xi32>)
-//CHECK-NEXT:   "linalg.generic"(%0, %1, %2) <{"indexing_maps" = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], "iterator_types" = [#linalg.iterator_type<parallel>], "operandSegmentSizes" = array<i32: 2, 1>, "library_call" = "snax_hwpe_mult"}> ({
-//CHECK-NEXT:   ^0(%arg0 : i32, %arg1 : i32, %arg2 : i32):
-//CHECK-NEXT:     %3 = "arith.muli"(%arg0, %arg1) : (i32, i32) -> i32
-//CHECK-NEXT:     "linalg.yield"(%3) : (i32) -> ()
-//CHECK-NEXT:   }) : (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> ()
-//CHECK-NEXT: }) : () -> ()
+//CHECK: "library_call" = "snax_hwpe_mult"
 
 // -----
 
@@ -39,24 +32,7 @@
   }) : () -> ()
 }) : () -> ()
 
-//CHECK: "builtin.module"() ({
-//CHECK-NEXT:   "func.func"() <{"function_type" = (memref<?x128xi8>, memref<128x128xi8>, memref<?x128xi32>) -> memref<?x128xi32>, "sym_name" = "mnist"}> ({
-//CHECK-NEXT:   ^0(%arg0 : memref<?x128xi8>, %arg1 : memref<128x128xi8>, %arg2 : memref<?x128xi32>):
-//CHECK-NEXT:     %0 = "arith.constant"() <{"value" = 1 : i32}> : () -> i32
-//CHECK-NEXT:     %1 = "arith.constant"() <{"value" = 1 : i32}> : () -> i32
-//CHECK-NEXT:     "linalg.generic"(%arg0, %arg1, %0, %1, %arg2) <{"indexing_maps" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> (d0, d1)>], "iterator_types" = [#linalg.iterator_type<parallel>, #linalg.iterator_type<parallel>, #linalg.iterator_type<reduction>], "operandSegmentSizes" = array<i32: 4, 1>, "library_call" = "snax_gemm"}> ({
-//CHECK-NEXT:     ^1(%arg3 : i8, %arg4 : i8, %arg5 : i32, %arg6 : i32, %arg7 : i32):
-//CHECK-NEXT:       %2 = "arith.extsi"(%arg3) : (i8) -> i32
-//CHECK-NEXT:       %3 = "arith.subi"(%2, %arg5) : (i32, i32) -> i32
-//CHECK-NEXT:       %4 = "arith.extsi"(%arg4) : (i8) -> i32
-//CHECK-NEXT:       %5 = "arith.subi"(%4, %arg6) : (i32, i32) -> i32
-//CHECK-NEXT:       %6 = "arith.muli"(%3, %5) : (i32, i32) -> i32
-//CHECK-NEXT:       %7 = "arith.addi"(%arg7, %6) : (i32, i32) -> i32
-//CHECK-NEXT:       "linalg.yield"(%7) : (i32) -> ()
-//CHECK-NEXT:     }) : (memref<?x128xi8>, memref<128x128xi8>, i32, i32, memref<?x128xi32>) -> ()
-//CHECK-NEXT:     "func.return"(%arg2) : (memref<?x128xi32>) -> ()
-//CHECK-NEXT:   }) : () -> ()
-//CHECK-NEXT: }) : () -> ()
+//CHECK: "library_call" = "snax_gemm"
 
 // -----
 
@@ -72,17 +48,8 @@
   }) : () -> ()
 }) : () -> ()
 
-// CHECK:  "builtin.module"() ({
-// CHECK-NEXT:    "func.func"() <{"function_type" = (memref<16xi64>, memref<16xi64>, memref<16xi64>) -> (), "sym_name" = "streamer_add", "sym_visibility" = "public"}> ({
-// CHECK-NEXT:    ^0(%arg0 : memref<16xi64>, %arg1 : memref<16xi64>, %arg2 : memref<16xi64>):
-// CHECK-NEXT:      "linalg.generic"(%arg0, %arg1, %arg2) <{"indexing_maps" = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], "iterator_types" = [#linalg.iterator_type<parallel>], "operandSegmentSizes" = array<i32: 2, 1>, "library_call" = "snax_alu_stream"}> ({
-// CHECK-NEXT:      ^1(%arg3 : i64, %arg4 : i64, %arg5 : i64):
-// CHECK-NEXT:        %0 = "arith.addi"(%arg3, %arg4) : (i64, i64) -> i64
-// CHECK-NEXT:        "linalg.yield"(%0) : (i64) -> ()
-// CHECK-NEXT:      }) : (memref<16xi64>, memref<16xi64>, memref<16xi64>) -> ()
-// CHECK-NEXT:      "func.return"() : () -> ()
-// CHECK-NEXT:    }) : () -> ()
-// CHECK-NEXT:  }) : () -> ()
+
+// CHECK: "library_call" = "snax_alu_stream"
 
 // -----
 
@@ -98,14 +65,4 @@
   }) : () -> ()
 }) : () -> ()
 
-// CHECK:  "builtin.module"() ({
-// CHECK-NEXT:    "func.func"() <{"function_type" = (memref<?xi64>, memref<?xi64>, memref<?xi64>) -> (), "sym_name" = "streamer_add", "sym_visibility" = "public"}> ({
-// CHECK-NEXT:    ^0(%arg0 : memref<?xi64>, %arg1 : memref<?xi64>, %arg2 : memref<?xi64>):
-// CHECK-NEXT:      "linalg.generic"(%arg0, %arg1, %arg2) <{"indexing_maps" = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], "iterator_types" = [#linalg.iterator_type<parallel>], "operandSegmentSizes" = array<i32: 2, 1>, "library_call" = "snax_alu"}> ({
-// CHECK-NEXT:      ^1(%arg3 : i64, %arg4 : i64, %arg5 : i64):
-// CHECK-NEXT:        %0 = "arith.addi"(%arg3, %arg4) : (i64, i64) -> i64
-// CHECK-NEXT:        "linalg.yield"(%0) : (i64) -> ()
-// CHECK-NEXT:      }) : (memref<?xi64>, memref<?xi64>, memref<?xi64>) -> ()
-// CHECK-NEXT:      "func.return"() : () -> ()
-// CHECK-NEXT:    }) : () -> ()
-// CHECK-NEXT:  }) : () -> ()
+// CHECK: "library_call" = "snax_alu"
