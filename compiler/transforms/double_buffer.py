@@ -83,7 +83,7 @@ def is_uneven_func(for_op: scf.For) -> bool:
     """
     Check if the loop is uneven
     """
-    return get_int(for_op.ub) % (2 * get_int(for_op.step)) != 0
+    return get_int(for_op.ub) % (2 * get_int(for_op.step)) <= get_int(for_op.step)
 
 
 def outside_loop(dependant_op: Operation, loop: scf.For) -> bool:
