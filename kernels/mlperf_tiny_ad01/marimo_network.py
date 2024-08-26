@@ -58,23 +58,29 @@ def __(interpreter, np):
     print('input: \n', interpreter.get_tensor(input_index)[:5,:5])
     print('weights shape: ', interpreter.get_tensor(weights_index).shape)
     print('weight: \n', interpreter.get_tensor(weights_index)[:5,:5])
-    out1 = np.matmul(input.astype(np.int32), weight1.astype(np.int32).transpose())
+    out1 = np.matmul(input.astype(np.int32) - 89, weight1.astype(np.int32).transpose())
     print('out1: \n', out1[:5, :5])
     return input, input_index, out1, weight1, weights_index
 
 
 @app.cell
 def __(interpreter, out1):
-    # Layer 2:
+    # Layer 2: (after bias)
     out2 = interpreter.get_tensor(1) + out1
-    print('out2: \n', out2[:5, :5])
-
+    print('out2: \n', out2)
     return out2,
 
 
 @app.cell
+def __(interpreter, np):
+
+    (interpreter.get_tensor(21).astype(np.int32) + 128) / 0.00297950776
+    return
+
+
+@app.cell
 def __():
-    # Layer 3
+    36/12010
     return
 
 
