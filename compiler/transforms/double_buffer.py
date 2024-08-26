@@ -13,6 +13,8 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.rewriter import InsertPoint
 
+from compiler.dialects import snax
+
 
 def soft_walk_region(region: Region, reverse: bool = False) -> Iterator[Operation]:
     """
@@ -38,7 +40,7 @@ def has_memory_space(value: SSAValue, attr: str) -> bool:
     if not isinstance(value.type.memory_space, NoneAttr):
         return value.type.memory_space.data == attr
     else:
-        return False  # TODO: Fix this
+        return False
 
 
 def operates_on_copied_in(op: Operation, copy_in_ops: list[memref.CopyOp]) -> bool:
@@ -63,11 +65,25 @@ def operates_on_copied_out(op: Operation, copy_out_ops: list[memref.CopyOp]) -> 
     return False
 
 
-# def is_uneven_func(for_op: scf.For) -> bool:
-#     """
-#     Check if the loop is uneven
-#     """
-#     return for_op.ub % for_op.step != 0  # TODO
+def get_int(value: SSAValue) -> int:
+    """
+    Get the integer value of a SSAValue
+    """
+    if isinstance(value.owner, arith.Constant):
+        return value.owner.value.value.data
+    if isinstance(value.owner, arith.Addi):
+        return get_int(value.owner.lhs) + get_int(value.owner.rhs)
+    if isinstance(value.owner, arith.Subi):
+        return get_int(value.owner.lhs) - get_int(value.owner.rhs)
+    if isinstance(value.owner, arith.Muli):
+        return get_int(value.owner.lhs) * get_int(value.owner.rhs)
+
+
+def is_uneven_func(for_op: scf.For) -> bool:
+    """
+    Check if the loop is uneven
+    """
+    return get_int(for_op.ub) % (2 * get_int(for_op.step)) != 0
 
 
 def outside_loop(dependant_op: Operation, loop: scf.For) -> bool:
@@ -130,7 +146,7 @@ class AddDoubleBuffer(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, for_op: scf.For, rewriter: PatternRewriter):
         # Get all the Copy In operations
-        # is_uneven = is_uneven_func(for_op)
+        is_uneven = is_uneven_func(for_op)
         copy_in_ops = []
         for op in soft_walk_region(for_op.body):
             if isinstance(op, memref.CopyOp):
@@ -165,6 +181,12 @@ class AddDoubleBuffer(RewritePattern):
             alloc_clone = alloc.clone()
             rewriter.insert_op(alloc_clone, InsertPoint.after(alloc))
             outputs_with_clones.append((alloc.results[0], alloc_clone.results[0]))
+
+        # Add a synchronization operation at the end of the loop
+        # These will be used at the end of all logical blocks
+        # insert before scf.yield
+        sync_op = snax.ClusterSyncOp()
+        rewriter.insert_op(sync_op, InsertPoint.before(for_op.body.blocks[0].last_op))
 
         # Duplicate the content of the loop
         for_copy = for_op.clone()
@@ -273,12 +295,12 @@ class AddDoubleBuffer(RewritePattern):
                 rewriter.insert_op(op, InsertPoint.before(for_op))
 
         # Add final copy out outside of the loop
-        final_copy_for = for_copy.clone()
+        if is_uneven:
+            final_copy_for = for_op.clone()
+        else:
+            final_copy_for = for_copy.clone()
         final_copy_out_ops = final_copy_for.body
-        # if is_uneven:
-        #     final_copy_out_ops = for_copy.clone().body
-        # else:
-        #     final_copy_out_ops = for_op.clone().body
+
         # Remove all copy in and compute operations
         one_less_than_upper_bound_op = arith.Subi(for_op.ub, for_op.step, IndexType())
         rewriter.insert_op(one_less_than_upper_bound_op, InsertPoint.before(for_op))
@@ -318,7 +340,10 @@ class AddDoubleBuffer(RewritePattern):
                 rewriter.insert_op(op, InsertPoint.after(for_op))
 
         # Add second to last iteration of compute and copy out
-        second_to_last_for = for_op.clone()
+        if is_uneven:
+            second_to_last_for = for_copy.clone()
+        else:
+            second_to_last_for = for_op.clone()
         second_to_last_compute_ops = second_to_last_for.body
         # Remove all copy in operations
         const_2 = arith.Constant.from_int_and_width(2, IndexType())
@@ -358,9 +383,58 @@ class AddDoubleBuffer(RewritePattern):
             if not isinstance(op, scf.Yield):
                 rewriter.insert_op(op, InsertPoint.after(for_op))
 
+        # When the number of iterations is uneven, add the last iteration of the loop
+        const_3 = arith.Constant.from_int_and_width(3, IndexType())
+        three_step = arith.Muli(for_op.step, const_3.results[0])
+        three_less_than_upper_bound_op = arith.Subi(
+            for_op.ub, three_step.results[0], IndexType()
+        )
+        if is_uneven:
+            last_complete_for = for_op.clone()
+            last_complete_ops = last_complete_for.body
+            for op in final_copy_out_ops.walk(reverse=False):
+                if isinstance(op, memref.CopyOp) and (
+                    has_memory_space(op.source, "L1")
+                    or has_memory_space(op.destination, "L3")
+                ):
+                    replace_iter_value(
+                        op.destination.owner,
+                        last_complete_for,
+                        last_complete_ops.blocks[0].args[0],
+                        one_less_than_upper_bound_op.results[0],  # TODO
+                    )
+                elif isinstance(op, memref.CopyOp) and (
+                    has_memory_space(op.destination, "L1")
+                    or has_memory_space(op.source, "L3")
+                ):
+                    replace_iter_value(
+                        op.source.owner,
+                        last_complete_for,
+                        last_complete_ops.blocks[0].args[0],
+                        three_less_than_upper_bound_op.results[0],  # TODO
+                    )
+                elif isinstance(op, linalg.Generic):
+                    replace_iter_value(
+                        op,
+                        last_complete_for,
+                        last_complete_ops.blocks[0].args[0],
+                        two_less_than_upper_bound_op.results[0],  # TODO
+                    )
+
+            for op in soft_walk_region(second_to_last_compute_ops, reverse=True):
+                # Add after the loop
+                op.detach()
+                if not isinstance(op, scf.Yield):
+                    rewriter.insert_op(op, InsertPoint.after(for_op))
+
+        # adapt all the iteration values
         rewriter.insert_op(const_2, InsertPoint.before(for_op))
         rewriter.insert_op(two_step, InsertPoint.before(for_op))
         rewriter.insert_op(two_less_than_upper_bound_op, InsertPoint.before(for_op))
+
+        rewriter.insert_op(const_3, InsertPoint.before(for_op))
+        rewriter.insert_op(three_step, InsertPoint.before(for_op))
+        rewriter.insert_op(three_less_than_upper_bound_op, InsertPoint.before(for_op))
 
         added_iteration_value = arith.Addi(for_op.body.blocks[0].args[0], for_op.step)
         subtracted_iteration_value = arith.Subi(
