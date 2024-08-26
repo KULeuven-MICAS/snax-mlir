@@ -110,6 +110,10 @@ def split_bounds(
 
 
 class ScheduleMemrefLinalgRewriter(RewritePattern):
+    """
+    Takes a memref_stream.generic op as input and wraps it in a memref_stream streaming region op
+    to determine the access patterns, the operation is scheduled to an accelerator template.
+    """
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref_stream.GenericOp, rewriter: PatternRewriter):
         if any(isinstance(operand.type, stream.StreamType) for operand in op.operands):
@@ -122,7 +126,7 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
         ):
             raise NotImplementedError("panic!")
 
-        # only handle snax_alu for now
+        # only handle snax_alu and snax_gemm for now
         if op.library_call.data == "snax_alu":
             template = [AffineMap.from_callable(lambda x, y: (4 * x + y,))] * 3
             template_bounds = (None, 4)
@@ -150,9 +154,9 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
 
         for i in range(template[0].num_dims):
             # i = 0: look at the last dimension
+            # i = 1: look at the second to last dimension
             template_dim = template[0].num_dims - i - 1
             schedule_dim = schedule[0].num_dims - i - 1
-            # i = 1: look at the second to last dimension
             match = False
 
             for it in range(schedule_dim + 1):
@@ -164,23 +168,6 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                 schedule_check = tuple(
                     disable_dims(map, schedule_dim) for map in schedule
                 )
-
-                # print(f"i = {i}, template_dim = {template_dim}, schedule_dim = {schedule_dim}, attempt = {it}")
-
-                # for j in range(3):
-                #     print(f"schedule-{j}: {str(schedule[j])}")
-
-                # print(f"schedule-bounds: {schedule_bounds}")
-
-                # for j in range(3):
-                #     print(f"template-check-{j}: {str(template_check[j])}")
-
-                # for j in range(3):
-                #     print(f"schedule-check-{j}: {str(schedule_check[j])}")
-
-                # print(f"template_check == schedule_check: {template_check == schedule_check}")
-
-                # breakpoint()
 
                 if template_check == schedule_check:
                     match = True
@@ -218,13 +205,12 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                     schedule_bounds, schedule_dim, template_bound
                 )
 
-        # if we get here, we're lucky, because nothing broke yet :-)
-        # we have now successfully determined a schedule for the operator
-        # this is implemented with a memref streaming region
-        # the original op stays the same
-        # the indexing maps of that one are now pretty meaningless, but should
+        # if we get here we have now successfully determined a schedule for the operator
+        # this can be implemented with a memref streaming region
+        # the rest of this function just creates the wrapping memref streaming region
+        # the original generic op stays the same
+        # the indexing maps of that generic op are now pretty meaningless, but should
         # not be looked at in following passes i think
-        #
 
         input_streams = [
             stream.ReadableStreamType(input.type.element_type)
