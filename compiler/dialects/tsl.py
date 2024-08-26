@@ -11,7 +11,7 @@ from xdsl.dialects.builtin import (
 )
 from xdsl.dialects.memref import Dim, ExtractStridedMetaDataOp
 from xdsl.ir import Data, Dialect, Operation, SSAValue
-from xdsl.ir.affine import AffineMap
+from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineMap
 from xdsl.irdl import (
     irdl_attr_definition,
 )
@@ -38,7 +38,28 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         printer.print_string(f"<{self.data}>")
 
     def get_affine_map(self) -> AffineMap:
-        raise NotImplementedError("Still to do!")
+        if self.data.is_dynamic():
+            raise NotImplementedError("Dynamic case is not implemented yet!")
+
+        # TODO: the affine map should result in element offset, not byte offset
+        # i will probably transition the tsl definition to element offset
+        # as well, to make everything more convenient
+
+        result = AffineConstantExpr(0)
+        for dim in range(self.data.dimension()):
+            max_depth = self.data.tstrides[dim].depth()
+            for depth in range(max_depth):
+                strides = self.data.tstrides[dim].strides
+                mod = prod([stride.bound for stride in strides[depth:] if stride.bound])
+                fdiv = prod(
+                    [stride.bound for stride in strides[depth + 1 :] if stride.bound]
+                )
+                assert (step := self.data.get_stride(dim, depth).step)
+                if depth > 0:
+                    result += step * ((AffineDimExpr(dim) % mod) // fdiv)
+                else:
+                    result += step * (AffineDimExpr(dim) // fdiv)
+        return AffineMap(self.data.dimension(), 0, (result,))
 
     def get_bound_ops(
         self, memref_op_or_shapes: SSAValue | Operation | list[Operation]

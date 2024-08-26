@@ -1,6 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg
-from xdsl.dialects.memref import MemRefType
+from xdsl.dialects.builtin import MemRefType
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -11,6 +11,51 @@ from xdsl.pattern_rewriter import (
 )
 
 from compiler.util.kernel_type import KernelType
+
+
+class DispatchSnaxALU(RewritePattern):
+    """
+    Dispatch eligible linalg.generic ops to SNAX ALU Accelerator
+    by altering the library call attribute
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
+        ## conditions for library call:
+        # (1) kernel type must be add
+        # (2) data type must be 1D integer memref of i64
+        # (3) dataflow must be all parallel
+        if any(
+            [
+                op.library_call is not None,
+                KernelType.get_kernel(op) != KernelType.ADD,
+                len(op.iterator_types) != 1,
+                op.iterator_types.data[0].data is not linalg.IteratorType.PARALLEL,
+            ]
+        ):
+            return
+
+        for inp in op.inputs:
+            if not isinstance((itype := inp.type), MemRefType):
+                return
+            if len(itype.get_shape()) != 1:
+                return
+            if not isinstance(
+                (el_type := itype.get_element_type()), builtin.IntegerType
+            ):
+                return
+            if not el_type.bitwidth == 64:
+                return
+
+        # check if maybe possible to use stream dialect?
+        for inp in op.inputs:
+            assert isinstance(inp.type, MemRefType)
+            # all static shapes required for now
+            if -1 not in inp.type.get_shape():
+                op.library_call = builtin.StringAttr("snax_alu_stream")
+                return
+
+        op.library_call = builtin.StringAttr("snax_alu")
 
 
 class DispatchElementwiseMult(RewritePattern):
@@ -129,3 +174,4 @@ class DispatchKernels(ModulePass):
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(DispatchElementwiseMult()).rewrite_module(op)
         PatternRewriteWalker(DispatchQMatMul()).rewrite_module(op)
+        PatternRewriteWalker(DispatchSnaxALU()).rewrite_module(op)
