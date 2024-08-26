@@ -3,7 +3,12 @@ from xdsl.dialects import builtin, memref_stream, stream
 from xdsl.ir import Block, Region
 from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineExpr, AffineMap
 from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
+from xdsl.pattern_rewriter import (
+    PatternRewriter,
+    PatternRewriteWalker,
+    RewritePattern,
+    op_type_rewrite_pattern,
+)
 from xdsl.rewriter import InsertPoint
 
 from compiler.util.canonicalize_affine import canonicalize_map
@@ -22,7 +27,8 @@ def disable_dims(map: AffineMap, dim: int) -> AffineMap:
     """
     return canonicalize_map(
         map.replace_dims_and_symbols(
-            [AffineConstantExpr(0) for _ in range(dim)] + [AffineDimExpr(i) for i in range(map.num_dims - dim)],
+            [AffineConstantExpr(0) for _ in range(dim)]
+            + [AffineDimExpr(i) for i in range(map.num_dims - dim)],
             [],
             map.num_dims - dim,
             0,
@@ -46,7 +52,9 @@ def rotate_dims(map: AffineMap, dim: int) -> AffineMap:
     new_dims.append(new_dims.pop(0))
     # keep remaining dims
     new_dims = new_dims + [AffineDimExpr(i) for i in range(dim, map.num_dims)]
-    return canonicalize_map(map.replace_dims_and_symbols(new_dims, [], len(new_dims), 0))
+    return canonicalize_map(
+        map.replace_dims_and_symbols(new_dims, [], len(new_dims), 0)
+    )
 
 
 def rotate_bounds(bounds: list[int | None], dim: int) -> list[int | None]:
@@ -54,7 +62,7 @@ def rotate_bounds(bounds: list[int | None], dim: int) -> list[int | None]:
     Returns the bounds after rotating dims, as in rotate_dims
     """
     bounds = bounds.copy()
-    bounds.insert(0, bounds.pop(dim -1))
+    bounds.insert(0, bounds.pop(dim - 1))
     return bounds
 
 
@@ -83,7 +91,9 @@ def split_dim(map: AffineMap, dim: int, template_bound: int) -> AffineMap:
     return result
 
 
-def split_bounds(bounds: list[int | None], dim: int, template_bound: int) -> list[int | None]:
+def split_bounds(
+    bounds: list[int | None], dim: int, template_bound: int
+) -> list[int | None]:
     """
     Returns the bounds after applying `split_dim` in similar fashion.
 
@@ -106,7 +116,10 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             # Already streamified
             return
 
-        if not (isinstance(op.library_call, builtin.StringAttr) and op.library_call.data in ("snax_alu", "snax_gemm")):
+        if not (
+            isinstance(op.library_call, builtin.StringAttr)
+            and op.library_call.data in ("snax_alu", "snax_gemm")
+        ):
             raise NotImplementedError("panic!")
 
         # only handle snax_alu for now
@@ -126,10 +139,14 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
 
         # only take patterns of memref operands
         schedule = [
-            imap.data for imap, op in zip(op.indexing_maps.data, op.operands) if isinstance(op.type, builtin.MemRefType)
+            imap.data
+            for imap, op in zip(op.indexing_maps.data, op.operands)
+            if isinstance(op.type, builtin.MemRefType)
         ]
 
-        schedule_bounds: list[int | None] = [bound.value.data for bound in op.bounds.data]
+        schedule_bounds: list[int | None] = [
+            bound.value.data for bound in op.bounds.data
+        ]
 
         for i in range(template[0].num_dims):
             # i = 0: look at the last dimension
@@ -141,8 +158,12 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             for it in range(schedule_dim + 1):
                 # keep rotating the remaining dimensions until we have a match
 
-                template_check = tuple(disable_dims(map, template_dim) for map in template)
-                schedule_check = tuple(disable_dims(map, schedule_dim) for map in schedule)
+                template_check = tuple(
+                    disable_dims(map, template_dim) for map in template
+                )
+                schedule_check = tuple(
+                    disable_dims(map, schedule_dim) for map in schedule
+                )
 
                 # print(f"i = {i}, template_dim = {template_dim}, schedule_dim = {schedule_dim}, attempt = {it}")
 
@@ -189,9 +210,13 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             elif schedule_bound > template_bound:
                 # need to split up the schedule
                 assert schedule_bound % template_bound == 0
-                schedule = [split_dim(schedule_map, schedule_dim, template_bound) for schedule_map in schedule]
-                schedule_bounds = split_bounds(schedule_bounds, schedule_dim, template_bound)
-
+                schedule = [
+                    split_dim(schedule_map, schedule_dim, template_bound)
+                    for schedule_map in schedule
+                ]
+                schedule_bounds = split_bounds(
+                    schedule_bounds, schedule_dim, template_bound
+                )
 
         # if we get here, we're lucky, because nothing broke yet :-)
         # we have now successfully determined a schedule for the operator
@@ -214,27 +239,44 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
         ]
 
         bounds_attr = builtin.ArrayAttr(
-            [builtin.IntegerAttr(val if val else -1, builtin.IndexType()) for val in schedule_bounds]
+            [
+                builtin.IntegerAttr(val if val else -1, builtin.IndexType())
+                for val in schedule_bounds
+            ]
         )
         input_stride_patterns: list[memref_stream.StridePattern] = [
-            memref_stream.StridePattern(bounds_attr, builtin.AffineMapAttr(map)) for map in schedule
+            memref_stream.StridePattern(bounds_attr, builtin.AffineMapAttr(map))
+            for map in schedule
         ]
 
         streaming_region_op = memref_stream.StreamingRegionOp(
-            inputs=[input for input in op.inputs if isinstance(input.type, builtin.MemRefType)],
-            outputs=[output for output in op.outputs if isinstance(output.type, builtin.MemRefType)],
+            inputs=[
+                input
+                for input in op.inputs
+                if isinstance(input.type, builtin.MemRefType)
+            ],
+            outputs=[
+                output
+                for output in op.outputs
+                if isinstance(output.type, builtin.MemRefType)
+            ],
             patterns=builtin.ArrayAttr(input_stride_patterns),
             body=Region(Block(arg_types=input_streams + output_streams)),
         )
 
         streaming_args = list(streaming_region_op.body.block.args)
         new_inputs = [
-            streaming_args.pop(0) if isinstance(input.type, builtin.MemRefType) else input for input in op.inputs
+            streaming_args.pop(0)
+            if isinstance(input.type, builtin.MemRefType)
+            else input
+            for input in op.inputs
         ]
         new_outputs = [
-            streaming_args.pop(0) if isinstance(output.type, builtin.MemRefType) else output for output in op.outputs
+            streaming_args.pop(0)
+            if isinstance(output.type, builtin.MemRefType)
+            else output
+            for output in op.outputs
         ]
-
 
         new_generic_op = memref_stream.GenericOp(
             inputs=new_inputs,
@@ -250,7 +292,9 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
         )
 
         rewriter.replace_matched_op(streaming_region_op)
-        rewriter.insert_op(new_generic_op, InsertPoint.at_end(streaming_region_op.body.block))
+        rewriter.insert_op(
+            new_generic_op, InsertPoint.at_end(streaming_region_op.body.block)
+        )
 
 
 class ScheduleMemrefLinalg(ModulePass):
@@ -266,4 +310,6 @@ class ScheduleMemrefLinalg(ModulePass):
     name = "schedule-memref-linalg"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp):
-        PatternRewriteWalker(ScheduleMemrefLinalgRewriter(), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(
+            ScheduleMemrefLinalgRewriter(), apply_recursively=False
+        ).rewrite_module(op)
