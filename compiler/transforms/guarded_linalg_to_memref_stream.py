@@ -22,6 +22,8 @@ class GuardedGenericOpPattern(RewritePattern):
         This pattern is a guarded version of the pattern in upstream xDSL.
         This is required because we can't (or don't want to) lower all
         generic calls through the stream dialects.
+        It only matches on linalg.generics that have a library call with
+        a `_stream` suffix. This pass removes that suffix.
         """
 
         if not op.library_call:
