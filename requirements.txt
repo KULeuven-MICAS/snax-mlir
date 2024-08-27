@@ -4,4 +4,4 @@ lit
 numpy<2.0.0
 xdsl @ git+https://github.com/xdslproject/xdsl.git@03d532285cea710ad52bc28a75a12afc360f5f1e
 zigzag-dse @ git+https://github.com/KULeuven-MICAS/zigzag.git@ccb3c14aa30e1db365b6351566f549a584e33851
-#tensorflow-cpu==2.14.0
+tensorflow-cpu==2.14.0
