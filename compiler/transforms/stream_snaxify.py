@@ -43,7 +43,7 @@ class HoistAcceleratorAttribute(RewritePattern):
 
             if accelerator and inner_op.library_call != accelerator:
                 raise RuntimeError(
-                    "multiple different accelerator dispatches found in streaming region op"
+                    "multiple different accelerator dispatches found in a single memref_stream.streaming_region op"
                 )
 
             accelerator = inner_op.library_call.data
