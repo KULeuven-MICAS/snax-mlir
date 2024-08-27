@@ -143,12 +143,31 @@ class MoveMemrefDims(RewritePattern):
             index = int(dim_op.index.owner.value.value.data)
             return memref_op_outside_loop(memref_op, index)
 
+        def get_subview_size(subview: memref.Subview, index: int) -> int | SSAValue:
+            """
+            Returns the size of the subview at the given index.
+            """
+            memref_data = subview.static_sizes.data.data
+            target = memref_data[index].data
+            if not target == -9223372036854775808:
+                return target
+            else:
+                # Count the number of magic numbers
+                magic_numbers = 0
+                for i in range(index):
+                    if memref_data[i].data == -9223372036854775808:
+                        magic_numbers += 1
+                return subview.sizes[magic_numbers]
+
         def memref_op_outside_loop(memref_op: Operation, index: int) -> bool:
             if isinstance(memref_op, Block):
                 # This happens when the dim is called on an input argument
                 return True
             if isinstance(memref_op, memref.Subview):
-                new_op = memref_op.sizes[index].owner
+                subview_size = get_subview_size(memref_op, index)
+                if isinstance(subview_size, int):
+                    return True
+                new_op = subview_size.owner
                 if isinstance(new_op, arith.Constant) or isinstance(
                     new_op, affine.MinOp
                 ):
@@ -180,7 +199,6 @@ class MoveMemrefDims(RewritePattern):
             4.  The index is given by a constant operation, which will already be outside the loop.
             5.  The Dim result is only used by Alloc operations and subview operations.
             """
-            pass
             if all(
                 [
                     isinstance(dim_op, memref.Dim),
@@ -237,7 +255,10 @@ class MoveMemrefDims(RewritePattern):
                 # This happens when the dim is called on an input argument
                 return memref.Dim.from_source_and_index(memref_ssa, index_constant)
             if isinstance(memref_op, memref.Subview):
-                new_op = memref_op.sizes[index].owner
+                subview_size = get_subview_size(memref_op, index)
+                if isinstance(subview_size, int):
+                    return arith.Constant.from_int_and_width(subview_size, IndexType())
+                new_op = subview_size.owner
                 if isinstance(new_op, arith.Constant) or isinstance(
                     new_op, affine.MinOp
                 ):
