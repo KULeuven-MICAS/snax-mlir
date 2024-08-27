@@ -16,7 +16,7 @@ from compiler.util.canonicalize_affine import canonicalize_map
 
 def disable_dims(map: AffineMap, dim: int) -> AffineMap:
     """
-    Returns an affine map with the first `dim` dimensions set to 0
+    Returns an affine map with the leftmost `dim` dimensions set to 0
 
     For example:
         (d0, d1, d2) -> d0 + d1 + d2
@@ -38,7 +38,7 @@ def disable_dims(map: AffineMap, dim: int) -> AffineMap:
 
 def rotate_dims(map: AffineMap, dim: int) -> AffineMap:
     """
-    Returns an affine map with the first `dim` dimensions rotated
+    Returns an affine map with the leftmost `dim` dimensions rotated
 
     For example:
         (d0, d1, d2) -> 1 * d0 + 2 * d1 + 3 * d2
@@ -66,10 +66,10 @@ def rotate_bounds(bounds: list[int | None], dim: int) -> list[int | None]:
     return bounds
 
 
-def split_dim(map: AffineMap, dim: int, template_bound: int) -> AffineMap:
+def tile_dim(map: AffineMap, dim: int, template_bound: int) -> AffineMap:
     """
     Returns the bounds and a new affine map with the `dim` dimension split up into two
-    This translates to creating two for loops with adjuste bounds from one for loop
+    This translates to creating two for loops with adjusted bounds from one for loop
 
 
     For example:
@@ -91,11 +91,11 @@ def split_dim(map: AffineMap, dim: int, template_bound: int) -> AffineMap:
     return result
 
 
-def split_bounds(
+def tile_bounds(
     bounds: list[int | None], dim: int, template_bound: int
 ) -> list[int | None]:
     """
-    Returns the bounds after applying `split_dim` in similar fashion.
+    Returns the bounds after applying `tile_dim` in similar fashion.
 
     For example:
         [2, 8, 2]
@@ -125,7 +125,9 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             isinstance(op.library_call, builtin.StringAttr)
             and op.library_call.data in ("snax_alu", "snax_gemm")
         ):
-            raise NotImplementedError("panic!")
+            raise NotImplementedError(
+                "only snax_alu and snax_gemm are supported right now"
+            )
 
         # only handle snax_alu and snax_gemm for now
         if op.library_call.data == "snax_alu":
@@ -139,8 +141,6 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                 AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
             ]
             template_bounds = (None, None, None, 8, 8, 8)
-        else:
-            raise RuntimeError("panic!")
 
         # only take patterns of memref operands
         schedule = [
@@ -181,7 +181,7 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             if not match:
                 raise RuntimeError("failed to match template and schedule")
 
-            # now, check bounds and design potential transoformation map
+            # now, check bounds and design potential transfomration map
             if not (template_bound := template_bounds[template_dim]):
                 # nothing to worry about, continue to next dim
                 continue
@@ -199,10 +199,10 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                 # need to split up the schedule
                 assert schedule_bound % template_bound == 0
                 schedule = [
-                    split_dim(schedule_map, schedule_dim, template_bound)
+                    tile_dim(schedule_map, schedule_dim, template_bound)
                     for schedule_map in schedule
                 ]
-                schedule_bounds = split_bounds(
+                schedule_bounds = tile_bounds(
                     schedule_bounds, schedule_dim, template_bound
                 )
 
