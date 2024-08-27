@@ -32,9 +32,9 @@ uint8_t Batch = 1;
 /* M_param and N_param can be set to 1 for tiled versions, but not for simple
  version. 2 always works. however, it will impact performance significantly as
  computation cost doubles. For benchmarks, set to 1 */
-uint8_t M_param = 12;
-uint8_t K_param = 7;
-uint8_t N_param = 5;
+uint8_t M_param = 1;
+uint8_t K_param = 1;
+uint8_t N_param = 3;
 // Extracted from datagen.py in snitch_cluster repo
 uint32_t strideInnermostA = 256;
 uint32_t strideInnermostB = 256;
@@ -50,8 +50,9 @@ void _mlir_ciface_streamer_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
 void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
                             int32_t zpb, TwoDMemrefI32_t *c) {
   {
-    // printf("Executing snax_gemm with a=%p, b=%p, c=%p \n", a->aligned_data,
-    //        b->aligned_data, c->aligned_data);
+    printf("Executing snax_gemm with a=%p, b=%p, c=%p \n", a->aligned_data,
+           b->aligned_data, c->aligned_data);
+    // printf("snrt_l1_next: %p\n", snrt_l1_next());
     int local_delta_a = (int)a->aligned_data - (int)snrt_l1_next();
     int local_delta_b = (int)b->aligned_data - (int)snrt_l1_next();
     int local_delta_c = (int)c->aligned_data - (int)snrt_l1_next();
@@ -59,7 +60,7 @@ void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
     uint32_t ldA = 256 * K_param;
     uint32_t ldB = 256 * K_param;
     uint32_t ldC = 256 * N_param;
-    printf("ldA: %d, ldB: %d, ldC: %d\n", ldA, ldB, ldC);
+    // printf("ldA: %d, ldB: %d, ldC: %d\n", ldA, ldB, ldC);
 
     set_streamer_csr(K_param, N_param, M_param, strideInnermostA, ldA, 8,
                      strideInnermostB, ldB, 8, strideInnermostC, ldC, 32,
@@ -142,7 +143,7 @@ int main() {
           nerr += 1;
       }
     }
-
+    printf("Number of errors: %d\n", nerr);
     // insert mcycle to show fault in trace
     if (nerr != 0)
       snrt_mcycle();

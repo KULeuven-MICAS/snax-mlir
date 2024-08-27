@@ -11,9 +11,9 @@ if __name__ == "__main__":
 
     min_size = 1
     max_size = 4
-    m_random = 96  # 8 * np.random.randint(min_size, max_size)
-    n_random = 80  # 8 * np.random.randint(min_size, max_size)
-    k_random = 112  # 8 * np.random.randint(min_size, max_size)
+    m_random = 40  # 8 * np.random.randint(min_size, max_size)
+    n_random = 24  # 8 * np.random.randint(min_size, max_size)
+    k_random = 56  # 8 * np.random.randint(min_size, max_size)
     A_size = [m_random, k_random]
     B_size = [k_random, n_random]
 

@@ -29,7 +29,7 @@ gemm_hardware = {
             "served_dimensions": ["D2"],
         },
         "l1": {
-            "size": 262144,
+            "size": 65536,
             "r_bw": 2048,
             "w_bw": 2048,
             "r_cost": 22.9,
@@ -93,12 +93,6 @@ gemm_mappping = [
         "name": "default",
         "core_allocation": [1],
         "spatial_mapping": {"D1": ["B, 8"], "D2": ["C, 8"], "D3": ["K, 8"]},
-        "temporal_ordering": [
-            ["C", "*"],
-            ["K", "*"],
-            ["B", "*"],
-            ["*", "*"],
-        ],
         "memory_operand_links": {"O": "O", "W": "I2", "I": "I1"},
     }
 ]

@@ -6,8 +6,8 @@ include ../../runtime/snax-streamer-gemm-add-c.rules
 include ../../runtime/Makefile.rules
 
 TESTS =
-TESTS += matmul.x
-# TESTS += half_tiled_matmul.x
+# TESTS += matmul.x
+TESTS += half_tiled_matmul.x
 # TESTS += transform_matmul.x
 # TESTS += dynamic_matmul.x
 

@@ -41,6 +41,7 @@ class DispatchRegionsRewriter(RewritePattern):
                 # else, the scf.if body stops. in this case
                 # create and insert the scf.if operation
                 elif len(ops_to_dispatch) > 0:
+                    insertpoint = InsertPoint.before(ops_to_dispatch[-1].next_op)
                     # detach ops in list from original region
                     for dispatch_op in ops_to_dispatch:
                         dispatch_op.detach()
@@ -48,7 +49,7 @@ class DispatchRegionsRewriter(RewritePattern):
                     ops_to_dispatch.append(scf.Yield())
                     # create and insert scf.if op
                     if_op = scf.If(core_cond, [], ops_to_dispatch)
-                    rewriter.insert_op(if_op, InsertPoint.before(op))
+                    rewriter.insert_op(if_op, insertpoint)
 
                     # reset dispatchable ops list
                     ops_to_dispatch = []
@@ -58,7 +59,7 @@ class DispatchRegionsRewriter(RewritePattern):
 
             return changes_made
 
-        ## dispatch dm core ops, insert function call
+        # dispatch dm core ops, insert function call
         # in dominator block if changes made
         func_call_dm = func.Call("snax_is_dm_core", [], [builtin.i1])
         if any(
