@@ -1,3 +1,7 @@
 # Specific settings for snax-kul-cluster-mixed-narrow-wide RTL
-SNITCH_SW_PATH = /opt/snax-kul-cluster-mixed-narrow-wide/
-VLTSIM        = /opt/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster_large.vlt
+#SNITCH_SW_PATH = /opt/snax-kul-cluster-mixed-narrow-wide/
+#VLTSIM        = /opt/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster_large.vlt
+SNITCH_SW_PATH = /snax_cluster/
+VLTSIM        = /snax_cluster/target/snitch_cluster/bin/snitch_cluster.vlt
+#SNITCH_SW_PATH = /opt/custom/
+#VLTSIM        = /opt/custom-rtl/bin/snitch_cluster.vlt

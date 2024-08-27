@@ -191,6 +191,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             else:
                 # simd
                 # create zero patterns for 0 and 1
+                # do not use new outputs
+                new_inputs.append(new_outputs.pop())
+
                 zero_pattern = snax_stream.StridePattern(
                     upper_bounds=snax_stride_patterns[0].upper_bounds,
                     temporal_strides=[0] * len(snax_stride_patterns[0].upper_bounds),
@@ -203,6 +206,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 #
                 # flip 2 and 3
                 snax_stride_patterns.append(snax_stride_patterns.pop(2))
+                new_inputs.append(new_inputs.pop(2))
                 #
                 # empty pattern for 4
                 snax_stride_patterns.append(empty_pattern)

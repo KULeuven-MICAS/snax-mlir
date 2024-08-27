@@ -156,6 +156,9 @@ class SNAXStreamer(ABC):
         result.extend(([], x) for x in op.inputs)
         result.extend(([], x) for x in op.outputs)
 
+        # transpose
+        result.append(([cst := arith.Constant.from_int_and_width(0, 32)], cst.result))
+
         return result
 
     def get_streamer_setup_fields(self) -> Sequence[str]:
@@ -183,6 +186,9 @@ class SNAXStreamer(ABC):
 
         # base pointers
         result.extend([f"{streamer}_ptr" for streamer in self.streamer_names])
+
+        # transpose reg
+        result.append("transpose")
 
         return result
 

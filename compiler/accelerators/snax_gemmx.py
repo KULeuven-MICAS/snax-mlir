@@ -7,6 +7,7 @@ from compiler.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier2, SNA
 from compiler.accelerators.streamers import Streamer, StreamerConfiguration, StreamerType
 from compiler.dialects import accfg, snax_stream
 from compiler.util.kernel_type import KernelType
+from compiler.util.pack_bitlist import pack_bitlist
 
 default_streamer = StreamerConfiguration(
     [
@@ -134,6 +135,11 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer):
             csr1 = c0
             csr2 = c0
 
+            bitlist = list(pack_bitlist(op.body.block.first_op.inputs[-2:], [0, 8]))
+            ops_to_add.extend(bitlist)
+            subtractions = bitlist[-1].result
+
+
             # FIXME:
             # override C until bias fusion is complete:
             # bounds:
@@ -162,6 +168,7 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer):
         else:
             # simd
             bypassSIMD = c0.result
+            subtractions = c0.result
 
             generic_op = op.body.block.first_op
             assert isinstance(generic_op, memref_stream.GenericOp)
@@ -214,7 +221,7 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer):
         return [
             *streamer_setup_vals,
             *knm,
-            ([c0, c1, *ops_to_add], c0.result),  # subtractions
+            ([c0, c1, *ops_to_add], subtractions),  # subtractions
             ([], csr0.result),  # csr0
             ([], csr1.result),  # csr1
             ([], csr2.result),  # csr2
