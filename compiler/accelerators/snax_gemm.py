@@ -59,8 +59,7 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer):
                 "subtractions": addr_next + 3,
             },
             {**streamer_launch, "launch_gemm": addr_next + 4},
-            # TODO: find out why the barrier value does not increase
-            addr_next + 4,
+            addr_next + 5,
         )
         op.attributes["streamer_config"] = self.streamer_config
         return op
