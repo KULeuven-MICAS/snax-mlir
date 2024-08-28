@@ -1,15 +1,22 @@
 from collections.abc import Sequence
 
-from xdsl.dialects import arith, builtin, linalg, llvm, memref
-from xdsl.dialects.scf import Condition, While
+from xdsl.dialects import arith, builtin, llvm
 from xdsl.ir import Operation, SSAValue
 
-from compiler.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer
-from compiler.accelerators.streamers import Streamer, StreamerConfiguration, StreamerType
+from compiler.accelerators.snax import SNAXAccelerator, SNAXStreamer
+from compiler.accelerators.streamers import (
+    Streamer,
+    StreamerConfiguration,
+    StreamerType,
+)
 from compiler.dialects import accfg, snax_stream
 
 default_streamer = StreamerConfiguration(
-    [Streamer(StreamerType.Reader, 3, 2), Streamer(StreamerType.Reader, 3, 2), Streamer(StreamerType.Writer, 3, 2)]
+    [
+        Streamer(StreamerType.Reader, 3, 2),
+        Streamer(StreamerType.Reader, 3, 2),
+        Streamer(StreamerType.Writer, 3, 2),
+    ]
 )
 
 
@@ -22,7 +29,9 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer):
 
     name = "snax_gemm"
 
-    def __init__(self, streamer_config: StreamerConfiguration = default_streamer) -> None:
+    def __init__(
+        self, streamer_config: StreamerConfiguration = default_streamer
+    ) -> None:
         super().__init__(streamer_config)
 
         self.fields = (*self.streamer_setup_fields, "K", "N", "M", "subtractions")
@@ -50,13 +59,15 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer):
                 "subtractions": addr_next + 3,
             },
             {**streamer_launch, "launch_gemm": addr_next + 4},
-            #TODO: find out why the barrier value does not increase
+            # TODO: find out why the barrier value does not increase
             addr_next + 4,
         )
         op.attributes["streamer_config"] = self.streamer_config
         return op
 
-    def convert_to_acc_ops(self, op: snax_stream.StreamingRegionOp) -> Sequence[Operation]:
+    def convert_to_acc_ops(
+        self, op: snax_stream.StreamingRegionOp
+    ) -> Sequence[Operation]:
         """
         Lowers the operation op to a sequence of acc_ops.
         acc_ops are:
@@ -78,11 +89,15 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer):
             *ops_to_insert,
             setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
             launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
-            token := accfg.LaunchOp([launch_val, launch_val], self.launch_fields, setup),
+            token := accfg.LaunchOp(
+                [launch_val, launch_val], self.launch_fields, setup
+            ),
             accfg.AwaitOp(token),
         ]
 
-    def _generate_setup_vals(self, op: snax_stream.StreamingRegionOp) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def _generate_setup_vals(
+        self, op: snax_stream.StreamingRegionOp
+    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         """
         Produce a `Sequence[Operation], SSAValue` tuple
         for each field that contains:
@@ -102,15 +117,30 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer):
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         c0 = arith.Constant.from_int_and_width(0, 32)
-        addr_acc = acc_op.launch_fields.data['launch_gemm'].value.data
+        addr_acc = acc_op.launch_fields.data["launch_gemm"].value.data
         addr_acc = arith.Constant.from_int_and_width(addr_acc, 32)
-        addr_str = acc_op.launch_fields.data['launch_streamer'].value.data
+        addr_str = acc_op.launch_fields.data["launch_streamer"].value.data
         addr_str = arith.Constant.from_int_and_width(addr_str, 32)
         return [
             c0,
             addr_acc,
             addr_str,
-            llvm.InlineAsmOp("csrw $0, $1", "I, K", [addr_acc.result, c0.result], has_side_effects=True),
-            llvm.InlineAsmOp("csrw $0, $1", "I, K", [addr_acc.result, c0.result], has_side_effects=True),
-            llvm.InlineAsmOp("csrw $0, $1", "I, K", [addr_str.result, c0.result], has_side_effects=True),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_acc.result, c0.result],
+                has_side_effects=True,
+            ),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_acc.result, c0.result],
+                has_side_effects=True,
+            ),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_str.result, c0.result],
+                has_side_effects=True,
+            ),
         ]
