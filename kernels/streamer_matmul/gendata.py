@@ -11,11 +11,11 @@ if __name__ == "__main__":
 
     min_size = 1
     max_size = 4
-    n_random = 16  # 8 * np.random.randint(min_size, max_size)
     m_random = 16  # 8 * np.random.randint(min_size, max_size)
+    n_random = 16  # 8 * np.random.randint(min_size, max_size)
     k_random = 16  # 8 * np.random.randint(min_size, max_size)
-    A_size = [n_random, k_random]
-    B_size = [k_random, m_random]
+    A_size = [m_random, k_random]
+    B_size = [k_random, n_random]
 
     # C = A.B
     low_bound = -128
@@ -38,9 +38,9 @@ if __name__ == "__main__":
 
     # C are just all zeros, so layout not important
     sizes = {
-        "N_size": A.shape[0],
+        "M_size": A.shape[0],
         "K_size": A.shape[1],
-        "M_size": B.shape[1],
+        "N_size": B.shape[1],
     }
     variables = {
         "A": A,
