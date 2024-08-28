@@ -51,3 +51,20 @@ memref_stream.streaming_region {
 
 // CHECK: snax_stream.streaming_region
 // CHECK-SAME: "accelerator" = "snax_alu"
+
+// -----
+
+%A, %B, %C = "test.op"() : () -> (memref<16xi64, #tsl.tsl<[4, 4] -> (1, 5)>>, memref<16xi64, #tsl.tsl<[4, 4] -> (13, 39)>>, memref<16xi64, #tsl.tsl<[4, 4] -> (23, 3)>>)
+
+memref_stream.streaming_region {
+    patterns = [
+        #memref_stream.stride_pattern<ub = [4, 4], index_map = (d0, d1) -> (4 * d0 + d1)>,
+        #memref_stream.stride_pattern<ub = [4, 4], index_map = (d0, d1) -> (4 * d0 + d1)>,
+        #memref_stream.stride_pattern<ub = [4, 4], index_map = (d0, d1) -> (4 * d0 + d1)>
+    ]
+} ins(%A, %B : memref<16xi64, #tsl.tsl<[4, 4] -> (1, 5)>>, memref<16xi64, #tsl.tsl<[4, 4] -> (13, 39)>>) outs(%C:  memref<16xi64, #tsl.tsl<[4, 4] -> (23, 3)>>) attrs = {accelerator="snax_alu"} {
+^bb0(%a: !stream.readable<i64>, %b: !stream.readable<i64>, %c: !stream.writable<i64>):
+    "test.op"(%a, %b, %c) : (!stream.readable<i64>, !stream.readable<i64>, !stream.writable<i64>) -> ()
+}
+
+// CHECK: "stride_patterns" = [#snax_stream.stride_pattern<ub = [4], ts = [1], ss = [5]>, #snax_stream.stride_pattern<ub = [4], ts = [13], ss = [39]>, #snax_stream.stride_pattern<ub = [4], ts = [23], ss = [3]>]
