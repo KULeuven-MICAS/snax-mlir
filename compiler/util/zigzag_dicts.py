@@ -93,12 +93,6 @@ gemm_mappping = [
         "name": "default",
         "core_allocation": [1],
         "spatial_mapping": {"D1": ["B, 8"], "D2": ["C, 8"], "D3": ["K, 8"]},
-        "temporal_ordering": [
-            ["C", "*"],
-            ["K", "*"],
-            ["B", "*"],
-            ["*", "*"],
-        ],
         "memory_operand_links": {"O": "O", "W": "I2", "I": "I1"},
     }
 ]
