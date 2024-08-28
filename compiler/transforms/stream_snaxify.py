@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, memref, memref_stream
-from xdsl.dialects.builtin import FixedBitwidthType, MemRefType, StringAttr
+from xdsl.dialects.builtin import MemRefType, StringAttr
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -110,9 +110,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             # Mapping from data to memory:
             assert isinstance(memref_type := op.operands[operand].type, MemRefType)
 
-            #TODO: fix element offset in tsl to avoid this shit
+            # TODO: fix element offset in tsl to avoid this shit
             if isinstance(memref_type.layout, TiledStridedLayoutAttr):
-                data_mem_map : AffineMap = memref_type.get_affine_map()
+                data_mem_map: AffineMap = memref_type.get_affine_map()
             else:
                 data_mem_map: AffineMap = memref_type.get_affine_map_in_bytes()
 
@@ -128,7 +128,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     "Access patterns with symbols are not supported yet."
                 )
 
-            temp_dim = streamer_config.data.temporal_dim()
+            streamer_config.data.temporal_dim()
             spat_dim = streamer_config.data.spatial_dim()
 
             # extremely dirty fix:
@@ -138,7 +138,6 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             temporal_strides = []
             spatial_strides = []
             upper_bounds = []
-
 
             # First fill up the spatial strides, then temporal strides, back to front
             for i in reversed(range(access_mem_map.num_dims)):
