@@ -516,7 +516,12 @@ class AddDoubleBuffer(RewritePattern):
                         last_complete_ops.blocks[0].args[0],
                         two_less_than_upper_bound_op.results[0],
                     )
-
+            for op in last_complete_ops.walk():
+                for index, operand in enumerate(op.operands):
+                    if operand == last_complete_ops.blocks[0].args[0] or isinstance(
+                        operand, ErasedSSAValue
+                    ):
+                        rewriter.erase_op(op, safe_erase=False)
             for op in soft_walk_region(last_complete_ops, reverse=True):
                 # Add after the loop
                 op.detach()
