@@ -195,8 +195,11 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer):
             mult = arith.TruncIOp(mult, builtin.i32)
             ops_to_add.extend([max_int_i, min_int_i, double_round, shift, mult])
 
-            # shift all values to the correct amount
+            # force zp_out to only take up 8 bits
+            ops_to_add.append(cst128 := arith.Constant.from_int_and_width(128, 32))
+            ops_to_add.append(zp_out := arith.AndI(zp_out, cst128))
 
+            # shift all values to the correct amount
             max_int_i = arith.ShLI(max_int_i, (c24 := arith.Constant.from_int_and_width(24, 32)), builtin.i32)
             shift = arith.ShLI(shift, (c16 := arith.Constant.from_int_and_width(16, 32)), builtin.i32)
             zp_out = arith.ShLI(zp_out, (c8 := arith.Constant.from_int_and_width(8, 32)), builtin.i32)
@@ -208,7 +211,10 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer):
             ops_to_add.append(csr0 := arith.Addi(max_int_i, shift))
             ops_to_add.append(csr0 := arith.Addi(csr0, zp_out))
 
-            csr1 = double_round
+            # construct csr1 value
+            ops_to_add.append(csr1 := arith.Addi(min_int_i, double_round))
+
+            # construct csr2 value
             csr2 = mult
 
             loop_bound = arith.Constant.from_int_and_width(

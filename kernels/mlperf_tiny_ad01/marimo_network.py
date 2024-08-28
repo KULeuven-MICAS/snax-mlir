@@ -73,15 +73,15 @@ def __(interpreter, out1):
 
 @app.cell
 def __(interpreter, np):
-
-    (interpreter.get_tensor(21).astype(np.int32) + 128) / 0.00297950776
+    interpreter.get_tensor(21).astype(np.int32)
     return
 
 
 @app.cell
-def __():
-    36/12010
-    return
+def __(interpreter, np):
+    for i in range(128):
+        print(interpreter.get_tensor(21).astype(np.int32)[0][i])
+    return i,
 
 
 if __name__ == "__main__":

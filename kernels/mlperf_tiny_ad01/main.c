@@ -85,7 +85,7 @@ void _mlir_ciface_snax_debug_simd(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr_c
   if (thisc == 0) {
     printf("Debugging SIMD at t = %d with A at %p, C at %p\n", when, ptr_a, ptr_c);
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 128; i++) {
       printf("i%d -> A=%d, C=%d\n", i, ptr_a[i], ptr_c[i]);
     }
   }
