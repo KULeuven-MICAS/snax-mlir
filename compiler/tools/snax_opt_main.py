@@ -11,6 +11,7 @@ from compiler.dialects.tsl import TSL
 from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 from compiler.transforms.accfg_dedup import AccfgDeduplicate
 from compiler.transforms.accfg_insert_resets import InsertResetsPass
+from compiler.transforms.add_tiling_sequence import AddTilingSequence
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
 from compiler.transforms.convert_linalg_to_accfg import (
@@ -93,6 +94,7 @@ class SNAXOptMain(xDSLOptMain):
             lambda: GuardedLinalgToMemrefStreamPass,
         )
         super().register_pass(ScheduleMemrefLinalg.name, lambda: ScheduleMemrefLinalg)
+        super().register_pass(AddTilingSequence.name, lambda: AddTilingSequence)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
