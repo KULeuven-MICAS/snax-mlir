@@ -132,6 +132,8 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             spat_dim = streamer_config.data.spatial_dim()
 
             # extremely dirty fix:
+            # FIXME: this only works because gemm is the only one with
+            # two spat_dims. This must be fixed with some "virtual" spatial dim
             if spat_dim == 2:
                 spat_dim = 3
 
