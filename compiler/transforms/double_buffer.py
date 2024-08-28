@@ -497,7 +497,7 @@ class AddDoubleBuffer(RewritePattern):
                         op.destination.owner,
                         last_complete_for,
                         last_complete_ops.blocks[0].args[0],
-                        one_less_than_upper_bound_op.results[0],
+                        three_less_than_upper_bound_op.results[0],
                     )
                 elif isinstance(op, memref.CopyOp) and (
                     has_memory_space(op.destination, "L1")
@@ -507,7 +507,7 @@ class AddDoubleBuffer(RewritePattern):
                         op.source.owner,
                         last_complete_for,
                         last_complete_ops.blocks[0].args[0],
-                        three_less_than_upper_bound_op.results[0],
+                        one_less_than_upper_bound_op.results[0],
                     )
                 elif isinstance(op, linalg.Generic):
                     replace_iter_value(
