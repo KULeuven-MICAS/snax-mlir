@@ -128,7 +128,6 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     "Access patterns with symbols are not supported yet."
                 )
 
-            streamer_config.data.temporal_dim()
             spat_dim = streamer_config.data.spatial_dim()
 
             # extremely dirty fix:
