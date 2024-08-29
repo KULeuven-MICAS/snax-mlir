@@ -58,7 +58,7 @@ def __(interpreter, np):
     print('input: \n', interpreter.get_tensor(input_index)[:5,:5])
     print('weights shape: ', interpreter.get_tensor(weights_index).shape)
     print('weight: \n', interpreter.get_tensor(weights_index)[:5,:5])
-    out1 = np.matmul(input.astype(np.int32) - 89, weight1.astype(np.int32).transpose())
+    out1 = np.matmul(input.astype(np.int32) - 89 , weight1.astype(np.int32).transpose())
     print('out1: \n', out1[:5, :5])
     return input, input_index, out1, weight1, weights_index
 
@@ -79,9 +79,22 @@ def __(interpreter, np):
 
 @app.cell
 def __(interpreter, np):
-    for i in range(128):
-        print(interpreter.get_tensor(21).astype(np.int32)[0][i])
-    return i,
+    # Layer 2:
+    inputs2 = interpreter.get_tensor(21).astype(np.int32)
+    print('input shape: ', inputs2.shape)
+    print('input: \n', inputs2[:5,:5])
+    weight2 = interpreter.get_tensor(12)
+    print('weights shape: ', interpreter.get_tensor(12).shape)
+    print('weight: \n', interpreter.get_tensor(12)[:5,:5])
+    out3 = np.matmul(inputs2.astype(np.int32) + 128, weight2.astype(np.int32).transpose())
+    print('out3: \n', out3[:5, :5])
+    return inputs2, out3, weight2
+
+
+@app.cell
+def __(interpreter, np):
+    interpreter.get_tensor(29).astype(np.int32)
+    return
 
 
 if __name__ == "__main__":

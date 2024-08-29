@@ -50,6 +50,13 @@ void _mlir_ciface_snax_dump_l1() {
   snrt_alloc_init();
   // keep first 256 bytes free for zero wizardry
   snrt_l1alloc(256);
+  // memset all to 0 with DMA
+  if (snrt_is_dm_core()) {
+    snrt_dma_start_2d((int32_t*) 0x10000040, (int32_t*) 0x10000000, 64, 64, 0, 16380);
+    snrt_dma_wait_all();
+  }
+  snrt_cluster_hw_barrier();
+  return;
 }
 
 void _mlir_ciface_snax_cluster_hw_barrier() {
