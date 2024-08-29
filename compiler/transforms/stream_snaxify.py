@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, memref, memref_stream
-from xdsl.dialects.builtin import FixedBitwidthType, MemRefType, StringAttr
+from xdsl.dialects.builtin import MemRefType, StringAttr
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -16,6 +16,7 @@ from xdsl.pattern_rewriter import (
 from compiler.accelerators import find_accelerator_op
 from compiler.dialects import snax_stream
 from compiler.dialects.snax import StreamerConfigurationAttr
+from compiler.dialects.tsl import TiledStridedLayoutAttr
 
 
 @dataclass
@@ -89,11 +90,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         streamer_config = acc_op.attributes["streamer_config"]
         assert isinstance(streamer_config, StreamerConfigurationAttr)
 
-        # Make sure the operands are memrefs with a default layout
+        # Make sure the operands are memrefs
         for memref_operand in op.operands:
             if not isinstance(memref_operand.type, builtin.MemRefType):
-                return
-            if not isinstance(memref_operand.type.layout, builtin.NoneAttr):
                 return
 
         # We are now ready to convert the stream access patterns into snax stride patterns
@@ -109,14 +108,13 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         # Do this for every operand:
         for operand in range(len(op.operands)):
             # Mapping from data to memory:
-            data_mem_map: AffineMap = AffineMap.identity(1)
+            assert isinstance(memref_type := op.operands[operand].type, MemRefType)
 
-            assert isinstance(type := op.operands[operand].type, MemRefType)
-            assert isinstance(el_type := type.element_type, FixedBitwidthType)
-            element_width = el_type.size
-            data_mem_map = AffineMap.from_callable(
-                lambda d0: ((element_width * d0),), dim_symbol_split=(1, 0)
-            )
+            # TODO: fix element offset in tsl to avoid this shit
+            if isinstance(memref_type.layout, TiledStridedLayoutAttr):
+                data_mem_map: AffineMap = memref_type.get_affine_map()
+            else:
+                data_mem_map: AffineMap = memref_type.get_affine_map_in_bytes()
 
             # Mapping from access to data:
             access_data_map: AffineMap = op.patterns.data[operand].index_map.data
@@ -130,23 +128,34 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     "Access patterns with symbols are not supported yet."
                 )
 
-            temp_dim = streamer_config.data.temporal_dim()
             spat_dim = streamer_config.data.spatial_dim()
+
+            # extremely dirty fix:
+            # FIXME: this only works because gemm is the only one with
+            # two spat_dims. This must be fixed with some "virtual" spatial dim
+            if spat_dim == 2:
+                spat_dim = 3
 
             temporal_strides = []
             spatial_strides = []
             upper_bounds = []
 
             # First fill up the spatial strides, then temporal strides, back to front
-            for i in reversed(range(temp_dim + spat_dim)):
+            for i in reversed(range(access_mem_map.num_dims)):
                 stride = access_mem_map.eval(
                     generate_one_list(access_mem_map.num_dims, i), ()
                 )
-                if i >= temp_dim:
+                if len(spatial_strides) < spat_dim:
+                    # keep filling up spatial strides
                     spatial_strides.append(stride[0])
                 else:
+                    # filling up the temporal strides
                     temporal_strides.append(stride[0])
+                    # have to set upper bounds for spatial strides
                     upper_bounds.append(op.patterns.data[operand].ub.data[i].value)
+
+            # delete all zeros from spatial strides
+            spatial_strides = [x for x in spatial_strides if x]
 
             # create the stride pattern for this operand
             snax_stride_pattern = snax_stream.StridePattern(
