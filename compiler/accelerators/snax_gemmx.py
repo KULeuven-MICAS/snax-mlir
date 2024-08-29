@@ -135,7 +135,14 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer):
             csr1 = c0
             csr2 = c0
 
-            bitlist = list(pack_bitlist(op.body.block.first_op.inputs[-2:], [0, 8]))
+            (zp_a, zp_b) = op.body.block.first_op.inputs[-2:]
+
+            ops_to_add.append(cst255 := arith.Constant.from_int_and_width(255, 32))
+            ops_to_add.append(zp_a := arith.AndI(zp_a, cst255))
+            ops_to_add.append(zp_b := arith.AndI(zp_b, cst255))
+
+
+            bitlist = list(pack_bitlist((zp_a, zp_b), [0, 8]))
             ops_to_add.extend(bitlist)
             subtractions = bitlist[-1].result
 
@@ -196,8 +203,8 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer):
             ops_to_add.extend([max_int_i, min_int_i, double_round, shift, mult])
 
             # force zp_out to only take up 8 bits
-            ops_to_add.append(cst128 := arith.Constant.from_int_and_width(128, 32))
-            ops_to_add.append(zp_out := arith.AndI(zp_out, cst128))
+            ops_to_add.append(cst255 := arith.Constant.from_int_and_width(128, 32))
+            ops_to_add.append(zp_out := arith.AndI(zp_out, cst255))
 
             # shift all values to the correct amount
             max_int_i = arith.ShLI(max_int_i, (c24 := arith.Constant.from_int_and_width(24, 32)), builtin.i32)
