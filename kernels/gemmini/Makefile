@@ -13,9 +13,7 @@ CFLAGS += -Wall -Wextra
 SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=gemmini},convert-linalg-to-accfg,convert-accfg-to-csr
 
 tiled_matmul.mlir: tiled_matmul.transform.mlir
-	# Use quick patch to remove transform module
-	${MLIROPT} --pass-pipeline='builtin.module(transform-interpreter, test-transform-dialect-erase-schedule)' $^ | sed '/^  module @transforms attributes {transform.with_named_sequence} {$$/,/^  }$$/d' > $@
-
+	${MLIROPT} --pass-pipeline='builtin.module(test-transform-dialect-interpreter{bind-first-extra-to-ops=linalg.quantized_matmul}, test-transform-dialect-erase-schedule, linalg-generalize-named-ops)' $^ | sed -E 's/iterator_types =/library_call="gemmini", iterator_types =/gm;t' > $@
 
 %.acc-dialect.snax-opt.mlir: %.preprocfinal.mlir
 	$(SNAXOPT) $(SNAXOPTACCFLAGS) -o $@ $<
@@ -32,6 +30,7 @@ tiled_matmul.mlir: tiled_matmul.transform.mlir
 %.x: %.ll
 	${CC} -x ir $< -c -O3 -o $@ -Wno-override-module --target=riscv64-unknown-elf -mcpu=generic-rv64 -march=rv64gc
 
+allrun: all
 
 all: $(TESTS)
 
