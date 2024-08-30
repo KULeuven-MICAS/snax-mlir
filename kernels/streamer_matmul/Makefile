@@ -5,6 +5,8 @@
 include ../../runtime/snax-streamer-gemm.rules
 include ../../runtime/Makefile.rules
 
+# For static shapes, the stream lowering can be used with the suffix .stream
+
 TESTS =
 TESTS += matmul.x
 TESTS += half_tiled_matmul.x
