@@ -8,13 +8,13 @@
   library_call = "snax_alu"
 }
 
-func.func private @snax_global_core_idx() -> i32
+func.func private @snax_cluster_core_idx() -> i32
 func.func public @streamer_add_tiled(%A: memref<128xi64, "L3">,
                              %B: memref<128xi64, "L3">,
                              %D: memref<128xi64, "L3">) -> () {
     %compute_core_constant = arith.constant 0 : i32
     %dm_core_constant = arith.constant 1 : i32
-    %which_core_id = func.call @snax_global_core_idx() : () ->  i32
+    %which_core_id = func.call @snax_cluster_core_idx() : () ->  i32
     %is_compute_core = arith.cmpi eq, %which_core_id, %compute_core_constant : i32
     %is_dm_core = arith.cmpi eq, %which_core_id, %dm_core_constant : i32
     %all_good = arith.constant 0 : i32
