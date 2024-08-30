@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterable
 
 from xdsl.context import MLContext
-from xdsl.dialects import builtin, func, scf
+from xdsl.dialects import arith, builtin, func, scf
 from xdsl.ir import Block, Operation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -60,46 +60,58 @@ class DispatchRegionsRewriter(RewritePattern):
 
         ## dispatch dm core ops, insert function call
         # in dominator block if changes made
-        func_call_dm = func.Call("snax_is_dm_core", [], [builtin.i1])
+
+        # FIXME: currently assuming that DM core is @ index 1 and compute @ index 0
+        call_and_condition_dm = [
+            func_call := func.Call("snax_global_core_idx", [], [builtin.i32]),
+            cst_1 := arith.Constant.from_int_and_width(1, builtin.i32),
+            comparison_dm := arith.Cmpi(func_call, cst_1, "eq"),
+        ]
+        # Make sure function call is only inserted once
+        inserted_function_call = False
         if any(
-            dispatcher(block, func_call_dm.res[0], dispatch_to_dm)
+            dispatcher(block, comparison_dm.result, dispatch_to_dm)
             for block in func_op.body.blocks
         ):
+            inserted_function_call = True
             rewriter.insert_op(
-                func_call_dm, InsertPoint.at_start(func_op.body.blocks[0])
+                call_and_condition_dm, InsertPoint.at_start(func_op.body.blocks[0])
             )
 
         ## dispatch compute core ops, insert function call
         # in dominator block if changes made
-        func_call_compute = func.Call("snax_is_compute_core", [], [builtin.i1])
+        condition_compute = [
+            cst_0 := arith.Constant.from_int_and_width(0, builtin.i32),
+            comparison_compute := arith.Cmpi(func_call, cst_0, "eq"),
+        ]
         if any(
-            dispatcher(block, func_call_compute.res[0], dispatch_to_compute)
+            dispatcher(block, comparison_compute.result, dispatch_to_compute)
             for block in func_op.body.blocks
         ):
             # insert function call in dominator block (first one)
-            rewriter.insert_op(
-                func_call_compute, InsertPoint.at_start(func_op.body.blocks[0])
-            )
+            if inserted_function_call:
+                # If function call is already inserted, insert check after
+                rewriter.insert_op(condition_compute, InsertPoint.after(func_call))
+            else:
+                # If function call is not yet inserted, insert check and function call in beginning
+                rewriter.insert_op(
+                    [func_call, *condition_compute],
+                    InsertPoint.at_start(func_op.body.blocks[0]),
+                )
 
 
 class InsertFunctionDeclaration(RewritePattern):
-    """Insert external function declarations of snax_is_compute core
-    and snax_is_dm_core if they are used in the module"""
+    """Insert external function declarations of snax_global_core_idx if they are used in the module"""
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, module_op: builtin.ModuleOp, rewriter: PatternRewriter):
         for op in module_op.walk():
             if isinstance(op, func.Call):
-                if op.callee.string_value() == "snax_is_compute_core":
+                if op.callee.string_value() == "snax_global_core_idx":
                     func_op_compute = func.FuncOp.external(
-                        "snax_is_compute_core", [], [builtin.i1]
+                        "snax_global_core_idx", [], [builtin.i32]
                     )
                     SymbolTable.insert_or_update(module_op, func_op_compute)
-                if op.callee.string_value() == "snax_is_dm_core":
-                    func_op_dm = func.FuncOp.external(
-                        "snax_is_dm_core", [], [builtin.i1]
-                    )
-                    SymbolTable.insert_or_update(module_op, func_op_dm)
 
 
 class DispatchRegions(ModulePass):
