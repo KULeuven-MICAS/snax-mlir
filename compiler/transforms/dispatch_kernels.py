@@ -158,6 +158,14 @@ class DispatchQMatMul(RewritePattern):
         ):
             return
 
+        # check if maybe possible to use stream dialect?
+        for inp in op.inputs:
+            if isinstance(inp.type, MemRefType):
+                # all static shapes required for now
+                if -1 not in inp.type.get_shape():
+                    op.library_call = builtin.StringAttr("snax_gemm_stream")
+                    return
+
         op.library_call = builtin.StringAttr("snax_gemm")
 
         return

@@ -5,11 +5,20 @@
 include ../../runtime/snax-streamer-gemm.rules
 include ../../runtime/Makefile.rules
 
+# For static shapes, the stream lowering can be used with the suffix .stream
+
 TESTS =
 TESTS += matmul.x
 TESTS += half_tiled_matmul.x
-TESTS += transform_matmul.x
+TESTS += transform_matmul.stream.x
 TESTS += dynamic_matmul.x
+TESTS += matmul_stream.stream.x
+
+SNAXOPTSTREAMFLAGS = -p insert-accfg-op{accelerator=snax_gemm},dispatch-kernels,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions,guarded-linalg-to-memref-stream,schedule-memref-linalg,stream-snaxify,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
+
+%.stream.snax-opt.mlir: %.preprocfinal.mlir
+	$(SNAXOPT) $(SNAXOPTSTREAMFLAGS) -o $@ $<
+
 
 
 CFLAGS += -std=gnu11

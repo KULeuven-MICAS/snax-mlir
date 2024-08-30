@@ -32,7 +32,7 @@
   }) : () -> ()
 }) : () -> ()
 
-//CHECK: "library_call" = "snax_gemm"
+//CHECK: "library_call" = "snax_gemm_stream"
 
 // -----
 
