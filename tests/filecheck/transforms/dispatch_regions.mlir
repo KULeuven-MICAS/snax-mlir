@@ -1,4 +1,5 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p dispatch-regions --print-op-generic | filecheck %s
+// RUN: ./compiler/snax-opt --split-input-file %s -p dispatch-regions --print-op-generic | filecheck %s --check-prefixes=CHECK,NB_TWO
+// RUN: ./compiler/snax-opt --split-input-file %s -p dispatch-regions{nb_cores=3} --print-op-generic | filecheck %s --check-prefixes=CHECK,NB_THREE
 
 // test function without dispatchable ops
 "builtin.module"() ({
@@ -61,7 +62,8 @@
 //CHECK-NEXT:   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<64xi32>, memref<64xi32>) -> (), "sym_visibility" = "public"}> ({
 //CHECK-NEXT:   ^0(%0 : memref<64xi32>, %1 : memref<64xi32>):
 //CHECK-NEXT:     %2 = "func.call"() <{"callee" = @snax_cluster_core_idx}> : () -> i32
-//CHECK-NEXT:     %3 = "arith.constant"() <{"value" = 1 : i32}> : () -> i32
+//NB_TWO-NEXT:     %3 = "arith.constant"() <{"value" = 1 : i32}> : () -> i32
+//NB_THREE-NEXT:     %3 = "arith.constant"() <{"value" = 2 : i32}> : () -> i32
 //CHECK-NEXT:     %4 = "arith.cmpi"(%2, %3) <{"predicate" = 0 : i64}> : (i32, i32) -> i1
 //CHECK-NEXT:     "scf.if"(%4) ({
 //CHECK-NEXT:       "memref.copy"(%0, %1) : (memref<64xi32>, memref<64xi32>) -> ()
@@ -95,7 +97,8 @@
 //CHECK-NEXT:     %3 = "func.call"() <{"callee" = @snax_cluster_core_idx}> : () -> i32
 //CHECK-NEXT:     %4 = "arith.constant"() <{"value" = 0 : i32}> : () -> i32
 //CHECK-NEXT:     %5 = "arith.cmpi"(%3, %4) <{"predicate" = 0 : i64}> : (i32, i32) -> i1
-//CHECK-NEXT:     %6 = "arith.constant"() <{"value" = 1 : i32}> : () -> i32
+//NB_TWO-NEXT:     %6 = "arith.constant"() <{"value" = 1 : i32}> : () -> i32
+//NB_THREE-NEXT:     %6 = "arith.constant"() <{"value" = 2 : i32}> : () -> i32
 //CHECK-NEXT:     %7 = "arith.cmpi"(%3, %6) <{"predicate" = 0 : i64}> : (i32, i32) -> i1
 //CHECK-NEXT:     %alloc = "memref.alloc"() <{"operandSegmentSizes" = array<i32: 0, 0>}> {"alignment" = 64 : i64} : () -> memref<64xi32>
 //CHECK-NEXT:     "scf.if"(%7) ({

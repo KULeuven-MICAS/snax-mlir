@@ -1,4 +1,5 @@
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, scf
@@ -16,7 +17,10 @@ from xdsl.traits import SymbolTable
 from compiler.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
 
 
+@dataclass
 class DispatchRegionsRewriter(RewritePattern):
+    nb_cores: int
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter):
         def dispatcher(block: Block, core_cond: builtin.i1, dispatch_rule: Callable):
@@ -61,10 +65,10 @@ class DispatchRegionsRewriter(RewritePattern):
         ## dispatch dm core ops, insert function call
         # in dominator block if changes made
 
-        # FIXME: currently assuming that DM core is @ index 1 and compute @ index 0
+        # FIXME: currently assuming that DM core is nb_cores - 1 and compute @ index 0
         call_and_condition_dm = [
             func_call := func.Call("snax_cluster_core_idx", [], [builtin.i32]),
-            cst_1 := arith.Constant.from_int_and_width(1, builtin.i32),
+            cst_1 := arith.Constant.from_int_and_width(self.nb_cores - 1, builtin.i32),
             comparison_dm := arith.Cmpi(func_call, cst_1, "eq"),
         ]
         # Make sure function call is only inserted once
@@ -114,6 +118,7 @@ class InsertFunctionDeclaration(RewritePattern):
                     SymbolTable.insert_or_update(module_op, func_op_compute)
 
 
+@dataclass(frozen=True)
 class DispatchRegions(ModulePass):
     """Transformation pass dispatch-regions. This transformation
     'dispatches' the different operations to their designated cores,
@@ -122,9 +127,11 @@ class DispatchRegions(ModulePass):
 
     name = "dispatch-regions"
 
+    nb_cores: int = 2  # amount of cores
+
     def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
-            DispatchRegionsRewriter(), apply_recursively=False
+            DispatchRegionsRewriter(self.nb_cores), apply_recursively=False
         ).rewrite_module(module)
         PatternRewriteWalker(
             InsertFunctionDeclaration(), apply_recursively=False
