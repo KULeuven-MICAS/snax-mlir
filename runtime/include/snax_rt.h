@@ -68,4 +68,6 @@ void _mlir_ciface_snax_dma_2d_transfer(size_t *source, size_t *destination,
   snrt_dma_wait_all();
 }
 
-uint32_t _mlir_ciface_snax_global_core_idx() { return snrt_global_core_idx(); }
+uint32_t _mlir_ciface_snax_cluster_core_idx() {
+  return snrt_cluster_core_idx();
+}

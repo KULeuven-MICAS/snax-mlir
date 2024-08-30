@@ -63,7 +63,7 @@ class DispatchRegionsRewriter(RewritePattern):
 
         # FIXME: currently assuming that DM core is @ index 1 and compute @ index 0
         call_and_condition_dm = [
-            func_call := func.Call("snax_global_core_idx", [], [builtin.i32]),
+            func_call := func.Call("snax_cluster_core_idx", [], [builtin.i32]),
             cst_1 := arith.Constant.from_int_and_width(1, builtin.i32),
             comparison_dm := arith.Cmpi(func_call, cst_1, "eq"),
         ]
@@ -101,15 +101,15 @@ class DispatchRegionsRewriter(RewritePattern):
 
 
 class InsertFunctionDeclaration(RewritePattern):
-    """Insert external function declarations of snax_global_core_idx if they are used in the module"""
+    """Insert external function declarations of snax_cluster_core_idx if they are used in the module"""
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, module_op: builtin.ModuleOp, rewriter: PatternRewriter):
         for op in module_op.walk():
             if isinstance(op, func.Call):
-                if op.callee.string_value() == "snax_global_core_idx":
+                if op.callee.string_value() == "snax_cluster_core_idx":
                     func_op_compute = func.FuncOp.external(
-                        "snax_global_core_idx", [], [builtin.i32]
+                        "snax_cluster_core_idx", [], [builtin.i32]
                     )
                     SymbolTable.insert_or_update(module_op, func_op_compute)
 
