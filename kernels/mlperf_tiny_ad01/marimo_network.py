@@ -80,15 +80,16 @@ def __(interpreter, np):
 @app.cell
 def __(interpreter, np):
     # Layer 2:
-    inputs2 = interpreter.get_tensor(21).astype(np.int32)
+    layer_nb = 2
+    inputs2 = interpreter.get_tensor(19+layer_nb).astype(np.int32)
     print('input shape: ', inputs2.shape)
     print('input: \n', inputs2[:5,:5])
-    weight2 = interpreter.get_tensor(12)
-    print('weights shape: ', interpreter.get_tensor(12).shape)
-    print('weight: \n', interpreter.get_tensor(12)[:5,:5])
-    out3 = np.matmul(inputs2.astype(np.int32) + 128, weight2.astype(np.int32).transpose())
+    weight2 = interpreter.get_tensor(10+layer_nb)
+    print('weights shape: ', interpreter.get_tensor(10+layer_nb).shape)
+    print('weight: \n', interpreter.get_tensor(10+layer_nb)[:5,:5])
+    out3 = np.matmul(inputs2.astype(np.int32) + 128, weight2.astype(np.int32).transpose()) + interpreter.get_tensor(layer_nb)
     print('out3: \n', out3[:5, :5])
-    return inputs2, out3, weight2
+    return inputs2, layer_nb, out3, weight2
 
 
 @app.cell
@@ -104,9 +105,13 @@ def __(interpreter, np):
     return x,
 
 
-@app.cell
-def __():
-    return
+app._unparsable_cell(
+    r"""
+    for xv in out3:
+    print(xv)
+    """,
+    name="__"
+)
 
 
 @app.cell
