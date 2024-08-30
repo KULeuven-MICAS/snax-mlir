@@ -93,7 +93,24 @@ def __(interpreter, np):
 
 @app.cell
 def __(interpreter, np):
-    interpreter.get_tensor(29).astype(np.int32)
+    interpreter.get_tensor(21).astype(np.int32)
+    return
+
+
+@app.cell
+def __(interpreter, np):
+    for x in interpreter.get_tensor(23).astype(np.int32):
+        print(x)
+    return x,
+
+
+@app.cell
+def __():
+    return
+
+
+@app.cell
+def __():
     return
 
 
