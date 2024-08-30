@@ -162,6 +162,9 @@ class TiledStridedLayout:
             next_stride = next(
                 (
                     (dim, depth, stride_self)
+                    # must order such that in the case of strides with
+                    # equal steps = current_stride, the one with fixed
+                    # bound None is not chosen
                     for dim, depth, stride_self in sorted(
                         self_strides, key=lambda x: x[2].bound is None
                     )

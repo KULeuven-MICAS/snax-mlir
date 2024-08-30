@@ -37,7 +37,7 @@ class AddMemoryLayout(RewritePattern):
         # check for library call
         if library_call == "snax_gemm" or library_call == "snax_gemm_stream":
             # the layout should be as static as the memref is. no more, no less
-            # get i, j, k
+            # get m, n, k
 
             shaped_operands: list[MemRefType] = [
                 op.type
