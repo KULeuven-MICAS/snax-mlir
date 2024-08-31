@@ -71,7 +71,10 @@ class DispatchRegionsRewriter(RewritePattern):
 
         if self.pin_to_constants:
             constants_to_pin = builtin.ArrayAttr(
-                [builtin.IntegerAttr.from_int_and_width(i, 32) for i in range(0)]
+                [
+                    builtin.IntegerAttr.from_int_and_width(i, 32)
+                    for i in range(self.nb_cores)
+                ]
             )
             func_call.attributes.update({"pin_to_constants": constants_to_pin})
 

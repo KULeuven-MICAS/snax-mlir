@@ -48,7 +48,7 @@ class ReinsertExternalFunc(RewritePattern):
 class SNAXCorePinningPass(ModulePass):
     """
     Pins functions to cores by using the experimental function_constant_pinning pass,
-    can heavily benefit from inlining and canonicalization.
+    which further allows inlining and canonicalization necessary to perform certain optimizations.
     It temporarily removes all external function declarations before applying FunctionConstantPinning,
     then it puts all external function calls back in place.
 
