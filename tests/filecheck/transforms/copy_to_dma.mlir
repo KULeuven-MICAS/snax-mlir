@@ -68,22 +68,22 @@
 //CHECK-NEXT:   ^0(%arg0 : memref<5xi32, strided<[1], offset: ?>, "L3">, %arg1 : memref<5xi32, strided<[1], offset: ?>, "L1">):
 //CHECK-NEXT:     %0 = "memref.extract_aligned_pointer_as_index"(%arg0) : (memref<5xi32, strided<[1], offset: ?>, "L3">) -> index
 //CHECK-NEXT:     %1 = "memref.extract_aligned_pointer_as_index"(%arg1) : (memref<5xi32, strided<[1], offset: ?>, "L1">) -> index
-//CHECK-NEXT:     %2, %3, %4, %5 = "memref.extract_strided_metadata"(%arg0) {"resultSegmentSizes" = array<i32: 1, 1, 1, 1>} : (memref<5xi32, strided<[1], offset: ?>, "L3">) -> (memref<i32, "L3">, index, index, index)
+//CHECK-NEXT:     %2, %3, %4, %5 = "memref.extract_strided_metadata"(%arg0) : (memref<5xi32, strided<[1], offset: ?>, "L3">) -> (memref<i32, "L3">, index, index, index)
 //CHECK-NEXT:     %6 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %7 = "arith.muli"(%6, %3) : (index, index) -> index
 //CHECK-NEXT:     %8 = "arith.addi"(%0, %7) : (index, index) -> index
-//CHECK-NEXT:     %9, %10, %11, %12 = "memref.extract_strided_metadata"(%arg1) {"resultSegmentSizes" = array<i32: 1, 1, 1, 1>} : (memref<5xi32, strided<[1], offset: ?>, "L1">) -> (memref<i32, "L1">, index, index, index)
+//CHECK-NEXT:     %9, %10, %11, %12 = "memref.extract_strided_metadata"(%arg1) : (memref<5xi32, strided<[1], offset: ?>, "L1">) -> (memref<i32, "L1">, index, index, index)
 //CHECK-NEXT:     %13 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %14 = "arith.muli"(%13, %10) : (index, index) -> index
 //CHECK-NEXT:     %15 = "arith.addi"(%1, %14) : (index, index) -> index
 //CHECK-NEXT:     %16 = "arith.constant"() <{"value" = 0 : index}> : () -> index
 //CHECK-NEXT:     %17 = "memref.dim"(%arg0, %16) : (memref<5xi32, strided<[1], offset: ?>, "L3">, index) -> index
 //CHECK-NEXT:     %18 = "arith.constant"() <{"value" = 5 : index}> : () -> index
-//CHECK-NEXT:     %19, %20, %21, %22 = "memref.extract_strided_metadata"(%arg0) {"resultSegmentSizes" = array<i32: 1, 1, 1, 1>} : (memref<5xi32, strided<[1], offset: ?>, "L3">) -> (memref<i32, "L3">, index, index, index)
+//CHECK-NEXT:     %19, %20, %21, %22 = "memref.extract_strided_metadata"(%arg0) : (memref<5xi32, strided<[1], offset: ?>, "L3">) -> (memref<i32, "L3">, index, index, index)
 //CHECK-NEXT:     %23 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %24 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %25 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-//CHECK-NEXT:     %26, %27, %28, %29 = "memref.extract_strided_metadata"(%arg1) {"resultSegmentSizes" = array<i32: 1, 1, 1, 1>} : (memref<5xi32, strided<[1], offset: ?>, "L1">) -> (memref<i32, "L1">, index, index, index)
+//CHECK-NEXT:     %26, %27, %28, %29 = "memref.extract_strided_metadata"(%arg1) : (memref<5xi32, strided<[1], offset: ?>, "L1">) -> (memref<i32, "L1">, index, index, index)
 //CHECK-NEXT:     %30 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %31 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %32 = "arith.constant"() <{"value" = 4 : index}> : () -> index
@@ -121,12 +121,12 @@
 //CHECK-NEXT:     %7 = "arith.divui"(%3, %6) : (index, index) -> index
 //CHECK-NEXT:     %8 = "arith.constant"() <{"value" = 1 : index}> : () -> index
 //CHECK-NEXT:     %9 = "arith.divui"(%5, %8) : (index, index) -> index
-//CHECK-NEXT:     %10, %11, %12, %13, %14, %15 = "memref.extract_strided_metadata"(%arg0) {"resultSegmentSizes" = array<i32: 1, 1, 2, 2>} : (memref<?x?xi32, strided<[?, 1]>, "L3">) -> (memref<i32, "L3">, index, index, index, index, index)
+//CHECK-NEXT:     %10, %11, %12, %13, %14, %15 = "memref.extract_strided_metadata"(%arg0) : (memref<?x?xi32, strided<[?, 1]>, "L3">) -> (memref<i32, "L3">, index, index, index, index, index)
 //CHECK-NEXT:     %16 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %17 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %18 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %19 = "arith.muli"(%14, %16) : (index, index) -> index
-//CHECK-NEXT:     %20, %21, %22, %23, %24, %25 = "memref.extract_strided_metadata"(%arg1) {"resultSegmentSizes" = array<i32: 1, 1, 2, 2>} : (memref<?x?xi32, strided<[?, 1]>, "L1">) -> (memref<i32, "L1">, index, index, index, index, index)
+//CHECK-NEXT:     %20, %21, %22, %23, %24, %25 = "memref.extract_strided_metadata"(%arg1) : (memref<?x?xi32, strided<[?, 1]>, "L1">) -> (memref<i32, "L1">, index, index, index, index, index)
 //CHECK-NEXT:     %26 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %27 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %28 = "arith.constant"() <{"value" = 4 : index}> : () -> index
@@ -166,12 +166,12 @@
 //CHECK-NEXT:     %5 = "memref.dim"(%arg0, %4) : (memref<5x5xi32, strided<[10, 1]>>, index) -> index
 //CHECK-NEXT:     %6 = "arith.constant"() <{"value" = 5 : index}> : () -> index
 //CHECK-NEXT:     %7 = "arith.constant"() <{"value" = 5 : index}> : () -> index
-//CHECK-NEXT:     %8, %9, %10, %11, %12, %13 = "memref.extract_strided_metadata"(%arg0) {"resultSegmentSizes" = array<i32: 1, 1, 2, 2>} : (memref<5x5xi32, strided<[10, 1]>>) -> (memref<i32>, index, index, index, index, index)
+//CHECK-NEXT:     %8, %9, %10, %11, %12, %13 = "memref.extract_strided_metadata"(%arg0) : (memref<5x5xi32, strided<[10, 1]>>) -> (memref<i32>, index, index, index, index, index)
 //CHECK-NEXT:     %14 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %15 = "arith.constant"() <{"value" = 40 : index}> : () -> index
 //CHECK-NEXT:     %16 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %17 = "arith.constant"() <{"value" = 40 : index}> : () -> index
-//CHECK-NEXT:     %18, %19, %20, %21, %22, %23 = "memref.extract_strided_metadata"(%arg1) {"resultSegmentSizes" = array<i32: 1, 1, 2, 2>} : (memref<5x5xi32, strided<[20, 1]>>) -> (memref<i32>, index, index, index, index, index)
+//CHECK-NEXT:     %18, %19, %20, %21, %22, %23 = "memref.extract_strided_metadata"(%arg1) : (memref<5x5xi32, strided<[20, 1]>>) -> (memref<i32>, index, index, index, index, index)
 //CHECK-NEXT:     %24 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 //CHECK-NEXT:     %25 = "arith.constant"() <{"value" = 80 : index}> : () -> index
 //CHECK-NEXT:     %26 = "arith.constant"() <{"value" = 4 : index}> : () -> index
