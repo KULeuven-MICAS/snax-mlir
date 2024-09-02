@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt %s -p dispatch-regions{nb_cores=3\ pin_to_constants=true},snax-pin-core,snax-to-func | mlir-opt-17 --canonicalize --inline| filecheck %s 
+// RUN: ./compiler/snax-opt %s -p dispatch-regions{nb_cores=3\ pin_to_constants=true},function-constant-pinning,snax-to-func | mlir-opt-17 --canonicalize --inline| filecheck %s 
 
 // test function with dispatchable ops to both cores
 "builtin.module"() ({
