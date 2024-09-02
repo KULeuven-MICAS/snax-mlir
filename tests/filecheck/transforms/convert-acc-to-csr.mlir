@@ -76,7 +76,8 @@ builtin.module {
 // CHECK-NEXT:     %19 = arith.constant 0 : i5
 // CHECK-NEXT:     "llvm.inline_asm"(%18, %19) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i12, i5) -> ()
 // CHECK-NEXT:     "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
-// CHECK:     "scf.if"(%i1) ({
+
+// CHECK:     scf.if %i1 {
 // CHECK-NEXT:       %20 = arith.constant 977 : i64
 // CHECK-NEXT:       "llvm.inline_asm"(%20, %6) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
 // CHECK-NEXT:       %21 = arith.constant 960 : i64
@@ -97,8 +98,7 @@ builtin.module {
 // CHECK-NEXT:       "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64}> {"has_side_effects"} : () -> ()
 // CHECK:       %28 = arith.constant 979 : i64
 // CHECK-NEXT:       "llvm.inline_asm"(%28, %4) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
-// CHECK-NEXT:       scf.yield
-// CHECK-NEXT:     }, {
+// CHECK-NEXT:     } else {
 // CHECK-NEXT:       %29 = arith.constant 960 : i64
 // CHECK-NEXT:       "llvm.inline_asm"(%29, %cst) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
 // CHECK-NEXT:       scf.while () : () -> () {
@@ -119,8 +119,7 @@ builtin.module {
 // CHECK-NEXT:       "llvm.inline_asm"(%36, %6) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
 // CHECK-NEXT:       %37 = arith.constant 979 : i64
 // CHECK-NEXT:       "llvm.inline_asm"(%37, %4) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i32) -> ()
-// CHECK-NEXT:       scf.yield
-// CHECK-NEXT:     }) : (i1) -> ()
+// CHECK-NEXT:     }{}
 // CHECK-NEXT:     %38 = arith.constant 960 : i64
 // CHECK-NEXT:     "llvm.inline_asm"(%38, %cst) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64}> {"has_side_effects"} : (i64, i5) -> ()
 // CHECK-NEXT:     scf.while () : () -> () {
