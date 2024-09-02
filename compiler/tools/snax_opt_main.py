@@ -33,7 +33,6 @@ from compiler.transforms.set_memory_layout import SetMemoryLayout
 from compiler.transforms.set_memory_space import SetMemorySpace
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
-from compiler.transforms.snax_pin_core import SNAXCorePinningPass
 from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.stream_snaxify import StreamSnaxify
 
@@ -71,7 +70,6 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(DispatchRegions.name, lambda: DispatchRegions)
         super().register_pass(SNAXCopyToDMA.name, lambda: SNAXCopyToDMA)
         super().register_pass(SNAXToFunc.name, lambda: SNAXToFunc)
-        super().register_pass(SNAXCorePinningPass.name, lambda: SNAXCorePinningPass)
         super().register_pass(SNAXLowerMCycle.name, lambda: SNAXLowerMCycle)
         super().register_pass(ClearMemorySpace.name, lambda: ClearMemorySpace)
         super().register_pass(
