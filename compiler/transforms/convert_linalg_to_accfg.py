@@ -264,7 +264,9 @@ def _weave_states_in_region(
                         if isinstance(result.type, accfg.StateType):
                             # update the state to reflect this
                             state[result.type.accelerator.data] = result
-
+                # any other op that contains ops:
+                elif op.regions:
+                    _weave_states_in_region(op, dict(), rewriter)
                 # Check if the op has effects on accfg state
                 elif has_accfg_effects(op):
                     state.clear()
