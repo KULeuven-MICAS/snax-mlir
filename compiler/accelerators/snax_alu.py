@@ -3,7 +3,11 @@ from collections.abc import Sequence
 from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.ir import Operation, SSAValue
 
-from compiler.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer
+from compiler.accelerators.snax import (
+    SNAXAccelerator,
+    SNAXPollingBarrier3,
+    SNAXStreamer,
+)
 from compiler.accelerators.streamers import (
     Streamer,
     StreamerConfiguration,
@@ -20,7 +24,7 @@ default_streamer = StreamerConfiguration(
 )
 
 
-class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier, SNAXStreamer):
+class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer):
     """
     Accelerator interface class for the SNAX Alu accelerator.
     """
