@@ -66,8 +66,20 @@ class DispatchRegionsRewriter(RewritePattern):
         # in dominator block if changes made
 
         # FIXME: currently assuming that DM core is nb_cores - 1 and compute @ index 0
+
+        func_call = func.Call("snax_cluster_core_idx", [], [builtin.i32])
+
+        # Add pin to constants attribute for function-constant-pinning pass
+        constants_to_pin = builtin.ArrayAttr(
+            [
+                builtin.IntegerAttr.from_int_and_width(i, 32)
+                for i in range(self.nb_cores)
+            ]
+        )
+        func_call.attributes.update({"pin_to_constants": constants_to_pin})
+
         call_and_condition_dm = [
-            func_call := func.Call("snax_cluster_core_idx", [], [builtin.i32]),
+            func_call,
             cst_1 := arith.Constant.from_int_and_width(self.nb_cores - 1, builtin.i32),
             comparison_dm := arith.Cmpi(func_call, cst_1, "eq"),
         ]
@@ -123,7 +135,12 @@ class DispatchRegions(ModulePass):
     """Transformation pass dispatch-regions. This transformation
     'dispatches' the different operations to their designated cores,
     by inserting function calls to determine the core type, and enclosing
-    the dispatchable operations in an scf.if block"""
+    the dispatchable operations in an scf.if block
+
+    Emitted function calls are annotated with pin_to_constants.
+    The value is based on the amount of cores in nb_cores,
+    and allows one to fully specialize a top-level function body to a specific core.
+    """
 
     name = "dispatch-regions"
 
@@ -131,7 +148,8 @@ class DispatchRegions(ModulePass):
 
     def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
-            DispatchRegionsRewriter(self.nb_cores), apply_recursively=False
+            DispatchRegionsRewriter(self.nb_cores),
+            apply_recursively=False,
         ).rewrite_module(module)
         PatternRewriteWalker(
             InsertFunctionDeclaration(), apply_recursively=False
