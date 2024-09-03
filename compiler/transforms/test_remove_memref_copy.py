@@ -18,6 +18,11 @@ class RemoveMemrefCopyPattern(RewritePattern):
 class RemoveMemrefCopyPass(ModulePass):
     name = "test-remove-memref-copy"
 
+    """
+    Pass that removes all memref copy operations.
+    Only to be used for testing purposes.
+    """
+
     def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             RemoveMemrefCopyPattern(), apply_recursively=False
