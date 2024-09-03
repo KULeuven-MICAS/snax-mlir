@@ -135,7 +135,12 @@ class DispatchRegions(ModulePass):
     """Transformation pass dispatch-regions. This transformation
     'dispatches' the different operations to their designated cores,
     by inserting function calls to determine the core type, and enclosing
-    the dispatchable operations in an scf.if block"""
+    the dispatchable operations in an scf.if block
+
+    Emitted function calls are annotated with pin_to_constants.
+    The value is based on the amount of cores in nb_cores,
+    and allows one to fully specialize a top-level function body to a specific core.
+    """
 
     name = "dispatch-regions"
 
