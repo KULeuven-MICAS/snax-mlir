@@ -68,7 +68,7 @@ class SNAXBenchmark:
         process_traces(
             inputs,
             trace_filenames,
-            self.binary,
+            str(self.src_dir / self.binary),
             addr2line="llvm-addr2line",
             output=output_events,
         )
