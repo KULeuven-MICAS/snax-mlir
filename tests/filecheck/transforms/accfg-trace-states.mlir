@@ -298,3 +298,34 @@ func.func @loop_with_multiple_input_states() {
 // CHECK-NEXT:    }
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
+
+
+func.func @random_parent_op() {
+    "test.op"() ({
+        %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
+
+        %s1 = accfg.setup "snax_hwpe_mult" to (
+            "A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32
+        ) : !accfg.state<"snax_hwpe_mult">
+
+        %s2 = accfg.setup "snax_hwpe_mult" to (
+            "A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32
+        ) : !accfg.state<"snax_hwpe_mult">
+
+        "test.termop"() : () -> ()
+    }) : () -> ()
+
+    return
+}
+
+// check that states have been connected inside the test op:
+// CHECK-NEXT:  func.func @random_parent_op() {
+// CHECK-NEXT:    "test.op"() ({
+// CHECK-NEXT:      %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
+// CHECK-NEXT:      %s1 = accfg.setup "snax_hwpe_mult" to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:      %s2 = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+//                                                     ^^^^^^^^ perfect!
+// CHECK-NEXT:      "test.termop"() : () -> ()
+// CHECK-NEXT:    }) : () -> ()
+// CHECK-NEXT:    func.return
+// CHECK-NEXT:  }
