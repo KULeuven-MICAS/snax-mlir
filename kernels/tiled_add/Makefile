@@ -11,7 +11,7 @@ TESTS += tiled.acc_dialect.x
 TESTS += tiled_pipelined.acc_dialect.x
 
 CFLAGS += -std=gnu11
-CFLAGS += -Wall -Wextra
+CFLAGS += -Wall -Wextra -g
 
 MLIRPREPROCFLAGS += --allow-unregistered-dialect
 MLIRPREPROC2FLAGS += --allow-unregistered-dialect
@@ -22,8 +22,12 @@ ifdef NO_CHECK
 endif
 
 
+ifdef ACCFGOPT
+ ACCFGOPTFLAGS="mlir-opt{executable=mlir-opt-17 generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic}",accfg-dedup,accfg-config-overlap,
+endif
+
 # Override snax-opt rules to avoid linalg-to-library-call pass
-SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=snax_alu},convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,snax-lower-mcycle
+SNAXOPTACCFLAGS = -p insert-accfg-op{accelerator=snax_alu},convert-linalg-to-accfg,${ACCFGOPTFLAGS}convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,snax-lower-mcycle
 
 # Set default 
 ARRAY_SIZE ?= 2048
