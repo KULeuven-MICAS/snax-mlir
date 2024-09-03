@@ -66,20 +66,20 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
 // CHECK-NEXT:     %6 = "accfg.launch"(%cst, %5) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%6) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:     %7 = "test.op"() : () -> i1
-// CHECK-NEXT:     %8, %9 = "scf.if"(%7) ({
-// CHECK-NEXT:       %10 = accfg.setup "snax_hwpe_mult" from %5 to ("B" = %3 : index) : !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:       %11 = "accfg.launch"(%cst, %10) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
-// CHECK-NEXT:       "accfg.await"(%11) : (!accfg.token<"snax_hwpe_mult">) -> ()
-// CHECK-NEXT:       %12 = "test.op"() : () -> i32
-// CHECK-NEXT:       %13 = accfg.setup "snax_hwpe_mult" from %10 to ("O" = %2 : index) : !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:       scf.yield %12, %13 : i32, !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:     }, {
-// CHECK-NEXT:       %14 = "test.op"() : () -> i32
-// CHECK-NEXT:       %15 = "accfg.launch"(%cst, %5) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
-// CHECK-NEXT:       "accfg.await"(%15) : (!accfg.token<"snax_hwpe_mult">) -> ()
-// CHECK-NEXT:       %16 = accfg.setup "snax_hwpe_mult" from %5 to ("B" = %3 : index, "O" = %2 : index) : !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:       scf.yield %14, %16 : i32, !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:     }) : (i1) -> (i32, !accfg.state<"snax_hwpe_mult">)
+// CHECK-NEXT:   %8, %9 = scf.if %7 -> (i32, !accfg.state<"snax_hwpe_mult">) {
+// CHECK-NEXT:     %10 = accfg.setup "snax_hwpe_mult" from %5 to ("B" = %3 : index) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:     %11 = "accfg.launch"(%cst, %10) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:     "accfg.await"(%11) : (!accfg.token<"snax_hwpe_mult">) -> ()
+// CHECK-NEXT:     %12 = "test.op"() : () -> i32
+// CHECK-NEXT:     %13 = accfg.setup "snax_hwpe_mult" from %10 to ("O" = %2 : index) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:     scf.yield %12, %13 : i32, !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:   } else {
+// CHECK-NEXT:     %14 = "test.op"() : () -> i32
+// CHECK-NEXT:     %15 = "accfg.launch"(%cst, %5) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:     "accfg.await"(%15) : (!accfg.token<"snax_hwpe_mult">) -> ()
+// CHECK-NEXT:     %16 = accfg.setup "snax_hwpe_mult" from %5 to ("B" = %3 : index, "O" = %2 : index) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:     scf.yield %14, %16 : i32, !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:   }{}
 // CHECK-NEXT:     "test.op"(%8) : (i32) -> ()
 // CHECK-NEXT:     %17 = "accfg.launch"(%cst, %9) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%17) : (!accfg.token<"snax_hwpe_mult">) -> ()

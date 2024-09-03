@@ -79,13 +79,11 @@ func.func @simple_negative(%A: i32, %B: i32, %i1: i1) {
 // CHECK-NEXT:    %s1 = accfg.setup "simple" to ("A" = %A : i32) : !accfg.state<"simple">
 // CHECK-NEXT:    %t = "accfg.launch"(%s1) <{"param_names" = [], "accelerator" = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
 // CHECK-NEXT:    "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
-// CHECK-NEXT:    "scf.if"(%i1) ({
+// CHECK-NEXT:    scf.if %i1 {
 // CHECK-NEXT:      %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
 //                        ∧∧∧∧∧∧∧∧∧∧∧ yep, op is still here!
 // RESET-NEXT:      accfg.reset %s2 : !accfg.state<"simple">
-// CHECK-NEXT:      scf.yield
-// CHECK-NEXT:    }, {
-// CHECK-NEXT:    }) : (i1) -> ()
+// CHECK-NEXT:    }{}
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
 

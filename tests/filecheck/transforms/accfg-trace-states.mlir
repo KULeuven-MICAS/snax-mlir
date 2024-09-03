@@ -76,20 +76,18 @@ func.func @simple_if() {
 // CHECK-NEXT:    %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
 // CHECK-NEXT:    %cond = "test.op"() : () -> i1
 // CHECK-NEXT:    %s1 = accfg.setup "snax_hwpe_mult" to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:    %0 = "scf.if"(%cond) ({
-//                ^^
+// CHECK-NEXT:    %0 = scf.if %cond -> (!accfg.state<"snax_hwpe_mult">) {
+//                ^^                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 // CHECK-NEXT:      %s2 = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:      scf.yield %s2 : !accfg.state<"snax_hwpe_mult">
 //                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// CHECK-NEXT:    }, {
+// CHECK-NEXT:    } else {
 // CHECK-NEXT:      %s2_1 = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:      scf.yield %s2_1 : !accfg.state<"snax_hwpe_mult">
 //                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// CHECK-NEXT:    }) : (i1) -> !accfg.state<"snax_hwpe_mult">
-//                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// CHECK-NEXT:    }{}
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
-
 
 
 func.func @simple_if_double_acc() {
@@ -114,26 +112,24 @@ func.func @simple_if_double_acc() {
 }
 
 // check that we didn't confuse one state with the other:
-// CHECK-NEXT:  func.func @simple_if_double_acc() {
-// CHECK-NEXT:    %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
-// CHECK-NEXT:    %cond = "test.op"() : () -> i1
-// CHECK-NEXT:    %s1 = accfg.setup "snax_hwpe_mult" to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:    %s2 = accfg.setup "snax_hwpe_mult_2" to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult_2">
+// CHECK-NEXT: func.func @simple_if_double_acc() {
+// CHECK-NEXT:     %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
+// CHECK-NEXT:     %cond = "test.op"() : () -> i1
+// CHECK-NEXT:     %s1 = accfg.setup "snax_hwpe_mult" to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:     %s2 = accfg.setup "snax_hwpe_mult_2" to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult_2">
 //                                                                                                                                                    ^ no added state
-// CHECK-NEXT:    %0, %1 = "scf.if"(%cond) ({
-// CHECK-NEXT:      %s1_new = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:      scf.yield %s1_new, %s2 : !accfg.state<"snax_hwpe_mult">, !accfg.state<"snax_hwpe_mult_2">
-//                                     ^^^ yield outer state                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ correct type
-// CHECK-NEXT:    }, {
-// CHECK-NEXT:      %s2_new = accfg.setup "snax_hwpe_mult_2" from %s2 to ("A" = %B : i32, "B" = %A : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult_2">
-// CHECK-NEXT:      %s1_new_1 = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:      scf.yield %s1_new_1, %s2_new : !accfg.state<"snax_hwpe_mult">, !accfg.state<"snax_hwpe_mult_2">
-//                                       ^^^^^^^ yield inner state                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ correct type
-// CHECK-NEXT:    }) : (i1) -> (!accfg.state<"snax_hwpe_mult">, !accfg.state<"snax_hwpe_mult_2">)
-// CHECK-NEXT:    func.return
-// CHECK-NEXT:  }
-
-
+// CHECK-NEXT:     %0, %1 = scf.if %cond -> (!accfg.state<"snax_hwpe_mult">, !accfg.state<"snax_hwpe_mult_2">) {
+// CHECK-NEXT:       %s1_new = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:       scf.yield %s1_new, %s2 : !accfg.state<"snax_hwpe_mult">, !accfg.state<"snax_hwpe_mult_2">
+//                                      ^^^ yield outer state                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ correct type
+// CHECK-NEXT:     } else {
+// CHECK-NEXT:       %s2_new = accfg.setup "snax_hwpe_mult_2" from %s2 to ("A" = %B : i32, "B" = %A : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult_2">
+// CHECK-NEXT:       %s1_new_1 = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:       scf.yield %s1_new_1, %s2_new : !accfg.state<"snax_hwpe_mult">, !accfg.state<"snax_hwpe_mult_2">
+//                                        ^^^^^^^ yield inner state                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ correct type
+// CHECK-NEXT:     }{}
+// CHECK-NEXT:     func.return
+// CHECK-NEXT:   }
 
 func.func @nested_if() {
     %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
@@ -167,40 +163,38 @@ func.func @nested_if() {
 //  - The correct state is set in both nest levels of the if-else blocks
 //  - The correct state is yielded from the blocks
 //  - The existing yields are extended not replaced
-// CHECK-NEXT:  func.func @nested_if() {
-// CHECK-NEXT:    %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
-// CHECK-NEXT:    %cond, %cond2 = "test.op"() : () -> (i1, i1)
-// CHECK-NEXT:    %s1 = accfg.setup "snax_hwpe_mult" to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:    %thing, %thing_1 = "scf.if"(%cond) ({
-//                        ^^^^^^^^
-// CHECK-NEXT:      %s2 = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
-//                                                       ^^^^^^^^^^
-// CHECK-NEXT:      %c, %c_1 = "scf.if"(%cond2) ({
-// CHECK-NEXT:        %s3 = accfg.setup "snax_hwpe_mult" from %s2 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
-//                                                       ^^^^^^^^^^
-// CHECK-NEXT:        scf.yield %A, %s3 : i32, !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT: func.func @nested_if() {
+// CHECK-NEXT:     %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
+// CHECK-NEXT:     %cond, %cond2 = "test.op"() : () -> (i1, i1)
+// CHECK-NEXT:     %s1 = accfg.setup "snax_hwpe_mult" to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+// CHECK-NEXT:     %thing, %thing_1 = scf.if %cond -> (i32, !accfg.state<"snax_hwpe_mult">) {
+//                         ^^^^^^^^                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// CHECK-NEXT:       %s2 = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+//                                                        ^^^^^^^^^^
+// CHECK-NEXT:       %c, %c_1 = scf.if %cond2 -> (i32, !accfg.state<"snax_hwpe_mult">) {
+//                       ^^^^                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// CHECK-NEXT:         %s3 = accfg.setup "snax_hwpe_mult" from %s2 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+//                                                        ^^^^^^^^^^
+// CHECK-NEXT:         scf.yield %A, %s3 : i32, !accfg.state<"snax_hwpe_mult">
+//                                   ^^^        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// CHECK-NEXT:       } else {
+// CHECK-NEXT:         %s4 = accfg.setup "snax_hwpe_mult" from %s2 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+//                                                        ^^^^^^^^^^
+// CHECK-NEXT:         scf.yield %B, %s4 : i32, !accfg.state<"snax_hwpe_mult">
 //                                  ^^^        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// CHECK-NEXT:      }, {
-// CHECK-NEXT:        %s4 = accfg.setup "snax_hwpe_mult" from %s2 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
-//                                                       ^^^^^^^^^^
-// CHECK-NEXT:        scf.yield %B, %s4 : i32, !accfg.state<"snax_hwpe_mult">
-//                                  ^^^        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// CHECK-NEXT:      }) : (i1) -> (i32, !accfg.state<"snax_hwpe_mult">)
-// CHECK-NEXT:      %s3_1 = accfg.setup "snax_hwpe_mult" from %c_1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
-//                                                       ^^^^^^^^^
-// CHECK-NEXT:      scf.yield %c, %s3_1 : i32, !accfg.state<"snax_hwpe_mult">
-//                                ^^^^^        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// CHECK-NEXT:    }, {
-// CHECK-NEXT:      %s2_1 = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
-//                                                       ^^^^^^^^
-// CHECK-NEXT:      scf.yield %A, %s2_1 : i32, !accfg.state<"snax_hwpe_mult">
-//                                ^^^^^        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// CHECK-NEXT:    }) : (i1) -> (i32, !accfg.state<"snax_hwpe_mult">)
-//                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// CHECK-NEXT:    func.return
-// CHECK-NEXT:  }
-
-
+// CHECK-NEXT:       }{}
+// CHECK-NEXT:       %s3_1 = accfg.setup "snax_hwpe_mult" from %c_1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+//                                                        ^^^^^^^^^
+// CHECK-NEXT:       scf.yield %c, %s3_1 : i32, !accfg.state<"snax_hwpe_mult">
+//                                 ^^^^^        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// CHECK-NEXT:     } else {
+// CHECK-NEXT:       %s2_1 = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
+//                                                        ^^^^^^^^
+// CHECK-NEXT:       scf.yield %A, %s2_1 : i32, !accfg.state<"snax_hwpe_mult">
+//                                 ^^^^^        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+// CHECK-NEXT:     }{}
+// CHECK-NEXT:     func.return
+// CHECK-NEXT:   }
 
 func.func @simple_loop() {
     %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
