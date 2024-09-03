@@ -165,7 +165,7 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
             op.in_state.index - 1
         )  # -1 because the first block arg is the loop index
 
-        # also, if there is another setup between us and the loop start, abort
+        # also, if there is another launch between us and the loop start, abort
         if any(isinstance(prev_op, accfg.LaunchOp) for prev_op in previous_ops_of(op)):
             return
 
