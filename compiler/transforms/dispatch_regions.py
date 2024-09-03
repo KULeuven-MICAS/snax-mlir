@@ -20,7 +20,6 @@ from compiler.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
 @dataclass
 class DispatchRegionsRewriter(RewritePattern):
     nb_cores: int
-    pin_to_constants: bool
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter):
@@ -70,14 +69,14 @@ class DispatchRegionsRewriter(RewritePattern):
 
         func_call = func.Call("snax_cluster_core_idx", [], [builtin.i32])
 
-        if self.pin_to_constants:
-            constants_to_pin = builtin.ArrayAttr(
-                [
-                    builtin.IntegerAttr.from_int_and_width(i, 32)
-                    for i in range(self.nb_cores)
-                ]
-            )
-            func_call.attributes.update({"pin_to_constants": constants_to_pin})
+        # Add pin to constants attribute for function-constant-pinning pass
+        constants_to_pin = builtin.ArrayAttr(
+            [
+                builtin.IntegerAttr.from_int_and_width(i, 32)
+                for i in range(self.nb_cores)
+            ]
+        )
+        func_call.attributes.update({"pin_to_constants": constants_to_pin})
 
         call_and_condition_dm = [
             func_call,
@@ -141,11 +140,10 @@ class DispatchRegions(ModulePass):
     name = "dispatch-regions"
 
     nb_cores: int = 2  # amount of cores
-    pin_to_constants: bool = False  # add constant pinning to function call
 
     def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
-            DispatchRegionsRewriter(self.nb_cores, self.pin_to_constants),
+            DispatchRegionsRewriter(self.nb_cores),
             apply_recursively=False,
         ).rewrite_module(module)
         PatternRewriteWalker(

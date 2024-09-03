@@ -32,7 +32,8 @@
 //CHECK: "builtin.module"() ({
 //CHECK-NEXT:   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> (), "sym_visibility" = "public"}> ({
 //CHECK-NEXT:   ^0(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>):
-//CHECK-NEXT:     %3 = "func.call"() <{"callee" = @snax_cluster_core_idx}> : () -> i32
+//NB_TWO-NEXT:      %3 = "func.call"() <{"callee" = @snax_cluster_core_idx}> {"pin_to_constants" = [0 : i32, 1 : i32]} : () -> i32
+//NB_THREE-NEXT:      %3 = "func.call"() <{"callee" = @snax_cluster_core_idx}> {"pin_to_constants" = [0 : i32, 1 : i32, 2 : i32]} : () -> i32
 //CHECK-NEXT:     %4 = "arith.constant"() <{"value" = 0 : i32}> : () -> i32
 //CHECK-NEXT:     %5 = "arith.cmpi"(%3, %4) <{"predicate" = 0 : i64}> : (i32, i32) -> i1
 //CHECK-NEXT:     "scf.if"(%5) ({
@@ -61,8 +62,9 @@
 //CHECK: "builtin.module"() ({
 //CHECK-NEXT:   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<64xi32>, memref<64xi32>) -> (), "sym_visibility" = "public"}> ({
 //CHECK-NEXT:   ^0(%0 : memref<64xi32>, %1 : memref<64xi32>):
-//CHECK-NEXT:     %2 = "func.call"() <{"callee" = @snax_cluster_core_idx}> : () -> i32
+//NB_TWO-NEXT:     %2 = "func.call"() <{"callee" = @snax_cluster_core_idx}> {"pin_to_constants" = [0 : i32, 1 : i32]} : () -> i32
 //NB_TWO-NEXT:     %3 = "arith.constant"() <{"value" = 1 : i32}> : () -> i32
+//NB_THREE-NEXT:     %2 = "func.call"() <{"callee" = @snax_cluster_core_idx}> {"pin_to_constants" = [0 : i32, 1 : i32, 2 : i32]} : () -> i32
 //NB_THREE-NEXT:     %3 = "arith.constant"() <{"value" = 2 : i32}> : () -> i32
 //CHECK-NEXT:     %4 = "arith.cmpi"(%2, %3) <{"predicate" = 0 : i64}> : (i32, i32) -> i1
 //CHECK-NEXT:     "scf.if"(%4) ({
@@ -94,7 +96,8 @@
 //CHECK: "builtin.module"() ({
 //CHECK-NEXT:   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> (), "sym_visibility" = "public"}> ({
 //CHECK-NEXT:   ^0(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>):
-//CHECK-NEXT:     %3 = "func.call"() <{"callee" = @snax_cluster_core_idx}> : () -> i32
+//NB_TWO-NEXT:     %3 = "func.call"() <{"callee" = @snax_cluster_core_idx}> {"pin_to_constants" = [0 : i32, 1 : i32]} : () -> i32
+//NB_THREE-NEXT:     %3 = "func.call"() <{"callee" = @snax_cluster_core_idx}> {"pin_to_constants" = [0 : i32, 1 : i32, 2 : i32]} : () -> i32
 //CHECK-NEXT:     %4 = "arith.constant"() <{"value" = 0 : i32}> : () -> i32
 //CHECK-NEXT:     %5 = "arith.cmpi"(%3, %4) <{"predicate" = 0 : i64}> : (i32, i32) -> i1
 //NB_TWO-NEXT:     %6 = "arith.constant"() <{"value" = 1 : i32}> : () -> i32
@@ -152,7 +155,8 @@
 //CHECK: "builtin.module"() ({
 //CHECK-NEXT:   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> (), "sym_visibility" = "public"}> ({
 //CHECK-NEXT:   ^0(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>):
-//CHECK-NEXT:     %3 = "func.call"() <{"callee" = @snax_cluster_core_idx}> : () -> i32
+//NB_TWO-NEXT:     %3 = "func.call"() <{"callee" = @snax_cluster_core_idx}> {"pin_to_constants" = [0 : i32, 1 : i32]} : () -> i32
+//NB_THREE-NEXT:     %3 = "func.call"() <{"callee" = @snax_cluster_core_idx}> {"pin_to_constants" = [0 : i32, 1 : i32, 2 : i32]} : () -> i32
 //CHECK-NEXT:     %4 = "arith.constant"() <{"value" = 0 : i32}> : () -> i32
 //CHECK-NEXT:     %5 = "arith.cmpi"(%3, %4) <{"predicate" = 0 : i64}> : (i32, i32) -> i1
 //CHECK-NEXT:     %6 = "arith.constant"() <{"value" = true}> : () -> i1
