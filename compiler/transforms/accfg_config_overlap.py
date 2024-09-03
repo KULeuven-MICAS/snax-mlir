@@ -12,7 +12,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 
 from compiler.dialects import accfg
-from compiler.inference.helpers import iter_ops_range
+from compiler.inference.helpers import iter_ops_range, previous_ops_of
 from compiler.inference.scoped_setups import get_scoped_setup_inputs
 
 
@@ -164,6 +164,10 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
         iter_arg_idx = (
             op.in_state.index - 1
         )  # -1 because the first block arg is the loop index
+
+        # also, if there is another setup between us and the loop start, abort
+        if any(isinstance(prev_op, accfg.LaunchOp) for prev_op in previous_ops_of(op)):
+            return
 
         # 1. We grab the first setup op inside the loop, with all dependencies
         inputs = get_scoped_setup_inputs(
