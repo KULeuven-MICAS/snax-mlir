@@ -10,7 +10,6 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.rewriter import InsertPoint
-from xdsl.traits import is_side_effect_free
 
 from compiler.dialects import accfg
 from compiler.inference.helpers import iter_ops_range, previous_ops_of
@@ -166,8 +165,8 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
             op.in_state.index - 1
         )  # -1 because the first block arg is the loop index
 
-        # also, if any operation between us and the loop start is not side effect free, abort
-        if any(not is_side_effect_free(prev_op) for prev_op in previous_ops_of(op)):
+        # also, if there is another launch between us and the loop start, abort
+        if any(isinstance(prev_op, accfg.LaunchOp) for prev_op in previous_ops_of(op)):
             return
 
         # 1. We grab the first setup op inside the loop, with all dependencies

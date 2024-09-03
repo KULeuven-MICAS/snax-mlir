@@ -61,16 +61,18 @@ from compiler.inference.helpers import val_is_defined_in_block
 
 
 def get_scoped_setup_inputs(
-    setup_op: accfg.SetupOp, scope: Block
+    setup_op: accfg.SetupOp,
+    scope: Block,
 ) -> ScopedSetupWithInputs | None:
     """
     Takes a setup op and a set of known input variables, and looks at all inputs to the setup op to determine
     """
     input_vars = scope.args
-    inputs = []
+    inputs: list[Operation] = []
+    positions: dict[Operation, int] = dict((op, i) for i, op in enumerate(scope.ops))
 
     # value inspection starts at all inputs to the setup op:
-    vals_to_inspect = [*setup_op.values]
+    vals_to_inspect: list[SSAValue] = [*setup_op.values]
     # until we are out of values to inspect, we:
     while vals_to_inspect:
         # grab a value to inspect
@@ -95,6 +97,8 @@ def get_scoped_setup_inputs(
         elif isinstance(val.owner, Operation):
             # we check that it's effect free
             if is_side_effect_free(val.owner):
+                if val.owner in inputs:
+                    continue
                 # if it is effect free, we recurse on it's operands
                 vals_to_inspect.extend(val.owner.operands)
                 # and note the operation down as one that computes our input variables
@@ -107,9 +111,9 @@ def get_scoped_setup_inputs(
                 )
                 return None
 
-    return ScopedSetupWithInputs(
-        setup_op, input_vars, tuple(reversed(inputs))  # reverse order
-    )
+    # make sure the order is the same as in the parent module, so we don't break def-use chains
+    inputs_tuple = tuple(sorted(inputs, key=lambda op: positions[op]))
+    return ScopedSetupWithInputs(setup_op, input_vars, inputs_tuple)
 
 
 @dataclass
@@ -120,6 +124,7 @@ class ScopedSetupWithInputs:
     - setup: The setup operation
     - dependent_vars: SSA values that we know are loop-dependent
     - inputs: A sequence of Operations that are dependent on the depdendent_var and need to be moved with the setup op
+              Ordered such that values later on in this list depend on values cretaed by earlier ones in this list
 
     Has a couple of helper methods for:
 
