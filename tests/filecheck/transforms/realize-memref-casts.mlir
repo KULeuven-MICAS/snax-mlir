@@ -184,8 +184,8 @@
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "mnist", "function_type" = (memref<?x128xi8, "L3">, memref<128x128xi8, "L3">, memref<?x128xi32, "L3">) -> memref<?x128xi32, "L3">}> ({
   ^0(%arg0 : memref<?x128xi8, "L3">, %arg1 : memref<128x128xi8, "L3">, %arg2 : memref<?x128xi32, "L3">):
-    %0 = "arith.constant"() <{"value" = "L1"}> : () -> i32
-    %1 = "arith.constant"() <{"value" = "L1"}> : () -> i32
+    %0 = "arith.constant"() <{"value" = 0 : i32}> : () -> i32
+    %1 = "arith.constant"() <{"value" = 0 : i32}> : () -> i32
     %2 = "memref.memory_space_cast"(%arg0) : (memref<?x128xi8, "L3">) -> memref<?x128xi8, "L1">
     %3 = "memref.memory_space_cast"(%arg1) : (memref<128x128xi8, "L3">) -> memref<128x128xi8, "L1">
     %4 = "memref.memory_space_cast"(%arg2) : (memref<?x128xi32, "L3">) -> memref<?x128xi32, "L1">
@@ -209,8 +209,8 @@
 // CHECK: "builtin.module"() ({
 // CHECK-NEXT:  "func.func"() <{"sym_name" = "mnist", "function_type" = (memref<?x128xi8, "L3">, memref<128x128xi8, "L3">, memref<?x128xi32, "L3">) -> memref<?x128xi32, "L3">}> ({
 // CHECK-NEXT:  ^0(%arg0 : memref<?x128xi8, "L3">, %arg1 : memref<128x128xi8, "L3">, %arg2 : memref<?x128xi32, "L3">):
-// CHECK-NEXT:    %0 = "arith.constant"() <{"value" = "L1"}> : () -> i32
-// CHECK-NEXT:    %1 = "arith.constant"() <{"value" = "L1"}> : () -> i32
+// CHECK-NEXT:    %0 = "arith.constant"() <{"value" = 0 : i32}> : () -> i32
+// CHECK-NEXT:    %1 = "arith.constant"() <{"value" = 0 : i32}> : () -> i32
 // CHECK-NEXT:    %2 = "memref.memory_space_cast"(%arg0) : (memref<?x128xi8, "L3">) -> memref<?x128xi8, "L1">
 // CHECK-NEXT:    %3 = "memref.memory_space_cast"(%arg1) : (memref<128x128xi8, "L3">) -> memref<128x128xi8, "L1">
 // CHECK-NEXT:    %4 = "memref.memory_space_cast"(%arg2) : (memref<?x128xi32, "L3">) -> memref<?x128xi32, "L1">
