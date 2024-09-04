@@ -1,3 +1,5 @@
+from io import StringIO
+
 from xdsl.builder import ImplicitBuilder
 from xdsl.dialects import arith, builtin, func, linalg, transform
 from xdsl.ir import Block, Region
@@ -79,11 +81,18 @@ def create_tiled_matrix_multiply(k, m, n, tiling_factors):
     return module
 
 
+def write_module_to_file(module, file):
+    output = StringIO()
+    printer = Printer(stream=output)
+    printer.print(module)
+    with open(file, "w") as output_file:
+        output_file.write(output.getvalue())
+
+
 if __name__ == "__main__":
     M = 16
     N = 16
     K = 16
     tiling_factors = [8, 8]
     module = create_tiled_matrix_multiply(M, K, N, tiling_factors)
-    printer = Printer()
-    printer.print(module)
+    write_module_to_file(module, "test.mlir")
