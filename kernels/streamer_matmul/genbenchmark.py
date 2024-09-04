@@ -14,8 +14,8 @@ if __name__ == "__main__":
         bm.clean()
         bm.build(build_opts=[])
         bm.run()
-        hart_cycles = bm.trace()
-        bm.plot(hart_cycles, folder)
+        bm.trace()
+        bm.process_traces(folder)
         bm.copy_binary(folder)
         bm.copy_logs(folder)
 
