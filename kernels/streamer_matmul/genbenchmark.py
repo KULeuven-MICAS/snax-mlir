@@ -1,4 +1,5 @@
 import pathlib
+import subprocess
 from io import StringIO
 
 from xdsl.builder import ImplicitBuilder
@@ -92,10 +93,11 @@ def write_module_to_file(module, file):
         output_file.write(output.getvalue())
 
 
-if __name__ == "__main__":
-    module = create_tiled_matrix_multiply(16, 16, 16, [8, 8])
+def generate_tiled_benchmark(m, n, k, tiling_factors) -> SNAXBenchmark:
+    command = ["python3", "gendata.py", f"--k={16}", f"--m={16}", f"--n={16}"]
+    subprocess.run(command, capture_output=True, text=True, check=True)
+    module = create_tiled_matrix_multiply(k, m, n, tiling_factors)
     write_module_to_file(module, "generated.transform.mlir")
-    folder = "test_generated"
     binary = "generated.stream.x"
     bm = SNAXBenchmark(
         kernel="tiled_matmul_generated",
@@ -103,6 +105,17 @@ if __name__ == "__main__":
         src_dir=str(pathlib.Path.cwd()),
         export_dir=str(pathlib.Path.cwd()),
     )
+    return bm
+
+
+if __name__ == "__main__":
+    """Runs the gendata.py script with specified arguments."""
+    k = 16
+    m = 16
+    n = 16
+    tiling_factors = [8, 8]
+    folder = "test_generated"
+    bm = generate_tiled_benchmark(k, m, n, tiling_factors)
     bm.clean()
     bm.build(build_opts=[])
     bm.run()
@@ -110,8 +123,8 @@ if __name__ == "__main__":
     bm.process_traces(folder)
     bm.copy_binary(folder)
     bm.copy_logs(folder)
-#
-#
+
+
 #    def run_all(binary: str, folder: str):
 #        bm = SNAXBenchmark(
 #            kernel="streamer_matmul",
