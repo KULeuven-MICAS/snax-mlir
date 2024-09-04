@@ -1,5 +1,4 @@
 import pathlib
-import subprocess
 from io import StringIO
 
 from xdsl.builder import ImplicitBuilder
@@ -94,13 +93,11 @@ def write_module_to_file(module, file):
 
 
 def generate_tiled_benchmark(m, n, k, tiling_factors) -> SNAXBenchmark:
-    command = ["python3", "gendata.py", f"--k={16}", f"--m={16}", f"--n={16}"]
-    subprocess.run(command, capture_output=True, text=True, check=True)
     module = create_tiled_matrix_multiply(k, m, n, tiling_factors)
     write_module_to_file(module, "generated.transform.mlir")
     binary = "generated.stream.x"
     bm = SNAXBenchmark(
-        kernel="tiled_matmul_generated",
+        kernel=f"tiled_matmul_generated_{k}x{n}x{m}",
         binary=binary,
         src_dir=str(pathlib.Path.cwd()),
         export_dir=str(pathlib.Path.cwd()),
@@ -110,19 +107,36 @@ def generate_tiled_benchmark(m, n, k, tiling_factors) -> SNAXBenchmark:
 
 if __name__ == "__main__":
     """Runs the gendata.py script with specified arguments."""
-    k = 16
-    m = 16
-    n = 16
-    tiling_factors = [8, 8]
-    folder = "test_generated"
-    bm = generate_tiled_benchmark(k, m, n, tiling_factors)
-    bm.clean()
-    bm.build(build_opts=["NO_CHECK=1"])
-    bm.run()
-    bm.trace()
-    bm.process_traces(folder)
-    bm.copy_binary(folder)
-    bm.copy_logs(folder)
+    sizes = [
+        [16, 16, 16],
+        [32, 32, 32],
+        [64, 64, 64],
+        [128, 128, 128],
+        [256, 256, 256],
+        [512, 512, 512],
+    ]
+    options = ["NO_ACCFG_OPT=1", "DEDUP_ONLY=1", "OVERLAP_ONLY=1", "ACCFG_BOTH=1"]
+    combined_list = [[size, option] for size in sizes for option in options]
+    for size, options in combined_list:
+        k, m, n = size
+        tiling_factors = [8, 8]
+        folder = f"test_generated_{k}x{m}x{m}_{options[:-2]}"
+        bm = generate_tiled_benchmark(k, m, n, tiling_factors)
+        bm.clean()
+        bm.build(
+            build_opts=[
+                "NO_CHECK=1",
+                options,
+                f"SIZE_M={m}",
+                f"SIZE_N={n}",
+                f"SIZE_K={k}",
+            ]
+        )
+        bm.run()
+        bm.trace()
+        bm.process_traces(folder)
+        bm.copy_binary(folder)
+        bm.copy_logs(folder)
 
 
 #    def run_all(binary: str, folder: str):
