@@ -31,6 +31,9 @@ CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
 # Needed for perfetto script
 CFLAGS += -g
+ifdef NO_CHECK
+CFLAGS += -DNO_CHECK
+endif
 
 data.c data.h:
 	$(PYTHON) gendata.py

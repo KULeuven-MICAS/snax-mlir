@@ -117,7 +117,7 @@ if __name__ == "__main__":
     folder = "test_generated"
     bm = generate_tiled_benchmark(k, m, n, tiling_factors)
     bm.clean()
-    bm.build(build_opts=[])
+    bm.build(build_opts=["NO_CHECK=1"])
     bm.run()
     bm.trace()
     bm.process_traces(folder)
