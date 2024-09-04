@@ -131,7 +131,11 @@ int main() {
 
     printf("Cycles %d\n", stop - start);
 
+#ifdef NO_CHECK
+    return 0;
+#else
     int nerr = 0;
+
     for (int i = 0; i < M_size * N_size; i++) {
       {
         int32_t error = memrefC.aligned_data[i] - C_golden[i];
@@ -147,5 +151,6 @@ int main() {
       snrt_mcycle();
 
     return nerr;
+#endif
   }
 }
