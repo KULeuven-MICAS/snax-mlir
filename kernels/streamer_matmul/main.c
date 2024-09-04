@@ -115,13 +115,13 @@ int main() {
     memrefC.stride[1] = 1;
     memrefC.offset = 0;
 
-    int start = snrt_mcycle();
+    uint32_t start = snrt_mcycle();
 
     _mlir_ciface_streamer_matmul(&memrefA, &memrefB, &memrefC);
 
     snrt_cluster_hw_barrier();
 
-    int stop = snrt_mcycle();
+    uint32_t stop = snrt_mcycle();
 
     // Correctness check -
     // from this point on only core 0 is required to be alive.
@@ -129,11 +129,13 @@ int main() {
     if (thiscore != 0)
       return 0;
 
-    printf("Cycles %d\n", stop - start);
+    printf("Cycles: %d\n", stop - start);
 
 #ifdef NO_CHECK
+    // No correctness check =
+    // Always finish as if nothing happened
     return 0;
-#else
+#endif
     int nerr = 0;
 
     for (int i = 0; i < M_size * N_size; i++) {
@@ -151,6 +153,5 @@ int main() {
       snrt_mcycle();
 
     return nerr;
-#endif
   }
 }
