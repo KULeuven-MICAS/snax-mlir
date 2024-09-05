@@ -203,7 +203,7 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer):
             ops_to_add.extend([max_int_i, min_int_i, double_round, shift, mult])
 
             # force zp_out to only take up 8 bits
-            ops_to_add.append(cst255 := arith.Constant.from_int_and_width(128, 32))
+            ops_to_add.append(cst255 := arith.Constant.from_int_and_width(255, 32))
             ops_to_add.append(zp_out := arith.AndI(zp_out, cst255))
 
             # shift all values to the correct amount
