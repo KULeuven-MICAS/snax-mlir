@@ -100,18 +100,45 @@ def __(interpreter, np):
 
 @app.cell
 def __(interpreter, np):
-    for x in interpreter.get_tensor(23).astype(np.int32):
+    for x in interpreter.get_tensor(29).astype(np.int32):
         print(x)
     return x,
 
 
-app._unparsable_cell(
-    r"""
-    for xv in out3:
-    print(xv)
-    """,
-    name="__"
-)
+@app.cell
+def __(interpreter, np):
+    # final layer:
+    final_layer_input = interpreter.get_tensor(29).astype(np.int32)
+    final_layer_weights = interpreter.get_tensor(20).astype(np.int32)
+    final_layer_bias = interpreter.get_tensor(10).astype(np.int32)
+    final_output = np.matmul(final_layer_input + 128, final_layer_weights.astype(np.int32).transpose()) + final_layer_bias
+    final_output
+    return (
+        final_layer_bias,
+        final_layer_input,
+        final_layer_weights,
+        final_output,
+    )
+
+
+@app.cell
+def __(interpreter, np):
+    interpreter.get_tensor(30).astype(np.int32)
+    return
+
+
+@app.cell
+def __():
+    return
+
+
+@app.cell
+def __(interpreter):
+    output = interpreter.get_output_details()[0]  # Model has single output.
+
+    for xxdf in interpreter.get_tensor(output['index'])[0]:
+        print(xxdf, end=' ')
+    return output, xxdf
 
 
 @app.cell
