@@ -157,7 +157,7 @@ class SNAXStreamer(ABC):
         result.extend(([], x) for x in op.outputs)
 
         # transpose
-        result.append(([cst := arith.Constant.from_int_and_width(0, 32)], cst.result))
+        # result.append(([cst := arith.Constant.from_int_and_width(0, 32)], cst.result))
 
         return result
 
@@ -188,7 +188,7 @@ class SNAXStreamer(ABC):
         result.extend([f"{streamer}_ptr" for streamer in self.streamer_names])
 
         # transpose reg
-        result.append("transpose")
+        # result.append("transpose")
 
         return result
 
