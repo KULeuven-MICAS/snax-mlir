@@ -35,6 +35,7 @@ from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.stream_snaxify import StreamSnaxify
+from compiler.transforms.test_add_mcycle_around_loop import AddMcycleAroundLoopPass
 from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
 
 
@@ -90,6 +91,9 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(StreamSnaxify.name, lambda: StreamSnaxify)
         super().register_pass(ReuseMemrefAllocs.name, lambda: ReuseMemrefAllocs)
         super().register_pass(RemoveMemrefCopyPass.name, lambda: RemoveMemrefCopyPass)
+        super().register_pass(
+            AddMcycleAroundLoopPass.name, lambda: AddMcycleAroundLoopPass
+        )
         super().register_pass(
             GuardedLinalgToMemrefStreamPass.name,
             lambda: GuardedLinalgToMemrefStreamPass,
