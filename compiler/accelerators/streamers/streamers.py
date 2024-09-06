@@ -16,7 +16,7 @@ class StreamerFlag(StrEnum):
 
     Attributes:
     -----------
-    - None: 'n'
+    - Normal: 'n'
       Indicates that no special flags apply.
     - Irellevant : 'i'
       Indicates a dimension is irrelevant for this operand.
@@ -29,7 +29,7 @@ class StreamerFlag(StrEnum):
       This results in the bound values being for this dimension fixed to 1.
     """
 
-    None_ = "n"
+    Normal = "n"
     Irrelevant = "i"
     Reuse = "r"
 
@@ -38,7 +38,7 @@ class StreamerFlag(StrEnum):
         Overrides the default boolean conversion to ensure that the 'None'
         flag evaluates to False and all other flags evaluate to true
         """
-        return self is not StreamerFlag.None_
+        return self is not StreamerFlag.Normal
 
 
 class Streamer:
@@ -76,8 +76,8 @@ class Streamer:
         """
         return cls(
             type,
-            (StreamerFlag.None_,) * temporal_dim,
-            (StreamerFlag.None_,) * spatial_dim,
+            (StreamerFlag.Normal,) * temporal_dim,
+            (StreamerFlag.Normal,) * spatial_dim,
         )
 
     @property
