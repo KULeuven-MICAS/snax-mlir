@@ -130,12 +130,6 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
             spat_dim = streamer_config.data.spatial_dim()
 
-            # extremely dirty fix:
-            # FIXME: this only works because gemm is the only one with
-            # two spat_dims. This must be fixed with some "virtual" spatial dim
-            if spat_dim == 2:
-                spat_dim = 3
-
             temporal_strides = []
             spatial_strides = []
             upper_bounds = []
@@ -153,9 +147,6 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     temporal_strides.append(stride[0])
                     # have to set upper bounds for spatial strides
                     upper_bounds.append(op.patterns.data[operand].ub.data[i].value)
-
-            # delete all zeros from spatial strides
-            spatial_strides = [x for x in spatial_strides if x]
 
             # create the stride pattern for this operand
             snax_stride_pattern = snax_stream.StridePattern(

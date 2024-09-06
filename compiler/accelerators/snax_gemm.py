@@ -21,12 +21,12 @@ default_streamer = StreamerConfiguration(
         Streamer(
             StreamerType.Reader,
             temporal_dims=("n", "n", "n"),
-            spatial_dims=("i", "n", "n"),
+            spatial_dims=("n", "n", "i"),
         ),
         Streamer(
             StreamerType.Writer,
             temporal_dims=("n", "n", "n"),
-            spatial_dims=("n", "n", "i"),
+            spatial_dims=("i", "n", "n"),
         ),
     ]
 )
