@@ -9,7 +9,7 @@ from compiler.ir.tsl.stride import Stride
 from compiler.ir.tsl.tiled_stride import TiledStride
 
 
-@dataclass
+@dataclass(frozen=True)
 class TiledStridedLayout:
     """TiledStridedLayout is a collection of TiledStrides to represent a tiled
     strided layout for a multi-dimensional array.
@@ -19,17 +19,13 @@ class TiledStridedLayout:
     """
 
     tstrides: list[TiledStride]
-    offset: int | None
-
-    def __init__(self, tstrides: list[TiledStride], offset: int | None = 0):
-        self.tstrides = tstrides
-        self.offset = offset
+    offset: int = 0
 
     @staticmethod
     def from_strides(
         strides: list[int | None],
         tile_bounds: list[list[int | None]],
-        offset: int | None = 0,
+        offset: int = 0,
     ) -> TiledStridedLayout:
         """Create a TiledStridedLayout from a list of strides and tile bounds
 
