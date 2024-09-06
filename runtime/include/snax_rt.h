@@ -61,8 +61,8 @@ void _mlir_ciface_snax_dma_1d_transfer(size_t *source, size_t *destination,
 void _mlir_ciface_snax_dma_2d_transfer(size_t *source, size_t *destination,
                                        size_t size, size_t src_stride,
                                        size_t dst_stride, size_t repeat) {
-  // printf("Copying %d bytes from %p to %p, stridsrc %x stridedst %x rpt %d\n",
-  //        size, source, destination, src_stride, dst_stride, repeat);
+  printf("Copying %d bytes from %p to %p, stridsrc %x stridedst %x rpt %d\n",
+         size, source, destination, src_stride, dst_stride, repeat);
   snrt_dma_start_2d((void *)destination, (void *)source, size, dst_stride,
                     src_stride, repeat);
   snrt_dma_wait_all();

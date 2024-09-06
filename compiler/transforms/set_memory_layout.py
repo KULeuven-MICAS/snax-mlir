@@ -97,12 +97,12 @@ class AddMemoryLayout(RewritePattern):
                         TiledStride(
                             [
                                 Stride(
-                                    256 * n // 8 if n else None, m // 8 if m else None
+                                    64 * n // 8 if n else None, m // 8 if m else None
                                 ),
                                 Stride(8, 8),
                             ]
                         ),
-                        TiledStride([Stride(256, n // 8 if n else None), Stride(1, 8)]),
+                        TiledStride([Stride(64, n // 8 if n else None), Stride(1, 8)]),
                     ]
                 )
             )
