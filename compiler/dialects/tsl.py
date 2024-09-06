@@ -144,7 +144,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         self,
         bound_ops: dict[tuple[int, int], Operation],
         memref_op: SSAValue | None = None,
-        in_bytes: bool = False
+        in_bytes: bool = False,
     ) -> tuple[list[Operation], dict[tuple[int, int], Operation]]:
         """Generate ops to get the steps of the Strides in the TSL
         The function handles dynamic strides as well
@@ -224,7 +224,6 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         )
         result.append(max_stride_op)
 
-
         # assign strides right to left
         for dim in reversed(range(tsl.dimension())):
             # assign strides from innermost to outermost
@@ -233,7 +232,9 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
 
                 # static case
                 if stride.step is not None:
-                    step_op = Constant.from_int_and_width(stride.step * el_bytes, IndexType())
+                    step_op = Constant.from_int_and_width(
+                        stride.step * el_bytes, IndexType()
+                    )
                     result.append(step_op)
                     result_mapping[(dim, depth)] = step_op
 

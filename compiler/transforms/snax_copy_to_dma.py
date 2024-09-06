@@ -126,7 +126,8 @@ def extract_strides(memreftype: MemRefType) -> list[int | None]:
     strides: list[int | None]
     if isinstance(memreftype.layout, StridedLayoutAttr):
         strides = [
-            x.data if isinstance(x, IntAttr) else None for x in memreftype.layout.strides.data
+            x.data if isinstance(x, IntAttr) else None
+            for x in memreftype.layout.strides.data
         ]
     elif isinstance(memreftype.layout, NoneAttr):
         # default to row-major layout, construct strides
@@ -257,9 +258,7 @@ class TransformDMA(RewritePattern):
 
             calc_offset_op = Muli(el_bytes_op, offset, IndexType())
             pointer_src = Addi(pointer_src, calc_offset_op, IndexType())
-            ops_to_insert.extend(
-                [offset_op, el_bytes_op, calc_offset_op, pointer_src]
-            )
+            ops_to_insert.extend([offset_op, el_bytes_op, calc_offset_op, pointer_src])
 
         if tsl_dest.data.offset != 0:
             # Dynamic offset
@@ -278,14 +277,11 @@ class TransformDMA(RewritePattern):
                 offset = offset_op.result
             calc_offset_op = Muli(el_bytes_op, offset, IndexType())
             pointer_dst = Addi(pointer_dst, calc_offset_op, IndexType())
-            ops_to_insert.extend(
-                [offset_op, el_bytes_op, calc_offset_op, pointer_dst]
-            )
+            ops_to_insert.extend([offset_op, el_bytes_op, calc_offset_op, pointer_dst])
 
         # step 2: find largest common contiguous block, to be used for dma transfers
         assert isinstance(op.source.type.element_type, FixedBitwidthType)
         lcb = tsl_source.data.largest_common_contiguous_block(tsl_dest.data)
-
 
         # step 3: generate ops for the strides and bounds of the TSL
         # except for the strides in the LCB, the other strides are used
@@ -316,11 +312,15 @@ class TransformDMA(RewritePattern):
         ops_to_insert.extend(ops_to_add)
 
         # generate the step ops for the source tsl
-        ops_to_add, step_ops_src = tsl_source.get_step_ops(bound_ops, op.source, in_bytes=True)
+        ops_to_add, step_ops_src = tsl_source.get_step_ops(
+            bound_ops, op.source, in_bytes=True
+        )
         ops_to_insert.extend(ops_to_add)
 
         # generate the step ops for the destination tsl
-        ops_to_add, step_ops_dst = tsl_dest.get_step_ops(bound_ops, op.destination, in_bytes=True)
+        ops_to_add, step_ops_dst = tsl_dest.get_step_ops(
+            bound_ops, op.destination, in_bytes=True
+        )
         ops_to_insert.extend(ops_to_add)
 
         # construct the dict. we only need the strides not yet present in the lcb

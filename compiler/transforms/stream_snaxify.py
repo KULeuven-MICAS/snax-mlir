@@ -16,7 +16,6 @@ from xdsl.pattern_rewriter import (
 from compiler.accelerators import find_accelerator_op
 from compiler.dialects import snax_stream
 from compiler.dialects.snax import StreamerConfigurationAttr
-from compiler.dialects.tsl import TiledStridedLayoutAttr
 
 
 @dataclass
