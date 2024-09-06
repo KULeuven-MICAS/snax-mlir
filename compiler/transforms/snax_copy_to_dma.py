@@ -114,7 +114,7 @@ class MatchSimpleCopy(RewritePattern):
         rewriter.replace_op(op, func_call)
 
 
-def extract_strides(memreftype: MemRefType):
+def extract_strides(memreftype: MemRefType) -> list[int | None]:
     """
     Small helper function to extract the strides from a given memreftype
     with a StridedLayoutAttr or NoneAttr (default row-major) layout.
@@ -123,26 +123,22 @@ def extract_strides(memreftype: MemRefType):
         List[int] or None: The extracted strides, or None if the strides
         cannot be determined.
     """
+    strides: list[int | None]
     if isinstance(memreftype.layout, StridedLayoutAttr):
-        strides = memreftype.layout.strides.data
-        # bits to bytes:
-        assert isinstance(memreftype.element_type, FixedBitwidthType)
-        element_stride = memreftype.element_type.size
         strides = [
-            x.data * element_stride if isinstance(x, IntAttr) else None for x in strides
+            x.data if isinstance(x, IntAttr) else None for x in memreftype.layout.strides.data
         ]
     elif isinstance(memreftype.layout, NoneAttr):
         # default to row-major layout, construct strides
         # based on shape of the memref type
-        assert isinstance(memreftype.element_type, FixedBitwidthType)
-        strides = [memreftype.element_type.size]
+        strides = [1]
         for size in reversed(memreftype.shape.data[1:]):
             if size.data == -1 or strides[0] is None:
                 strides = [None] + strides
             else:
                 strides = [size.data * strides[0]] + strides
     else:
-        strides = None
+        raise NotImplementedError("This memref layout type is not handled yet.")
     return strides
 
 
@@ -158,9 +154,7 @@ def extract_offset(memreftype: MemRefType):
         # Dynamic offset
         if isinstance(memreftype.layout.offset, NoneAttr):
             return None
-        assert isinstance(memreftype.element_type, FixedBitwidthType)
-        el_bytes = memreftype.element_type.size
-        return memreftype.layout.offset.data * el_bytes
+        return memreftype.layout.offset.data
 
     return 0
 
@@ -193,6 +187,7 @@ class TransformDMA(RewritePattern):
             tsl_source = op.source.type.layout
         else:
             strides = extract_strides(op.source.type)
+            tile_bounds: list[list[int | None]]
             offset = extract_offset(op.source.type)
             if not strides:
                 return
@@ -201,10 +196,11 @@ class TransformDMA(RewritePattern):
                 tile_bounds = op.destination.type.layout.data.tile_bounds()
             else:
                 # otherwise, shape can be used as single-dimension tile sizes
-                tile_bounds = [shape.data for shape in op.source.type.shape.data]
                 # change dynamic size -1 to None
-                tile_bounds = [[x] if x > 0 else [None] for x in tile_bounds]
-                pass
+                tile_bounds = [
+                    [x.data] if x.data > 0 else [None]
+                    for x in op.source.type.shape.data
+                ]
             tsl_source = TiledStridedLayoutAttr(
                 TiledStridedLayout.from_strides(strides, tile_bounds, offset)
             )
@@ -214,6 +210,7 @@ class TransformDMA(RewritePattern):
             tsl_dest = op.destination.type.layout
         else:
             strides = extract_strides(op.destination.type)
+            tile_bounds: list[list[int | None]]
             offset = extract_offset(op.destination.type)
             if not strides:
                 return
@@ -222,10 +219,11 @@ class TransformDMA(RewritePattern):
                 tile_bounds = op.source.type.layout.data.tile_bounds()
             else:
                 # otherwise, shape can be used as single-dimension tile sizes
-                tile_bounds = [shape.data for shape in op.destination.type.shape.data]
                 # change dynamic size -1 to None
-                tile_bounds = [[x] if x > 0 else [None] for x in tile_bounds]
-                pass
+                tile_bounds = [
+                    [x.data] if x.data > 0 else [None]
+                    for x in op.source.type.shape.data
+                ]
             tsl_dest = TiledStridedLayoutAttr(
                 TiledStridedLayout.from_strides(strides, tile_bounds, offset)
             )
@@ -241,57 +239,53 @@ class TransformDMA(RewritePattern):
 
         # apply offset if it is not zero
         if tsl_source.data.offset != 0:
+            # Calculate number of bytes in type
+            assert isinstance(op.source.type.element_type, FixedBitwidthType)
+            el_bytes = op.source.type.element_type.size
+            el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
             # Dynamic offset
             if tsl_source.data.offset is None:
                 # dynamic offsets for tsl is TODO
                 assert isinstance(op.source.type.layout, StridedLayoutAttr)
                 offset_op = ExtractStridedMetaDataOp(op.source)
-                # Calculate number of bytes in type
-                assert isinstance(op.source.type.element_type, FixedBitwidthType)
-                el_bytes = op.source.type.element_type.size
-                el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
-                calc_offset_op = Muli(el_bytes_op, offset_op.offset, IndexType())
-                pointer_src = Addi(pointer_src, calc_offset_op, IndexType())
-                ops_to_insert.extend(
-                    [offset_op, el_bytes_op, calc_offset_op, pointer_src]
-                )
+                offset = offset_op.offset
             else:
-                # Multiplication with el_bytes already happens statically with extract_offset()
                 offset_op = Constant.from_int_and_width(
                     tsl_source.data.offset, IndexType()
                 )
-                pointer_src = Addi(pointer_src, offset_op.result, IndexType())
-                ops_to_insert.extend([offset_op, pointer_src])
+                offset = offset_op.result
+
+            calc_offset_op = Muli(el_bytes_op, offset, IndexType())
+            pointer_src = Addi(pointer_src, calc_offset_op, IndexType())
+            ops_to_insert.extend(
+                [offset_op, el_bytes_op, calc_offset_op, pointer_src]
+            )
 
         if tsl_dest.data.offset != 0:
             # Dynamic offset
+            assert isinstance(op.destination.type.element_type, FixedBitwidthType)
+            el_bytes = op.destination.type.element_type.size
+            el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
             if tsl_dest.data.offset is None:
                 assert isinstance(op.destination.type.layout, StridedLayoutAttr)
                 offset_op = ExtractStridedMetaDataOp(op.destination)
-                # Calculate number of bytes in type
-                assert isinstance(op.source.type.element_type, FixedBitwidthType)
-                el_bytes = op.source.type.element_type.size
-                el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
-                calc_offset_op = Muli(el_bytes_op, offset_op.offset, IndexType())
-                pointer_dst = Addi(pointer_dst, calc_offset_op, IndexType())
-                ops_to_insert.extend(
-                    [offset_op, el_bytes_op, calc_offset_op, pointer_dst]
-                )
+                offset = offset_op.offset
             else:
                 # Multiplication with el_bytes already happens statically with extract_offset()
                 offset_op = Constant.from_int_and_width(
                     tsl_dest.data.offset, IndexType()
                 )
-                pointer_dst = Addi(pointer_dst, offset_op.result, IndexType())
-                ops_to_insert.extend([offset_op, pointer_dst])
+                offset = offset_op.result
+            calc_offset_op = Muli(el_bytes_op, offset, IndexType())
+            pointer_dst = Addi(pointer_dst, calc_offset_op, IndexType())
+            ops_to_insert.extend(
+                [offset_op, el_bytes_op, calc_offset_op, pointer_dst]
+            )
 
         # step 2: find largest common contiguous block, to be used for dma transfers
-
-        # lcb is completely static
         assert isinstance(op.source.type.element_type, FixedBitwidthType)
-        lcb = tsl_source.data.largest_common_contiguous_block(
-            tsl_dest.data, op.source.type.element_type.size
-        )
+        lcb = tsl_source.data.largest_common_contiguous_block(tsl_dest.data)
+
 
         # step 3: generate ops for the strides and bounds of the TSL
         # except for the strides in the LCB, the other strides are used
@@ -322,11 +316,11 @@ class TransformDMA(RewritePattern):
         ops_to_insert.extend(ops_to_add)
 
         # generate the step ops for the source tsl
-        ops_to_add, step_ops_src = tsl_source.get_step_ops(bound_ops, op.source)
+        ops_to_add, step_ops_src = tsl_source.get_step_ops(bound_ops, op.source, in_bytes=True)
         ops_to_insert.extend(ops_to_add)
 
         # generate the step ops for the destination tsl
-        ops_to_add, step_ops_dst = tsl_dest.get_step_ops(bound_ops, op.destination)
+        ops_to_add, step_ops_dst = tsl_dest.get_step_ops(bound_ops, op.destination, in_bytes=True)
         ops_to_insert.extend(ops_to_add)
 
         # construct the dict. we only need the strides not yet present in the lcb
@@ -372,8 +366,10 @@ class TransformDMA(RewritePattern):
         assert lcb[-1].bound is not None
         assert lcb[-1].step is not None
 
+        assert isinstance(op.source.type.element_type, FixedBitwidthType)
+        el_bytes = op.source.type.element_type.size
         dma_size = Constant.from_int_and_width(
-            lcb[-1].bound * lcb[-1].step, IndexType()
+            lcb[-1].bound * lcb[-1].step * el_bytes, IndexType()
         )
         dma_stride_src = dma_loop["step_src_op"]
         dma_stride_dst = dma_loop["step_dst_op"]

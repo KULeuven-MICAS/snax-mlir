@@ -110,11 +110,8 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             # Mapping from data to memory:
             assert isinstance(memref_type := op.operands[operand].type, MemRefType)
 
-            # TODO: fix element offset in tsl to avoid this shit
-            if isinstance(memref_type.layout, TiledStridedLayoutAttr):
-                data_mem_map: AffineMap = memref_type.get_affine_map()
-            else:
-                data_mem_map: AffineMap = memref_type.get_affine_map_in_bytes()
+            # Mapping from data to memory:
+            data_mem_map: AffineMap = memref_type.get_affine_map_in_bytes()
 
             # Mapping from access to data:
             access_data_map: AffineMap = op.patterns.data[operand].index_map.data

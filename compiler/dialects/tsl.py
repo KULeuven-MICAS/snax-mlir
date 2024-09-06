@@ -4,6 +4,7 @@ from math import prod
 
 from xdsl.dialects.arith import Constant, DivUI, Muli
 from xdsl.dialects.builtin import (
+    FixedBitwidthType,
     IndexType,
     MemrefLayoutAttr,
     MemRefType,
@@ -143,6 +144,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         self,
         bound_ops: dict[tuple[int, int], Operation],
         memref_op: SSAValue | None = None,
+        in_bytes: bool = False
     ) -> tuple[list[Operation], dict[tuple[int, int], Operation]]:
         """Generate ops to get the steps of the Strides in the TSL
         The function handles dynamic strides as well
@@ -152,6 +154,9 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             TSL attribute. These are necessary to calculate the step of a dynamic
             Stride. The argument is a mapping of (dim, depth) to the operation
             of the bound of the stride at that dim and depth.
+            memref_op (SSAValue | None = None),
+            in_bytes (bool): Return the steps in bytes instead of nb of elements.
+            Defaults to number of elements (False)
 
         Returns:
             Result (List[Operation]): the list of operations that must be inserted
@@ -186,6 +191,16 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
                     stride = Muli(metadata_op.strides[dim], element_size_op)
                     result_mapping[(dim, depth)] = stride
 
+        # optional bytes correction
+        if in_bytes:
+            assert memref_op
+            assert isinstance(memref_op.type, MemRefType)
+            assert isinstance(memref_op.type.element_type, FixedBitwidthType)
+            el_bytes = memref_op.type.element_type.size
+        else:
+            # else use 1 such that 1 element = 1 byte
+            el_bytes = 1
+
         # to handle the dynamic case, we must first find the largest
         # statically defined step, and then use that to calculate the
         # dynamic steps
@@ -196,6 +211,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             if stride.step and stride.step > max_value:
                 max_key = (dim, depth)
                 max_value = stride.step
+        max_value = max_value * el_bytes
 
         # generate ops for the maximum
         # the max static stride multiplied by the bound of that Stride
@@ -208,6 +224,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         )
         result.append(max_stride_op)
 
+
         # assign strides right to left
         for dim in reversed(range(tsl.dimension())):
             # assign strides from innermost to outermost
@@ -216,7 +233,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
 
                 # static case
                 if stride.step is not None:
-                    step_op = Constant.from_int_and_width(stride.step, IndexType())
+                    step_op = Constant.from_int_and_width(stride.step * el_bytes, IndexType())
                     result.append(step_op)
                     result_mapping[(dim, depth)] = step_op
 
