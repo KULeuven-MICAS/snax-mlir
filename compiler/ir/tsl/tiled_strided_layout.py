@@ -59,14 +59,9 @@ class TiledStridedLayout:
             depths and strides of the Tiled Strided Layout
         """
 
-        result = [
-            list(map(lambda x: (dim,) + x, iter(tsride)))
-            for dim, tsride in zip(range(self.dimension()), self.tstrides)
-        ]
-        # unpack nested list
-        result = [x for y in result for x in y]
-        # return result
-        return iter(result)
+        for dim, tiled_stride in enumerate(self.tstrides):
+            for depth, stride in tiled_stride:
+                yield (dim, depth, stride)
 
     def is_dynamic(self) -> bool:
         """Check if the Tiled Strided Layout is dynamic"""
@@ -98,7 +93,7 @@ class TiledStridedLayout:
         result = result.flatten()
         return result
 
-    def tile_bounds(self) -> list[list[int]]:
+    def tile_bounds(self) -> list[list[int | None]]:
         """
         Returns a list of tile bounds for each dimension.
         """

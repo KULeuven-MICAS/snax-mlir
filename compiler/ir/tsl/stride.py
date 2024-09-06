@@ -27,6 +27,8 @@ class Stride:
         """Get all values within the bound of the Stride"""
         if self.is_dynamic():
             raise ValueError("Cannot get all values of a dynamic stride")
+        assert self.step
+        assert self.bound
         return list(range(0, self.step * self.bound, self.step))
 
     def __str__(self) -> str:
