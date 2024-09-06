@@ -116,8 +116,6 @@ int main() {
     memrefC.offset = 0;
 
 
-    printf("Original data at %p, %p, %p\n", memrefA.aligned_data, memrefB.aligned_data, memrefC.aligned_data);
-
     (void)snrt_mcycle();
 
     _mlir_ciface_streamer_matmul(&memrefA, &memrefB, &memrefC);
