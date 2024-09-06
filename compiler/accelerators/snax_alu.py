@@ -17,9 +17,9 @@ from compiler.dialects import accfg, snax_stream
 
 default_streamer = StreamerConfiguration(
     [
-        Streamer(StreamerType.Reader, 1, 1),
-        Streamer(StreamerType.Reader, 1, 1),
-        Streamer(StreamerType.Writer, 1, 1),
+        Streamer.from_dim(StreamerType.Reader, 1, 1),
+        Streamer.from_dim(StreamerType.Reader, 1, 1),
+        Streamer.from_dim(StreamerType.Writer, 1, 1),
     ]
 )
 

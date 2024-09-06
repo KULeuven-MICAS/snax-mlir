@@ -31,8 +31,12 @@ from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 from xdsl.utils.exceptions import VerifyException
 
-from compiler.accelerators.streamers import StreamerConfiguration
-from compiler.accelerators.streamers.streamers import Streamer, StreamerType
+from compiler.accelerators.streamers import (
+    Streamer,
+    StreamerConfiguration,
+    StreamerFlag,
+    StreamerType,
+)
 from compiler.util.memref_descriptor import LLVMMemrefDescriptor
 
 
@@ -155,9 +159,8 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
     @classmethod
     def parse_parameter(cls, parser: AttrParser) -> StreamerConfiguration:
         # parse a streamer config in the following format:
-        # for a streamer with 2 readers, 1 writer, each with
-        # a temporal and spatial dimension:
-        # snax.streamer_config<r[5, 4], r[2, 5], w[1, 1]>
+        # for every streamer, the sequence of dims is defined by their flags
+        # snax.streamer_config<r[temp=n-n-n-n-r, spat=n-i], r[temp=n-n-n, spat=i-n], w[temp=r-n-n, spat=n-n]>
 
         with parser.in_angle_brackets():
             streamers: Sequence[Streamer] = []
@@ -166,12 +169,26 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
                 # Determine streamer type
                 streamer_type: StreamerType = parser.parse_str_enum(StreamerType)
 
-                # Determine temporal and spatial dimensions
-                dimensions = parser.parse_comma_separated_list(
-                    parser.Delimiter.SQUARE, parser.parse_integer
-                )
-                assert len(dimensions) == 2
-                streamers.append(Streamer(streamer_type, *dimensions))
+                parser.parse_punctuation("[")
+                parser.parse_keyword("temp")
+                parser.parse_punctuation("=")
+
+                # Determine the temporal dimensions
+                temporal_dims: Sequence[StreamerFlag] = []
+                while not parser.parse_optional_punctuation(","):
+                    temporal_dims.append(parser.parse_str_enum(StreamerFlag))
+                    parser.parse_optional_punctuation("-")
+
+                parser.parse_keyword("spat")
+                parser.parse_punctuation("=")
+
+                # Determine the spatial dimensions
+                spatial_dims: Sequence[StreamerFlag] = []
+                while not parser.parse_optional_punctuation("]"):
+                    spatial_dims.append(parser.parse_str_enum(StreamerFlag))
+                    parser.parse_optional_punctuation("-")
+
+                streamers.append(Streamer(streamer_type, temporal_dims, spatial_dims))
 
                 if not parser.parse_optional_punctuation(","):
                     break
@@ -180,12 +197,11 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
 
     def print_parameter(self, printer: Printer) -> None:
         # print a streamer config in the following format:
-        # for a streamer with 2 readers, 1 writer, each with
-        # a temporal and spatial dimension:
-        # snax.streamer_config<r[5, 4], r[2, 5], w[1, 1]>
+        # for every streamer, the sequence of dims is defined by their flags
+        # snax.streamer_config<r[t=n-n-n-n-r, s=n-i], r[t=n-n-n, s=i-n], w[t=r-n-n, s=n-n]>
 
         streamer_strings = [
-            f"{streamer.type.value}[{streamer.temporal_dim}, {streamer.spatial_dim}]"
+            f"{streamer.type.value}[temp={'-'.join(streamer.temporal_dims)}, spat={'-'.join(streamer.spatial_dims)}]"
             for streamer in self.data.streamers
         ]
         printer.print_string(f"<{', '.join(streamer_strings)}>")
