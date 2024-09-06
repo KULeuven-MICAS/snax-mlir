@@ -97,7 +97,9 @@ class AllocOpRewrite(RewritePattern):
             # use shape ops to generate tsl bound ops
             insert_ops, bound_ops = layout.get_bound_ops(shape_ops)
             ops_to_add.extend(insert_ops)
-            insert_ops, step_ops = layout.get_step_ops(bound_ops, alloc_op.memref, in_bytes=True)
+            insert_ops, step_ops = layout.get_step_ops(
+                bound_ops, alloc_op.memref, in_bytes=True
+            )
             ops_to_add.extend(insert_ops)
 
             cst_1 = Constant.from_int_and_width(1, IndexType())

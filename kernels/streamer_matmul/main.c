@@ -115,7 +115,6 @@ int main() {
     memrefC.stride[1] = 1;
     memrefC.offset = 0;
 
-
     (void)snrt_mcycle();
 
     _mlir_ciface_streamer_matmul(&memrefA, &memrefB, &memrefC);
