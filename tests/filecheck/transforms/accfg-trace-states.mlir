@@ -200,7 +200,7 @@ func.func @simple_loop() {
     %A, %B, %O, %nr_iters = "test.op"() : () -> (i32, i32, i32, i32)
 
     %lb, %ub, %step, %carry = "test.op"() : () -> (i32, i32, i32, i32)
-    %res = scf.for %i = %lb to %ub step %step iter_args(%arg0 = %carry) -> (i32) {
+    %res = scf.for %i = %lb to %ub step %step iter_args(%arg0 = %carry) -> (i32) : i32{
 
         %s2 = "accfg.setup"(%A, %B, %O, %nr_iters) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !accfg.state<"snax_hwpe_mult">
 
@@ -235,8 +235,8 @@ func.func @nested_loop() {
     %s1 = "accfg.setup"(%A, %B, %O, %nr_iters) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !accfg.state<"snax_hwpe_mult">
 
     %lb, %ub, %step, %carry = "test.op"() : () -> (i32, i32, i32, i32)
-    %res = scf.for %i = %lb to %ub step %step iter_args(%arg0 = %carry) -> (i32) {
-        scf.for %y = %lb to %ub step %step {
+    %res = scf.for %i = %lb to %ub step %step iter_args(%arg0 = %carry) -> (i32) : i32 {
+        scf.for %y = %lb to %ub step %step : i32 {
             %s2 = "accfg.setup"(%A, %B, %O, %nr_iters) <{"accelerator" = "snax_hwpe_mult", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !accfg.state<"snax_hwpe_mult">
             yield
         }
@@ -277,7 +277,7 @@ func.func @loop_with_multiple_input_states() {
 
     %lb, %ub, %step, %carry = "test.op"() : () -> (i32, i32, i32, i32)
 
-    %res = scf.for %i = %lb to %ub step %step iter_args(%arg0 = %carry) -> (i32) {
+    %res = scf.for %i = %lb to %ub step %step iter_args(%arg0 = %carry) -> (i32) : i32 {
         %s2b = "accfg.setup"(%A, %B, %O, %nr_iters) <{"accelerator" = "b", "operandSegmentSizes" = array<i32: 4, 0>, "param_names" = ["A", "B", "O", "nr_iters"]}> : (i32, i32, i32, i32) -> !accfg.state<"b">
         yield %arg0 : i32
     }
