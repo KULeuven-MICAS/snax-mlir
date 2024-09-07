@@ -5,6 +5,7 @@ from xdsl.context import MLContext
 from xdsl.xdsl_opt_main import xDSLOptMain
 
 from compiler.dialects.accfg import ACCFG
+from compiler.dialects.kernel import Kernel
 from compiler.dialects.snax import Snax
 from compiler.dialects.snax_stream import SnaxStream
 from compiler.dialects.tsl import TSL
@@ -61,6 +62,7 @@ class SNAXOptMain(xDSLOptMain):
 
         self.ctx.load_dialect(Snax)
         self.ctx.load_dialect(TSL)
+        self.ctx.load_dialect(Kernel)
         self.ctx.load_dialect(ACCFG)
         self.ctx.load_dialect(SnaxStream)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
