@@ -18,6 +18,7 @@ from compiler.transforms.convert_linalg_to_accfg import (
     ConvertLinalgToAccPass,
     TraceStatesPass,
 )
+from compiler.transforms.convert_to_kernel import ConvertToKernel
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.guarded_linalg_to_memref_stream import (
@@ -101,6 +102,7 @@ class SNAXOptMain(xDSLOptMain):
             lambda: GuardedLinalgToMemrefStreamPass,
         )
         super().register_pass(ScheduleMemrefLinalg.name, lambda: ScheduleMemrefLinalg)
+        super().register_pass(ConvertToKernel.name, lambda: ConvertToKernel)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
