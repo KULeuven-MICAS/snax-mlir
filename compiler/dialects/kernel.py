@@ -41,20 +41,18 @@ class AddOp(KernelOp, BinaryOp):
 @irdl_op_definition
 class MacOp(KernelOp, BinaryOp):
     name = "kernel.mac"
-    acc = operand_def(IntegerType)
     assembly_format = (
-        "$lhs `,` $rhs `acc``:` $acc attr-dict `:`"
-        "type($lhs) `,` type($rhs) `,` type($acc) `->` type($result)"
+        "$lhs `,` $rhs attr-dict `:`"
+        "type($lhs) `,` type($rhs) `->` type($result)"
     )
 
 
 @irdl_op_definition
 class QMacOp(KernelOp, QuantizedBinaryOp):
     name = "kernel.qmac"
-    acc = operand_def(IntegerType)
     assembly_format = (
-        "$lhs `,` $rhs `acc` `:` $acc `zp_lhs``:` $zp_lhs `zp_rhs``:` $zp_rhs attr-dict `:`"
-        " type($lhs) `,` type($rhs) `,` type($acc) `,` type($zp_lhs) `,` type($zp_rhs) `->` type($result)"
+        "$lhs `,` $rhs `zp_lhs``:` $zp_lhs `zp_rhs``:` $zp_rhs attr-dict `:`"
+        " type($lhs) `,` type($rhs) `,` type($zp_lhs) `,` type($zp_rhs) `->` type($result)"
     )
 
 
