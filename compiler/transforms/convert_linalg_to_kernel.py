@@ -63,8 +63,8 @@ class ParseLinalgBody(RewritePattern):
                 rewriter.insert_op((kernel_op, linalg.YieldOp(kernel_op)), InsertPoint.at_end(linalg_op.body.block))
 
 
-class ConvertToKernel(ModulePass):
-    name = "convert-to-kernel"
+class ConvertLinalgToKernel(ModulePass):
+    name = "convert-linalg-to-kernel"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(ParseLinalgBody()).rewrite_module(op)
