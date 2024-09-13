@@ -91,7 +91,7 @@
 // CHECK-NEXT:       %21 = "accfg.launch"(%1, %20) <{"accelerator" = "snax_hwpe_mult", "param_names" = ["launch"]}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:       "accfg.await"(%21) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:       scf.yield %19, %20 : i32, !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:     }{}
+// CHECK-NEXT:     }
 // CHECK-NEXT:     "test.op"(%14) : (i32) -> ()
 // CHECK-NEXT:     %22 = accfg.setup "snax_hwpe_mult" from %15 to ("A" = %4 : i32, "B" = %8 : i32, "O" = %6 : i32, "vector_length" = %2 : i32, "nr_iters" = %10 : i32, "mode" = %2 : i32) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:     %23 = "accfg.launch"(%1, %22) <{"accelerator" = "snax_hwpe_mult", "param_names" = ["launch"]}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">

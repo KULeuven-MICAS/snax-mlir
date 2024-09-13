@@ -85,7 +85,7 @@ func.func @simple_if() {
 // CHECK-NEXT:      %s2_1 = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:      scf.yield %s2_1 : !accfg.state<"snax_hwpe_mult">
 //                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// CHECK-NEXT:    }{}
+// CHECK-NEXT:    }
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
 
@@ -127,7 +127,7 @@ func.func @simple_if_double_acc() {
 // CHECK-NEXT:       %s1_new_1 = accfg.setup "snax_hwpe_mult" from %s1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:       scf.yield %s1_new_1, %s2_new : !accfg.state<"snax_hwpe_mult">, !accfg.state<"snax_hwpe_mult_2">
 //                                        ^^^^^^^ yield inner state                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ correct type
-// CHECK-NEXT:     }{}
+// CHECK-NEXT:     }
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 
@@ -182,7 +182,7 @@ func.func @nested_if() {
 //                                                        ^^^^^^^^^^
 // CHECK-NEXT:         scf.yield %B, %s4 : i32, !accfg.state<"snax_hwpe_mult">
 //                                  ^^^        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// CHECK-NEXT:       }{}
+// CHECK-NEXT:       }
 // CHECK-NEXT:       %s3_1 = accfg.setup "snax_hwpe_mult" from %c_1 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
 //                                                        ^^^^^^^^^
 // CHECK-NEXT:       scf.yield %c, %s3_1 : i32, !accfg.state<"snax_hwpe_mult">
@@ -192,7 +192,7 @@ func.func @nested_if() {
 //                                                        ^^^^^^^^
 // CHECK-NEXT:       scf.yield %A, %s2_1 : i32, !accfg.state<"snax_hwpe_mult">
 //                                 ^^^^^        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// CHECK-NEXT:     }{}
+// CHECK-NEXT:     }
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 

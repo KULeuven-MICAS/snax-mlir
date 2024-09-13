@@ -48,7 +48,7 @@ builtin.module {
 // CHECK-NEXT:         %alloc = memref.alloc() {"alignment" = 64 : i64} : memref<64xi32>
 // CHECK-NEXT:         scf.if %11 {
 // CHECK-NEXT:           "memref.copy"(%0, %1) : (memref<64xi32>, memref<64xi32>) -> ()
-// CHECK-NEXT:         }{}
+// CHECK-NEXT:         }
 // CHECK-NEXT:         "snax.cluster_sync_op"() : () -> ()
 // CHECK-NEXT:         scf.if %9 {
 // CHECK-NEXT:           linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%0, %1 : memref<64xi32>, memref<64xi32>) outs(%2 : memref<64xi32>) {
@@ -56,9 +56,9 @@ builtin.module {
 // CHECK-NEXT:             %12 = arith.muli %arg0, %arg1 : i32
 // CHECK-NEXT:             linalg.yield %12 : i32
 // CHECK-NEXT:           }
-// CHECK-NEXT:         }{}
-// CHECK-NEXT:       }{}
-// CHECK-NEXT:     }{}
+// CHECK-NEXT:         }
+// CHECK-NEXT:       }
+// CHECK-NEXT:     }
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT:   func.func public @simple_mult_pinned_1(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>) {
@@ -75,7 +75,7 @@ builtin.module {
 // CHECK-NEXT:       %alloc = memref.alloc() {"alignment" = 64 : i64} : memref<64xi32>
 // CHECK-NEXT:       scf.if %9 {
 // CHECK-NEXT:         "memref.copy"(%0, %1) : (memref<64xi32>, memref<64xi32>) -> ()
-// CHECK-NEXT:       }{}
+// CHECK-NEXT:       }
 // CHECK-NEXT:       "snax.cluster_sync_op"() : () -> ()
 // CHECK-NEXT:       scf.if %7 {
 // CHECK-NEXT:         linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%0, %1 : memref<64xi32>, memref<64xi32>) outs(%2 : memref<64xi32>) {
@@ -83,8 +83,8 @@ builtin.module {
 // CHECK-NEXT:           %10 = arith.muli %arg0, %arg1 : i32
 // CHECK-NEXT:           linalg.yield %10 : i32
 // CHECK-NEXT:         }
-// CHECK-NEXT:       }{}
-// CHECK-NEXT:     }{}
+// CHECK-NEXT:       }
+// CHECK-NEXT:     }
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT:   func.func public @simple_mult_pinned(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>) {
@@ -96,7 +96,7 @@ builtin.module {
 // CHECK-NEXT:     %alloc = memref.alloc() {"alignment" = 64 : i64} : memref<64xi32>
 // CHECK-NEXT:     scf.if %7 {
 // CHECK-NEXT:       "memref.copy"(%0, %1) : (memref<64xi32>, memref<64xi32>) -> ()
-// CHECK-NEXT:     }{}
+// CHECK-NEXT:     }
 // CHECK-NEXT:     "snax.cluster_sync_op"() : () -> ()
 // CHECK-NEXT:     scf.if %5 {
 // CHECK-NEXT:       linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%0, %1 : memref<64xi32>, memref<64xi32>) outs(%2 : memref<64xi32>) {
@@ -104,7 +104,7 @@ builtin.module {
 // CHECK-NEXT:         %8 = arith.muli %arg0, %arg1 : i32
 // CHECK-NEXT:         linalg.yield %8 : i32
 // CHECK-NEXT:       }
-// CHECK-NEXT:     }{}
+// CHECK-NEXT:     }
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT:   func.func private @snax_cluster_core_idx() -> i32

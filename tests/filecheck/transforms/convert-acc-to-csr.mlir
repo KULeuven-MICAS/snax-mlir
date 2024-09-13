@@ -119,7 +119,7 @@ builtin.module {
 // CHECK-NEXT:       "llvm.inline_asm"(%36, %6) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64, "has_side_effects"}> : (i64, i32) -> ()
 // CHECK-NEXT:       %37 = arith.constant 979 : i64
 // CHECK-NEXT:       "llvm.inline_asm"(%37, %4) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64, "has_side_effects"}> : (i64, i32) -> ()
-// CHECK-NEXT:     }{}
+// CHECK-NEXT:     }
 // CHECK-NEXT:     %38 = arith.constant 960 : i64
 // CHECK-NEXT:     "llvm.inline_asm"(%38, %cst) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64, "has_side_effects"}> : (i64, i5) -> ()
 // CHECK-NEXT:     scf.while () : () -> () {
