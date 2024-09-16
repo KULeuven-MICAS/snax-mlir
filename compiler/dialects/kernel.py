@@ -20,7 +20,8 @@ class KernelOp(IRDLOperation, ABC):
 
 class Parsable(ABC):
     @property
-    def parsing_region(self) -> Region: ...
+    def parsing_region(self) -> Region:
+        ...
 
 
 class BinaryOp:
@@ -37,11 +38,19 @@ class QuantizedBinaryOp(BinaryOp):
 @irdl_op_definition
 class MulOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.mul"
-    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    assembly_format = (
+        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    )
 
     @property
     def parsing_region(self) -> Region:
-        @Builder.implicit_region((SSAValue.get(self.lhs).type, SSAValue.get(self.rhs).type, *self.result_types))
+        @Builder.implicit_region(
+            (
+                SSAValue.get(self.lhs).type,
+                SSAValue.get(self.rhs).type,
+                *self.result_types,
+            )
+        )
         def parsing_region(args: tuple[BlockArgument, ...]) -> None:
             mul = arith.Muli(args[0], args[1])
             linalg.YieldOp(mul)
@@ -52,11 +61,19 @@ class MulOp(KernelOp, BinaryOp, Parsable):
 @irdl_op_definition
 class AddOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.add"
-    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    assembly_format = (
+        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    )
 
     @property
     def parsing_region(self) -> Region:
-        @Builder.implicit_region((SSAValue.get(self.lhs).type, SSAValue.get(self.rhs).type, *self.result_types))
+        @Builder.implicit_region(
+            (
+                SSAValue.get(self.lhs).type,
+                SSAValue.get(self.rhs).type,
+                *self.result_types,
+            )
+        )
         def parsing_region(args: tuple[BlockArgument, ...]) -> None:
             add = arith.Addi(args[0], args[1])
             linalg.YieldOp(add)
@@ -67,11 +84,19 @@ class AddOp(KernelOp, BinaryOp, Parsable):
 @irdl_op_definition
 class MacOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.mac"
-    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    assembly_format = (
+        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    )
 
     @property
     def parsing_region(self) -> Region:
-        @Builder.implicit_region((SSAValue.get(self.lhs).type, SSAValue.get(self.rhs).type, *self.result_types))
+        @Builder.implicit_region(
+            (
+                SSAValue.get(self.lhs).type,
+                SSAValue.get(self.rhs).type,
+                *self.result_types,
+            )
+        )
         def parsing_region(args: tuple[BlockArgument, ...]) -> None:
             mul = arith.Muli(args[0], args[1])
             mac = arith.Addi(args[2], mul)

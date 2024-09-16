@@ -38,6 +38,7 @@ class ParseLinalgBody(RewritePattern):
     the kernel dialect. Replaces the body with the relevant
     kernel op if this is true.
     """
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
         for op_def in Kernel.operations:
@@ -53,14 +54,16 @@ class ParseLinalgBody(RewritePattern):
                 continue
 
             if check_block(linalg_op.body.block, kernel_op.parsing_region.block):
-
                 # modify linalg body
                 # delete all previous ops:
-                while(linalg_op.body.block.last_op):
+                while linalg_op.body.block.last_op:
                     rewriter.erase_op(linalg_op.body.block.last_op)
 
                 # insert new kernel op kernel in body
-                rewriter.insert_op((kernel_op, linalg.YieldOp(kernel_op)), InsertPoint.at_end(linalg_op.body.block))
+                rewriter.insert_op(
+                    (kernel_op, linalg.YieldOp(kernel_op)),
+                    InsertPoint.at_end(linalg_op.body.block),
+                )
 
 
 class ConvertLinalgToKernel(ModulePass):
