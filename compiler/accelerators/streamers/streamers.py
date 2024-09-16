@@ -35,7 +35,7 @@ class StreamerFlag(StrEnum):
 
     def __bool__(self) -> bool:
         """
-        Overrides the default boolean conversion to ensure that the 'None'
+        Overrides the default boolean conversion to ensure that the 'Normal'
         flag evaluates to False and all other flags evaluate to true
         """
         return self is not StreamerFlag.Normal
