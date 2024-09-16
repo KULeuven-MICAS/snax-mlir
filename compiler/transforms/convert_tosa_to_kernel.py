@@ -1,7 +1,7 @@
 from xdsl.builder import Builder
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg, tosa
-from xdsl.ir import BlockArgument, SSAValue
+from xdsl.ir import BlockArgument
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -21,11 +21,12 @@ class RescaleClampPattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, rescale_op: tosa.RescaleOp, rewriter: PatternRewriter):
-
         # searching for the pattern rescale + clamp
         if len(rescale_op.output.uses) != 1:
             return
-        if not isinstance(clamp_op := next(iter(rescale_op.output.uses)).operation, tosa.ClampOp):
+        if not isinstance(
+            clamp_op := next(iter(rescale_op.output.uses)).operation, tosa.ClampOp
+        ):
             return
 
         # should have tensor inputs
@@ -64,7 +65,6 @@ class RescaleClampPattern(RewritePattern):
         double_round = rescale_op.double_round.value.data
         assert double_round in (0, 1)
 
-
         @Builder.implicit_region((inp_type.element_type, out_type.element_type))
         def linalg_body(args: tuple[BlockArgument, ...]) -> None:
             kernel_op = kernel.RescaleOp(
@@ -77,7 +77,9 @@ class RescaleClampPattern(RewritePattern):
                     "shift": builtin.IntegerAttr(shift, builtin.IntegerType(8)),
                     "max_int": builtin.IntegerAttr(max_int, builtin.IntegerType(8)),
                     "min_int": builtin.IntegerAttr(min_int, builtin.IntegerType(8)),
-                    "double_round": builtin.IntegerAttr(double_round, builtin.IntegerType(1)),
+                    "double_round": builtin.IntegerAttr(
+                        double_round, builtin.IntegerType(1)
+                    ),
                 },
             )
             linalg.YieldOp(kernel_op)
@@ -90,7 +92,11 @@ class RescaleClampPattern(RewritePattern):
             outputs=[rescale_op.input],
             body=linalg_body,
             indexing_maps=[
-                builtin.AffineMapAttr(AffineMap(nb_dims, 0, tuple(AffineDimExpr(i) for i in range(nb_dims))))
+                builtin.AffineMapAttr(
+                    AffineMap(
+                        nb_dims, 0, tuple(AffineDimExpr(i) for i in range(nb_dims))
+                    )
+                )
                 for _ in range(2)
             ],
             iterator_types=builtin.ArrayAttr([linalg.IteratorTypeAttr.parallel()] * 2),
