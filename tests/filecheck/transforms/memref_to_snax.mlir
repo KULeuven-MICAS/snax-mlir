@@ -57,11 +57,11 @@
 // CHECK-NEXT:   %3 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 // CHECK-NEXT:   %4 = "arith.constant"() <{"value" = 2 : index}> : () -> index
 // CHECK-NEXT:   %5 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-// CHECK-NEXT:   %6 = "arith.constant"() <{"value" = 128 : index}> : () -> index
-// CHECK-NEXT:   %7 = "arith.constant"() <{"value" = 32 : index}> : () -> index
-// CHECK-NEXT:   %8 = "arith.constant"() <{"value" = 128 : index}> : () -> index
-// CHECK-NEXT:   %9 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-// CHECK-NEXT:   %10 = "arith.constant"() <{"value" = 16 : index}> : () -> index
+// CHECK-NEXT:   %6 = "arith.constant"() <{"value" = 512 : index}> : () -> index
+// CHECK-NEXT:   %7 = "arith.constant"() <{"value" = 128 : index}> : () -> index
+// CHECK-NEXT:   %8 = "arith.constant"() <{"value" = 512 : index}> : () -> index
+// CHECK-NEXT:   %9 = "arith.constant"() <{"value" = 16 : index}> : () -> index
+// CHECK-NEXT:   %10 = "arith.constant"() <{"value" = 64 : index}> : () -> index
 // CHECK-NEXT:   %11 = "arith.constant"() <{"value" = 1 : index}> : () -> index
 // CHECK-NEXT:   %12 = "arith.constant"() <{"value" = 0 : index}> : () -> index
 // CHECK-NEXT:   %13 = "arith.subi"(%2, %11) : (index, index) -> index
@@ -101,11 +101,11 @@
 // CHECK-NEXT:   %4 = "arith.constant"() <{"value" = 4 : index}> : () -> index
 // CHECK-NEXT:   %5 = "arith.divui"(%0, %4) : (index, index) -> index
 // CHECK-NEXT:   %6 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-// CHECK-NEXT:   %7 = "arith.constant"() <{"value" = 32 : index}> : () -> index
-// CHECK-NEXT:   %8 = "arith.constant"() <{"value" = 32 : index}> : () -> index
+// CHECK-NEXT:   %7 = "arith.constant"() <{"value" = 128 : index}> : () -> index
+// CHECK-NEXT:   %8 = "arith.constant"() <{"value" = 128 : index}> : () -> index
 // CHECK-NEXT:   %9 = "arith.muli"(%6, %7) : (index, index) -> index
-// CHECK-NEXT:   %10 = "arith.constant"() <{"value" = 4 : index}> : () -> index
-// CHECK-NEXT:   %11 = "arith.constant"() <{"value" = 16 : index}> : () -> index
+// CHECK-NEXT:   %10 = "arith.constant"() <{"value" = 16 : index}> : () -> index
+// CHECK-NEXT:   %11 = "arith.constant"() <{"value" = 64 : index}> : () -> index
 // CHECK-NEXT:   %12 = "arith.constant"() <{"value" = 1 : index}> : () -> index
 // CHECK-NEXT:   %13 = "arith.constant"() <{"value" = 0 : index}> : () -> index
 // CHECK-NEXT:   %14 = "arith.subi"(%2, %12) : (index, index) -> index
@@ -129,3 +129,4 @@
 // CHECK-NEXT:   %32 = "snax.alloc"(%31, %1, %0) <{"memory_space" = "L1", "alignment" = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:   %33 = "builtin.unrealized_conversion_cast"(%32) : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>) -> memref<8x?xi32, #tsl.tsl<[2, 4] -> (16, 4), [?, 4] -> (?, 32)>, "L1">
 // CHECK-NEXT: }) : () -> ()
+

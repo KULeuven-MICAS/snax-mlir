@@ -22,4 +22,4 @@
 
 //CHECK:       %2 = "snax.layout_cast"(%arg0) : (memref<?x128xi8, 1 : i32>) -> memref<?x128xi8, #tsl.tsl<[?, 8] -> (4096, 8), [16, 8] -> (256, 1)>, 1 : i32>
 //CHECK-NEXT:  %3 = "snax.layout_cast"(%arg1) : (memref<128x128xi8, 1 : i32>) -> memref<128x128xi8, #tsl.tsl<[16, 8] -> (256, 1), [16, 8] -> (4096, 8)>, 1 : i32>
-//CHECK-NEXT:  %4 = "snax.layout_cast"(%arg2) : (memref<?x128xi32, 1 : i32>) -> memref<?x128xi32, #tsl.tsl<[?, 8] -> (4096, 32), [16, 8] -> (256, 4)>, 1 : i32>
+//CHECK-NEXT:  %4 = "snax.layout_cast"(%arg2) : (memref<?x128xi32, 1 : i32>) -> memref<?x128xi32, #tsl.tsl<[?, 8] -> (1024, 8), [16, 8] -> (64, 1)>, 1 : i32>

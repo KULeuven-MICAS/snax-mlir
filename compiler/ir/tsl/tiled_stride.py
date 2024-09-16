@@ -63,7 +63,7 @@ class TiledStride:
         )
         return f"[{bounds}] -> ({strides})"
 
-    def __iter__(self) -> Iterator[list[int, Stride]]:
+    def __iter__(self) -> Iterator[tuple[int, Stride]]:
         """Returns an iterator of (depth, stride) over all
             the strides of the Tiled Stride
 
@@ -71,11 +71,11 @@ class TiledStride:
             Iterator[List[int, Stride]]: An iterator over the depths and strides
             of the Tiled Stride
         """
-        yield from zip(range(self.depth()), self.strides)
+        return enumerate(self.strides)
 
     def is_dynamic(self) -> bool:
         """Check if the Tiled Stride is dynamic"""
-        return any(stride.is_dynamic() for _, stride in self.strides)
+        return any(stride.is_dynamic() for stride in self.strides)
 
     def depth(self) -> int:
         """Get the number of strides in the Tiled Stride
@@ -104,6 +104,6 @@ class TiledStride:
         except IndexError:
             return None
 
-    def tile_bounds(self) -> list[int]:
+    def tile_bounds(self) -> list[int | None]:
         """Get the bounds of the tiles of the Tiled Stride"""
         return [stride.bound for stride in self.strides]
