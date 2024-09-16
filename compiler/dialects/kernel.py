@@ -16,7 +16,6 @@ class KernelOp(IRDLOperation, ABC):
     """
 
     ...
-class KernelOp(IRDLOperation, ABC): ...
 
 
 class Parsable(ABC):
@@ -68,7 +67,7 @@ class AddOp(KernelOp, BinaryOp, Parsable):
 @irdl_op_definition
 class MacOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.mac"
-    assembly_format = "$lhs `,` $rhs attr-dict `:`" "type($lhs) `,` type($rhs) `->` type($result)"
+    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
 
     @property
     def parsing_region(self) -> Region:
