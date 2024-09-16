@@ -16,6 +16,6 @@
 // CHECK-NEXT:   %3 = "snax.alloc"(%2, %2, %2) <{"memory_space" = "L3", "alignment" = 64 : i32}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 
 // Test streamer config attribute:
-"test.op"() {"streamer_config" = #snax.streamer_config<r[1, 2], r[3, 4], w[5, 6]> } : () -> ()
-// CHECK-NEXT: #snax.streamer_config<r[1, 2], r[3, 4], w[5, 6]>
+"test.op"() {"streamer_config" = #snax.streamer_config<r[temp=n-n-n, spat=n-n-n], r[temp=n-r-i, spat=i-n-r], w[temp=i-i-i, spat=n-n]> } : () -> ()
+// CHECK-NEXT: #snax.streamer_config<r[temp=n-n-n, spat=n-n-n], r[temp=n-r-i, spat=i-n-r], w[temp=i-i-i, spat=n-n]>
 

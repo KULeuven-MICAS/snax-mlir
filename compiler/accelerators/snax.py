@@ -10,6 +10,7 @@ from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.streamers import StreamerConfiguration
+from compiler.accelerators.streamers.streamers import StreamerFlag
 from compiler.dialects import accfg
 from compiler.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
 
@@ -124,19 +125,26 @@ class SNAXStreamer(ABC):
         )
 
         # temporal strides
-        for streamer in range(self.streamer_config.data.size()):
-            for dim in range(self.streamer_config.data.temporal_dim()):
-                cst = arith.Constant.from_int_and_width(
-                    op.stride_patterns.data[streamer].temporal_strides.data[dim], i32
+        for operand, streamer in enumerate(self.streamer_config.data.streamers):
+            for dim, flag in enumerate(streamer.temporal_dims):
+                stride = (
+                    op.stride_patterns.data[operand].temporal_strides.data[dim].data
                 )
+                if flag == StreamerFlag.Irrelevant:
+                    # Irrelevant temporal strides should be zero
+                    assert stride == 0
+                cst = arith.Constant.from_int_and_width(stride, i32)
                 result.append(([cst], cst.result))
 
         # spatial strides
-        for streamer in range(self.streamer_config.data.size()):
-            for dim in range(self.streamer_config.data.spatial_dim()):
-                cst = arith.Constant.from_int_and_width(
-                    op.stride_patterns.data[streamer].spatial_strides.data[dim], i32
-                )
+        for operand, streamer in enumerate(self.streamer_config.data.streamers):
+            for dim, flag in enumerate(streamer.spatial_dims):
+                stride = op.stride_patterns.data[operand].spatial_strides.data[dim].data
+                if flag == StreamerFlag.Irrelevant:
+                    # Irrelevant spatial strides are not programmed
+                    assert stride == 0
+                    continue
+                cst = arith.Constant.from_int_and_width(stride, i32)
                 result.append(([cst], cst.result))
 
         # input & output base pointers
@@ -156,18 +164,24 @@ class SNAXStreamer(ABC):
         # temporal strides
         result.extend(
             [
-                f"{streamer}_tstride_{i}"
-                for streamer in self.streamer_names
-                for i in range(self.streamer_config.data.temporal_dim())
+                f"{name}_tstride_{i}"
+                for streamer, name in zip(
+                    self.streamer_config.data.streamers, self.streamer_names
+                )
+                for i in range(streamer.temporal_dim)
             ]
         )
 
         # spatial strides
         result.extend(
             [
-                f"{streamer}_sstride_{i}"
-                for streamer in self.streamer_names
-                for i in range(self.streamer_config.data.spatial_dim())
+                f"{name}_sstride_{i}"
+                for streamer, name in zip(
+                    self.streamer_config.data.streamers, self.streamer_names
+                )
+                for i, flag in enumerate(streamer.spatial_dims)
+                # Irrelevant Spatial Strides are not programmed as they are virtual
+                if flag != StreamerFlag.Irrelevant
             ]
         )
 

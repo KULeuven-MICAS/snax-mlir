@@ -13,9 +13,21 @@ from compiler.dialects import accfg, snax_stream
 
 default_streamer = StreamerConfiguration(
     [
-        Streamer(StreamerType.Reader, 3, 2),
-        Streamer(StreamerType.Reader, 3, 2),
-        Streamer(StreamerType.Writer, 3, 2),
+        Streamer(
+            StreamerType.Reader,
+            temporal_dims=("n", "n", "n"),
+            spatial_dims=("n", "i", "n"),
+        ),
+        Streamer(
+            StreamerType.Reader,
+            temporal_dims=("n", "n", "n"),
+            spatial_dims=("n", "n", "i"),
+        ),
+        Streamer(
+            StreamerType.Writer,
+            temporal_dims=("n", "n", "n"),
+            spatial_dims=("i", "n", "n"),
+        ),
     ]
 )
 
