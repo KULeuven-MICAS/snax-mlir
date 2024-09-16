@@ -34,6 +34,7 @@ class MulOp(KernelOp, BinaryOp):
         "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
     )
 
+
 @irdl_op_definition
 class AddOp(KernelOp, BinaryOp):
     name = "kernel.add"
