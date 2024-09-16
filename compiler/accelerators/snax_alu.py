@@ -1,8 +1,11 @@
 from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, linalg, memref
+from xdsl.dialects.builtin import i64
 from xdsl.ir import Operation, SSAValue
 
+import compiler.dialects.kernel as kernel
+from compiler.accelerators.dispatching import DispatchTemplate
 from compiler.accelerators.snax import (
     SNAXAccelerator,
     SNAXPollingBarrier3,
@@ -24,12 +27,17 @@ default_streamer = StreamerConfiguration(
 )
 
 
-class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer):
+class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate):
     """
     Accelerator interface class for the SNAX Alu accelerator.
     """
 
     name = "snax_alu"
+
+    supported_kernels = (
+        (kernel.AddOp, [i64, i64, i64]),
+        (kernel.MulOp, [i64, i64, i64]),
+    )
 
     def __init__(
         self, streamer_config: StreamerConfiguration = default_streamer

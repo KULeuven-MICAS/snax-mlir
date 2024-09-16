@@ -1,19 +1,6 @@
 // RUN: ./compiler/snax-opt --split-input-file %s -p dispatch-kernels --allow-unregistered-dialect --print-op-generic | filecheck %s
 
 "builtin.module"() ({
-  %0, %1, %2 = "test.op"() : () -> (memref<64xi32>, memref<64xi32>, memref<64xi32>)
-  "linalg.generic"(%0, %1, %2) <{"indexing_maps" = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], "iterator_types" = [#linalg.iterator_type<parallel>], "operandSegmentSizes" = array<i32: 2, 1>}> ({
-  ^0(%arg0 : i32, %arg1 : i32, %arg2 : i32):
-    %3 = "arith.muli"(%arg0, %arg1) : (i32, i32) -> i32
-    "linalg.yield"(%3) : (i32) -> ()
-  }) : (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> ()
-}) : () -> ()
-
-//CHECK: "library_call" = "snax_hwpe_mult"
-
-// -----
-
-"builtin.module"() ({
   "func.func"() <{function_type = (memref<?x128xi8>, memref<128x128xi8>, memref<?x128xi32>) -> memref<?x128xi32>, sym_name = "mnist"}> ({
   ^bb0(%arg0: memref<?x128xi8>, %arg1: memref<128x128xi8>, %arg2: memref<?x128xi32>):
     %0 = "arith.constant"() <{value = 1 : i32}> : () -> i32
