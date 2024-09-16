@@ -83,7 +83,7 @@ func.func @scf_if_1(%i : i32, %cond: i1) {
 // BEFORE-NEXT:   accfg.reset [[state]] : !accfg.state<"acc">
 // CHECK-NEXT:    "accfg.await"
 // AFTER-NEXT:    accfg.reset [[state]] : !accfg.state<"acc">
-// CHECK-NEXT:  }{}
+// CHECK-NEXT:  }
 // CHECK-NEXT:  return
 
 
@@ -117,7 +117,7 @@ func.func @scf_if_2(%i : i32, %cond: i1) {
 // CHECK:         "accfg.launch"([[state]])
 // CHECK-NOT:     accfg.reset [[state]] : !accfg.state<"acc">
 // CHECK:         yield [[state]]
-// CHECK-NEXT:  }{}
+// CHECK-NEXT:  }
 // CHECK:       accfg.reset [[state2]] : !accfg.state<"acc">
 
 

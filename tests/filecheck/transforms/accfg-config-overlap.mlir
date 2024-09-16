@@ -83,7 +83,7 @@ func.func @simple_negative(%A: i32, %B: i32, %i1: i1) {
 // CHECK-NEXT:      %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
 //                        ∧∧∧∧∧∧∧∧∧∧∧ yep, op is still here!
 // RESET-NEXT:      accfg.reset %s2 : !accfg.state<"simple">
-// CHECK-NEXT:    }{}
+// CHECK-NEXT:    }
 // CHECK-NEXT:    func.return
 // CHECK-NEXT:  }
 
