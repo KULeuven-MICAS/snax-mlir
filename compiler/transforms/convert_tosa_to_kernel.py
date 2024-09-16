@@ -1,6 +1,7 @@
 from xdsl.builder import Builder
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg, tosa
+from xdsl.dialects.builtin import IntegerAttr, i1, i8, i32
 from xdsl.ir import BlockArgument
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
@@ -71,15 +72,13 @@ class RescaleClampPattern(RewritePattern):
                 operands=[args[0]],
                 result_types=[args[-1].type],
                 properties={
-                    "input_zp": builtin.IntegerAttr(input_zp, builtin.IntegerType(8)),
-                    "output_zp": builtin.IntegerAttr(output_zp, builtin.IntegerType(8)),
-                    "multiplier": builtin.IntegerAttr(multiplier, builtin.i32),
-                    "shift": builtin.IntegerAttr(shift, builtin.IntegerType(8)),
-                    "max_int": builtin.IntegerAttr(max_int, builtin.IntegerType(8)),
-                    "min_int": builtin.IntegerAttr(min_int, builtin.IntegerType(8)),
-                    "double_round": builtin.IntegerAttr(
-                        double_round, builtin.IntegerType(1)
-                    ),
+                    "input_zp": IntegerAttr(input_zp, i8),
+                    "output_zp": IntegerAttr(output_zp, i8),
+                    "multiplier": IntegerAttr(multiplier, i32),
+                    "shift": IntegerAttr(shift, i8),
+                    "max_int": IntegerAttr(max_int, i8),
+                    "min_int": IntegerAttr(min_int, i8),
+                    "double_round": IntegerAttr(double_round, i1),
                 },
             )
             linalg.YieldOp(kernel_op)
