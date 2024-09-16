@@ -5,7 +5,7 @@ from xdsl.dialects.builtin import i64
 from xdsl.ir import Operation, SSAValue
 
 import compiler.dialects.kernel as kernel
-from compiler.accelerators.dispatching import DispatchTemplate
+from compiler.accelerators.dispatching import DispatchTemplate, SupportedKernel
 from compiler.accelerators.snax import (
     SNAXAccelerator,
     SNAXPollingBarrier3,
@@ -35,8 +35,8 @@ class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Dis
     name = "snax_alu"
 
     supported_kernels = (
-        (kernel.AddOp, [i64, i64, i64]),
-        (kernel.MulOp, [i64, i64, i64]),
+        SupportedKernel(kernel.AddOp, [i64, i64, i64]),
+        SupportedKernel(kernel.MulOp, [i64, i64, i64]),
     )
 
     def __init__(

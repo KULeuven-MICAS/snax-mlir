@@ -5,7 +5,7 @@ from xdsl.dialects.builtin import i32
 from xdsl.ir import Operation, SSAValue
 
 import compiler.dialects.kernel as kernel
-from compiler.accelerators.dispatching import DispatchTemplate
+from compiler.accelerators.dispatching import DispatchTemplate, SupportedKernel
 from compiler.accelerators.snax import SNAXAccelerator, SNAXStreamer
 from compiler.accelerators.streamers import (
     Streamer,
@@ -46,7 +46,7 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
     name = "snax_gemm"
 
     supported_kernels = (
-        (kernel.QMacOp, [i8, i8, i8, i8, i32]),
+        SupportedKernel(kernel.QMacOp, (i8, i8, i8, i8, i32)),
     )
 
     def __init__(

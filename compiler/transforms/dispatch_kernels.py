@@ -10,9 +10,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.traits import SymbolTable
 
-from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.dispatching import DispatchTemplate
 from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
@@ -33,7 +31,6 @@ class DispatchTemplatePattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
-
         # check if already dispatched
         if linalg_op.library_call:
             return
@@ -52,20 +49,20 @@ class DispatchTemplatePattern(RewritePattern):
         matched_accelerator: type[DispatchTemplate] | None = None
 
         for accelerator in self.accelerators:
-
             if matched_accelerator:
                 # already match found
                 break
 
             for supported_kernel in accelerator.supported_kernels:
-
                 # check if kernel supported
-                if supported_kernel.type is not type(kernel_op):
+                if supported_kernel.kernel_type is not type(kernel_op):
                     # no, continue
                     continue
 
                 # kernel supported, check operand types
-                for template_el_type, kernel_el in zip(supported_kernel.operand_types, kernel_op.operands, strict=True):
+                for template_el_type, kernel_el in zip(
+                    supported_kernel.operand_types, (*kernel_op.operands, *kernel_op.results), strict=True
+                ):
                     if template_el_type != kernel_el.type:
                         # no match, continue
                         continue
@@ -84,27 +81,21 @@ class DispatchTemplatePattern(RewritePattern):
         if issubclass(matched_accelerator, SNAXStreamer):
             suffix = "_stream"
             # check if no dynamic operands
-            for operand in (o for o in linalg_op.operands if isinstance(o, ShapedType)):
+            for operand in (o.type for o in linalg_op.operands if isinstance(o.type, ShapedType)):
                 if -1 in operand.get_shape():
                     suffix = ""
                     break
 
             library_call = library_call + suffix
 
-
         linalg_op.library_call = builtin.StringAttr(library_call)
 
 
 class DispatchKernels(ModulePass):
-    """
-    This pass detects integer elementwise multiplications (linalg.mul),
-    and inserts a library call to snax-hwpe.
-    """
 
     name = "dispatch-kernels"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-
         # find all accelerator ops in the IR
         accelerators: list[type[DispatchTemplate]] = []
         for accelerator_op in op.ops:
