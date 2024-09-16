@@ -8,6 +8,11 @@ from xdsl.parser import IRDLOperation
 
 
 class KernelOp(IRDLOperation, ABC):
+    """
+    Operation representing different types of kernel operations of a
+    linalg generic body that can be executed by accelerators.
+    """
+
     ...
 
 
