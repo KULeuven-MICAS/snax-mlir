@@ -30,7 +30,9 @@ class QuantizedBinaryOp(BinaryOp):
 @irdl_op_definition
 class MulOp(KernelOp, BinaryOp):
     name = "kernel.mul"
-
+    assembly_format = (
+        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    )
 
 @irdl_op_definition
 class AddOp(KernelOp, BinaryOp):
