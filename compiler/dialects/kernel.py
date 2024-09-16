@@ -1,5 +1,4 @@
 from abc import ABC
-from typing import Annotated
 
 from xdsl.builder import Builder
 from xdsl.dialects import arith, linalg
@@ -7,6 +6,7 @@ from xdsl.dialects.builtin import IntegerType
 from xdsl.ir import BlockArgument, Dialect, Region, SSAValue
 from xdsl.irdl import operand_def
 from xdsl.dialects.builtin import I32, BoolAttr, IntegerType
+from xdsl.dialects.builtin import I8, I32, BoolAttr, IntegerType
 from xdsl.ir import Dialect
 from xdsl.irdl import operand_def, prop_def
 from xdsl.irdl.operations import irdl_op_definition, result_def
@@ -140,9 +140,6 @@ class QMacOp(KernelOp, QuantizedBinaryOp, Parsable):
             linalg.YieldOp(mac)
 
         return equivalent_region
-
-
-I8 = Annotated[IntegerType, IntegerType(8)]
 
 
 @irdl_op_definition
