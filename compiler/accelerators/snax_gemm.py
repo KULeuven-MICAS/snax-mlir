@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, llvm
-from xdsl.dialects.builtin import i32
+from xdsl.dialects.builtin import i8, i32
 from xdsl.ir import Operation, SSAValue
 
 import compiler.dialects.kernel as kernel
@@ -33,8 +33,6 @@ default_streamer = StreamerConfiguration(
         ),
     ]
 )
-
-i8 = builtin.IntegerType(8)
 
 
 class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
