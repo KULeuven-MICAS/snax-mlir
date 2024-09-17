@@ -65,7 +65,7 @@ class DebugToFunc(RewritePattern):
 
 
 class DebugToFuncPass(ModulePass):
-    name = "debug-to-func"
+    name = "test-debug-to-func"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(DebugToFunc()).rewrite_module(op)

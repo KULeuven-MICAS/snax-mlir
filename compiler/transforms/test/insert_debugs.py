@@ -48,7 +48,7 @@ class InsertDebugStatements(RewritePattern):
 
 
 class InsertDebugPass(ModulePass):
-    name = "insert-debugs"
+    name = "test-insert-debugs"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
