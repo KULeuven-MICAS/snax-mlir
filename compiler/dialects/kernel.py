@@ -2,11 +2,11 @@ from abc import ABC
 
 from xdsl.builder import Builder
 from xdsl.dialects import arith, linalg
-from xdsl.dialects.builtin import IntegerType
+from xdsl.dialects.builtin import I8, I32, BoolAttr, IntegerType
 from xdsl.ir import BlockArgument, Dialect, Region, SSAValue
-from xdsl.irdl import operand_def
+from xdsl.irdl import operand_def, prop_def
 from xdsl.irdl.operations import irdl_op_definition, result_def
-from xdsl.parser import IRDLOperation
+from xdsl.parser import IntegerAttr, IRDLOperation
 
 
 class KernelOp(IRDLOperation, ABC):
@@ -138,4 +138,40 @@ class QMacOp(KernelOp, QuantizedBinaryOp, Parsable):
         return equivalent_region
 
 
-Kernel = Dialect("kernel", [MulOp, AddOp, MacOp, QMacOp])
+@irdl_op_definition
+class RescaleOp(KernelOp):
+    """
+    Operation applying rescaling according to the spec in
+    https://gist.github.com/jorendumoulin/83352a1e84501ec4a7b3790461fee2bf
+    """
+
+    name = "kernel.rescale"
+
+    input = operand_def(IntegerType)
+    result = result_def(IntegerType)
+
+    input_zp = prop_def(IntegerAttr[I8])
+    output_zp = prop_def(IntegerAttr[I8])
+    multiplier = prop_def(IntegerAttr[I32])
+    shift = prop_def(IntegerAttr[I8])
+    max_int = prop_def(IntegerAttr[I8])
+    min_int = prop_def(IntegerAttr[I8])
+    double_round = prop_def(BoolAttr)
+
+    assembly_format = (
+        "$input attr-dict `zero_points` `(` $input_zp `,` $output_zp `)`"
+        "`rescale` `(` $multiplier ` ` `>` `>` $shift `)` `clamp` `(` $min_int `,` $max_int `)`"
+        " `double_round` `=` $double_round `:` type($input) `->` type($result)"
+    )
+
+
+Kernel = Dialect(
+    "kernel",
+    [
+        MulOp,
+        AddOp,
+        MacOp,
+        QMacOp,
+        RescaleOp,
+    ],
+)
