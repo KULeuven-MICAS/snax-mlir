@@ -6,7 +6,7 @@ builtin.module {
       %0 = kernel.mac %arg3, %arg4 : i64, i64 -> i64
       linalg.yield %0 : i64
     }
-    "debug.debug"(%arg0, %arg1, %arg2) <{"debug_type" = "kernel.mac", "when" = "after", "level" = "none"}> : (memref<?xi64>, memref<?xi64>, memref<?xi64>) -> ()
+    "debug.debug"(%arg0, %arg1, %arg2) <{"debug_type" = "kernel_mac", "when" = "after", "level" = "none"}> : (memref<?xi64>, memref<?xi64>, memref<?xi64>) -> ()
     func.return
   }
 }
@@ -20,7 +20,7 @@ builtin.module {
 // CHECK-NEXT     %4 = arith.index_cast %1 : index to i32
 // CHECK-NEXT     %5 = arith.index_cast %2 : index to i32
 // CHECK-NEXT     %6 = arith.constant 5 : i32
-// CHECK-NEXT     func.call @snax_debug_kernel.mac(%3, %4, %5, %6) : (i32, i32, i32, i32) -> ()
+// CHECK-NEXT     func.call @debug_kernel_mac(%3, %4, %5, %6) : (i32, i32, i32, i32) -> ()
 // CHECK-NEXT     linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%arg0, %arg1 : memref<?xi64>, memref<?xi64>) outs(%arg2 : memref<?xi64>) {
 // CHECK-NEXT     ^0(%arg3 : i64, %arg4 : i64, %arg5 : i64):
 // CHECK-NEXT       %7 = kernel.mac %arg3, %arg4 : i64, i64 -> i64
@@ -33,8 +33,8 @@ builtin.module {
 // CHECK-NEXT     %12 = arith.index_cast %9 : index to i32
 // CHECK-NEXT     %13 = arith.index_cast %10 : index to i32
 // CHECK-NEXT     %14 = arith.constant 5 : i32
-// CHECK-NEXT     func.call @snax_debug_kernel.mac(%11, %12, %13, %14) : (i32, i32, i32, i32) -> ()
+// CHECK-NEXT     func.call @debug_kernel_mac(%11, %12, %13, %14) : (i32, i32, i32, i32) -> ()
 // CHECK-NEXT     func.return
 // CHECK-NEXT   }
-// CHECK-NEXT   func.func private @snax_debug_kernel.mac(i32, i32, i32, i32) -> ()
+// CHECK-NEXT   func.func private @debug_kernel_mac(i32, i32, i32, i32) -> ()
 // CHECK-NEXT }

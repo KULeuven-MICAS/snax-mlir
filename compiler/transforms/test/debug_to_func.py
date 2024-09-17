@@ -46,13 +46,13 @@ class DebugToFunc(RewritePattern):
         ops_to_insert.append(when)
 
         func_call = func.Call(
-            f"snax_debug_{op.debug_type.data}", [ptr_a, ptr_b, ptr_c, when], []
+            f"debug_{op.debug_type.data}", [ptr_a, ptr_b, ptr_c, when], []
         )
         ops_to_insert.append(func_call)
         rewriter.replace_matched_op(ops_to_insert)
 
         func_decl = func.FuncOp.external(
-            f"snax_debug_{op.debug_type.data}",
+            f"debug_{op.debug_type.data}",
             [builtin.i32, builtin.i32, builtin.i32, builtin.i32],
             [],
         )

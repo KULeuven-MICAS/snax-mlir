@@ -26,6 +26,7 @@ class InsertDebugStatements(RewritePattern):
         kernel_type = op.body.block.first_op
         assert kernel_type
         kernel_name = kernel_type.name
+        kernel_name = kernel_name.replace(".", "_")
 
         memreftype = op.inputs[0].type
         if not isinstance(memreftype, builtin.MemRefType):
