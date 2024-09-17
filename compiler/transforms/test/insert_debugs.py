@@ -35,7 +35,8 @@ class InsertDebugStatements(RewritePattern):
         if isinstance(memreftype.memory_space, builtin.StringAttr):
             level = memreftype.memory_space.data
         else:
-            level = "none"
+            # defaulting to L3
+            level = "L3"
 
         debug_before = debug.DebugLinalgOp(
             op.inputs[0], op.inputs[-1], op.outputs[0], kernel_name, "before", level

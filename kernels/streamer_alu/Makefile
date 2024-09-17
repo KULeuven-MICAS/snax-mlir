@@ -12,8 +12,7 @@ TESTS += streamer_add_stream.x
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
 
-SNAXOPTFLAGS = -p dispatch-kernels,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions,insert-accfg-op{accelerator=snax_alu},guarded-linalg-to-memref-stream,schedule-memref-linalg,memref-streamify,stream-snaxify,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
-
+SNAXOPTFLAGS = -p dispatch-kernels,test-insert-debugs,set-memory-space,set-memory-layout,test-insert-debugs,realize-memref-casts,insert-sync-barrier,dispatch-regions,insert-accfg-op{accelerator=snax_alu},guarded-linalg-to-memref-stream,schedule-memref-linalg,memref-streamify,stream-snaxify,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,test-debug-to-func,clear-memory-space
 
 data.c data.h:
 	$(PYTHON) gendata.py
