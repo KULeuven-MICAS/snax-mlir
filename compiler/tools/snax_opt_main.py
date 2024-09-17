@@ -23,6 +23,7 @@ from compiler.transforms.convert_linalg_to_kernel import ConvertLinalgToKernel
 from compiler.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
+from compiler.transforms.frontend.preprocess_mlperf_tiny import PreprocessMLPerfTiny
 from compiler.transforms.guarded_linalg_to_memref_stream import (
     GuardedLinalgToMemrefStreamPass,
 )
@@ -113,6 +114,7 @@ class SNAXOptMain(xDSLOptMain):
         )
         super().register_pass(InsertDebugPass.name, lambda: InsertDebugPass)
         super().register_pass(DebugToFuncPass.name, lambda: DebugToFuncPass)
+        super().register_pass(PreprocessMLPerfTiny.name, lambda: PreprocessMLPerfTiny)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
