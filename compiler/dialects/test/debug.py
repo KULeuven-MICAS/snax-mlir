@@ -14,13 +14,13 @@ from xdsl.irdl import (
 
 
 @irdl_op_definition
-class DebugOp(IRDLOperation):
+class DebugLinalgOp(IRDLOperation):
     """
     Run a debug statement, passing operands to a C function
     to allow inspection of the memref operands.
     """
 
-    name = "debug.debug"
+    name = "debug.linalg"
 
     op_a = operand_def(MemRefType[Attribute])
     op_b = operand_def(MemRefType[Attribute])
@@ -55,4 +55,4 @@ class DebugOp(IRDLOperation):
         )
 
 
-Debug = Dialect("debug", [DebugOp])
+Debug = Dialect("debug", [DebugLinalgOp])

@@ -1,6 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, memref
-from xdsl.irdl.operations import Operation
+from xdsl.irdl import Operation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -17,7 +17,7 @@ class DebugToFunc(RewritePattern):
     """Insert debugging function calls"""
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: debug.DebugOp, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: debug.DebugLinalgOp, rewriter: PatternRewriter):
         ptr_a = memref.ExtractAlignedPointerAsIndexOp.get(op.op_a)
         ptr_b = memref.ExtractAlignedPointerAsIndexOp.get(op.op_b)
         ptr_c = memref.ExtractAlignedPointerAsIndexOp.get(op.op_c)
