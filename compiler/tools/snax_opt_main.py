@@ -8,6 +8,7 @@ from compiler.dialects.accfg import ACCFG
 from compiler.dialects.kernel import Kernel
 from compiler.dialects.snax import Snax
 from compiler.dialects.snax_stream import SnaxStream
+from compiler.dialects.test.debug import Debug
 from compiler.dialects.tsl import TSL
 from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 from compiler.transforms.accfg_dedup import AccfgDeduplicate
@@ -38,6 +39,8 @@ from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.stream_snaxify import StreamSnaxify
+from compiler.transforms.test.debug_to_func import DebugToFuncPass
+from compiler.transforms.test.insert_debugs import InsertDebugPass
 from compiler.transforms.test_add_mcycle_around_loop import AddMcycleAroundLoopPass
 from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
 
@@ -67,6 +70,7 @@ class SNAXOptMain(xDSLOptMain):
         self.ctx.load_dialect(Kernel)
         self.ctx.load_dialect(ACCFG)
         self.ctx.load_dialect(SnaxStream)
+        self.ctx.load_dialect(Debug)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
@@ -107,6 +111,8 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(
             ConvertTosaToKernelPass.name, lambda: ConvertTosaToKernelPass
         )
+        super().register_pass(InsertDebugPass.name, lambda: InsertDebugPass)
+        super().register_pass(DebugToFuncPass.name, lambda: DebugToFuncPass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
