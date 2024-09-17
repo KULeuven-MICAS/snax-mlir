@@ -2,6 +2,7 @@ from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, llvm
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
+    GreedyRewritePatternApplier,
     PatternRewriter,
     PatternRewriteWalker,
     RewritePattern,
@@ -29,6 +30,21 @@ class InsertFunctionDeclaration(RewritePattern):
         func_op = func.FuncOp.external("snax_cluster_hw_barrier", [], [])
         SymbolTable.insert_or_update(module_op, func_op)
 
+class DumpL1ToFunc(RewritePattern):
+    """Insert function call to dump l1"""
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, dump: snax.DumpL1, rewriter: PatternRewriter):
+        func_call = func.Call("snax_dump_l1", [], [])
+        func_decl = func.FuncOp.external("snax_dump_l1", [], [])
+
+        # find module_op and insert func call
+        module_op = dump
+        while not isinstance(module_op, builtin.ModuleOp):
+            assert (module_op := module_op.parent_op())
+        SymbolTable.insert_or_update(module_op, func_decl)
+
+        rewriter.replace_matched_op(func_call)
 
 class AllocToFunc(RewritePattern):
     """Swap snax.alloc with function call
@@ -141,14 +157,14 @@ class AllocToFunc(RewritePattern):
 class SNAXToFunc(ModulePass):
     name = "snax-to-func"
 
-    def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
+    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         contains_sync = any(
             isinstance(op_in_module, snax.ClusterSyncOp)
-            for op_in_module in module.walk()
+            for op_in_module in op.walk()
         )
 
         if contains_sync:
-            PatternRewriteWalker(InsertFunctionCall()).rewrite_module(module)
-            PatternRewriteWalker(InsertFunctionDeclaration()).rewrite_module(module)
+            PatternRewriteWalker(InsertFunctionCall()).rewrite_module(op)
+            PatternRewriteWalker(InsertFunctionDeclaration()).rewrite_module(op)
 
-        PatternRewriteWalker(AllocToFunc()).rewrite_module(module)
+        PatternRewriteWalker(GreedyRewritePatternApplier([AllocToFunc(), DumpL1ToFunc()])).rewrite_module(op)
