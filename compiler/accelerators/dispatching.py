@@ -13,6 +13,7 @@ class SupportedKernel:
     kernel_type: type[KernelOp]
     operand_types: Iterable[Attribute]
 
+
 @dataclass
 class DispatchTemplate(Accelerator, ABC):
     """
@@ -20,5 +21,3 @@ class DispatchTemplate(Accelerator, ABC):
     """
 
     supported_kernels: Iterable[SupportedKernel]
-
-

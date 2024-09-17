@@ -61,7 +61,9 @@ class DispatchTemplatePattern(RewritePattern):
 
                 # kernel supported, check operand types
                 for template_el_type, kernel_el in zip(
-                    supported_kernel.operand_types, (*kernel_op.operands, *kernel_op.results), strict=True
+                    supported_kernel.operand_types,
+                    (*kernel_op.operands, *kernel_op.results),
+                    strict=True,
                 ):
                     if template_el_type != kernel_el.type:
                         # no match, continue
@@ -81,7 +83,9 @@ class DispatchTemplatePattern(RewritePattern):
         if issubclass(matched_accelerator, SNAXStreamer):
             suffix = "_stream"
             # check if no dynamic operands
-            for operand in (o.type for o in linalg_op.operands if isinstance(o.type, ShapedType)):
+            for operand in (
+                o.type for o in linalg_op.operands if isinstance(o.type, ShapedType)
+            ):
                 if -1 in operand.get_shape():
                     suffix = ""
                     break
@@ -92,7 +96,6 @@ class DispatchTemplatePattern(RewritePattern):
 
 
 class DispatchKernels(ModulePass):
-
     name = "dispatch-kernels"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:

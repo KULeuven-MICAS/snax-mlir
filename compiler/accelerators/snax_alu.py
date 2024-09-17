@@ -27,7 +27,9 @@ default_streamer = StreamerConfiguration(
 )
 
 
-class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate):
+class SNAXAluAccelerator(
+    SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate
+):
     """
     Accelerator interface class for the SNAX Alu accelerator.
     """

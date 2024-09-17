@@ -36,6 +36,7 @@ default_streamer = StreamerConfiguration(
 
 i8 = builtin.IntegerType(8)
 
+
 class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
     """
     Accelerator Interface class for SNAX GEMM accelerator
@@ -45,9 +46,7 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
 
     name = "snax_gemm"
 
-    supported_kernels = (
-        SupportedKernel(kernel.QMacOp, (i8, i8, i8, i8, i32)),
-    )
+    supported_kernels = (SupportedKernel(kernel.QMacOp, (i8, i8, i8, i8, i32)),)
 
     def __init__(
         self, streamer_config: StreamerConfiguration = default_streamer
