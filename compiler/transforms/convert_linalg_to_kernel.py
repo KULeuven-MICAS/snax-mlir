@@ -43,7 +43,6 @@ class ParseLinalgBody(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
         for op_def in Kernel.operations:
-            breakpoint()
             if not issubclass(op_def, Parsable):
                 # not a parsable op, continue search
                 continue
