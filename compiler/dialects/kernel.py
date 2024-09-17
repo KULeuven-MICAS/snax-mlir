@@ -20,7 +20,7 @@ class KernelOp(IRDLOperation, ABC):
 
 class Parsable(ABC):
     @property
-    def parsing_region(self) -> Region:
+    def equivalent_region(self) -> Region:
         ...
 
 
@@ -43,7 +43,7 @@ class MulOp(KernelOp, BinaryOp, Parsable):
     )
 
     @property
-    def parsing_region(self) -> Region:
+    def equivalent_region(self) -> Region:
         @Builder.implicit_region(
             (
                 SSAValue.get(self.lhs).type,
@@ -51,11 +51,11 @@ class MulOp(KernelOp, BinaryOp, Parsable):
                 *self.result_types,
             )
         )
-        def parsing_region(args: tuple[BlockArgument, ...]) -> None:
+        def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
             mul = arith.Muli(args[0], args[1])
             linalg.YieldOp(mul)
 
-        return parsing_region
+        return equivalent_region
 
 
 @irdl_op_definition
@@ -66,7 +66,7 @@ class AddOp(KernelOp, BinaryOp, Parsable):
     )
 
     @property
-    def parsing_region(self) -> Region:
+    def equivalent_region(self) -> Region:
         @Builder.implicit_region(
             (
                 SSAValue.get(self.lhs).type,
@@ -74,11 +74,11 @@ class AddOp(KernelOp, BinaryOp, Parsable):
                 *self.result_types,
             )
         )
-        def parsing_region(args: tuple[BlockArgument, ...]) -> None:
+        def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
             add = arith.Addi(args[0], args[1])
             linalg.YieldOp(add)
 
-        return parsing_region
+        return equivalent_region
 
 
 @irdl_op_definition
@@ -89,7 +89,7 @@ class MacOp(KernelOp, BinaryOp, Parsable):
     )
 
     @property
-    def parsing_region(self) -> Region:
+    def equivalent_region(self) -> Region:
         @Builder.implicit_region(
             (
                 SSAValue.get(self.lhs).type,
@@ -97,12 +97,12 @@ class MacOp(KernelOp, BinaryOp, Parsable):
                 *self.result_types,
             )
         )
-        def parsing_region(args: tuple[BlockArgument, ...]) -> None:
+        def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
             mul = arith.Muli(args[0], args[1])
             mac = arith.Addi(args[2], mul)
             linalg.YieldOp(mac)
 
-        return parsing_region
+        return equivalent_region
 
 
 @irdl_op_definition
@@ -114,7 +114,7 @@ class QMacOp(KernelOp, QuantizedBinaryOp, Parsable):
     )
 
     @property
-    def parsing_region(self) -> Region:
+    def equivalent_region(self) -> Region:
         @Builder.implicit_region(
             (
                 SSAValue.get(self.lhs).type,
@@ -124,7 +124,7 @@ class QMacOp(KernelOp, QuantizedBinaryOp, Parsable):
                 *self.result_types,
             )
         )
-        def parsing_region(args: tuple[BlockArgument, ...]) -> None:
+        def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
             assert isinstance(zp_lhs_type := args[2].type, IntegerType)
             extsi_lhs = arith.ExtSIOp(args[0], zp_lhs_type)
             subi_lhs = arith.Subi(extsi_lhs, args[2])
@@ -135,7 +135,7 @@ class QMacOp(KernelOp, QuantizedBinaryOp, Parsable):
             mac = arith.Addi(args[4], mul)
             linalg.YieldOp(mac)
 
-        return parsing_region
+        return equivalent_region
 
 
 Kernel = Dialect("kernel", [MulOp, AddOp, MacOp, QMacOp])

@@ -1,6 +1,7 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg
 from xdsl.ir import Block
+from xdsl.parser import IRDLOperation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -13,9 +14,9 @@ from xdsl.rewriter import InsertPoint
 from compiler.dialects.kernel import Kernel, Parsable
 
 
-def check_block(block_a: Block, block_b: Block) -> bool:
+def check_kernel_equivalence(block_a: Block, block_b: Block) -> bool:
     """
-    Verify if two blocks are equal to each other,
+    Verify if two blocks are equivalent to each other,
     that for the same inputs they include the same
     operations.
     """
@@ -42,18 +43,20 @@ class ParseLinalgBody(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
         for op_def in Kernel.operations:
+            breakpoint()
             if not issubclass(op_def, Parsable):
+                # not a parsable op, continue search
                 continue
-            try:
-                kernel_op = op_def(
-                    operands=linalg_op.body.block.args[:-1],
-                    result_types=[linalg_op.body.block.args[-1].type],
-                )
-            except ValueError:
-                # wrong number of operands for this operation, no match
+            assert issubclass(op_def, IRDLOperation)
+            if len(op_def.get_irdl_definition().operands) != len(linalg_op.body.block.args[:-1]):
+                # wrong number of operands, continue search
                 continue
+            kernel_op = op_def(
+                operands=linalg_op.body.block.args[:-1],
+                result_types=[linalg_op.body.block.args[-1].type],
+            )
 
-            if check_block(linalg_op.body.block, kernel_op.parsing_region.block):
+            if check_kernel_equivalence(linalg_op.body.block, kernel_op.equivalent_region.block):
                 # modify linalg body
                 # delete all previous ops:
                 while linalg_op.body.block.last_op:
