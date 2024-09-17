@@ -37,10 +37,10 @@ class InsertDebugStatements(RewritePattern):
         else:
             level = "none"
 
-        debug_before = debug.DebugOp(
+        debug_before = debug.DebugLinalgOp(
             op.inputs[0], op.inputs[-1], op.outputs[0], kernel_name, "before", level
         )
-        debug_after = debug.DebugOp(
+        debug_after = debug.DebugLinalgOp(
             op.inputs[0], op.inputs[-1], op.outputs[0], kernel_name, "after", level
         )
         rewriter.insert_op(debug_before, InsertPoint.before(op))
