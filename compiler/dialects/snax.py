@@ -151,13 +151,16 @@ class Alloc(IRDLOperation):
         descriptor = LLVMMemrefDescriptor(self.result.type)
         descriptor.verify()
 
+
 @irdl_op_definition
-class DumpL1(IRDLOperation):
+class ClearL1(IRDLOperation):
     """
-    Basically perform a full memory dump of L1.
+    Claer L1 memory, setting everything to zero.
     Every allocated memref in L1 is now invalidated.
     """
-    name = "snax.dump_l1"
+
+    name = "snax.clear_l1"
+
 
 @irdl_attr_definition
 class StreamerConfigurationAttr(Data[StreamerConfiguration]):
@@ -215,5 +218,7 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
 
 
 Snax = Dialect(
-    "snax", [ClusterSyncOp, MCycleOp, LayoutCast, Alloc, DumpL1], [StreamerConfigurationAttr]
+    "snax",
+    [ClusterSyncOp, MCycleOp, LayoutCast, Alloc, ClearL1],
+    [StreamerConfigurationAttr],
 )
