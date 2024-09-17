@@ -15,6 +15,12 @@ from xdsl.pattern_rewriter import (
 from compiler.dialects import kernel
 
 
+def assert_int8(val):
+    assert isinstance(val, int)
+    assert -128 <= val
+    assert val <= 127
+
+
 class RescaleClampPattern(RewritePattern):
     """
     Transform rescale clamp into a kernel.rescale op
@@ -40,28 +46,22 @@ class RescaleClampPattern(RewritePattern):
 
         # Extract all values:
         input_zp = rescale_op.input_zp.value.data
-        assert -128 <= input_zp
-        assert input_zp <= 127
+        assert_int8(input_zp)
 
         output_zp = rescale_op.output_zp.value.data
-        assert -128 <= output_zp
-        assert output_zp <= 127
+        assert_int8(output_zp)
 
         multiplier = rescale_op.multiplier.data.data[0].data
         assert isinstance(multiplier, int)
 
         shift = rescale_op.shift.data.data[0].data
-        assert isinstance(shift, int)
-        assert -128 <= shift
-        assert shift <= 127
+        assert_int8(shift)
 
         max_int = clamp_op.max_int.value.data
-        assert -128 <= max_int
-        assert max_int <= 127
+        assert_int8(max_int)
 
         min_int = clamp_op.min_int.value.data
-        assert -128 <= min_int
-        assert min_int <= 127
+        assert_int8(min_int)
 
         double_round = rescale_op.double_round.value.data
         assert double_round in (0, 1)
