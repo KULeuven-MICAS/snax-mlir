@@ -9,7 +9,7 @@ transform.sequence failures(propagate) {
 ^bb0(%arg0: !transform.any_op,
      %arg1: !transform.op<"linalg.quantized_matmul">):
   // The actual tiling transformation takes tile sizes as attributes.
-   %loop1, %loop2, %tiled = transform.structured.tile %arg1 [8, 8]
+   %loop1, %loop2, %tiled = transform.structured.tile_using_for %arg1 [8, 8]
     : (!transform.op<"linalg.quantized_matmul">) -> (!transform.any_op, !transform.any_op, !transform.any_op)
   transform.yield
 }
