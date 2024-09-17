@@ -152,6 +152,16 @@ class Alloc(IRDLOperation):
         descriptor.verify()
 
 
+@irdl_op_definition
+class ClearL1(IRDLOperation):
+    """
+    Claer L1 memory, setting everything to zero.
+    Every allocated memref in L1 is now invalidated.
+    """
+
+    name = "snax.clear_l1"
+
+
 @irdl_attr_definition
 class StreamerConfigurationAttr(Data[StreamerConfiguration]):
     name = "snax.streamer_config"
@@ -208,5 +218,7 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
 
 
 Snax = Dialect(
-    "snax", [ClusterSyncOp, MCycleOp, LayoutCast, Alloc], [StreamerConfigurationAttr]
+    "snax",
+    [ClusterSyncOp, MCycleOp, LayoutCast, Alloc, ClearL1],
+    [StreamerConfigurationAttr],
 )
