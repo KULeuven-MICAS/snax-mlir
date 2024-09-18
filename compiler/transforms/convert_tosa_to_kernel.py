@@ -1,6 +1,6 @@
 from xdsl.builder import Builder
 from xdsl.context import MLContext
-from xdsl.dialects import builtin, linalg, tosa
+from xdsl.dialects import arith, builtin, linalg, tensor, tosa
 from xdsl.dialects.builtin import IntegerAttr, i1, i8, i32
 from xdsl.ir import BlockArgument
 from xdsl.ir.affine import AffineDimExpr, AffineMap
@@ -15,10 +15,11 @@ from xdsl.pattern_rewriter import (
 from compiler.dialects import kernel
 
 
-def assert_int8(val):
+def assert_int8(val) -> int:
     assert isinstance(val, int)
     assert -128 <= val
     assert val <= 127
+    return val
 
 
 class RescaleClampPattern(RewritePattern):
@@ -45,24 +46,13 @@ class RescaleClampPattern(RewritePattern):
         # create linalg body with kernel op with the params of tosa ops
 
         # Extract all values:
-        input_zp = rescale_op.input_zp.value.data
-        assert_int8(input_zp)
-
-        output_zp = rescale_op.output_zp.value.data
-        assert_int8(output_zp)
-
+        input_zp = assert_int8(rescale_op.input_zp.value.data)
+        output_zp = assert_int8(rescale_op.output_zp.value.data)
         multiplier = rescale_op.multiplier.data.data[0].data
         assert isinstance(multiplier, int)
-
-        shift = rescale_op.shift.data.data[0].data
-        assert_int8(shift)
-
-        max_int = clamp_op.max_int.value.data
-        assert_int8(max_int)
-
-        min_int = clamp_op.min_int.value.data
-        assert_int8(min_int)
-
+        shift = assert_int8(rescale_op.shift.data.data[0].data)
+        max_int = assert_int8(clamp_op.max_int.value.data)
+        min_int = assert_int8(clamp_op.min_int.value.data)
         double_round = rescale_op.double_round.value.data
         assert double_round in (0, 1)
 
@@ -86,9 +76,25 @@ class RescaleClampPattern(RewritePattern):
         # create elementwise linalg op
         nb_dims = inp_type.get_num_dims()
 
+        # destination type:
+        dim_idx_ops: list[arith.Constant] = []
+        dim_ops: list[tensor.DimOp] = []
+        for dim_idx, shape in enumerate(out_type.get_shape()):
+            if shape == -1:
+                # create dim op
+                dim_idx_ops.append(
+                    dim_idx := arith.Constant.from_int_and_width(
+                        dim_idx, builtin.IndexType()
+                    )
+                )
+                dim_ops.append(tensor.DimOp(rescale_op.input, dim_idx))
+
+        dim_op_values = [dim_op.result for dim_op in dim_ops]
+        output_tensor = tensor.EmptyOp(dim_op_values, out_type)
+
         new_op = linalg.Generic(
             inputs=[rescale_op.input],
-            outputs=[rescale_op.input],
+            outputs=[output_tensor.tensor],
             body=linalg_body,
             indexing_maps=[
                 builtin.AffineMapAttr(
@@ -103,7 +109,7 @@ class RescaleClampPattern(RewritePattern):
         )
 
         # insert new op
-        rewriter.replace_op(clamp_op, new_op)
+        rewriter.replace_op(clamp_op, (*dim_idx_ops, *dim_ops, output_tensor, new_op))
         rewriter.erase_matched_op()
 
 
