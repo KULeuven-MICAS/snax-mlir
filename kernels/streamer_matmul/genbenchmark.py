@@ -65,11 +65,7 @@ def create_tiled_matrix_multiply(k, m, n, tiling_factors):
     b_t = Block(arg_types=input_types_t)
 
     with ImplicitBuilder(b_t) as (arg0, arg1):
-        (
-            tile_op := transform.TileOp(
-                arg1, [], tiling_factors, scalable_sizes=tiling_factors
-            )
-        )
+        (transform.TileOp(arg1, [], tiling_factors, scalable_sizes=tiling_factors))
         transform.YieldOp()
 
     region_t = Region(b_t)
@@ -77,9 +73,6 @@ def create_tiled_matrix_multiply(k, m, n, tiling_factors):
     transform_sequence = transform.SequenceOp(failurePropagationMode, [], [], region_t)
 
     module = builtin.ModuleOp([function, transform_sequence])
-
-    # Hack for getting mlir-opt-17 compatibility
-    tile_op.name = "transform.structured.tile"
 
     return module
 
