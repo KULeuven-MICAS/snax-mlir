@@ -103,11 +103,8 @@ MLIRPREPROC3FLAGS += --mlir-print-local-scope
 %.preproc2.mlir: %.preproc1.mlir
 	$(MLIROPT) $(MLIRPREPROC2FLAGS) -o $@ $<
 
-%.preproc3.mlir: %.preproc2.mlir
+%.preprocfinal.mlir: %.preproc2.mlir
 	$(MLIROPT) $(MLIRPREPROC3FLAGS) -o $@ $<
-
-%.preprocfinal.mlir: %.preproc3.mlir
-	cat $< | sed 's/arith.maxf/arith.maximumf/g' | sed 's/arith.minf/arith.minimumf/g' > $@
 
 # SNAX opt
 
@@ -115,9 +112,6 @@ SNAXOPTFLAGS = -p dispatch-kernels,set-memory-space,set-memory-layout,realize-me
 
 %.snax-opt.mlir: %.preprocfinal.mlir
 	$(SNAXOPT) $(SNAXOPTFLAGS) -o $@ $<
-
-%.postproc.mlir: %.snax-opt.mlir
-	cat $< | sed 's/arith.maximumf/arith.maxf/g' | sed 's/arith.minimumf/arith.minf/g' > $@
 
 # Lower everithing to LLVM, loosely based on:
 # https://github.com/llvm/llvm-project/blob/main/mlir/test/lib/Dialect/LLVM/TestLowerToLLVM.cpp
@@ -144,7 +138,7 @@ MLIROPTFLAGS += --reconcile-unrealized-casts
 %.no-snax-opt.ll.mlir: %.preproc3.mlir
 	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
 
-%.ll.mlir: %.postproc.mlir
+%.ll.mlir: %.snax-opt.mlir
 	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
 
 %.ll: %.ll.mlir
