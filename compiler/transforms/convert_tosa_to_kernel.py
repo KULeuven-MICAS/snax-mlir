@@ -2,7 +2,7 @@ from xdsl.builder import Builder
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, linalg, tensor, tosa
 from xdsl.dialects.builtin import IntegerAttr, i1, i8, i32
-from xdsl.ir import BlockArgument, Operation
+from xdsl.ir import BlockArgument
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -82,7 +82,11 @@ class RescaleClampPattern(RewritePattern):
         for dim_idx, shape in enumerate(out_type.get_shape()):
             if shape == -1:
                 # create dim op
-                dim_idx_ops.append(dim_idx := arith.Constant.from_int_and_width(dim_idx, builtin.IndexType()))
+                dim_idx_ops.append(
+                    dim_idx := arith.Constant.from_int_and_width(
+                        dim_idx, builtin.IndexType()
+                    )
+                )
                 dim_ops.append(tensor.DimOp(rescale_op.input, dim_idx))
 
         dim_op_values = [dim_op.result for dim_op in dim_ops]
