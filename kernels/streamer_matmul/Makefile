@@ -47,14 +47,14 @@ ifndef SIZE_M
 SIZE_M=16
 endif
 ifndef SIZE_N
-SIZE_M=16
+SIZE_N=16
 endif
 ifndef SIZE_K
-SIZE_M=16
+SIZE_K=16
 endif
 
 GEN_DATA_OPTS += --m=${SIZE_M}
-GEN_DATA_OPTS += --n=${SIZE_M}
+GEN_DATA_OPTS += --n=${SIZE_N}
 GEN_DATA_OPTS += --k=${SIZE_K}
 
 
