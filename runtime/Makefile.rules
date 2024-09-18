@@ -135,7 +135,7 @@ MLIROPTFLAGS += --canonicalize
 MLIROPTFLAGS += --reconcile-unrealized-casts
 
 # Bypass snax-opt
-%.no-snax-opt.ll.mlir: %.preproc3.mlir
+%.no-snax-opt.ll.mlir: %.preprocfinal.mlir
 	$(MLIROPT) $(MLIROPTFLAGS) -o $@ $<
 
 %.ll.mlir: %.snax-opt.mlir
