@@ -225,8 +225,8 @@ class SNAXStreamer(ABC):
         }
         base_addr += len(self.streamer_launch_fields)
 
-        # 1 performance counter after launch field
-        base_addr += 1
+        # 1 busy register + 1 performance counter after launch field
+        base_addr += 2
 
         return base_addr, streamer_launch
 
