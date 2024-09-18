@@ -75,6 +75,12 @@ LDFLAGS += -lsnRuntime
 %.o: %.S
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# TRANSFORM Pre-Preprocessing
+
+MLIRTRANSFORM = --pass-pipeline='builtin.module(test-transform-dialect-interpreter{bind-first-extra-to-ops=linalg.quantized_matmul}, test-transform-dialect-erase-schedule)'
+
+%.mlir: %.transform.mlir
+	$(MLIROPT) $(MLIRTRANSFORM) -o $@ $<
 
 # MLIR Preprocessing
 
