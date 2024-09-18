@@ -1,8 +1,11 @@
 from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, llvm
+from xdsl.dialects.builtin import i8, i32
 from xdsl.ir import Operation, SSAValue
 
+import compiler.dialects.kernel as kernel
+from compiler.accelerators.dispatching import DispatchTemplate, SupportedKernel
 from compiler.accelerators.snax import SNAXAccelerator, SNAXStreamer
 from compiler.accelerators.streamers import (
     Streamer,
@@ -32,7 +35,7 @@ default_streamer = StreamerConfiguration(
 )
 
 
-class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer):
+class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
     """
     Accelerator Interface class for SNAX GEMM accelerator
     CSR lowerings are inherited from SNAXAcceleratorInterface.
@@ -40,6 +43,8 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer):
     """
 
     name = "snax_gemm"
+
+    supported_kernels = (SupportedKernel(kernel.QMacOp, (i8, i8, i32, i32, i32)),)
 
     def __init__(
         self, streamer_config: StreamerConfiguration = default_streamer

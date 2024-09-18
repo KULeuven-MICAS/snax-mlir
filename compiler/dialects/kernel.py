@@ -30,9 +30,12 @@ class BinaryOp:
     result = result_def(IntegerType)
 
 
-class QuantizedBinaryOp(BinaryOp):
+class QuantizedBinaryOp:
+    lhs = operand_def(IntegerType)
+    rhs = operand_def(IntegerType)
     zp_lhs = operand_def(IntegerType)
     zp_rhs = operand_def(IntegerType)
+    result = result_def(IntegerType)
 
 
 @irdl_op_definition
