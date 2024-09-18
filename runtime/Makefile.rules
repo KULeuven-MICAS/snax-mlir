@@ -76,21 +76,6 @@ LDFLAGS += -lsnRuntime
 	$(CC) $(CFLAGS) -c $< -o $@
 
 
-
-# TRANSFORM pre-Preprocessing
-
-SNAXTRANSFORM = -p add-tiling-sequence
-
-# TRANSFORMED Pre-Preprocessing
-
-MLIRTRANSFORM = --pass-pipeline='builtin.module(test-transform-dialect-interpreter, test-transform-dialect-erase-schedule)'
-
-%.transformed.mlir: %.transform.mlir
-	$(MLIROPT) $(MLIRTRANSFORM) -o $@ $<
-
-%.transform.mlir:  %.mlir
-	$(SNAXOPT) $(SNAXTRANSFORM) -o $@ $<
-
 # MLIR Preprocessing
 
 MLIRPREPROCFLAGS = --pass-pipeline='builtin.module(func.func(tosa-to-linalg-named, tosa-to-tensor, tosa-to-scf, tosa-to-linalg))'
@@ -106,7 +91,7 @@ MLIRPREPROC3FLAGS += --empty-tensor-to-alloc-tensor --one-shot-bufferize="buffer
 MLIRPREPROC3FLAGS += --mlir-print-op-generic
 MLIRPREPROC3FLAGS += --mlir-print-local-scope
 
-%.preproc1.mlir: %.transformed.mlir
+%.preproc1.mlir: %.mlir
 	$(MLIROPT) $(MLIRPREPROCFLAGS) -o $@ $<
 
 %.preproc2.mlir: %.preproc1.mlir
