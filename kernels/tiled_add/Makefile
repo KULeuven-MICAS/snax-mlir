@@ -23,7 +23,7 @@ endif
 
 
 ifdef ACCFGOPT
- ACCFGOPTFLAGS="mlir-opt{executable=mlir-opt-17 generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic}",accfg-dedup,accfg-config-overlap,
+ ACCFGOPTFLAGS="mlir-opt{executable=mlir-opt generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic}",accfg-dedup,accfg-config-overlap,
 endif
 
 # Override snax-opt rules to avoid linalg-to-library-call pass
