@@ -61,7 +61,7 @@ class RescaleClampPattern(RewritePattern):
             kernel_op = kernel.RescaleOp(
                 operands=[args[0]],
                 result_types=[args[-1].type],
-                properties={
+                attributes={
                     "input_zp": IntegerAttr(input_zp, i8),
                     "output_zp": IntegerAttr(output_zp, i8),
                     "multiplier": IntegerAttr(multiplier, i32),

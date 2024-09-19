@@ -4,7 +4,7 @@ from xdsl.builder import Builder
 from xdsl.dialects import arith, linalg
 from xdsl.dialects.builtin import I8, I32, BoolAttr, IntegerType
 from xdsl.ir import BlockArgument, Dialect, Region, SSAValue
-from xdsl.irdl import operand_def, prop_def
+from xdsl.irdl import attr_def, operand_def, prop_def
 from xdsl.irdl.operations import irdl_op_definition, result_def
 from xdsl.parser import IntegerAttr, IRDLOperation
 
@@ -153,13 +153,13 @@ class RescaleOp(KernelOp):
     input = operand_def(IntegerType)
     result = result_def(IntegerType)
 
-    input_zp = prop_def(IntegerAttr[I8])
-    output_zp = prop_def(IntegerAttr[I8])
-    multiplier = prop_def(IntegerAttr[I32])
-    shift = prop_def(IntegerAttr[I8])
-    max_int = prop_def(IntegerAttr[I8])
-    min_int = prop_def(IntegerAttr[I8])
-    double_round = prop_def(BoolAttr)
+    input_zp = attr_def(IntegerAttr[I8])
+    output_zp = attr_def(IntegerAttr[I8])
+    multiplier = attr_def(IntegerAttr[I32])
+    shift = attr_def(IntegerAttr[I8])
+    max_int = attr_def(IntegerAttr[I8])
+    min_int = attr_def(IntegerAttr[I8])
+    double_round = attr_def(BoolAttr)
 
     assembly_format = (
         "$input attr-dict `zero_points` `(` $input_zp `,` $output_zp `)`"
