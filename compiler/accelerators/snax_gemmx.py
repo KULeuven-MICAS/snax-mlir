@@ -32,10 +32,14 @@ default_streamer = StreamerConfiguration(
             spatial_dims=("i", "n", "n"),
         ),
         Streamer(  # C
-            StreamerType.Reader, temporal_dims=("n", "n", "n"), spatial_dims=("i", "n", "n")
+            StreamerType.Reader,
+            temporal_dims=("n", "n", "n"),
+            spatial_dims=("i", "n", "n"),
         ),
         Streamer(  # D32
-            StreamerType.Writer, temporal_dims=("n", "n", "n"), spatial_dims=("i", "n", "n")
+            StreamerType.Writer,
+            temporal_dims=("n", "n", "n"),
+            spatial_dims=("i", "n", "n"),
         ),
     ]
 )
@@ -53,7 +57,9 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         SupportedKernel(kernel.RescaleOp, (i32, i8)),
     )
 
-    def __init__(self, streamer_config: StreamerConfiguration = default_streamer) -> None:
+    def __init__(
+        self, streamer_config: StreamerConfiguration = default_streamer
+    ) -> None:
         super().__init__(streamer_config)
 
         self.fields = (
@@ -102,7 +108,9 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         op.attributes["streamer_config"] = self.streamer_config
         return op
 
-    def convert_to_acc_ops(self, op: snax_stream.StreamingRegionOp) -> Sequence[Operation]:
+    def convert_to_acc_ops(
+        self, op: snax_stream.StreamingRegionOp
+    ) -> Sequence[Operation]:
         """
         Lowers the operation op to a sequence of acc_ops.
         acc_ops are:
@@ -124,11 +132,15 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
             *ops_to_insert,
             setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
             launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
-            token := accfg.LaunchOp([launch_val, launch_val], self.launch_fields, setup),
+            token := accfg.LaunchOp(
+                [launch_val, launch_val], self.launch_fields, setup
+            ),
             accfg.AwaitOp(token),
         ]
 
-    def _generate_setup_vals(self, op: snax_stream.StreamingRegionOp) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def _generate_setup_vals(
+        self, op: snax_stream.StreamingRegionOp
+    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         """
         Produce a `Sequence[Operation], SSAValue` tuple
         for each field that contains:
@@ -150,8 +162,28 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
             c0,
             addr_acc,
             addr_str,
-            llvm.InlineAsmOp("csrw $0, $1", "I, K", [addr_str.result, c0.result], has_side_effects=True),
-            llvm.InlineAsmOp("csrw $0, $1", "I, K", [addr_str.result, c0.result], has_side_effects=True),
-            llvm.InlineAsmOp("csrw $0, $1", "I, K", [addr_acc.result, c0.result], has_side_effects=True),
-            llvm.InlineAsmOp("csrw $0, $1", "I, K", [addr_acc.result, c0.result], has_side_effects=True),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_str.result, c0.result],
+                has_side_effects=True,
+            ),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_str.result, c0.result],
+                has_side_effects=True,
+            ),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_acc.result, c0.result],
+                has_side_effects=True,
+            ),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_acc.result, c0.result],
+                has_side_effects=True,
+            ),
         ]
