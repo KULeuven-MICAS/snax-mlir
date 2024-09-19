@@ -18,4 +18,6 @@
 // Test streamer config attribute:
 "test.op"() {"streamer_config" = #snax.streamer_config<r[temp=n-n-n, spat=n-n-n], r[temp=n-r-i, spat=i-n-r], w[temp=i-i-i, spat=n-n]> } : () -> ()
 // CHECK-NEXT: #snax.streamer_config<r[temp=n-n-n, spat=n-n-n], r[temp=n-r-i, spat=i-n-r], w[temp=i-i-i, spat=n-n]>
+"test.op"() {"streamer_config" = #snax.streamer_config {separate_bounds} <r[temp=n-n-n, spat=n-n-n], rw[temp=n-r-i, spat=i-n-r], w[temp=i-i-i, spat=n-n]> } : () -> ()
+// CHECK-NEXT: #snax.streamer_config {separate_bounds} <r[temp=n-n-n, spat=n-n-n], rw[temp=n-r-i, spat=i-n-r], w[temp=i-i-i, spat=n-n]>
 

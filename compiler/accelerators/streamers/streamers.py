@@ -8,6 +8,7 @@ from xdsl.utils.str_enum import StrEnum
 class StreamerType(StrEnum):
     Reader = "r"
     Writer = "w"
+    ReaderWriter = "rw"
 
 
 class StreamerFlag(StrEnum):
@@ -98,9 +99,13 @@ class StreamerConfiguration:
 
     streamers: Sequence[Streamer]
 
-    def __init__(self, streamers: Sequence[Streamer]):
+    # are bounds programmed separately for every streamer?
+    separate_bounds: bool = False
+
+    def __init__(self, streamers: Sequence[Streamer], separate_bounds: bool = False):
         assert len(streamers)
         self.streamers = streamers
+        self.separate_bounds = separate_bounds
 
     def size(self) -> int:
         """
