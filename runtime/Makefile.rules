@@ -161,4 +161,4 @@ traces: $(call get_trace_targets,.)
 
 # Convert bytecode to textual format
 %.mlir: %.mlir.bc
-	$(MLIROPT) -o $@ $<
+	$(MLIROPT) --mlir-print-op-generic --mlir-print-local-scope -o $@ $<

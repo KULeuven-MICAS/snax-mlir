@@ -38,11 +38,16 @@ class InsertDebugStatements(RewritePattern):
             # defaulting to L3
             level = "L3"
 
+        # Note, the debug op expects 2 inputs. If only 1 is available,
+        # this just sends the first input twice.
+        input1 = op.inputs[0]
+        input2 = op.inputs[1] if len(op.inputs) >= 2 else op.inputs[0]
+
         debug_before = debug.DebugLinalgOp(
-            op.inputs[0], op.inputs[-1], op.outputs[0], kernel_name, "before", level
+            input1, input2, op.outputs[0], kernel_name, "before", level
         )
         debug_after = debug.DebugLinalgOp(
-            op.inputs[0], op.inputs[-1], op.outputs[0], kernel_name, "after", level
+            input1, input2, op.outputs[0], kernel_name, "after", level
         )
         rewriter.insert_op(debug_before, InsertPoint.before(op))
         rewriter.insert_op(debug_after, InsertPoint.after(op))

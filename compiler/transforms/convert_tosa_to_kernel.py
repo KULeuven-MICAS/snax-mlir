@@ -25,6 +25,8 @@ def assert_int8(val) -> int:
 class RescaleClampPattern(RewritePattern):
     """
     Transform rescale clamp into a kernel.rescale op
+    If there is no clamp op after the rescaling op,
+    the clamping defaults to the range of the int8 output type (-128, 127)
     """
 
     @op_type_rewrite_pattern
@@ -35,7 +37,8 @@ class RescaleClampPattern(RewritePattern):
         if not isinstance(
             clamp_op := next(iter(rescale_op.output.uses)).operation, tosa.ClampOp
         ):
-            return
+            # no clamping op after, so we integrate clamping in rescale op to int8 range
+            clamp_op = rescale_op
 
         # should have tensor inputs
         if not isinstance(inp_type := rescale_op.input.type, builtin.TensorType):
@@ -51,8 +54,12 @@ class RescaleClampPattern(RewritePattern):
         multiplier = rescale_op.multiplier.data.data[0].data
         assert isinstance(multiplier, int)
         shift = assert_int8(rescale_op.shift.data.data[0].data)
-        max_int = assert_int8(clamp_op.max_int.value.data)
-        min_int = assert_int8(clamp_op.min_int.value.data)
+        if isinstance(clamp_op, tosa.ClampOp):
+            max_int = assert_int8(clamp_op.max_int.value.data)
+            min_int = assert_int8(clamp_op.min_int.value.data)
+        else:
+            max_int = 127
+            min_int = -128
         double_round = rescale_op.double_round.value.data
         assert double_round in (0, 1)
 
@@ -110,7 +117,8 @@ class RescaleClampPattern(RewritePattern):
 
         # insert new op
         rewriter.replace_op(clamp_op, (*dim_idx_ops, *dim_ops, output_tensor, new_op))
-        rewriter.erase_matched_op()
+        if rescale_op is not clamp_op:
+            rewriter.erase_matched_op()
 
 
 class ConvertTosaToKernelPass(ModulePass):
