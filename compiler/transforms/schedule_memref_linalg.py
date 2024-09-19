@@ -11,6 +11,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.rewriter import InsertPoint
 
+from compiler.dialects.kernel import Kernel, QMacOp
 from compiler.util.canonicalize_affine import canonicalize_map
 
 
@@ -123,7 +124,7 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
 
         if not (
             isinstance(op.library_call, builtin.StringAttr)
-            and op.library_call.data in ("snax_alu", "snax_gemm")
+            and op.library_call.data in ("snax_alu", "snax_gemm", "snax_gemmx")
         ):
             raise NotImplementedError(
                 "only snax_alu and snax_gemm are supported right now"
@@ -141,6 +142,25 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                 AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
             ]
             template_bounds = (None, None, None, 8, 8, 8)
+        elif op.library_call.data == "snax_gemmx":
+            #TODO: move templates to accelerator definitions
+            if isinstance(op.body.block.first_op, QMacOp):
+                # gemm
+                M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
+                template = [
+                    AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
+                    AffineMap(6, 0, (K * 8 + k, N * 8 + n)),
+                    AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
+                ]
+                template_bounds = (None, None, None, 8, 8, 8)
+            else:
+                # rescale function of gemmx
+                M, K, m, k = (AffineDimExpr(i) for i in range(4))
+                template = [
+                    AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
+                    AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
+                ]
+                template_bounds = (None, None, 8, 8)
 
         # only take patterns of memref operands
         schedule = [
