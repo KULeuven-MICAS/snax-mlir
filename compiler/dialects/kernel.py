@@ -4,7 +4,7 @@ from xdsl.builder import Builder
 from xdsl.dialects import arith, linalg
 from xdsl.dialects.builtin import I8, I32, BoolAttr, IntegerType
 from xdsl.ir import BlockArgument, Dialect, Region, SSAValue
-from xdsl.irdl import attr_def, operand_def, prop_def
+from xdsl.irdl import attr_def, operand_def
 from xdsl.irdl.operations import irdl_op_definition, result_def
 from xdsl.parser import IntegerAttr, IRDLOperation
 
