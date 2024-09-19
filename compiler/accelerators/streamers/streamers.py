@@ -6,8 +6,13 @@ from xdsl.utils.str_enum import StrEnum
 
 
 class StreamerType(StrEnum):
+    # Streamer with read capabilities
     Reader = "r"
+    # Streamer with read and transpose read capabilities
+    ReaderTranspose = "rt"
+    # Streamer with write capabilities
     Writer = "w"
+    # Streamer with read and write capabilities
     ReaderWriter = "rw"
 
 
