@@ -216,9 +216,10 @@ class SNAXStreamer(ABC):
         # base pointers
         result.extend([f"{streamer}_ptr" for streamer in self.streamer_names])
 
-
         # transpose specifications
-        for streamer, name in zip(self.streamer_config.data.streamers, self.streamer_names):
+        for streamer, name in zip(
+            self.streamer_config.data.streamers, self.streamer_names
+        ):
             if streamer.type is StreamerType.ReaderTranspose:
                 result.append(f"{name}_transpose")
                 # in the current version of the streamer,
