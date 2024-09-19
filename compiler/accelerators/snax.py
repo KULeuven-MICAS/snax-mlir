@@ -9,7 +9,7 @@ from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.streamers import StreamerConfiguration
-from compiler.accelerators.streamers.streamers import StreamerFlag
+from compiler.accelerators.streamers.streamers import StreamerFlag, StreamerType
 from compiler.dialects import accfg
 from compiler.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
 
@@ -163,6 +163,18 @@ class SNAXStreamer(ABC):
         result.extend(([], x) for x in op.inputs)
         result.extend(([], x) for x in op.outputs)
 
+        # transpose specifications
+        for operand, streamer in enumerate(self.streamer_config.data.streamers):
+            if streamer.type is StreamerType.ReaderTranspose:
+                # always program to 0 for now
+                c0 = arith.Constant.from_int_and_width(0, i32)
+                result.append(([c0], c0.result))
+                # in the current version of the streamer,
+                # transpose fields are bit packed together,
+                # so only one field for all transpose ops
+                # this should be fixed in the new streamer
+                break
+
         return result
 
     def get_streamer_setup_fields(self) -> Sequence[str]:
@@ -209,6 +221,17 @@ class SNAXStreamer(ABC):
 
         # base pointers
         result.extend([f"{streamer}_ptr" for streamer in self.streamer_names])
+
+
+        # transpose specifications
+        for streamer, name in zip(self.streamer_config.data.streamers, self.streamer_names):
+            if streamer.type is StreamerType.ReaderTranspose:
+                result.append(f"{name}_transpose")
+                # in the current version of the streamer,
+                # transpose fields are bit packed together,
+                # so only one field for all transpose ops
+                # this should be fixed in the new streamer
+                break
 
         return result
 
