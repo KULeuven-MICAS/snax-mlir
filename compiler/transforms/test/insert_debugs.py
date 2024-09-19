@@ -38,6 +38,8 @@ class InsertDebugStatements(RewritePattern):
             # defaulting to L3
             level = "L3"
 
+        # Note, the debug op expects 2 inputs. If only 1 is available,
+        # this just sends the first input twice.
         input1 = op.inputs[0]
         input2 = op.inputs[1] if len(op.inputs) >= 2 else op.inputs[0]
 

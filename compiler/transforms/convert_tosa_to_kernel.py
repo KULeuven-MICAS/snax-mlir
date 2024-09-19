@@ -25,6 +25,8 @@ def assert_int8(val) -> int:
 class RescaleClampPattern(RewritePattern):
     """
     Transform rescale clamp into a kernel.rescale op
+    If there is no clamp op after the rescaling op,
+    the clamping defaults to the range of the int8 output type (-128, 127)
     """
 
     @op_type_rewrite_pattern

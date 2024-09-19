@@ -26,7 +26,7 @@ class InsertStaticFunctionCall(RewritePattern):
     def match_and_rewrite(self, op: builtin.ModuleOp, rewriter: PatternRewriter):
         """
         Insert a function with static arguments them to dynamic ones,
-        calls the existing main function, and then casts the dyanmic output
+        calls the existing main function, and then casts the dynamic output
         to a static value. After inlining and canonicalization, everything is static.
         """
 
@@ -142,7 +142,7 @@ class RemoveZeroInits(RewritePattern):
 
 class RemoveTransposeConstants(RewritePattern):
     """
-    This path finds linalg generic operations that transpose an constant.
+    This path finds linalg generic operations that transpose a constant.
     It then constant folds this operation by transforming the weight directly.
     """
 
