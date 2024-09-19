@@ -14,71 +14,9 @@
  * */
 #include <snrt.h>
 
-/* These libraries are included from github.com/KULeuven-MICAS/snitch_cluster
- * Interested users, might want to look at:
- *
- * /target/snitch_cluster/sw/snax/streamer-gemm/include"
- * /target/snitch_cluster/sw/snax/mac/include"
- *
- * */
-#include "snax-streamer-gemm-lib.h"
-
-#define tileSize 8
-#define meshRow 8
-#define meshCol 8
-
-uint8_t Batch = 1;
-
-/* M_param and N_param can be set to 1 for tiled versions, but not for simple
- version. 2 always works. however, it will impact performance significantly as
- computation cost doubles. For benchmarks, set to 1 */
-uint8_t M_param = 2;
-uint8_t K_param = K_size / tileSize;
-uint8_t N_param = 2;
-
-// Extracted from datagen.py in snitch_cluster repo
-uint32_t strideInnermostA = 256;
-uint32_t strideInnermostB = 256;
-uint32_t strideInnermostC = 256;
-uint32_t ldA = 512;
-uint32_t ldB = 512;
-uint32_t ldC = 512;
-uint32_t strideA = 0;
-uint32_t strideB = 0;
-uint32_t strideC = 0;
-
 // Kernel provided via external definition
 void _mlir_ciface_streamer_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
                                   TwoDMemrefI32_t *c);
-
-void _mlir_ciface_snax_gemm(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, int32_t zpa,
-                            int32_t zpb, TwoDMemrefI32_t *c) {
-  {
-    printf("Executing snax_gemm with a=%p, b=%p, c=%p \n", a->aligned_data,
-           b->aligned_data, c->aligned_data);
-    int local_delta_a = (int)a->aligned_data - (int)snrt_l1_next();
-    int local_delta_b = (int)b->aligned_data - (int)snrt_l1_next();
-    int local_delta_c = (int)c->aligned_data - (int)snrt_l1_next();
-
-    set_streamer_csr(K_param, N_param, M_param, strideInnermostA, ldA, 8,
-                     strideInnermostB, ldB, 8, strideInnermostC, ldC, 32,
-                     local_delta_a, local_delta_b, local_delta_c);
-    set_streamer_start();
-    set_block_gemm_csr(K_param, N_param, M_param, 0);
-
-    snrt_mcycle();
-
-    set_block_gemm_start();
-
-    printf("Waiting for snax_gemm\n");
-
-    wait_streamer_gemm();
-
-    snrt_mcycle();
-
-    printf("Finished executing snax_gemm\n");
-  }
-}
 
 int main() {
   {
@@ -103,7 +41,6 @@ int main() {
     memrefB.stride[0] = 1;
     memrefB.stride[1] = K_size;
     memrefB.offset = 0;
-    printf("M_size: %d, K_size: %d, N_size: %d\n", M_size, K_size, N_size);
 
     TwoDMemrefI32_t memrefC;
     memrefC.data = &C;
@@ -114,6 +51,9 @@ int main() {
     memrefC.stride[0] = M_size;
     memrefC.stride[1] = 1;
     memrefC.offset = 0;
+
+    // allocate zero row in tcdm
+    snrt_l1alloc(256);
 
     (void)snrt_mcycle();
 

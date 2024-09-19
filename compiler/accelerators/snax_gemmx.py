@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 
-from xdsl.dialects import arith, builtin
+from xdsl.dialects import arith, builtin, llvm, memref_stream
 from xdsl.dialects.builtin import i8, i32
-from xdsl.ir import Operation, SSAValue
+from xdsl.ir import BlockArgument, Operation, SSAValue
 
 import compiler.dialects.kernel as kernel
 from compiler.accelerators.dispatching import DispatchTemplate, SupportedKernel
@@ -17,32 +17,33 @@ from compiler.accelerators.streamers import (
     StreamerType,
 )
 from compiler.dialects import accfg, snax_stream
+from compiler.util.pack_bitlist import pack_bitlist
 
 default_streamer = StreamerConfiguration(
     [
         Streamer(  # A
-            StreamerType.Reader,
+            StreamerType.ReaderTranspose,
             temporal_dims=("n", "n", "n", "n", "n", "n"),
             spatial_dims=("n", "i", "n"),
         ),
         Streamer(  # B
-            StreamerType.Reader,
+            StreamerType.ReaderTranspose,
             temporal_dims=("n", "n", "n"),
             spatial_dims=("n", "n", "i"),
         ),
         Streamer(  # D8
             StreamerType.Writer,
-            temporal_dims=("n", "n", "n"),
+            temporal_dims=("r", "n", "n"),
             spatial_dims=("i", "n", "n"),
         ),
         Streamer(  # C
             StreamerType.Reader,
-            temporal_dims=("n", "n", "n"),
+            temporal_dims=("r", "n", "n"),
             spatial_dims=("i", "n", "n"),
         ),
         Streamer(  # D32
             StreamerType.ReaderWriter,
-            temporal_dims=("n", "n", "n"),
+            temporal_dims=("r", "n", "n"),
             spatial_dims=("i", "n", "n"),
         ),
     ],
@@ -113,7 +114,7 @@ class SNAXGEMMXAccelerator(
                 "temporal_loop_bound": addr_next + 7,
                 "bypassSIMD": addr_next + 8,
             },
-            {**streamer_launch, "launch_gemm": addr_next + 9},
+            {**streamer_launch, "launch_gemmx": addr_next + 9},
             addr_next + 9,
         )
         op.attributes["streamer_config"] = self.streamer_config
@@ -150,4 +151,89 @@ class SNAXGEMMXAccelerator(
         - a reference to the SSAValue containing the calculated field value
         """
 
-        raise NotImplementedError()
+        c0 = arith.Constant.from_int_and_width(0, 32)
+        c1 = arith.Constant.from_int_and_width(1, 32)
+        knm: list = [
+            (((cst := arith.Constant.from_int_and_width(val.data, 32)),), cst.result)
+            for val in op.stride_patterns.data[0].upper_bounds
+        ]
+
+        streamer_setup_vals = list(self._generate_streamer_setup_vals(op))
+
+        ops_to_add: list[Operation] = []
+
+        assert isinstance(generic_op := op.body.block.first_op, memref_stream.GenericOp)
+
+        if isinstance(qmac := generic_op.body.block.first_op, kernel.QMacOp):
+            # gemm
+            bypassSIMD = c1.result # bypass simd
+            loop_bound = c0
+            csr0 = c0
+            csr1 = c0
+            csr2 = c0
+
+            assert isinstance(qmac.zp_lhs, BlockArgument)
+            zp_a = generic_op.inputs[qmac.zp_lhs.index]
+            assert isinstance(qmac.zp_rhs, BlockArgument)
+            zp_b = generic_op.inputs[qmac.zp_rhs.index]
+
+            ops_to_add.append(cst255 := arith.Constant.from_int_and_width(255, 32))
+            ops_to_add.append(zp_a := arith.AndI(zp_a, cst255))
+            ops_to_add.append(zp_b := arith.AndI(zp_b, cst255))
+
+            bitlist = list(pack_bitlist((zp_a, zp_b), [0, 8]))
+            ops_to_add.extend(bitlist)
+            subtractions = bitlist[-1].results[0]
+
+        else:
+            # simd
+            raise NotImplementedError()
+
+        return [
+            *streamer_setup_vals,
+            *knm,
+            ([c0, c1, *ops_to_add], subtractions),  # subtractions
+            ([], csr0.result),  # csr0
+            ([], csr1.result),  # csr1
+            ([], csr2.result),  # csr2
+            ([], loop_bound.result),  # temporal_loop_bound
+            ([], bypassSIMD),  # bypassSIMD
+        ]
+
+
+    @staticmethod
+    def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+        c0 = arith.Constant.from_int_and_width(0, 32)
+        addr_acc = acc_op.launch_fields.data["launch_gemmx"].value.data
+        addr_acc = arith.Constant.from_int_and_width(addr_acc, 32)
+        addr_str = acc_op.launch_fields.data["launch_streamer"].value.data
+        addr_str = arith.Constant.from_int_and_width(addr_str, 32)
+        return [
+            c0,
+            addr_acc,
+            addr_str,
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_str.result, c0.result],
+                has_side_effects=True,
+            ),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_str.result, c0.result],
+                has_side_effects=True,
+            ),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_acc.result, c0.result],
+                has_side_effects=True,
+            ),
+            llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_acc.result, c0.result],
+                has_side_effects=True,
+            ),
+        ]
