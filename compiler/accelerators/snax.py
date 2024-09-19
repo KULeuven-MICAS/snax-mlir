@@ -394,3 +394,38 @@ class SNAXPollingBarrier3(Accelerator, ABC):
                 ],
             ),
         ]
+
+
+class SNAXPollingBarrier4(Accelerator, ABC):
+    """
+    Polling barrier used in accelerators with streamers.
+    This tries to write a 0 to every launch field twice.
+    This is represented in C with:
+    write_csr(launch_streamer, 0);
+    write_csr(launch_streamer, 0);
+    write_csr(launch_accelerator, 0);
+    write_csr(launch_accelerator, 0);
+    """
+
+    @staticmethod
+    def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+        c0 = arith.Constant.from_int_and_width(0, 32)
+        result: list[Operation] = [c0]
+
+        for _, launch_addr in acc_op.launch_field_items():
+            addr_op = arith.Constant.from_int_and_width(launch_addr.value.data, 32)
+            write_op_1 = llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_op.result, c0.result],
+                has_side_effects=True,
+            )
+            write_op_2 = llvm.InlineAsmOp(
+                "csrw $0, $1",
+                "I, K",
+                [addr_op.result, c0.result],
+                has_side_effects=True,
+            )
+            result.extend((addr_op, write_op_1, write_op_2))
+
+        return result

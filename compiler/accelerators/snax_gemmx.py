@@ -1,12 +1,16 @@
 from collections.abc import Sequence
 
-from xdsl.dialects import arith, builtin, llvm
+from xdsl.dialects import arith, builtin
 from xdsl.dialects.builtin import i8, i32
 from xdsl.ir import Operation, SSAValue
 
 import compiler.dialects.kernel as kernel
 from compiler.accelerators.dispatching import DispatchTemplate, SupportedKernel
-from compiler.accelerators.snax import SNAXAccelerator, SNAXStreamer
+from compiler.accelerators.snax import (
+    SNAXAccelerator,
+    SNAXPollingBarrier4,
+    SNAXStreamer,
+)
 from compiler.accelerators.streamers import (
     Streamer,
     StreamerConfiguration,
@@ -45,7 +49,9 @@ default_streamer = StreamerConfiguration(
 )
 
 
-class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
+class SNAXGEMMXAccelerator(
+    SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAXPollingBarrier4
+):
     """
     Accelerator Interface class for SNAX GEMMX accelerator
     """
@@ -67,9 +73,13 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
             "K",
             "N",
             "M",
+            # subtractions: zp_b (i8) | zp_a (i8)
             "subtractions",
+            # csr0: max_int (i8) | shift (i8) | out_zp (i8) | in_zp (i8)
             "csr0",
+            # csr1: double_round (i8) | min_int (i8)
             "csr1",
+            # csr2: multiplier (i32)
             "csr2",
             "temporal_loop_bound",
             "bypassSIMD",
@@ -111,16 +121,6 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
     def convert_to_acc_ops(
         self, op: snax_stream.StreamingRegionOp
     ) -> Sequence[Operation]:
-        """
-        Lowers the operation op to a sequence of acc_ops.
-        acc_ops are:
-            - *.op that generates SSAValues consumed by acc2.setup
-            - acc2.setup
-            - acc2.launch
-            - acc2.await
-        These ops can further be lowered by specific instances of the
-        Accelerator interface
-        """
         args = self._generate_setup_vals(op)
 
         ops_to_insert = []
@@ -150,40 +150,3 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         """
 
         raise NotImplementedError()
-
-    @staticmethod
-    def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
-        c0 = arith.Constant.from_int_and_width(0, 32)
-        addr_acc = acc_op.launch_fields.data["launch_gemmx"].value.data
-        addr_acc = arith.Constant.from_int_and_width(addr_acc, 32)
-        addr_str = acc_op.launch_fields.data["launch_streamer"].value.data
-        addr_str = arith.Constant.from_int_and_width(addr_str, 32)
-        return [
-            c0,
-            addr_acc,
-            addr_str,
-            llvm.InlineAsmOp(
-                "csrw $0, $1",
-                "I, K",
-                [addr_str.result, c0.result],
-                has_side_effects=True,
-            ),
-            llvm.InlineAsmOp(
-                "csrw $0, $1",
-                "I, K",
-                [addr_str.result, c0.result],
-                has_side_effects=True,
-            ),
-            llvm.InlineAsmOp(
-                "csrw $0, $1",
-                "I, K",
-                [addr_acc.result, c0.result],
-                has_side_effects=True,
-            ),
-            llvm.InlineAsmOp(
-                "csrw $0, $1",
-                "I, K",
-                [addr_acc.result, c0.result],
-                has_side_effects=True,
-            ),
-        ]
