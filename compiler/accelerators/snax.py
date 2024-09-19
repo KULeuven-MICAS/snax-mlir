@@ -113,12 +113,16 @@ class SNAXStreamer(ABC):
 
         # loop bound registers
         if not self.streamer_config.data.separate_bounds:
-            loop_bounds: Sequence[IntAttr] = op.stride_patterns.data[0].upper_bounds.data
+            loop_bounds: Sequence[IntAttr] = op.stride_patterns.data[
+                0
+            ].upper_bounds.data
         else:
             loop_bounds: Sequence[IntAttr] = []
             for i in range(len(op.stride_patterns)):
                 upper_bounds = op.stride_patterns.data[i].upper_bounds.data
-                while self.streamer_config.data.streamers[i].temporal_dim > len(upper_bounds):
+                while self.streamer_config.data.streamers[i].temporal_dim > len(
+                    upper_bounds
+                ):
                     # if not all temporal bounds are used, insert 1's
                     upper_bounds = (IntAttr(1),) + upper_bounds
                 loop_bounds.extend(upper_bounds)
@@ -167,10 +171,15 @@ class SNAXStreamer(ABC):
         # loop bound registers
         if not self.streamer_config.data.separate_bounds:
             result.extend(
-                [f"loop_bound_{i}" for i in range(self.streamer_config.data.temporal_dim())]
+                [
+                    f"loop_bound_{i}"
+                    for i in range(self.streamer_config.data.temporal_dim())
+                ]
             )
         else:
-            for name, streamer in zip(self.streamer_names, self.streamer_config.data.streamers):
+            for name, streamer in zip(
+                self.streamer_names, self.streamer_config.data.streamers
+            ):
                 for i in range(streamer.temporal_dim):
                     result.append(f"loop_bound_{name}_{i}")
 

@@ -41,11 +41,12 @@ default_streamer = StreamerConfiguration(
             spatial_dims=("i", "n", "n"),
         ),
         Streamer(  # D32
-            StreamerType.Writer,
+            StreamerType.ReaderWriter,
             temporal_dims=("n", "n", "n"),
             spatial_dims=("i", "n", "n"),
         ),
-    ]
+    ],
+    separate_bounds=True,
 )
 
 
