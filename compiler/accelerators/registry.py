@@ -23,7 +23,7 @@ class AcceleratorRegistry:
         "snax_hwpe_mult": SNAXHWPEMultAccelerator,
         "snax_gemm": SNAXGEMMAccelerator,
         "gemmini": GemminiAccelerator,
-        "snax_gemmx": SNAXGEMMXAccelerator
+        "snax_gemmx": SNAXGEMMXAccelerator,
     }
 
     def lookup_acc_info(

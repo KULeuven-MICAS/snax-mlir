@@ -11,7 +11,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.rewriter import InsertPoint
 
-from compiler.dialects.kernel import Kernel, QMacOp
+from compiler.dialects.kernel import QMacOp
 from compiler.util.canonicalize_affine import canonicalize_map
 
 
@@ -143,7 +143,7 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             ]
             template_bounds = (None, None, None, 8, 8, 8)
         elif op.library_call.data == "snax_gemmx":
-            #TODO: move templates to accelerator definitions
+            # TODO: move templates to accelerator definitions
             if isinstance(op.body.block.first_op, QMacOp):
                 # gemm
                 M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))

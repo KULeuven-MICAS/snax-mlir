@@ -166,7 +166,7 @@ class SNAXGEMMXAccelerator(
 
         if isinstance(qmac := generic_op.body.block.first_op, kernel.QMacOp):
             # gemm
-            bypassSIMD = c1.result # bypass simd
+            bypassSIMD = c1.result  # bypass simd
             loop_bound = c0
             csr0 = c0
             csr1 = c0
@@ -199,7 +199,6 @@ class SNAXGEMMXAccelerator(
             ([], loop_bound.result),  # temporal_loop_bound
             ([], bypassSIMD),  # bypassSIMD
         ]
-
 
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:

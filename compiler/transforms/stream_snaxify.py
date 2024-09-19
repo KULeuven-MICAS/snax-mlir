@@ -166,26 +166,31 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         # TODO: what is still required is a better system for the unused operands
         # of snax_gemmx / other accelerators. this now fills in empty/zero patterns for the unused operands.
 
-        if(acc_op.name_prop.root_reference.data == 'snax_gemmx'):
+        if acc_op.name_prop.root_reference.data == "snax_gemmx":
             empty_pattern = snax_stream.StridePattern(
-                upper_bounds=[0] * 3,
-                temporal_strides=[0] * 3,
-                spatial_strides=[0] * 3
+                upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0] * 3
             )
             if len(snax_stride_patterns) == 3:
                 # gemm
 
                 # insert empty patterns for D8 and zero pattern for C
                 snax_stride_patterns.insert(2, empty_pattern)
-                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
+                new_inputs.append(
+                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
+                )
 
                 # insert zero pattern for C, using the same pattern as D32 but pointing to zero
-                snax_stride_patterns.insert(3, snax_stream.StridePattern(
-                    upper_bounds = snax_stride_patterns[3].upper_bounds,
-                    temporal_strides = [0] * 3,
-                    spatial_strides= [0, 4, 32]
-                ))
-                new_inputs.append(arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType()))
+                snax_stride_patterns.insert(
+                    3,
+                    snax_stream.StridePattern(
+                        upper_bounds=snax_stride_patterns[3].upper_bounds,
+                        temporal_strides=[0] * 3,
+                        spatial_strides=[0, 4, 32],
+                    ),
+                )
+                new_inputs.append(
+                    arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType())
+                )
 
             else:
                 # simd
@@ -199,15 +204,21 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 zero_pattern = snax_stream.StridePattern(
                     upper_bounds=snax_stride_patterns[0].upper_bounds,
                     temporal_strides=[0] * len(snax_stride_patterns[0].upper_bounds),
-                    spatial_strides=[1, 8]
+                    spatial_strides=[1, 8],
                 )
 
                 # read zeros from tcdm (must make sure there are zeros at these addresses)
                 # in the new streamer this can be fixed with byte masking
                 snax_stride_patterns.insert(0, zero_pattern)
-                new_inputs.insert(0, arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType()))
+                new_inputs.insert(
+                    0,
+                    arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType()),
+                )
                 snax_stride_patterns.insert(0, zero_pattern)
-                new_inputs.insert(0, arith.Constant.from_int_and_width(0x1000_0080, builtin.IndexType()))
+                new_inputs.insert(
+                    0,
+                    arith.Constant.from_int_and_width(0x1000_0080, builtin.IndexType()),
+                )
 
                 # flip D8 and C such that they are in the right order
                 snax_stride_patterns.append(snax_stride_patterns.pop(2))
@@ -216,7 +227,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 # empty pattern for D32
                 snax_stride_patterns.append(empty_pattern)
                 # dummy base pointer for D32
-                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
+                new_inputs.append(
+                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
+                )
 
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(
