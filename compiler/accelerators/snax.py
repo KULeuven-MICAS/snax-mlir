@@ -112,29 +112,21 @@ class SNAXStreamer(ABC):
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
 
         # loop bound registers
-        if not self.streamer_config.data.separate_bounds:
-            loop_bounds: Sequence[IntAttr] = op.stride_patterns.data[
-                0
-            ].upper_bounds.data
-        else:
-            loop_bounds: Sequence[IntAttr] = []
-            for i in range(len(op.stride_patterns)):
-                upper_bounds = op.stride_patterns.data[i].upper_bounds.data
-                while self.streamer_config.data.streamers[i].temporal_dim > len(
-                    upper_bounds
-                ):
-                    # if not all temporal bounds are used, insert 1's
-                    upper_bounds = (IntAttr(1),) + upper_bounds
-                loop_bounds.extend(upper_bounds)
-        result.extend(
-            [
-                (
-                    [cst := arith.Constant.from_int_and_width(loop_bound.data, i32)],
-                    cst.result,
-                )
-                for loop_bound in loop_bounds
-            ]
-        )
+        for operand, streamer in enumerate(self.streamer_config.data.streamers):
+            upper_bounds = op.stride_patterns.data[operand].upper_bounds.data
+            while streamer.temporal_dim > len(upper_bounds):
+                # if not all temporal bounds are used, insert 1's
+                upper_bounds = (IntAttr(1),) + upper_bounds
+            for dim, flag in enumerate(streamer.temporal_dims):
+                bound = upper_bounds[dim].data
+                if flag == StreamerFlag.Reuse and bound > 1:
+                    # if internal reuse, bound can be set to 1
+                    bound = 1
+                cst = arith.Constant.from_int_and_width(bound, i32)
+                result.append(([cst], cst.result))
+            if not self.streamer_config.data.separate_bounds:
+                # bounds should only be set once
+                break
 
         # temporal strides
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
