@@ -114,9 +114,10 @@ class SNAXStreamer(ABC):
         # loop bound registers
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             upper_bounds = op.stride_patterns.data[operand].upper_bounds.data
-            while streamer.temporal_dim > len(upper_bounds):
-                # if not all temporal bounds are used, insert 1's
-                upper_bounds = (IntAttr(1),) + upper_bounds
+            # pad unused temporal bounds with 1's'
+            upper_bounds = (
+                (IntAttr(1),) * (streamer.temporal_dim - len(upper_bounds))
+            ) + upper_bounds
             for dim, flag in enumerate(streamer.temporal_dims):
                 bound = upper_bounds[dim].data
                 if flag == StreamerFlag.Reuse and bound > 1:
