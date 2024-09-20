@@ -9,7 +9,7 @@ from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.streamers import StreamerConfiguration
-from compiler.accelerators.streamers.streamers import StreamerFlag
+from compiler.accelerators.streamers.streamers import StreamerFlag, StreamerType
 from compiler.dialects import accfg
 from compiler.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
 
@@ -112,16 +112,22 @@ class SNAXStreamer(ABC):
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
 
         # loop bound registers
-        loop_bounds: Sequence[IntAttr] = op.stride_patterns.data[0].upper_bounds.data
-        result.extend(
-            [
-                (
-                    [cst := arith.Constant.from_int_and_width(loop_bound.data, i32)],
-                    cst.result,
-                )
-                for loop_bound in loop_bounds
-            ]
-        )
+        for operand, streamer in enumerate(self.streamer_config.data.streamers):
+            upper_bounds = op.stride_patterns.data[operand].upper_bounds.data
+            # pad unused temporal bounds with 1's'
+            upper_bounds = (
+                (IntAttr(1),) * (streamer.temporal_dim - len(upper_bounds))
+            ) + upper_bounds
+            for dim, flag in enumerate(streamer.temporal_dims):
+                bound = upper_bounds[dim].data
+                if flag == StreamerFlag.Reuse and bound > 1:
+                    # if internal reuse, bound can be set to 1
+                    bound = 1
+                cst = arith.Constant.from_int_and_width(bound, i32)
+                result.append(([cst], cst.result))
+            if not self.streamer_config.data.separate_bounds:
+                # bounds should only be set once
+                break
 
         # temporal strides
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
@@ -150,15 +156,37 @@ class SNAXStreamer(ABC):
         result.extend(([], x) for x in op.inputs)
         result.extend(([], x) for x in op.outputs)
 
+        # transpose specifications
+        for operand, streamer in enumerate(self.streamer_config.data.streamers):
+            if streamer.type is StreamerType.ReaderTranspose:
+                # always program to 0 for now
+                c0 = arith.Constant.from_int_and_width(0, i32)
+                result.append(([c0], c0.result))
+                # in the current version of the streamer,
+                # transpose fields are bit packed together,
+                # so only one field for all transpose ops
+                # this should be fixed in the new streamer
+                break
+
         return result
 
     def get_streamer_setup_fields(self) -> Sequence[str]:
         result: list[str] = []
 
         # loop bound registers
-        result.extend(
-            [f"loop_bound_{i}" for i in range(self.streamer_config.data.temporal_dim())]
-        )
+        if not self.streamer_config.data.separate_bounds:
+            result.extend(
+                [
+                    f"loop_bound_{i}"
+                    for i in range(self.streamer_config.data.temporal_dim())
+                ]
+            )
+        else:
+            for name, streamer in zip(
+                self.streamer_names, self.streamer_config.data.streamers
+            ):
+                for i in range(streamer.temporal_dim):
+                    result.append(f"loop_bound_{name}_{i}")
 
         # temporal strides
         result.extend(
@@ -186,6 +214,18 @@ class SNAXStreamer(ABC):
 
         # base pointers
         result.extend([f"{streamer}_ptr" for streamer in self.streamer_names])
+
+        # transpose specifications
+        for streamer, name in zip(
+            self.streamer_config.data.streamers, self.streamer_names
+        ):
+            if streamer.type is StreamerType.ReaderTranspose:
+                result.append(f"{name}_transpose")
+                # in the current version of the streamer,
+                # transpose fields are bit packed together,
+                # so only one field for all transpose ops
+                # this should be fixed in the new streamer
+                break
 
         return result
 
