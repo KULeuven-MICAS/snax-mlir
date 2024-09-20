@@ -132,9 +132,10 @@ class SNAXStreamer(ABC):
         # temporal strides
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             temporal_strides = op.stride_patterns.data[operand].temporal_strides.data
-            while streamer.temporal_dim > len(temporal_strides):
-                # if not all temporal strides are used, insert 0's'
-                temporal_strides = (IntAttr(0),) + temporal_strides
+            # pad unused spatial strides with 0's
+            temporal_strides = (
+                (IntAttr(0),) * (streamer.temporal_dim - len(temporal_strides))
+            )
             for dim, flag in enumerate(streamer.temporal_dims):
                 stride = temporal_strides[dim].data
                 if flag == StreamerFlag.Irrelevant:
