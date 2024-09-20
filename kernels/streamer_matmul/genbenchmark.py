@@ -3,12 +3,11 @@ from io import StringIO
 
 from xdsl.builder import ImplicitBuilder
 from xdsl.dialects import arith, builtin, func, linalg, transform
+from xdsl.dialects.builtin import i8
 from xdsl.ir import Block, Region
 from xdsl.printer import Printer
 
 from util.snax_benchmark import SNAXBenchmark
-
-i8 = builtin.IntegerType(builtin.IntAttr(8))
 
 
 def create_tiled_matrix_multiply(k, m, n, tiling_factors):
