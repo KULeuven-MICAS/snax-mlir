@@ -10,21 +10,30 @@ int main() {
   int err = 0;
 
   // Create memref objects for data stored in L3
-  OneDMemrefI64_t memrefA;
+  TwoDMemrefI32_t memrefA;
   memrefA.data = &A;
   memrefA.aligned_data = memrefA.data;
   memrefA.offset = 0;
   memrefA.shape[0] = DATA_LEN;
+  memrefA.shape[1] = DATA_LEN;
+  memrefA.stride[0] = DATA_LEN;
+  memrefA.stride[1] = 1;
 
-  OneDMemrefI64_t memrefO;
+  TwoDMemrefI8_t memrefO;
   memrefO.data = &O;
   memrefO.aligned_data = memrefO.data;
   memrefO.offset = 0;
   memrefO.shape[0] = DATA_LEN;
+  memrefO.shape[1] = DATA_LEN;
+  memrefO.stride[0] = DATA_LEN;
+  memrefO.stride[1] = 1;
+
+  // allocate zero row in tcdm
+  snrt_l1alloc(256);
 
   (void)snrt_mcycle();
 
-  _mlir_ciface_streamer_add(&memrefA, &memrefB, &memrefO);
+  _mlir_ciface_rescale(&memrefA, &memrefO);
 
   snrt_cluster_hw_barrier();
 
@@ -36,7 +45,7 @@ int main() {
   // Compare results and check if the
   // accelerator returns correct answers
   // For every incorrect answer, increment err
-  uint64_t check_val;
+  int8_t check_val;
 
   for (uint32_t i = 0; i < DATA_LEN; i++) {
     check_val = memrefO.aligned_data[i];
