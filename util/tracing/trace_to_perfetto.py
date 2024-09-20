@@ -11,9 +11,9 @@ from concurrent.futures import ProcessPoolExecutor
 from util.tracing.annotation import (
     BarrierEventGenerator,
     DMAEventGenerator,
-    KernelEvent,
     StreamingEventGenerator,
 )
+from util.tracing.event import KernelEvent
 from util.tracing.state import get_trace_state
 
 
