@@ -194,42 +194,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
             else:
                 # simd
-                # to calculate only simd, we calculate the result
-                # of D8 = rescale(AxB + C)
-                # create zero patterns for A and B such that D8 = rescale(C)
-                # create empty pattern for D32
-                # do not use new outputs
-                new_inputs.append(new_outputs.pop())
-
-                zero_pattern = snax_stream.StridePattern(
-                    upper_bounds=snax_stride_patterns[0].upper_bounds,
-                    temporal_strides=[0] * len(snax_stride_patterns[0].upper_bounds),
-                    spatial_strides=[1, 8],
-                )
-
-                # read zeros from tcdm (must make sure there are zeros at these addresses)
-                # in the new streamer this can be fixed with byte masking
-                snax_stride_patterns.insert(0, zero_pattern)
-                new_inputs.insert(
-                    0,
-                    arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType()),
-                )
-                snax_stride_patterns.insert(0, zero_pattern)
-                new_inputs.insert(
-                    0,
-                    arith.Constant.from_int_and_width(0x1000_0080, builtin.IndexType()),
-                )
-
-                # flip D8 and C such that they are in the right order
-                snax_stride_patterns.append(snax_stride_patterns.pop(2))
-                new_inputs.append(new_inputs.pop(2))
-
-                # empty pattern for D32
-                snax_stride_patterns.append(empty_pattern)
-                # dummy base pointer for D32
-                new_inputs.append(
-                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                )
+                raise NotImplementedError()
 
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(
