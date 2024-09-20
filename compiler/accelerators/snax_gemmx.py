@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from xdsl.dialects import arith, builtin, llvm, memref_stream
+from xdsl.dialects import arith, builtin, memref_stream
 from xdsl.dialects.builtin import i8, i32
 from xdsl.ir import BlockArgument, Operation, SSAValue
 
