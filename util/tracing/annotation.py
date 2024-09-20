@@ -1,8 +1,18 @@
+import functools
+import json
+import re
+import subprocess
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from util.tracing.event import BarrierEvent, DMAEvent, Event, StreamingEvent
+from util.tracing.event import (
+    BarrierEvent,
+    DMAEvent,
+    Event,
+    KernelEvent,
+    StreamingEvent,
+)
 from util.tracing.state import (
     CSRInstruction,
     DMCPYIInstruction,
@@ -12,6 +22,7 @@ from util.tracing.state import (
     DMSTATIInstruction,
     DMSTRInstruction,
     TraceState,
+    get_trace_state,
 )
 
 
@@ -211,3 +222,90 @@ class DMAEventGenerator(EventGenerator):
                 result += self.schedule_writeback(state, write_back)
 
         return result
+
+
+class KernelNameResolver:
+    elf: str
+    addr2line: str
+    traces: tuple[typing.IO]
+
+    def __init__(self, elf, addr2line, traces: tuple[str]):
+        self.elf = elf
+        self.addr2line = addr2line
+        self.traces = (*map(lambda t: open(t), traces),)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        map(lambda t: t.close(), self.traces)
+
+    @functools.cache
+    def get_name_from_address(self, address: int):
+        p = subprocess.run(
+            [self.addr2line, "-e", self.elf, "-f", hex(address)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return p.stdout.splitlines()[0]
+
+    def get_name(self, cycle: int, hartid: int):
+        pattern = re.compile(r"\s*[0-9]+ " + str(cycle))
+        iterator = self.traces[hartid]
+        for l in iterator:
+            if pattern.match(l):
+                break
+        else:
+            return "<unknown-kernel>"
+
+        for index, l in enumerate(iterator):
+            # Give up.
+            if index == 100:
+                return "<unknown-kernel>"
+
+            res = get_trace_state(l)
+            if res is None:
+                return "<unknown-kernel>"
+
+            if not res.cpu_state["stall"] and res.cpu_state["pc_d"] != res.pc + 4:
+                return self.get_name_from_address(res.cpu_state["pc_d"])
+
+
+def calculate_sections(
+    inputs: typing.Iterable[typing.IO],
+    elf: str,
+    addr2line: str,
+    traces: typing.Iterable[str],
+) -> list[dict]:
+    resolver = KernelNameResolver(elf, addr2line, (*traces,))
+
+    # TraceViewer events
+    events = []
+    origin = None
+    for hartid, file in enumerate(inputs):
+        is_dm_core = hartid == 1
+
+        j = json.load(file)
+        for index, section in enumerate(j):
+            # In the case of the DMA core we are interested in time spent between kernels to measure overhead of
+            # IREE abstractions.
+            # if not is_dm_core:
+            #    if index % 2 == 0:
+            #        continue
+            # else:
+            #    if index % 2 == 1:
+            #        continue
+
+            name = "vm"
+            if not is_dm_core:
+                name = resolver.get_name(section["start"], hartid)
+                origin = "xDSL" if name.endswith("$iree_to_xdsl") else "LLVM"
+                name = name.removesuffix("$iree_to_xdsl")
+
+            start = section["start"]
+            dur = section["end"] - section["start"]
+            events.append(
+                KernelEvent(
+                    name, start, dur, is_dm_core, origin, section
+                ).to_chrome_tracing(hartid)
+            )
+
+    return events
