@@ -87,7 +87,7 @@ def write_module_to_file(module, file):
 def generate_tiled_benchmark(m, n, k, tiling_factors) -> SNAXBenchmark:
     module = create_tiled_matrix_multiply(k, m, n, tiling_factors)
     write_module_to_file(module, "generated.transform.mlir")
-    binary = "generated.stream.x"
+    binary = "generated.x"
     bm = SNAXBenchmark(
         kernel=f"tiled_matmul_generated_{k}x{n}x{m}",
         binary=binary,
