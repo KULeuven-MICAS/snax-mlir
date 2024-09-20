@@ -136,7 +136,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 stride = access_mem_map.eval(
                     generate_one_list(access_mem_map.num_dims, i), ()
                 )
-                if len(spatial_strides) < spat_dim:
+                if len([x for x in spatial_strides if x > 0]) < spat_dim:
                     # keep filling up spatial strides
                     spatial_strides.append(stride[0])
                 else:
