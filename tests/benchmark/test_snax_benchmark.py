@@ -1,6 +1,6 @@
 import pathlib
 
-from benchmark.snax_benchmark import SNAXBenchmark
+from util.snax_benchmark import SNAXBenchmark
 
 
 def test_snax_benchmark_runner():
