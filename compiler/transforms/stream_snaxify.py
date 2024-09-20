@@ -173,6 +173,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             if len(snax_stride_patterns) == 3:
                 # gemm
 
+                # for a gemm, the 8-bit output port D8 and the bias in put C
+                # are unused, so we create empty patterns for them here.
+
                 # insert empty patterns for D8 and zero pattern for C
                 snax_stride_patterns.insert(2, empty_pattern)
                 new_inputs.append(
@@ -180,6 +183,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 )
 
                 # insert zero pattern for C, using the same pattern as D32 but pointing to zero
+                # this way, the bias used by the gemm is just a bunch of zeros
                 snax_stride_patterns.insert(
                     3,
                     snax_stream.StridePattern(
@@ -188,6 +192,8 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                         spatial_strides=[0, 4, 32],
                     ),
                 )
+
+                # point C to zero allocated row in TCDM.
                 new_inputs.append(
                     arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType())
                 )
