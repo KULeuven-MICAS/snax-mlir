@@ -1,6 +1,6 @@
 import pathlib
 
-from benchmark.snax_benchmark import SNAXBenchmark
+from util.snax_benchmark import SNAXBenchmark
 
 if __name__ == "__main__":
 
