@@ -9,6 +9,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
+from compiler.dialects.kernel import QMacOp
 from compiler.dialects.snax import LayoutCast
 from compiler.dialects.tsl import TiledStridedLayoutAttr
 from compiler.ir.tsl import Stride, TiledStride, TiledStridedLayout
@@ -36,6 +37,9 @@ class AddMemoryLayout(RewritePattern):
 
         # check for library call
         if library_call == "snax_gemmx" or library_call == "snax_gemmx_stream":
+            # only do so for qmac kernels
+            if not isinstance(linalg_op.body.block.first_op, QMacOp):
+                return
             # the layout should be as static as the memref is. no more, no less
             # get m, n, k
 
