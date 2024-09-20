@@ -115,9 +115,13 @@ int main() {
     memrefC.stride[1] = 1;
     memrefC.offset = 0;
 
+    (void)snrt_mcycle();
+
     _mlir_ciface_streamer_matmul(&memrefA, &memrefB, &memrefC);
 
     snrt_cluster_hw_barrier();
+
+    (void)snrt_mcycle();
 
     // Correctness check -
     // from this point on only core 0 is required to be alive.
@@ -125,13 +129,7 @@ int main() {
     if (thiscore != 0)
       return 0;
 
-#ifdef NO_CHECK
-    // No correctness check =
-    // Always finish as if nothing happened
-    return 0;
-#endif
     int nerr = 0;
-
     for (int i = 0; i < M_size * N_size; i++) {
       {
         int32_t error = memrefC.aligned_data[i] - C_golden[i];
