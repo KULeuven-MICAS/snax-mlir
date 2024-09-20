@@ -9,11 +9,76 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
-from compiler.dialects.kernel import QMacOp
+from compiler.dialects.kernel import QMacOp, RescaleOp
 from compiler.dialects.snax import LayoutCast
 from compiler.dialects.tsl import TiledStridedLayoutAttr
 from compiler.ir.tsl import Stride, TiledStride, TiledStridedLayout
 
+
+class AddMemoryLayoutSIMD(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
+        # check if operation is dispatched via library call, as set by e.g.
+        # the dispatch-kernels pass
+        if linalg_op.library_call is None:
+            return
+        else:
+            library_call = linalg_op.library_call.data
+
+        # check for library call
+        if library_call == "snax_gemmx_stream":
+            if not isinstance(linalg_op.body.block.first_op, RescaleOp):
+                return
+
+            shaped_operands: list[MemRefType] = [
+                op.type for op in linalg_op.operands if isinstance(op.type, builtin.MemRefType)
+            ]
+
+            m = shaped_operands[0].get_shape()[0]
+            n = shaped_operands[0].get_shape()[1]
+
+            if m == -1:
+                m = None
+            if n == -1:
+                n = None
+
+            tsl_input = TiledStridedLayoutAttr(
+                TiledStridedLayout(
+                    [
+                        TiledStride([Stride(256 * n // 8 if n else None, m // 8 if m else None), Stride(8, 8)]),
+                        TiledStride([Stride(256, n // 8 if n else None), Stride(1, 8)]),
+                    ]
+                )
+            )
+
+            tsl_output = TiledStridedLayoutAttr(
+                TiledStridedLayout(
+                    [
+                        TiledStride([Stride(256 * n // 8 if n else None, m // 8 if m else None), Stride(8, 8)]),
+                        TiledStride([Stride(256, n // 8 if n else None), Stride(1, 8)]),
+                    ]
+                )
+            )
+
+            # insert layout_cast ops
+            new_input_a = LayoutCast.from_type_and_target_layout(linalg_op.inputs[0], tsl_input)
+
+            new_output = LayoutCast.from_type_and_target_layout(linalg_op.outputs[0], tsl_output)
+
+            new_linalg_op = linalg.Generic(
+                inputs=[new_input_a.dest],
+                outputs=[new_output.dest],
+                body=rewriter.move_region_contents_to_new_regions(linalg_op.regions[0]),
+                indexing_maps=linalg_op.indexing_maps,
+                iterator_types=linalg_op.iterator_types,
+                doc=linalg_op.doc,
+                library_call=linalg_op.library_call,
+            )
+
+            rewriter.insert_op_before_matched_op([new_input_a, new_output])
+            rewriter.replace_op(linalg_op, new_linalg_op)
+
+        pass
 
 class AddMemoryLayout(RewritePattern):
     """
@@ -144,6 +209,7 @@ class SetMemoryLayout(ModulePass):
     name = "set-memory-layout"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+        PatternRewriteWalker(AddMemoryLayoutSIMD(), apply_recursively=False).rewrite_module(op)
         PatternRewriteWalker(AddMemoryLayout(), apply_recursively=False).rewrite_module(
             op
         )
