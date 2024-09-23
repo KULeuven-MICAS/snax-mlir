@@ -67,9 +67,9 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
         super().__init__()
         self.state = None
         self.acc = SNAXGEMMAccelerator().generate_acc_op()
-        self.fields = {val.value.data for val in self.acc.fields.data.values}
+        self.fields = {val.value.data for val in self.acc.fields.data.values()}
         self.launch_fields = {
-            val.value.data for val in self.acc.launch_fields.data.values
+            val.value.data for val in self.acc.launch_fields.data.values()
         }
         self.barrier_addr = self.acc.barrier.value.data
 
