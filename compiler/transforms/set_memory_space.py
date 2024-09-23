@@ -1,6 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, func, linalg, memref
-from xdsl.ir import SSAValue
+from xdsl.ir import Operation, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -25,8 +25,7 @@ class InitFuncMemorySpace(RewritePattern):
         # Function must have memref arguments with an undefined memory space
         if not any(
             [
-                isinstance(x, builtin.MemRefType)
-                and isinstance(x.memory_space, builtin.NoneAttr)
+                isinstance(x, builtin.MemRefType) and isinstance(x.memory_space, builtin.NoneAttr)
                 for x in [*op.function_type.inputs, *op.function_type.outputs]
             ]
         ):
@@ -125,52 +124,28 @@ class InitLinalgMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
         # Op must have memref arguments with memory space not equal to L1
-        if not any(
-            [
-                isinstance(x.type, builtin.MemRefType) and x.type.memory_space != L1
-                for x in op.inputs
-            ]
-        ):
+        if not any([isinstance(x.type, builtin.MemRefType) and x.type.memory_space != L1 for x in op.inputs]):
             return
 
         # Function to find/create casting operand if it is necessary
-        def get_cast_op(operand) -> None | memref.MemorySpaceCast:
+        def get_cast_op(operand: SSAValue) -> SSAValue:
             # check if cast is required: must be a memref in wrong memory space
             if not isinstance(operand, SSAValue):
-                return None
+                return operand
             if not isinstance(operand.type, builtin.MemRefType):
-                return None
+                return operand
             if operand.type.memory_space == L1:
-                return None
+                return operand
 
-            # cast required: find previous cast or create new one
-            cast_op = None
-            for use in operand.uses:
-                if (
-                    isinstance(use.operation, memref.MemorySpaceCast)
-                    and isinstance(use.operation.dest.type, builtin.MemRefType)
-                    and use.operation.dest.type.memory_space == L1
-                ):
-                    cast_op = use.operation
-                    break
-            # If cast op not found, create and insert new one
-            if cast_op is None:
-                cast_op = memref.MemorySpaceCast.from_type_and_target_space(
-                    operand, operand.type, L1
-                )
-                rewriter.insert_op_before_matched_op(cast_op)
+            # cast required: create new one
+            cast_op = memref.MemorySpaceCast.from_type_and_target_space(operand, operand.type, L1)
+            rewriter.insert_op_before_matched_op(cast_op)
 
-            return cast_op
+            return cast_op.dest
 
         # cast all inputs and outputs to correct memory space
-        new_inputs = [
-            inp if get_cast_op(inp) is None else get_cast_op(inp).dest
-            for inp in op.inputs
-        ]
-        new_outputs = [
-            out if get_cast_op(out) is None else get_cast_op(out).dest
-            for out in op.outputs
-        ]
+        new_inputs = [get_cast_op(input) for input in op.inputs]
+        new_outputs = [get_cast_op(out) for out in op.outputs]
 
         # new linalg op with new inputs & outputs
         linalg_op = linalg.Generic(

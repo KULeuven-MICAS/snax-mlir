@@ -1,6 +1,7 @@
 from xdsl.context import MLContext
-from xdsl.dialects import linalg
+from xdsl.dialects import linalg, memref_stream
 from xdsl.dialects.builtin import ModuleOp, StringAttr
+from xdsl.ir import Operation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     GreedyRewritePatternApplier,
@@ -33,6 +34,18 @@ class GuardedGenericOpPattern(RewritePattern):
             op.library_call = StringAttr(op.library_call.data[: -len("_stream")])
             ConvertGenericOpPattern().match_and_rewrite(op, rewriter)
 
+class GuardedYieldOpPattern(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: linalg.YieldOp, rewriter: PatternRewriter):
+        # find parent operation
+        parent_op = op.parent
+        while parent_op and not isinstance(parent_op, Operation):
+            parent_op = parent_op.parent
+
+        # only if parrent is memref generic
+        if isinstance(parent_op, memref_stream.GenericOp):
+            ConvertYieldOpPattern().match_and_rewrite(op, rewriter)
+
 
 class GuardedLinalgToMemrefStreamPass(ModulePass):
     name = "guarded-linalg-to-memref-stream"
@@ -40,7 +53,7 @@ class GuardedLinalgToMemrefStreamPass(ModulePass):
     def apply(self, ctx: MLContext, op: ModuleOp) -> None:
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
-                [GuardedGenericOpPattern(), ConvertYieldOpPattern()]
+                [GuardedGenericOpPattern(), GuardedYieldOpPattern()]
             ),
             apply_recursively=False,
         ).rewrite_module(op)

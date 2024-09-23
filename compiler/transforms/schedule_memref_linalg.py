@@ -211,11 +211,7 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             if schedule_bound < template_bound:
                 # need to apply padding
                 raise NotImplementedError("padding not supported")
-            elif schedule_bound == template_bound:
-                # perfect!
-                # (i think?)
-                raise NotImplementedError("need to check behaviour in this case")
-            elif schedule_bound > template_bound:
+            elif schedule_bound >= template_bound:
                 # need to split up the schedule
                 assert schedule_bound % template_bound == 0
                 schedule = [
