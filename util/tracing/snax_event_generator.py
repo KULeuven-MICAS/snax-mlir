@@ -104,7 +104,7 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
                             "setup",
                             self.state.start,
                             state.clock_cycle - self.state.start,
-                            "snax",
+                            ["snax"],
                             {"setup_ins_count": self.state.number_setups},
                         )
                     )
@@ -124,19 +124,19 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
                         "launched",
                         self.state.start,
                         state.clock_cycle - self.state.start,
-                        "snax",
+                        ["snax"],
                         {"setup_ins_count": self.state.number_setups},
                     )
                 )
-                self.state = Stalled(state.clock_cycle)
+                self.state = Stalled(start=state.clock_cycle)
         elif isinstance(self.state, Stalled):
             # stalled state is resolved with the next CSR ins
             events.append(
                 DurationEvent(
                     "stalled",
-                    self.state.start - self.state.start,
-                    state.clock_cycle,
-                    "snax",
+                    self.state.start,
+                    state.clock_cycle - self.state.start,
+                    ["snax"],
                     {},
                 )
             )
