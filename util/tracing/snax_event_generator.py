@@ -118,6 +118,7 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
             # if we see a write to a launch
             elif ins.csr in self.launch_fields:
                 self.state.number_of_zero_writes += 1
+            # if we wrote two zeros, transition to stalled state
             if self.state.number_of_zero_writes > 1:
                 events.append(
                     DurationEvent(
