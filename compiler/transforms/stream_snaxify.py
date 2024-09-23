@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 
 from xdsl.context import MLContext
-from xdsl.dialects import builtin, memref, memref_stream
+from xdsl.dialects import arith, builtin, memref, memref_stream
 from xdsl.dialects.builtin import MemRefType, StringAttr
+from xdsl.ir import Operation
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -97,7 +98,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         # We are now ready to convert the stream access patterns into snax stride patterns
         # construct the strided patterns for SNAX Streamers
 
-        snax_stride_patterns = []
+        snax_stride_patterns: list[snax_stream.StridePattern] = []
 
         # small function to generate a list of n zeros with the i-th element 1
         # for example n = 4, i = 1  -> [0, 1, 0, 0]
@@ -155,12 +156,51 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         # get base addresses of the streaming region ops
         # TODO: generalize and fix for offsets
 
-        new_inputs = [
+        new_inputs: list[Operation] = [
             memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs
         ]
         new_outputs = [
             memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs
         ]
+
+        # TODO: what is still required is a better system for the unused operands
+        # of snax_gemmx / other accelerators. this now fills in empty/zero patterns for the unused operands.
+
+        if acc_op.name_prop.root_reference.data == "snax_gemmx":
+            empty_pattern = snax_stream.StridePattern(
+                upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0] * 3
+            )
+            if len(snax_stride_patterns) == 3:
+                # gemm
+
+                # for a gemm, the 8-bit output port D8 and the bias in put C
+                # are unused, so we create empty patterns for them here.
+
+                # insert empty patterns for D8 and zero pattern for C
+                snax_stride_patterns.insert(2, empty_pattern)
+                new_inputs.append(
+                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
+                )
+
+                # insert zero pattern for C, using the same pattern as D32 but pointing to zero
+                # this way, the bias used by the gemm is just a bunch of zeros
+                snax_stride_patterns.insert(
+                    3,
+                    snax_stream.StridePattern(
+                        upper_bounds=snax_stride_patterns[3].upper_bounds,
+                        temporal_strides=[0] * 3,
+                        spatial_strides=[0, 4, 32],
+                    ),
+                )
+
+                # point C to zero allocated row in TCDM.
+                new_inputs.append(
+                    arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType())
+                )
+
+            else:
+                # simd
+                raise NotImplementedError()
 
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(

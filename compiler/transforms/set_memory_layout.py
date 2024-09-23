@@ -35,7 +35,7 @@ class AddMemoryLayout(RewritePattern):
             library_call = linalg_op.library_call.data
 
         # check for library call
-        if library_call == "snax_gemm" or library_call == "snax_gemm_stream":
+        if library_call == "snax_gemmx" or library_call == "snax_gemmx_stream":
             # the layout should be as static as the memref is. no more, no less
             # get m, n, k
 
