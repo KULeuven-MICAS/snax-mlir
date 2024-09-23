@@ -11,6 +11,7 @@ from util.tracing.annotation import (
     StreamingEventGenerator,
     calculate_sections,
 )
+from util.tracing.snax_event_generator import SNAXAcceleratorEventGenerator
 from util.tracing.state import get_trace_state
 
 
@@ -20,6 +21,7 @@ def worker(file: str):
         BarrierEventGenerator(),
         StreamingEventGenerator(),
         DMAEventGenerator(),
+        SNAXAcceleratorEventGenerator(),
     ]
     with open(file) as f:
         for index, l in enumerate(f):
