@@ -20,6 +20,7 @@ class LowerLinalgBody(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
+
         # find the kernel op in linalg body
         if not isinstance(kernel_op := linalg_op.body.block.first_op, Parsable):
             return

@@ -256,8 +256,5 @@ class PreprocessMLPerfTiny(ModulePass):
             InsertMemoryClears(), apply_recursively=False
         ).rewrite_module(op)
         PatternRewriteWalker(
-            InsertDebugStatements(), apply_recursively=False
-        ).rewrite_module(op)
-        PatternRewriteWalker(
             OrganizeGetGlobals(), apply_recursively=False
         ).rewrite_module(op)

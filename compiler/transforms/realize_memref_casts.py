@@ -33,7 +33,8 @@ class RealizeMemrefCasts(RewritePattern):
         # if the casting is not used anymore (perhaps made useless by previous
         # cast realizations), we do not need to do anything. dce will remove it later
         if not op.dest.uses:
-            return
+            # dead code:
+            return rewriter.erase_matched_op()
 
         # due to previous passes, it is common for multiple memref casting
         # ops to be chained together. For now all the transformations are handled
