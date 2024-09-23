@@ -153,7 +153,7 @@ class SNAXStreamer(ABC):
                 if flag == StreamerFlag.Irrelevant:
                     # Irrelevant spatial strides are not programmed
                     if stride and stride.data == 0:
-                        stride = next(strides)
+                        stride = next(strides, None)
                     continue
                 assert stride # stride should be intattr here
                 cst = arith.Constant.from_int_and_width(stride, i32)
