@@ -127,7 +127,7 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
             and op.library_call.data in ("snax_alu", "snax_gemm", "snax_gemmx")
         ):
             raise NotImplementedError(
-                "only snax_alu and snax_gemm are supported right now"
+                "only snax_alu, snax_gemm and snax_gemmx are supported right now"
             )
 
         # only handle snax_alu and snax_gemm for now

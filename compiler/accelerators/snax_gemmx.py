@@ -179,7 +179,8 @@ class SNAXGEMMXAccelerator(
             assert isinstance(qmac.zp_rhs, BlockArgument)
             zp_b = generic_op.inputs[qmac.zp_rhs.index]
 
-            # bitwise and with 8b'11111111 to don't fuck up bitpacking in case of negative values
+            # bitwise and with 8b'11111111 to avoid the sign bits extending the 8-bit field
+            # when bitlist packing
             ops_to_add.append(cst255 := arith.Constant.from_int_and_width(255, 32))
             ops_to_add.append(zp_a := arith.AndI(zp_a, cst255))
             ops_to_add.append(zp_b := arith.AndI(zp_b, cst255))
