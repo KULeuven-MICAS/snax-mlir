@@ -31,7 +31,9 @@ class AddMemoryLayoutSIMD(RewritePattern):
                 return
 
             shaped_operands: list[MemRefType] = [
-                op.type for op in linalg_op.operands if isinstance(op.type, builtin.MemRefType)
+                op.type
+                for op in linalg_op.operands
+                if isinstance(op.type, builtin.MemRefType)
             ]
 
             m = shaped_operands[0].get_shape()[0]
@@ -45,7 +47,14 @@ class AddMemoryLayoutSIMD(RewritePattern):
             tsl_input = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
-                        TiledStride([Stride(256 * n // 8 if n else None, m // 8 if m else None), Stride(8, 8)]),
+                        TiledStride(
+                            [
+                                Stride(
+                                    256 * n // 8 if n else None, m // 8 if m else None
+                                ),
+                                Stride(8, 8),
+                            ]
+                        ),
                         TiledStride([Stride(256, n // 8 if n else None), Stride(1, 8)]),
                     ]
                 )
@@ -54,16 +63,27 @@ class AddMemoryLayoutSIMD(RewritePattern):
             tsl_output = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
-                        TiledStride([Stride(256 * n // 8 if n else None, m // 8 if m else None), Stride(8, 8)]),
+                        TiledStride(
+                            [
+                                Stride(
+                                    256 * n // 8 if n else None, m // 8 if m else None
+                                ),
+                                Stride(8, 8),
+                            ]
+                        ),
                         TiledStride([Stride(256, n // 8 if n else None), Stride(1, 8)]),
                     ]
                 )
             )
 
             # insert layout_cast ops
-            new_input_a = LayoutCast.from_type_and_target_layout(linalg_op.inputs[0], tsl_input)
+            new_input_a = LayoutCast.from_type_and_target_layout(
+                linalg_op.inputs[0], tsl_input
+            )
 
-            new_output = LayoutCast.from_type_and_target_layout(linalg_op.outputs[0], tsl_output)
+            new_output = LayoutCast.from_type_and_target_layout(
+                linalg_op.outputs[0], tsl_output
+            )
 
             new_linalg_op = linalg.Generic(
                 inputs=[new_input_a.dest],
@@ -79,6 +99,7 @@ class AddMemoryLayoutSIMD(RewritePattern):
             rewriter.replace_op(linalg_op, new_linalg_op)
 
         pass
+
 
 class AddMemoryLayout(RewritePattern):
     """
@@ -209,7 +230,9 @@ class SetMemoryLayout(ModulePass):
     name = "set-memory-layout"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(AddMemoryLayoutSIMD(), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(
+            AddMemoryLayoutSIMD(), apply_recursively=False
+        ).rewrite_module(op)
         PatternRewriteWalker(AddMemoryLayout(), apply_recursively=False).rewrite_module(
             op
         )

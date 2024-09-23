@@ -186,7 +186,10 @@ class StreamingRegionOp(IRDLOperation):
                     "Temporal stride pattern exceeds streamer dimensionality"
                 )
 
-            if len([x for x in stride_pattern.spatial_strides if x.data > 0]) > streamer.spatial_dim:
+            if (
+                len([x for x in stride_pattern.spatial_strides if x.data > 0])
+                > streamer.spatial_dim
+            ):
                 raise VerifyException(
                     "Spatial stride pattern exceeds streamer dimensionality"
                 )

@@ -70,7 +70,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: memref_stream.StreamingRegionOp, rewriter: PatternRewriter):
+    def match_and_rewrite(
+        self, op: memref_stream.StreamingRegionOp, rewriter: PatternRewriter
+    ):
         # Compliance checks:
 
         # Handle only memref stream ops dispatched to an accelerator:
@@ -120,12 +122,17 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
             # Make sure no symbols are used (not supported yet)
             if access_mem_map.num_symbols != 0:
-                raise RuntimeError("Access patterns with symbols are not supported yet.")
+                raise RuntimeError(
+                    "Access patterns with symbols are not supported yet."
+                )
 
             # Get the streamer
-            #FIXME: some hardcoded fix because there is no system yet to map a specific operand
+            # FIXME: some hardcoded fix because there is no system yet to map a specific operand
             # to a specific streamer for unused operands in the gemmx case
-            if acc_op.name_prop.root_reference.data == "snax_gemmx" and len(op.inputs) == 1:
+            if (
+                acc_op.name_prop.root_reference.data == "snax_gemmx"
+                and len(op.inputs) == 1
+            ):
                 # simd case for gemmx, first operand maps to 4th streamer, second operand to 3rd
                 if operand == 0:
                     streamer = streamer_config.data.streamers[3]
@@ -138,7 +145,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)
             access_iter = iter(
                 (
-                    access_mem_map.eval(generate_one_list(access_mem_map.num_dims, i), ())[0],
+                    access_mem_map.eval(
+                        generate_one_list(access_mem_map.num_dims, i), ()
+                    )[0],
                     op.patterns.data[operand].ub.data[i].value.data,
                 )
                 for i in reversed(range(access_mem_map.num_dims))
@@ -176,8 +185,12 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         # get base addresses of the streaming region ops
         # TODO: generalize and fix for offsets
 
-        new_inputs: list[Operation] = [memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs]
-        new_outputs = [memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs]
+        new_inputs: list[Operation] = [
+            memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs
+        ]
+        new_outputs = [
+            memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs
+        ]
 
         # TODO: what is still required is a better system for the unused operands
         # of snax_gemmx / other accelerators. this now fills in empty/zero patterns for the unused operands.
@@ -194,7 +207,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
                 # insert empty patterns for D8 and zero pattern for C
                 snax_stride_patterns.insert(2, empty_pattern)
-                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
+                new_inputs.append(
+                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
+                )
 
                 # insert zero pattern for C, using the same pattern as D32 but pointing to zero
                 # this way, the bias used by the gemm is just a bunch of zeros
@@ -208,7 +223,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 )
 
                 # point C to zero allocated row in TCDM.
-                new_inputs.append(arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType()))
+                new_inputs.append(
+                    arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType())
+                )
 
             else:
                 # simd
@@ -245,7 +262,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 # empty pattern for D32
                 snax_stride_patterns.append(empty_pattern)
                 # dummy base pointer for D32
-                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
+                new_inputs.append(
+                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
+                )
 
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(
@@ -265,5 +284,7 @@ class StreamSnaxify(ModulePass):
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
-            GreedyRewritePatternApplier([HoistAcceleratorAttribute(), MemrefStreamToSnaxPattern()])
+            GreedyRewritePatternApplier(
+                [HoistAcceleratorAttribute(), MemrefStreamToSnaxPattern()]
+            )
         ).rewrite_module(op)

@@ -1,5 +1,4 @@
 from collections.abc import Sequence
-from itertools import count
 from typing import Literal
 
 from typing_extensions import deprecated

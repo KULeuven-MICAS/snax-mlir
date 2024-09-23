@@ -147,7 +147,7 @@ class SNAXStreamer(ABC):
         # spatial strides
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             strides = iter(op.stride_patterns.data[operand].spatial_strides.data)
-            stride : IntAttr | None = next(strides, None)
+            stride: IntAttr | None = next(strides, None)
             for dim, flag in enumerate(streamer.spatial_dims):
                 # stride = op.stride_patterns.data[operand].spatial_strides.data[dim].data
                 if flag == StreamerFlag.Irrelevant:
@@ -155,11 +155,11 @@ class SNAXStreamer(ABC):
                     if stride and stride.data == 0:
                         stride = next(strides, None)
                     continue
-                assert stride # stride should be intattr here
+                assert stride  # stride should be intattr here
                 cst = arith.Constant.from_int_and_width(stride, i32)
                 result.append(([cst], cst.result))
                 stride = next(strides, None)
-            assert not stride # all strides must be processed by this point
+            assert not stride  # all strides must be processed by this point
 
         # input & output base pointers
         result.extend(([], x) for x in op.inputs)
