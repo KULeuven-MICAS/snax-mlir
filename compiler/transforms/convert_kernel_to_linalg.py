@@ -1,7 +1,5 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg
-from xdsl.ir import Block
-from xdsl.parser import IRDLOperation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -9,9 +7,8 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.rewriter import InsertPoint
 
-from compiler.dialects.kernel import Kernel, Parsable
+from compiler.dialects.kernel import Parsable
 
 
 class LowerLinalgBody(RewritePattern):
@@ -23,7 +20,6 @@ class LowerLinalgBody(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
-
         # find the kernel op in linalg body
         if not isinstance(kernel_op := linalg_op.body.block.first_op, Parsable):
             return
@@ -33,16 +29,18 @@ class LowerLinalgBody(RewritePattern):
             return
 
         # replace linalg op
-        rewriter.replace_matched_op(linalg.Generic(
-            linalg_op.inputs,
-            linalg_op.outputs,
-            kernel_op.equivalent_region,
-            linalg_op.indexing_maps,
-            linalg_op.iterator_types,
-            linalg_op.result_types,
-            linalg_op.library_call,
-            linalg_op.doc
-        ))
+        rewriter.replace_matched_op(
+            linalg.Generic(
+                linalg_op.inputs,
+                linalg_op.outputs,
+                kernel_op.equivalent_region,
+                linalg_op.indexing_maps,
+                linalg_op.iterator_types,
+                linalg_op.result_types,
+                linalg_op.library_call,
+                linalg_op.doc,
+            )
+        )
 
 
 class ConvertKernelToLinalg(ModulePass):
