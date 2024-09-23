@@ -2,7 +2,7 @@ import pathlib
 import shutil
 import subprocess
 
-from .trace_to_perfetto import process_traces
+from util.tracing.trace_to_perfetto import process_traces
 
 
 class SNAXBenchmark:

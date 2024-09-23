@@ -15,6 +15,7 @@ from compiler.transforms.accfg_dedup import AccfgDeduplicate
 from compiler.transforms.accfg_insert_resets import InsertResetsPass
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
+from compiler.transforms.convert_kernel_to_linalg import ConvertKernelToLinalg
 from compiler.transforms.convert_linalg_to_accfg import (
     ConvertLinalgToAccPass,
     TraceStatesPass,
@@ -109,6 +110,7 @@ class SNAXOptMain(xDSLOptMain):
         )
         super().register_pass(ScheduleMemrefLinalg.name, lambda: ScheduleMemrefLinalg)
         super().register_pass(ConvertLinalgToKernel.name, lambda: ConvertLinalgToKernel)
+        super().register_pass(ConvertKernelToLinalg.name, lambda: ConvertKernelToLinalg)
         super().register_pass(
             ConvertTosaToKernelPass.name, lambda: ConvertTosaToKernelPass
         )
