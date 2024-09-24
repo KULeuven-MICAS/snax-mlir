@@ -1,3 +1,5 @@
+import itertools
+import json
 import pathlib
 from io import StringIO
 
@@ -78,14 +80,12 @@ def generate_tiled_benchmark(m, n, k) -> SNAXBenchmark:
 
 if __name__ == "__main__":
     """Runs the gendata.py script with specified arguments."""
-    sizes = [
-        [16, 16, 16],
-        [32, 32, 32],
-        #         [64, 64, 64],
-        #         [128, 128, 128],
-        #         [256, 256, 256],
-        #         [512, 512, 512],
-    ]
+    selected_dims = [32, 48, 64]
+
+    sizes = list(itertools.product(selected_dims, repeat=3))
+
+    output_report: dict[str, dict] = {}
+
     for size in sizes:
         k, m, n = size
         folder = f"test_generated_{k}x{m}x{m}"
@@ -104,3 +104,32 @@ if __name__ == "__main__":
         bm.process_traces(folder)
         bm.copy_binary(folder)
         bm.copy_logs(folder)
+
+        # add to output report
+        trace = bm.log_dir.joinpath(bm.input_file.format(hart="00000"))
+        with open(trace) as file:
+            data = json.load(file)
+        cycles = data[1]["cycles"]
+        ideal = round((k / 8) * (m / 8) * (n / 8))
+        utilization = ideal / cycles
+        output_report[bm.benchmark] = {
+            "cycles": cycles,
+            "ideal": ideal,
+            "utilization": utilization,
+        }
+
+    with open("output_report.txt", "w") as file:
+        file.write("benchmark\tcycles\tideal\tutilization\t\n")
+        avg_utilization = 0
+        avg_n = 0
+        for benchmark in output_report:
+            file.write(f"{benchmark}\t")
+            file.write(f"{output_report[benchmark]['cycles']}\t")
+            file.write(f"{output_report[benchmark]['ideal']}\t")
+            file.write(f"{output_report[benchmark]['utilization']}\t")
+            file.write("\n")
+            avg_utilization += output_report[benchmark]["utilization"]
+            avg_n += 1
+        file.write("--------------------------\n")
+        file.write("average\t\t\t")
+        file.write(f"{avg_utilization/avg_n}\t\n")
