@@ -43,7 +43,7 @@ from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.stream_snaxify import StreamSnaxify
 from compiler.transforms.test.debug_to_func import DebugToFuncPass
 from compiler.transforms.test.insert_debugs import InsertDebugPass
-from compiler.transforms.test.test_add_mcycle_around_loop import AddMcycleAroundLaunch
+from compiler.transforms.test.test_add_mcycle_around_launch import AddMcycleAroundLaunch
 from compiler.transforms.test_add_mcycle_around_loop import AddMcycleAroundLoopPass
 from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
 
