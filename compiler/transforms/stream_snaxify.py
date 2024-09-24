@@ -162,11 +162,12 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
             # fill up all spatial strides
             for spatial_flag in streamer.spatial_dims:
+                assert stride is not None
                 if spatial_flag == StreamerFlag.Irrelevant and stride != 0:
                     spatial_strides.append(0)
                     continue
                 spatial_strides.append(stride)
-                stride, bound = next(access_iter)
+                stride, bound = next(access_iter, (None, None))
 
             # remaining are temporal strides
             while stride is not None and bound is not None:
