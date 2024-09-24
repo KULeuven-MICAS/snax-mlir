@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from math import prod
 
 from xdsl.dialects import arith, builtin, memref_stream
 from xdsl.dialects.builtin import i8, i32
@@ -169,9 +170,9 @@ class SNAXGEMMXAccelerator(
             # bypass simd and set all related values to 0
             bypassSIMD = c1.result  # bypass simd
             loop_bound = c0
-            csr0 = c0
-            csr1 = c0
-            csr2 = c0
+            csr0 = c0.result
+            csr1 = c0.result
+            csr2 = c0.result
 
             # get zero points for gemm
             assert isinstance(qmac.zp_lhs, BlockArgument)
@@ -189,17 +190,60 @@ class SNAXGEMMXAccelerator(
             ops_to_add.extend(bitlist)
             subtractions = bitlist[-1].results[0]
 
-        else:
+        elif isinstance(rescale := generic_op.body.block.first_op, kernel.RescaleOp):
+            # extract and compute correct value for csr's based on kernel rescale op
+            # set k to 1
+            knm.insert(
+                0, ((cst := arith.Constant.from_int_and_width(1, 32),), cst.result)
+            )
             # simd
+            bypassSIMD = c0.result
+            subtractions = c0.result
+
+            max_int = arith.Constant.from_int_and_width(rescale.max_int.value, i32)
+            min_int = arith.Constant.from_int_and_width(rescale.min_int.value, i32)
+            double_round = arith.Constant.from_int_and_width(
+                rescale.double_round.value, i32
+            )
+            shift = arith.Constant.from_int_and_width(rescale.shift.value, i32)
+            mult = arith.Constant.from_int_and_width(rescale.multiplier.value, i32)
+            zp_in = arith.Constant.from_int_and_width(rescale.input_zp.value, i32)
+            zp_out = arith.Constant.from_int_and_width(rescale.output_zp.value, i32)
+            ops_to_add.extend(
+                [max_int, min_int, double_round, shift, mult, zp_in, zp_out]
+            )
+
+            # force values that can be negative to 8 bits
+            cst255 = arith.Constant.from_int_and_width(255, 32)
+            max_int = arith.AndI(max_int, cst255)
+            min_int = arith.AndI(min_int, cst255)
+            zp_in = arith.AndI(zp_in, cst255)
+            zp_out = arith.AndI(zp_out, cst255)
+            ops_to_add.extend([cst255, max_int, min_int, zp_in, zp_out])
+
+            # bitpacking
+            ops_to_add.extend(
+                pack_bitlist([max_int, shift, zp_out, zp_in], [24, 16, 8, 0])
+            )
+            csr0 = ops_to_add[-1].results[0].op.results[0]
+            ops_to_add.extend(pack_bitlist([double_round, min_int], [8, 0]))
+            csr1 = ops_to_add[-1].results[0].op.results[0]
+            csr2 = mult.result
+
+            loop_bound = prod(x.data for x in op.stride_patterns.data[0].upper_bounds)
+            loop_bound = arith.Constant.from_int_and_width(loop_bound, i32)
+            ops_to_add.append(loop_bound)
+
+        else:
             raise NotImplementedError()
 
         return [
             *streamer_setup_vals,
             *knm,
             ([c0, c1, *ops_to_add], subtractions),  # subtractions
-            ([], csr0.result),  # csr0
-            ([], csr1.result),  # csr1
-            ([], csr2.result),  # csr2
+            ([], csr0),  # csr0
+            ([], csr1),  # csr1
+            ([], csr2),  # csr2
             ([], loop_bound.result),  # temporal_loop_bound
             ([], bypassSIMD),  # bypassSIMD
         ]
