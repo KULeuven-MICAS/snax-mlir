@@ -84,6 +84,9 @@ int main() {
     if (nerr != 0)
       snrt_mcycle();
 
-    return nerr;
+    if (nerr > 0)
+      return 1;
+
+    return 0;
   }
 }
