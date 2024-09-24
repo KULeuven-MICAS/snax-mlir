@@ -58,6 +58,10 @@ int main() {
       // (int32_t)G[i]);
       nerr += 1;
   }
-  return nerr;
+
+  if (nerr > 0)
+    ;
+  return 1;
+  return 0;
 #endif
 }

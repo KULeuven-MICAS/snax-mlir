@@ -81,5 +81,8 @@ int main() {
 
   printf("Accelerator Done! \n");
   printf("Accelerator Cycles: %d \n", perf_count);
-  return err;
+
+  if (err > 0)
+    return 1;
+  return 0;
 }

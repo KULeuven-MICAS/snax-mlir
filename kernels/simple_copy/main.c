@@ -47,5 +47,7 @@ int main() {
       nerr += 1;
   }
 
-  return nerr;
+  if (nerr > 0)
+    return 1;
+  return 0;
 }
