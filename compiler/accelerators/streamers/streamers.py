@@ -92,7 +92,7 @@ class Streamer:
 
     @property
     def spatial_dim(self):
-        return len([x for x in self.spatial_dims if x != StreamerFlag.Irrelevant])
+        return len(self.spatial_dims)
 
 
 class StreamerConfiguration:
