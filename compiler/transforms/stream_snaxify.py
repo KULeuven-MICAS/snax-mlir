@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, memref, memref_stream
-from xdsl.dialects.builtin import MemRefType, StringAttr
+from xdsl.dialects.builtin import FixedBitwidthType, MemRefType, StringAttr
 from xdsl.ir import Operation
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
@@ -136,6 +136,23 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 # simd case for gemmx, first operand maps to 4th streamer, second operand to 3rd
                 if operand == 0:
                     streamer = streamer_config.data.streamers[3]
+            spat_dim = streamer_config.data.spatial_dim()
+
+            temporal_strides = []
+            spatial_strides = []
+            upper_bounds = []
+
+            # First fill up the spatial strides, then temporal strides, back to front
+            for i in reversed(range(access_mem_map.num_dims)):
+                stride = access_mem_map.eval(
+                    generate_one_list(access_mem_map.num_dims, i), ()
+                )
+                if len(spatial_strides) < spat_dim:
+                    # keep filling up spatial strides
+                    #FIXME: provide more general solution for new spatial streamer_config
+                    # configuration
+                    assert isinstance(memref_type.element_type, FixedBitwidthType)
+                    spatial_strides.append(round(stride[0] / memref_type.element_type.size))
                 else:
                     streamer = streamer_config.data.streamers[2]
 
@@ -219,7 +236,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     snax_stream.StridePattern(
                         upper_bounds=snax_stride_patterns[3].upper_bounds,
                         temporal_strides=[0] * 3,
-                        spatial_strides=[0, 4, 32],
+                        spatial_strides=[0, 1, 8],
                     ),
                 )
 

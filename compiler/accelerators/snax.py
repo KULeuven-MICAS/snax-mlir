@@ -111,8 +111,28 @@ class SNAXStreamer(ABC):
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
 
-        # loop bound registers
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
+            # base pointers (low, high)
+            result.append(([], op.operands[operand]))
+            result.append(
+                ([c0 := arith.Constant.from_int_and_width(0, i32)], c0.result)
+            )
+
+            # spatial strides
+            spatial_strides = []
+            for dim, flag in enumerate(streamer.spatial_dims):
+                stride = op.stride_patterns.data[operand].spatial_strides.data[dim].data
+                if flag == StreamerFlag.Irrelevant:
+                    # Irrelevant spatial strides are not programmed
+                    assert stride == 0
+                    continue
+                cst = arith.Constant.from_int_and_width(stride, i32)
+                spatial_strides.append(([cst], cst.result))
+            #innermost spatial stride is not programmed
+            result.extend(spatial_strides[1:])
+
+
+            # loop bounds
             upper_bounds = op.stride_patterns.data[operand].upper_bounds.data
             # pad unused temporal bounds with 1's'
             upper_bounds = (
@@ -129,8 +149,7 @@ class SNAXStreamer(ABC):
                 # bounds should only be set once
                 break
 
-        # temporal strides
-        for operand, streamer in enumerate(self.streamer_config.data.streamers):
+            # temporal strides
             temporal_strides = op.stride_patterns.data[operand].temporal_strides.data
             # pad unused spatial strides with 0's
             temporal_strides = (
@@ -144,84 +163,40 @@ class SNAXStreamer(ABC):
                 cst = arith.Constant.from_int_and_width(stride.data, i32)
                 result.append(([cst], cst.result))
 
-        # spatial strides
-        for operand, streamer in enumerate(self.streamer_config.data.streamers):
-            strides = iter(op.stride_patterns.data[operand].spatial_strides.data)
-            stride: IntAttr | None = next(strides, None)
-            for dim, flag in enumerate(streamer.spatial_dims):
-                if flag == StreamerFlag.Irrelevant:
-                    # Irrelevant spatial strides are not programmed
-                    if stride and stride.data == 0:
-                        stride = next(strides, None)
-                    continue
-                assert stride is not None  # stride should be intattr here
-                cst = arith.Constant.from_int_and_width(stride, i32)
-                result.append(([cst], cst.result))
-                stride = next(strides, None)
-            assert stride is None  # all strides must be processed by this point
-
-        # input & output base pointers
-        result.extend(([], x) for x in op.inputs)
-        result.extend(([], x) for x in op.outputs)
-
         # transpose specifications
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             if streamer.type is StreamerType.ReaderTranspose:
-                # always program to 0 for now
-                c0 = arith.Constant.from_int_and_width(0, i32)
-                result.append(([c0], c0.result))
-                # in the current version of the streamer,
-                # transpose fields are bit packed together,
-                # so only one field for all transpose ops
-                # this should be fixed in the new streamer
-                break
+                # if we want to disable transpose, we obviously need to program
+                # a 1 to the transpose field (much logical)
+                # threrefore always program to 1
+                c1 = arith.Constant.from_int_and_width(1, i32)
+                result.append(([c1], c1.result))
 
         return result
 
     def get_streamer_setup_fields(self) -> Sequence[str]:
         result: list[str] = []
 
-        # loop bound registers
-        if not self.streamer_config.data.separate_bounds:
+        for name, streamer in zip(
+            self.streamer_names, self.streamer_config.data.streamers
+        ):
+            # base pointers
+            result.extend([f"{name}_ptr_low", f"{name}_ptr_high"])
+            # spatial strides
             result.extend(
                 [
-                    f"loop_bound_{i}"
-                    for i in range(self.streamer_config.data.temporal_dim())
+                    f"{name}_sstride_{i}"
+                    for i, flag in enumerate(streamer.spatial_dims)
+                    # Irrelevant Spatial Strides are not programmed as they are virtual
+                    if flag != StreamerFlag.Irrelevant
+                ][
+                    1: # innermost spatial stride is not programmed
                 ]
             )
-        else:
-            for name, streamer in zip(
-                self.streamer_names, self.streamer_config.data.streamers
-            ):
-                for i in range(streamer.temporal_dim):
-                    result.append(f"loop_bound_{name}_{i}")
-
-        # temporal strides
-        result.extend(
-            [
-                f"{name}_tstride_{i}"
-                for streamer, name in zip(
-                    self.streamer_config.data.streamers, self.streamer_names
-                )
-                for i in range(streamer.temporal_dim)
-            ]
-        )
-
-        # spatial strides
-        result.extend(
-            [
-                f"{name}_sstride_{i}"
-                for streamer, name in zip(
-                    self.streamer_config.data.streamers, self.streamer_names
-                )
-                for i, flag in enumerate(streamer.spatial_dims)
-                # Irrelevant Spatial Strides are not programmed as they are virtual
-                if flag != StreamerFlag.Irrelevant
-            ]
-        )
-
-        # base pointers
-        result.extend([f"{streamer}_ptr" for streamer in self.streamer_names])
+            # temporal bounds
+            result.extend([f"{name}_bound_{i}" for i in range(streamer.temporal_dim)])
+            # temporal strides
+            result.extend([f"{name}_tstride_{i}" for i in range(streamer.temporal_dim)])
 
         # transpose specifications
         for streamer, name in zip(
@@ -229,11 +204,6 @@ class SNAXStreamer(ABC):
         ):
             if streamer.type is StreamerType.ReaderTranspose:
                 result.append(f"{name}_transpose")
-                # in the current version of the streamer,
-                # transpose fields are bit packed together,
-                # so only one field for all transpose ops
-                # this should be fixed in the new streamer
-                break
 
         return result
 
