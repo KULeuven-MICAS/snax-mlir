@@ -2,7 +2,7 @@ import pathlib
 from io import StringIO
 
 from xdsl.builder import ImplicitBuilder
-from xdsl.dialects import arith, builtin, func, linalg, transform
+from xdsl.dialects import arith, builtin, func, linalg
 from xdsl.dialects.builtin import i8, i32
 from xdsl.ir import Block, Region
 from xdsl.printer import Printer
@@ -28,7 +28,9 @@ def create_tiled_matrix_multiply(k, m, n):
     """
 
     def get_2d_memref_type(typ, dim_one, dim_two, transpose=False):
-        layout = builtin.StridedLayoutAttr([1, dim_one]) if transpose else builtin.NoneAttr()
+        layout = (
+            builtin.StridedLayoutAttr([1, dim_one]) if transpose else builtin.NoneAttr()
+        )
         return builtin.MemRefType(typ, [dim_one, dim_two], layout=layout)
 
     input_types = [
@@ -79,10 +81,10 @@ if __name__ == "__main__":
     sizes = [
         [16, 16, 16],
         [32, 32, 32],
-#         [64, 64, 64],
-#         [128, 128, 128],
-#         [256, 256, 256],
-#         [512, 512, 512],
+        #         [64, 64, 64],
+        #         [128, 128, 128],
+        #         [256, 256, 256],
+        #         [512, 512, 512],
     ]
     for size in sizes:
         k, m, n = size

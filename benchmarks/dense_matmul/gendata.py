@@ -8,9 +8,7 @@ from util.gendata import create_data, create_header
 
 
 def create_test_data(n, m, k):
-    print(
-        f"Creating test data with n={n}, m={m}, k={k}"
-    )
+    print(f"Creating test data with n={n}, m={m}, k={k}")
     # Reset random seed for reproducible behavior
 
     np.random.seed(0)
@@ -22,12 +20,8 @@ def create_test_data(n, m, k):
     low_bound = -128
     high_bound = 127
 
-    A = np.random.randint(
-        low_bound, high_bound, size=A_size, dtype=np.dtype("int8")
-    )
-    B = np.random.randint(
-        low_bound, high_bound, size=B_size, dtype=np.dtype("int8")
-    )
+    A = np.random.randint(low_bound, high_bound, size=A_size, dtype=np.dtype("int8"))
+    B = np.random.randint(low_bound, high_bound, size=B_size, dtype=np.dtype("int8"))
 
     # Make sure the product is possible!
     assert A.shape[1] == B.shape[0]
