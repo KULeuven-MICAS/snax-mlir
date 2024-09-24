@@ -191,6 +191,7 @@ class SNAXGEMMXAccelerator(
             subtractions = bitlist[-1].results[0]
 
         elif isinstance(rescale := generic_op.body.block.first_op, kernel.RescaleOp):
+            # extract and compute correct value for csr's based on kernel rescale op
             # set k to 1
             knm.insert(
                 0, ((cst := arith.Constant.from_int_and_width(1, 32),), cst.result)
