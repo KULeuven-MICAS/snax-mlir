@@ -110,7 +110,7 @@ if __name__ == "__main__":
         with open(trace) as file:
             data = json.load(file)
         cycles = data[1]["cycles"]
-        ideal = round((k / 8) * (m / 8) * (n / 8))
+        ideal = round((k / 8 + 1) * (m / 8) * (n / 8))
         utilization = ideal / cycles
         output_report[bm.benchmark] = {
             "cycles": cycles,
