@@ -119,17 +119,10 @@ class SNAXStreamer(ABC):
             )
 
             # spatial strides
-            spatial_strides = []
             for dim, flag in enumerate(streamer.spatial_dims):
                 stride = op.stride_patterns.data[operand].spatial_strides.data[dim].data
-                if flag == StreamerFlag.Irrelevant:
-                    # Irrelevant spatial strides are not programmed
-                    assert stride == 0
-                    continue
                 cst = arith.Constant.from_int_and_width(stride, i32)
-                spatial_strides.append(([cst], cst.result))
-            # innermost spatial stride is not programmed
-            result.extend(spatial_strides[1:])
+                result.append(([cst], cst.result))
 
             # loop bounds
             upper_bounds = op.stride_patterns.data[operand].upper_bounds.data
@@ -144,9 +137,6 @@ class SNAXStreamer(ABC):
                     bound = 1
                 cst = arith.Constant.from_int_and_width(bound, i32)
                 result.append(([cst], cst.result))
-            if not self.streamer_config.data.separate_bounds:
-                # bounds should only be set once
-                break
 
             # temporal strides
             temporal_strides = op.stride_patterns.data[operand].temporal_strides.data
@@ -182,16 +172,7 @@ class SNAXStreamer(ABC):
             # base pointers
             result.extend([f"{name}_ptr_low", f"{name}_ptr_high"])
             # spatial strides
-            result.extend(
-                [
-                    f"{name}_sstride_{i}"
-                    for i, flag in enumerate(streamer.spatial_dims)
-                    # Irrelevant Spatial Strides are not programmed as they are virtual
-                    if flag != StreamerFlag.Irrelevant
-                ][
-                    1:  # innermost spatial stride is not programmed
-                ]
-            )
+            result.extend([f"{name}_sstride_{i}" for i in range(streamer.spatial_dim)])
             # temporal bounds
             result.extend([f"{name}_bound_{i}" for i in range(streamer.temporal_dim)])
             # temporal strides

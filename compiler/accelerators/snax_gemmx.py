@@ -25,27 +25,27 @@ default_streamer = StreamerConfiguration(
         Streamer(  # A
             StreamerType.ReaderTranspose,
             temporal_dims=("n", "n", "n", "n", "n", "n"),
-            spatial_dims=("n", "i", "n"),
+            spatial_dims=("n",),
         ),
         Streamer(  # B
             StreamerType.ReaderTranspose,
             temporal_dims=("n", "n", "n"),
-            spatial_dims=("n", "n", "i"),
+            spatial_dims=("n",),
         ),
         Streamer(  # D8
             StreamerType.Writer,
             temporal_dims=("r", "n", "n"),
-            spatial_dims=("i", "n", "n"),
+            spatial_dims=("n",),
         ),
         Streamer(  # C
             StreamerType.Reader,
             temporal_dims=("r", "n", "n"),
-            spatial_dims=("i", "n", "n"),
+            spatial_dims=("n",),
         ),
         Streamer(  # D32
             StreamerType.ReaderWriter,
             temporal_dims=("r", "n", "n"),
-            spatial_dims=("i", "n", "n"),
+            spatial_dims=("n",),
         ),
     ],
     separate_bounds=True,

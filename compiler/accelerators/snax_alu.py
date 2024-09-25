@@ -113,6 +113,12 @@ class SNAXAluAccelerator(
         ]
 
         return [
+            # streamer 1
+            # base pointer
+            (ptrs[0]),
+            ([c0], c0.result),
+            # spatial stride
+            ([c8], c8.result),
             # loop bound streamer
             (
                 [c0_index, dim_0, design_time_parallelism, loop_bound, loop_bound_i32],
@@ -120,18 +126,26 @@ class SNAXAluAccelerator(
             ),
             # temporal strides streamers
             ([c32], c32.result),
-            ([], c32.result),
-            ([], c32.result),
-            # spatial strides streamers
-            ([c8], c8.result),
-            ([], c8.result),
-            ([], c8.result),
-            # base pointers streamers
-            (ptrs[0]),
+            # streamer 2 base ptr
             (ptrs[1]),
+            ([], c0.result),
+            # spatial stride
+            ([], c8.result),
+            # loop bound
+            ([], loop_bound_i32.result),
+            # temporal stride
+            ([], c32.result),
+            # streamer 3 base ptr
             (ptrs[2]),
+            ([], c0.result),
+            # spatial stride
+            ([], c8.result),
+            # loop bound
+            ([], loop_bound_i32.result),
+            # temporal stride
+            ([], c32.result),
             # alu mode
-            ([c0], c0.result),
+            ([], c0.result),
             # alu iterations
             ([], loop_bound_i32.result),
         ]
