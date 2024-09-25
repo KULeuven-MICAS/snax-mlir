@@ -48,7 +48,6 @@ default_streamer = StreamerConfiguration(
             spatial_dims=("n",),
         ),
     ],
-    separate_bounds=True,
 )
 
 

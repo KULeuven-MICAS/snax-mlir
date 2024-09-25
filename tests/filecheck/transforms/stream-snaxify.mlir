@@ -67,4 +67,4 @@ memref_stream.streaming_region {
     "test.op"(%a, %b, %c) : (!stream.readable<i64>, !stream.readable<i64>, !stream.writable<i64>) -> ()
 }
 
-// CHECK: "stride_patterns" = [#snax_stream.stride_pattern<ub = [4], ts = [8], ss = [40]>, #snax_stream.stride_pattern<ub = [4], ts = [104], ss = [312]>, #snax_stream.stride_pattern<ub = [4], ts = [184], ss = [24]>]
+// CHECK: "stride_patterns" = [#snax_stream.stride_pattern<ub = [4], ts = [8], ss = [8]>, #snax_stream.stride_pattern<ub = [4], ts = [104], ss = [8]>, #snax_stream.stride_pattern<ub = [4], ts = [184], ss = [8]>]
