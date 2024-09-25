@@ -138,29 +138,44 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     streamer = streamer_config.data.streamers[3]
                 else:
                     streamer = streamer_config.data.streamers[2]
+            else:
+                streamer = streamer_config.data.streamers[operand]
 
-            spat_dim = streamer_config.data.spatial_dim()
-
-
-            temporal_strides = []
-            spatial_strides = []
-            upper_bounds = []
-
-            # First fill up the spatial strides, then temporal strides, back to front
-            for i in reversed(range(access_mem_map.num_dims)):
-                stride = access_mem_map.eval(
-                    generate_one_list(access_mem_map.num_dims, i), ()
+            # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)
+            access_iter = iter(
+                (
+                    access_mem_map.eval(
+                        generate_one_list(access_mem_map.num_dims, i), ()
+                    )[0],
+                    op.patterns.data[operand].ub.data[i].value.data,
                 )
-                if len(spatial_strides) < spat_dim:
-                    # keep filling up spatial strides
-                    #FIXME: provide more general solution for new spatial streamer_config
-                    # configuration
-                    assert isinstance(memref_type.element_type, FixedBitwidthType)
-                    spatial_strides.append(round(stride[0] / memref_type.element_type.size))
-                else:
-                    # filling up the temporal strides
-                    temporal_strides.append(stride[0])
-                    upper_bounds.append(op.patterns.data[operand].ub.data[i].value)
+                for i in reversed(range(access_mem_map.num_dims))
+            )
+
+            # Fetch the first stride
+            stride, bound = next(access_iter)
+
+            temporal_strides: list[int] = []
+            spatial_strides: list[int] = []
+            upper_bounds: list[int] = []
+
+            # fill up all spatial strides
+            for spatial_flag in streamer.spatial_dims:
+                assert stride is not None
+                if spatial_flag == StreamerFlag.Irrelevant and stride != 0:
+                    spatial_strides.append(0)
+                    continue
+                #FIXME: provide more general solution for new spatial streamer_config
+                # configuration, this works in all current cases but is not generally correct.
+                assert isinstance(memref_type.element_type, FixedBitwidthType)
+                spatial_strides.append(round(stride / memref_type.element_type.size))
+                stride, bound = next(access_iter, (None, None))
+
+            # remaining are temporal strides
+            while stride is not None and bound is not None:
+                temporal_strides.append(stride)
+                upper_bounds.append(bound)
+                stride, bound = next(access_iter, (None, None))
 
             # create the stride pattern for this operand
             snax_stride_pattern = snax_stream.StridePattern(
@@ -224,22 +239,28 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 # do not use new outputs
                 new_inputs.append(new_outputs.pop())
 
-                zero_pattern = snax_stream.StridePattern(
+                zero_pattern_1 = snax_stream.StridePattern(
                     upper_bounds=snax_stride_patterns[0].upper_bounds,
                     temporal_strides=[0] * len(snax_stride_patterns[0].upper_bounds),
-                    spatial_strides=[1, 8],
+                    spatial_strides=[1, 0, 8],
+                )
+
+                zero_pattern_2 = snax_stream.StridePattern(
+                    upper_bounds=snax_stride_patterns[0].upper_bounds,
+                    temporal_strides=[0] * len(snax_stride_patterns[0].upper_bounds),
+                    spatial_strides=[1, 8, 0],
                 )
 
                 # read zeros from tcdm (must make sure there are zeros at these addresses)
                 # in the new streamer this can be fixed with byte masking
-                snax_stride_patterns.insert(0, zero_pattern)
+                snax_stride_patterns.insert(0, zero_pattern_1)
                 new_inputs.insert(
                     0,
                     arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType()),
                 )
-                snax_stride_patterns.insert(0, zero_pattern)
+                snax_stride_patterns.insert(1, zero_pattern_2)
                 new_inputs.insert(
-                    0,
+                    1,
                     arith.Constant.from_int_and_width(0x1000_0080, builtin.IndexType()),
                 )
 
