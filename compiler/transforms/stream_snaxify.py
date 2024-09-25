@@ -136,7 +136,11 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 # simd case for gemmx, first operand maps to 4th streamer, second operand to 3rd
                 if operand == 0:
                     streamer = streamer_config.data.streamers[3]
+                else:
+                    streamer = streamer_config.data.streamers[2]
+
             spat_dim = streamer_config.data.spatial_dim()
+
 
             temporal_strides = []
             spatial_strides = []
@@ -154,43 +158,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     assert isinstance(memref_type.element_type, FixedBitwidthType)
                     spatial_strides.append(round(stride[0] / memref_type.element_type.size))
                 else:
-                    streamer = streamer_config.data.streamers[2]
-
-            else:
-                streamer = streamer_config.data.streamers[operand]
-
-            # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)
-            access_iter = iter(
-                (
-                    access_mem_map.eval(
-                        generate_one_list(access_mem_map.num_dims, i), ()
-                    )[0],
-                    op.patterns.data[operand].ub.data[i].value.data,
-                )
-                for i in reversed(range(access_mem_map.num_dims))
-            )
-
-            # Fetch the first stride
-            stride, bound = next(access_iter)
-
-            temporal_strides: list[int] = []
-            spatial_strides: list[int] = []
-            upper_bounds: list[int] = []
-
-            # fill up all spatial strides
-            for spatial_flag in streamer.spatial_dims:
-                assert stride is not None
-                if spatial_flag == StreamerFlag.Irrelevant and stride != 0:
-                    spatial_strides.append(0)
-                    continue
-                spatial_strides.append(stride)
-                stride, bound = next(access_iter, (None, None))
-
-            # remaining are temporal strides
-            while stride is not None and bound is not None:
-                temporal_strides.append(stride)
-                upper_bounds.append(bound)
-                stride, bound = next(access_iter, (None, None))
+                    # filling up the temporal strides
+                    temporal_strides.append(stride[0])
+                    upper_bounds.append(op.patterns.data[operand].ub.data[i].value)
 
             # create the stride pattern for this operand
             snax_stride_pattern = snax_stream.StridePattern(
