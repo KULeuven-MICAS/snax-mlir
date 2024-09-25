@@ -128,9 +128,8 @@ class SNAXStreamer(ABC):
                     continue
                 cst = arith.Constant.from_int_and_width(stride, i32)
                 spatial_strides.append(([cst], cst.result))
-            #innermost spatial stride is not programmed
+            # innermost spatial stride is not programmed
             result.extend(spatial_strides[1:])
-
 
             # loop bounds
             upper_bounds = op.stride_patterns.data[operand].upper_bounds.data
@@ -190,7 +189,7 @@ class SNAXStreamer(ABC):
                     # Irrelevant Spatial Strides are not programmed as they are virtual
                     if flag != StreamerFlag.Irrelevant
                 ][
-                    1: # innermost spatial stride is not programmed
+                    1:  # innermost spatial stride is not programmed
                 ]
             )
             # temporal bounds

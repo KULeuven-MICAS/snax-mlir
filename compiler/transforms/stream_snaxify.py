@@ -165,7 +165,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 if spatial_flag == StreamerFlag.Irrelevant and stride != 0:
                     spatial_strides.append(0)
                     continue
-                #FIXME: provide more general solution for new spatial streamer_config
+                # FIXME: provide more general solution for new spatial streamer_config
                 # configuration, this works in all current cases but is not generally correct.
                 assert isinstance(memref_type.element_type, FixedBitwidthType)
                 spatial_strides.append(round(stride / memref_type.element_type.size))
