@@ -12,7 +12,7 @@ from xdsl.printer import Printer
 from util.snax_benchmark import SNAXBenchmark
 
 
-def create_tiled_matrix_multiply(k, m, n):
+def create_matrix_multiply(k, m, n):
     """
     Generate IR in the form of:
     ```
@@ -66,7 +66,7 @@ def write_module_to_file(module, file):
 
 
 def generate_tiled_benchmark(m, n, k) -> SNAXBenchmark:
-    module = create_tiled_matrix_multiply(k, m, n)
+    module = create_matrix_multiply(k, m, n)
     write_module_to_file(module, "generated.mlir")
     binary = "generated.x"
     bm = SNAXBenchmark(
