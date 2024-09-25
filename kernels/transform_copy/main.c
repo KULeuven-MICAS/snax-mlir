@@ -60,5 +60,5 @@ int main() {
     }
   }
 
-  return nerr;
+  return nerr != 0;
 }

@@ -57,5 +57,5 @@ int main() {
       nerr += test_data[i] - memrefA.aligned_data[i];
     }
   }
-  return nerr;
+  return nerr != 0;
 }
