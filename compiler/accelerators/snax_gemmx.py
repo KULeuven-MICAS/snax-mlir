@@ -43,7 +43,7 @@ default_streamer = StreamerConfiguration(
             spatial_dims=("n",),
         ),
         Streamer(  # D32
-            StreamerType.ReaderWriter,
+            StreamerType.Writer,
             temporal_dims=("r", "n", "n"),
             spatial_dims=("n",),
         ),

@@ -12,8 +12,6 @@ class StreamerType(StrEnum):
     ReaderTranspose = "rt"
     # Streamer with write capabilities
     Writer = "w"
-    # Streamer with read and write capabilities
-    ReaderWriter = "rw"
 
 
 class StreamerFlag(StrEnum):
