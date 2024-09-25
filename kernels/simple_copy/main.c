@@ -47,5 +47,5 @@ int main() {
       nerr += 1;
   }
 
-  return err != 0;
+  return nerr != 0;
 }
