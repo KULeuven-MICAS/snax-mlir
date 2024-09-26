@@ -139,6 +139,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     # gemm
                     template_bounds = (None, None, None, 8, 8, 8)
                 else:
+                    # simd only
                     template_bounds = (None, None, 8, 8)
 
             # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)

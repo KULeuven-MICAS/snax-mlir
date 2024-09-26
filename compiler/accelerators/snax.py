@@ -155,9 +155,9 @@ class SNAXStreamer(ABC):
         # transpose specifications
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             if streamer.type is StreamerType.ReaderTranspose:
-                # if we want to disable transpose, we obviously need to program
-                # a 1 to the transpose field (much logical)
-                # threrefore always program to 1
+                # if we want to disable transpose, we need
+                # a 1 to the transpose field, as it is an
+                # extension bypass signal
                 c1 = arith.Constant.from_int_and_width(1, i32)
                 result.append(([c1], c1.result))
 
