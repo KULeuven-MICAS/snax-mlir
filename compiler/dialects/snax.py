@@ -173,13 +173,6 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
         # snax.streamer_config {optional_properties} <r[temp=n-n-n-n-r, spat=n-i],
         # r[temp=n-n-n, spat=i-n], w[temp=r-n-n, spat=n-n]>
 
-        separate_bounds: bool = False
-
-        if parser.parse_optional_punctuation("{"):
-            parser.parse_keyword("separate_bounds")
-            parser.parse_punctuation("}")
-            separate_bounds = True
-
         with parser.in_angle_brackets():
             streamers: Sequence[Streamer] = []
 
@@ -211,7 +204,7 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
                 if not parser.parse_optional_punctuation(","):
                     break
 
-            return StreamerConfiguration(streamers, separate_bounds)
+            return StreamerConfiguration(streamers)
 
     def print_parameter(self, printer: Printer) -> None:
         # print a streamer config in the following format:
@@ -223,8 +216,7 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
             f"{streamer.type.value}[temp={'-'.join(streamer.temporal_dims)}, spat={'-'.join(streamer.spatial_dims)}]"
             for streamer in self.data.streamers
         ]
-        option_string = " {separate_bounds} " if self.data.separate_bounds else ""
-        printer.print_string(f"{option_string}<{', '.join(streamer_strings)}>")
+        printer.print_string(f"<{', '.join(streamer_strings)}>")
 
 
 Snax = Dialect(

@@ -15,7 +15,6 @@ from xdsl.pattern_rewriter import (
 )
 
 from compiler.accelerators import find_accelerator_op
-from compiler.accelerators.streamers.streamers import StreamerFlag
 from compiler.dialects import snax_stream
 from compiler.dialects.snax import StreamerConfigurationAttr
 
@@ -127,20 +126,21 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 )
 
             # Get the streamer
-            # FIXME: some hardcoded fix because there is no system yet to map a specific operand
-            # to a specific streamer for unused operands in the gemmx case
-            if (
-                acc_op.name_prop.root_reference.data == "snax_gemmx"
-                and len(op.inputs) == 1
-            ):
-                # simd case for gemmx, first operand maps to 4th streamer, second operand to 3rd
-                if operand == 0:
-                    streamer = streamer_config.data.streamers[3]
+            # FIXME: this is code copied from schedule memref linalg,
+            # move this to accelerator definitions to avoid code duplication
+            acc_str = acc_op.name_prop.root_reference.data
+            template_bounds: tuple[int | None, ...] = ()
+            if acc_str == "snax_alu":
+                template_bounds = (None, 4)
+            elif acc_str == "snax_gemm":
+                template_bounds = (None, None, None, 8, 8, 8)
+            elif acc_str == "snax_gemmx":
+                if len(op.inputs) > 1:
+                    # gemm
+                    template_bounds = (None, None, None, 8, 8, 8)
                 else:
-                    streamer = streamer_config.data.streamers[2]
-
-            else:
-                streamer = streamer_config.data.streamers[operand]
+                    # simd only
+                    template_bounds = (None, None, 8, 8)
 
             # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)
             access_iter = iter(
@@ -161,12 +161,10 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             upper_bounds: list[int] = []
 
             # fill up all spatial strides
-            for spatial_flag in streamer.spatial_dims:
-                assert stride is not None
-                if spatial_flag == StreamerFlag.Irrelevant and stride != 0:
-                    spatial_strides.append(0)
-                    continue
-                spatial_strides.append(stride)
+            for _ in [x for x in template_bounds if x is not None]:
+                # FIXME: provide more general solution for new spatial streamer_config
+                # configuration, this works in all current cases and layouts but is far from generally correct.
+                spatial_strides = [8]
                 stride, bound = next(access_iter, (None, None))
 
             # remaining are temporal strides
@@ -198,7 +196,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
         if acc_op.name_prop.root_reference.data == "snax_gemmx":
             empty_pattern = snax_stream.StridePattern(
-                upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0] * 3
+                upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0]
             )
             if len(snax_stride_patterns) == 3:
                 # gemm
@@ -219,7 +217,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     snax_stream.StridePattern(
                         upper_bounds=snax_stride_patterns[3].upper_bounds,
                         temporal_strides=[0] * 3,
-                        spatial_strides=[0, 4, 32],
+                        spatial_strides=[8],
                     ),
                 )
 
@@ -240,7 +238,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 zero_pattern = snax_stream.StridePattern(
                     upper_bounds=snax_stride_patterns[0].upper_bounds,
                     temporal_strides=[0] * len(snax_stride_patterns[0].upper_bounds),
-                    spatial_strides=[1, 8],
+                    spatial_strides=[8],
                 )
 
                 # read zeros from tcdm (must make sure there are zeros at these addresses)
@@ -250,9 +248,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     0,
                     arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType()),
                 )
-                snax_stride_patterns.insert(0, zero_pattern)
+                snax_stride_patterns.insert(1, zero_pattern)
                 new_inputs.insert(
-                    0,
+                    1,
                     arith.Constant.from_int_and_width(0x1000_0080, builtin.IndexType()),
                 )
 
