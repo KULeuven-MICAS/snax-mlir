@@ -1,64 +1,48 @@
-import os
-from os.path import join
+import re
 
 import pandas as pd
-from vcd.reader import TokenKind, VarDecl, tokenize
+from vcd.reader import ScalarChange, TokenKind, VarDecl, VectorChange, tokenize
 
 
 def parse_vcd_to_df(vcd_file: str) -> pd.DataFrame:
-
-    time = 0
-
-    identifiers = dict()
-    current_frame = dict()
+    identifiers: dict[str, str] = dict()
+    current_frame: dict[str, int | str] = dict()
 
     clock_id = None
 
     frames = []
 
-    with open(vcd_file, 'rb') as f:
+    patterns = [
+        r"clock",  # clock
+        r"^io_data_tcdm_req_\d+_.+$",  # all tcdm requests
+    ]
 
-        tokens = tokenize(f)
-        for token in tokens:
-
-            # unused tokens
-            if token.kind == TokenKind.DATE:
-                continue
-            elif token.kind == TokenKind.VERSION:
-                continue
-            elif token.kind == TokenKind.COMMENT:
-                continue
-            elif token.kind == TokenKind.TIMESCALE:
-                continue
-            elif token.kind == TokenKind.SCOPE:
-                continue
-            elif token.kind == TokenKind.COMMENT:
-                continue
-            elif token.kind == TokenKind.UPSCOPE:
-                continue
-            elif token.kind == TokenKind.DUMPON:
-                continue
-            elif token.kind == TokenKind.DUMPOFF:
-                continue
-            elif token.kind == TokenKind.ENDDEFINITIONS:
-                continue
-            elif token.kind == TokenKind.DUMPVARS:
-                continue
-
-
-            elif token.kind == TokenKind.VAR:
+    with open(vcd_file, "rb") as f:
+        for token in tokenize(f):
+            if token.kind == TokenKind.VAR:
+                # variable declaration
+                # declares variable id_code to its reference
                 assert isinstance(token.data, VarDecl)
+
+                # value must match one of the patterns
+                if not any(
+                    [re.match(pattern, token.data.reference) for pattern in patterns]
+                ):
+                    continue
                 identifiers[token.data.id_code] = token.data.reference
                 current_frame[token.data.id_code] = 0
 
-                if token.data.reference == 'clock':
+                if token.data.reference == "clock":
                     clock_id = token.data.id_code
 
-            elif token.kind == TokenKind.CHANGE_TIME:
-                # print(f'change time fron {time} to {token.data}')
-                time = token.data
-
             elif token.kind == TokenKind.CHANGE_SCALAR:
+                # scalar change of variable
+                assert isinstance(token.data, ScalarChange)
+
+                # only save tracking values
+                if token.data.id_code not in identifiers:
+                    continue
+
                 current_frame[token.data.id_code] = int(token.data.value)
 
                 if token.data.id_code == clock_id and int(token.data.value) == 1:
@@ -67,14 +51,18 @@ def parse_vcd_to_df(vcd_file: str) -> pd.DataFrame:
                     frames.append(current_frame.copy())
 
             elif token.kind == TokenKind.CHANGE_VECTOR:
+                # vector change of variable
+                assert isinstance(token.data, VectorChange)
+
+                # only save tracking values
+                if token.data.id_code not in identifiers:
+                    continue
                 current_frame[token.data.id_code] = token.data.value
 
-            else:
-                pass
-
+        breakpoint()
 
     # create pandas dataframe from frames
-    df = pd.DataFrame(frames, columns = frames[0].keys())
+    df = pd.DataFrame(frames, columns=frames[0].keys())
     df = df.rename(columns=identifiers)
 
     return df
