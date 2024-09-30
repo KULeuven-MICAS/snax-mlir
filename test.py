@@ -257,4 +257,4 @@ ax.set_aspect('auto')
 plt.tight_layout()
 
 # Display the plot
-plt.savefig('conflicts.pdf')
+plt.savefig('banking_conflicts.pdf')

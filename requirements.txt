@@ -6,3 +6,4 @@ xdsl @ git+https://github.com/xdslproject/xdsl.git@0d7eae3a1c9ee128986d6729ffc1d
 tensorflow-cpu==2.15.0
 pyvcd
 pandas
+matplotlib
