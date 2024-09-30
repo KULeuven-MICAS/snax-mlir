@@ -154,9 +154,9 @@ class SNAXStreamer(ABC):
 
             # channel mask option
             if StreamerOpts.HasChannelMask in streamer.opts:
-                # default to 32b111...111 for now
-                cfull = arith.Constant.from_int_and_width((1 << 32) - 1, i32)
-                result.append(([cfull], cfull.result))
+                # default to 32b111...111 (=-1) for now
+                n1 = arith.Constant.from_int_and_width(-1, i32)
+                result.append(([n1], n1.result))
 
         # transpose specifications
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
