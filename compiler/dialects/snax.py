@@ -37,6 +37,7 @@ from compiler.accelerators.streamers import (
     StreamerFlag,
     StreamerType,
 )
+from compiler.accelerators.streamers.streamers import StreamerOpts
 from compiler.util.memref_descriptor import LLVMMemrefDescriptor
 
 
@@ -181,6 +182,15 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
                 streamer_type: StreamerType = parser.parse_str_enum(StreamerType)
 
                 parser.parse_punctuation("[")
+
+                # Determine streamer options
+                opts = []
+                if parser.parse_optional_keyword("opts"):
+                    parser.parse_punctuation("=")
+                    while not parser.parse_optional_punctuation(","):
+                        opts.append(parser.parse_str_enum(StreamerOpts))
+                        parser.parse_optional_punctuation("-")
+
                 parser.parse_keyword("temp")
                 parser.parse_punctuation("=")
 
@@ -199,7 +209,9 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
                     spatial_dims.append(parser.parse_str_enum(StreamerFlag))
                     parser.parse_optional_punctuation("-")
 
-                streamers.append(Streamer(streamer_type, temporal_dims, spatial_dims))
+                streamers.append(
+                    Streamer(streamer_type, temporal_dims, spatial_dims, opts)
+                )
 
                 if not parser.parse_optional_punctuation(","):
                     break
@@ -213,7 +225,10 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
         # r[temp=n-n-n, spat=i-n], w[temp=r-n-n, spat=n-n]>
 
         streamer_strings = [
-            f"{streamer.type.value}[temp={'-'.join(streamer.temporal_dims)}, spat={'-'.join(streamer.spatial_dims)}]"
+            f"{streamer.type.value}["
+            + (f"opts={'-'.join(streamer.opts)}, " if streamer.opts else "")
+            + f"temp={'-'.join(streamer.temporal_dims)}, "
+            + f"spat={'-'.join(streamer.spatial_dims)}]"
             for streamer in self.data.streamers
         ]
         printer.print_string(f"<{', '.join(streamer_strings)}>")
