@@ -44,6 +44,7 @@ default_streamer = StreamerConfiguration(
             StreamerType.Reader,
             temporal_dims=("r", "n", "n"),
             spatial_dims=("n",),
+            opts=(StreamerOpts.HasChannelMask,),
         ),
         Streamer(  # D32
             StreamerType.Writer,
@@ -80,12 +81,14 @@ class SNAXGEMMXAccelerator(
             "M",
             # subtractions: zp_b (i8) | zp_a (i8)
             "subtractions",
-            # csr0: max_int (i8) | shift (i8) | out_zp (i8) | in_zp (i8)
+            # csr0: min_int (i8) | max_int (i8) | out_zp (i8) | in_zp (i8)
             "csr0",
-            # csr1: double_round (i8) | min_int (i8)
+            # csr1: double_round (i8)
             "csr1",
-            # csr2: multiplier (i32)
-            "csr2",
+            # 8 separate shift values
+            *(f"shift_{i}" for i in range(2)),
+            # 8 separate mult values
+            *(f"mult_{i}" for i in range(8)),
             "temporal_loop_bound",
             "bypassSIMD",
         )
@@ -113,12 +116,13 @@ class SNAXGEMMXAccelerator(
                 "subtractions": addr_next + 3,
                 "csr0": addr_next + 4,
                 "csr1": addr_next + 5,
-                "csr2": addr_next + 6,
-                "temporal_loop_bound": addr_next + 7,
-                "bypassSIMD": addr_next + 8,
+                **{f"shift_{i}": addr_next + 6 + i for i in range(2)},
+                **{f"mult_{i}": addr_next + 8 + i for i in range(8)},
+                "temporal_loop_bound": addr_next + 16,
+                "bypassSIMD": addr_next + 17,
             },
-            {**streamer_launch, "launch_gemmx": addr_next + 9},
-            addr_next + 9,
+            {**streamer_launch, "launch_gemmx": addr_next + 18},
+            addr_next + 18,
         )
         op.attributes["streamer_config"] = self.streamer_config
         return op
@@ -174,7 +178,8 @@ class SNAXGEMMXAccelerator(
             loop_bound = c0
             csr0 = c0.result
             csr1 = c0.result
-            csr2 = c0.result
+            shift_vals = (c0.result for _ in range(2))
+            mult_vals = (c0.result for _ in range(8))
 
             # get zero points for gemm
             assert isinstance(qmac.zp_lhs, BlockArgument)
@@ -225,12 +230,17 @@ class SNAXGEMMXAccelerator(
 
             # bitpacking
             ops_to_add.extend(
-                pack_bitlist([max_int, shift, zp_out, zp_in], [24, 16, 8, 0])
+                pack_bitlist([min_int, max_int, zp_out, zp_in], [24, 16, 8, 0])
             )
             csr0 = ops_to_add[-1].results[0].op.results[0]
-            ops_to_add.extend(pack_bitlist([double_round, min_int], [8, 0]))
-            csr1 = ops_to_add[-1].results[0].op.results[0]
-            csr2 = mult.result
+            csr1 = double_round.result
+
+
+            shift_bitlist = list(pack_bitlist((shift,) * 4, (24, 16, 8, 0)))
+            ops_to_add.extend(shift_bitlist)
+
+            shift_vals = (shift_bitlist[-1].results[0] for _ in range(2))
+            mult_vals = (mult.result for _ in range(8))
 
             loop_bound = prod(x.data for x in op.stride_patterns.data[0].upper_bounds)
             loop_bound = arith.Constant.from_int_and_width(loop_bound, i32)
@@ -245,7 +255,8 @@ class SNAXGEMMXAccelerator(
             ([c0, c1, *ops_to_add], subtractions),  # subtractions
             ([], csr0),  # csr0
             ([], csr1),  # csr1
-            ([], csr2),  # csr2
+            *(([], x) for x in shift_vals),
+            *(([], x) for x in mult_vals),
             ([], loop_bound.result),  # temporal_loop_bound
             ([], bypassSIMD),  # bypassSIMD
         ]
