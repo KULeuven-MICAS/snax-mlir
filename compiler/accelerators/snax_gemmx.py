@@ -17,20 +17,23 @@ from compiler.accelerators.streamers import (
     StreamerConfiguration,
     StreamerType,
 )
+from compiler.accelerators.streamers.streamers import StreamerOpts
 from compiler.dialects import accfg, snax_stream
 from compiler.util.pack_bitlist import pack_bitlist
 
 default_streamer = StreamerConfiguration(
     [
         Streamer(  # A
-            StreamerType.ReaderTranspose,
+            StreamerType.Reader,
             temporal_dims=("n", "n", "n", "n", "n", "n"),
             spatial_dims=("n",),
+            opts=(StreamerOpts.HasTranspose,),
         ),
         Streamer(  # B
-            StreamerType.ReaderTranspose,
+            StreamerType.Reader,
             temporal_dims=("n", "n", "n"),
             spatial_dims=("n",),
+            opts=(StreamerOpts.HasTranspose,),
         ),
         Streamer(  # D8
             StreamerType.Writer,

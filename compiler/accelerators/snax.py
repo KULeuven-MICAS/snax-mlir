@@ -9,7 +9,7 @@ from xdsl.ir import Operation, SSAValue
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.streamers import StreamerConfiguration
-from compiler.accelerators.streamers.streamers import StreamerFlag, StreamerType
+from compiler.accelerators.streamers.streamers import StreamerFlag, StreamerOpts
 from compiler.dialects import accfg
 from compiler.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
 
@@ -152,9 +152,15 @@ class SNAXStreamer(ABC):
                 cst = arith.Constant.from_int_and_width(stride.data, i32)
                 result.append(([cst], cst.result))
 
+            # channel mask option
+            if StreamerOpts.HasChannelMask in streamer.opts:
+                # default to 32b111...111 for now
+                cfull = arith.Constant.from_int_and_width((1 << 32) - 1, i32)
+                result.append(([cfull], cfull.result))
+
         # transpose specifications
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
-            if streamer.type is StreamerType.ReaderTranspose:
+            if StreamerOpts.HasTranspose in streamer.opts:
                 # if we want to disable transpose, we need
                 # a 1 to the transpose field, as it is an
                 # extension bypass signal
@@ -177,12 +183,15 @@ class SNAXStreamer(ABC):
             result.extend([f"{name}_bound_{i}" for i in range(streamer.temporal_dim)])
             # temporal strides
             result.extend([f"{name}_tstride_{i}" for i in range(streamer.temporal_dim)])
+            # options
+            if StreamerOpts.HasChannelMask in streamer.opts:
+                result.append(f"{name}_channel_mask")
 
         # transpose specifications
         for streamer, name in zip(
             self.streamer_config.data.streamers, self.streamer_names
         ):
-            if streamer.type is StreamerType.ReaderTranspose:
+            if StreamerOpts.HasTranspose in streamer.opts:
                 result.append(f"{name}_transpose")
 
         return result

@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import Literal
 
 from typing_extensions import deprecated
@@ -8,10 +8,15 @@ from xdsl.utils.str_enum import StrEnum
 class StreamerType(StrEnum):
     # Streamer with read capabilities
     Reader = "r"
-    # Streamer with read and transpose read capabilities
-    ReaderTranspose = "rt"
     # Streamer with write capabilities
     Writer = "w"
+
+
+class StreamerOpts(StrEnum):
+    # Streamer with transpose capabilities
+    HasTranspose = "t"
+    # Streamer with channel mask capabilities
+    HasChannelMask = "c"
 
 
 class StreamerFlag(StrEnum):
@@ -54,11 +59,14 @@ class Streamer:
     temporal_dims: tuple[StreamerFlag, ...]
     spatial_dims: tuple[StreamerFlag, ...]
 
+    opts: set[StreamerOpts]
+
     def __init__(
         self,
         type: StreamerType,
         temporal_dims: Sequence[StreamerFlag | Literal["n", "i", "r"]],
         spatial_dims: Sequence[StreamerFlag | Literal["n", "i", "r"]],
+        opts: Iterable[StreamerOpts] = [],
     ) -> None:
         self.type = type
         temporal_dims = [
@@ -69,6 +77,7 @@ class Streamer:
             f if isinstance(f, StreamerFlag) else StreamerFlag(f) for f in spatial_dims
         ]
         self.spatial_dims = tuple(spatial_dims)
+        self.opts = set(opts)
 
     @classmethod
     def from_dim(
