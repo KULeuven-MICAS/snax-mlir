@@ -6,8 +6,8 @@ from util.tracing.trace_to_perfetto import process_traces
 
 
 class SNAXBenchmark:
-    input_file = "trace_hart_{hart}.trace.json"
-    trace_file = "trace_hart_{hart}.dasm"
+    input_file = "trace_chip_00_hart_{hart}.trace.json"
+    trace_file = "trace_chip_00_hart_{hart}.dasm"
 
     def __init__(
         self,
