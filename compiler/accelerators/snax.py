@@ -155,7 +155,7 @@ class SNAXStreamer(ABC):
             # channel mask option
             if StreamerOpts.HasChannelMask in streamer.opts:
                 # default to 32b111...111 (=-1) for now
-                n1 = arith.Constant.from_int_and_width(- 1, i32)
+                n1 = arith.Constant.from_int_and_width(-1, i32)
                 # breakpoint()
                 result.append(([n1], n1.result))
 

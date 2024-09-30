@@ -235,7 +235,6 @@ class SNAXGEMMXAccelerator(
             csr0 = ops_to_add[-1].results[0].op.results[0]
             csr1 = double_round.result
 
-
             shift_bitlist = list(pack_bitlist((shift,) * 4, (24, 16, 8, 0)))
             ops_to_add.extend(shift_bitlist)
 
