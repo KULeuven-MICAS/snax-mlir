@@ -150,7 +150,7 @@ MLIROPTFLAGS += --reconcile-unrealized-casts
 	$(DASM) < $< | $(GENTRACE) --permissive -d $*.trace.json > $*.trace.txt
 
 define get_trace_targets
-	$(addsuffix .trace.txt, $(basename $(shell find $(1) -name 'trace_hart_*.dasm')))
+	$(addsuffix .trace.txt, $(basename $(shell find $(1) -name 'trace_chip_00_hart_*.dasm')))
 endef
 
 traces: $(call get_trace_targets,.)
