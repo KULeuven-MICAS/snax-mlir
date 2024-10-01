@@ -66,12 +66,12 @@ def write_module_to_file(module, file):
         output_file.write(output.getvalue())
 
 
-def generate_tiled_benchmark(m, n, k) -> SNAXBenchmark:
+def generate_dense_benchmark(m, n, k) -> SNAXBenchmark:
     module = create_matrix_multiply(k, m, n)
     write_module_to_file(module, "generated.mlir")
     binary = "generated.x"
     bm = SNAXBenchmark(
-        kernel=f"tiled_matmul_generated_{k}x{n}x{m}",
+        kernel=f"dense_matmul_generated_{k}x{n}x{m}",
         binary=binary,
         src_dir=str(pathlib.Path.cwd()),
         export_dir=str(pathlib.Path.cwd()),
@@ -116,7 +116,7 @@ def output_log_benchmark(benchmark_name: str, utilization: dict[str, int]) -> st
 
 if __name__ == "__main__":
     """Runs the gendata.py script with specified arguments."""
-    selected_dims = [32]
+    selected_dims = [64]
 
     sizes = list(itertools.product(selected_dims, repeat=3))
 
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     for size in sizes:
         k, m, n = size
         folder = f"test_generated_{k}x{m}x{m}"
-        bm = generate_tiled_benchmark(k, m, n)
+        bm = generate_dense_benchmark(k, m, n)
         bm.clean()
         bm.build(
             build_opts=[
