@@ -41,7 +41,7 @@ jobs:
           git pull
           git add docs/benchmarks/${{ matrix.kernel}}/output
           git commit -m "Update benchmark files and images"
-          git push --force-with-lease origin gh-pages
+          git push origin gh-pages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     strategy:
