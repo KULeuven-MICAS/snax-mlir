@@ -27,7 +27,7 @@ jobs:
       - name: Checkout gh-pages branch
         run: |
           git config --global --add safe.directory /__w/snax-mlir/snax-mlir
-          git config --local user.name "Joren Bleep Bloop"
+          git config --local user.name "Joren Dumoulin"
           git config --local user.email "joren.dumoulin@kuleuven.be"
           git fetch origin gh-pages
           git checkout gh-pages
