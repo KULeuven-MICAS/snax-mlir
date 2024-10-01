@@ -81,9 +81,9 @@ def generate_tiled_benchmark(m, n, k) -> SNAXBenchmark:
 
 
 def output_log() -> str:
-    result = "# Dense Matmul Benchmark Results\n"
+    result = "# Dense Matmul Benchmark Results\n\n"
     dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    result += f"This test was run at {dt_string}\n"
+    result += f"This test was run at {dt_string}\n\n"
     result += "| benchmark | cycles | ideal | utilization |\n"
     result += "| --- | --- | --- | --- |\n"
     avg_utilization = 0
@@ -95,7 +95,6 @@ def output_log() -> str:
         result += f"| {output_report[benchmark]['utilization']} | \n"
         avg_utilization += output_report[benchmark]["utilization"]
         avg_n += 1
-    result += "| --- | --- | --- | --- |\n"
     result += "| average | | |"
     result += f"{avg_utilization/avg_n} |\n"
     return result
@@ -103,17 +102,15 @@ def output_log() -> str:
 
 def output_log_benchmark(benchmark_name: str, utilization: dict[str, int]) -> str:
     result: str = ""
-    result += f"# results for {benchmark_name}\n"
+    result += f"# results for {benchmark_name}\n\n"
     dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    result += f"This test was run at {dt_string}\n"
-    result += f"Utilization: {utilization['utilization']}\n"
-    result += (
-        f" ({utilization['ideal']} cycles ideal, {utilization['cycles']} cycles real)\n"
-    )
-    result += "[view banking conflicts plot](figures/banking_conflicts.pdf)\n"
-    result += f"[dowload logs and binaries that generated this result]({benchmark_name}_results.tar.gz)\n"
-    result += "![conflicts_bank](figures/nb_of_stalls_per_bank.png)\n"
-    result += "![conflicts_port](figures/nb_of_stalls_per_port.png)\n"
+    result += f"This test was run at {dt_string}\n\n"
+    result += f"Utilization: {utilization['utilization']}\n\n"
+    result += f" ({utilization['ideal']} cycles ideal, {utilization['cycles']} cycles real)\n\n"
+    result += "[view banking conflicts plot](figures/banking_conflicts.pdf)\n\n"
+    result += f"[dowload logs and binaries that generated this result]({benchmark_name}_results.tar.gz)\n\n"
+    result += "![conflicts_bank](figures/nb_of_stalls_per_bank.png)\n\n"
+    result += "![conflicts_port](figures/nb_of_stalls_per_port.png)\n\n"
     return result
 
 
