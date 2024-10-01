@@ -18,6 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
+          persist-credentials: false
       - name: Install snax-mlir
         run: python3 -m pip install '-e.[dev,viz]'
       - name: Run benchmarks
