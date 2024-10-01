@@ -15,9 +15,13 @@ dev = [
     "filecheck==1.0.0",
     "lit",
     "numpy<2.0.0",
+    "pytest",
+]
+
+# All optional dependencies for graphical plotting
+viz = [
     "pandas",
     "matplotlib",
-    "pytest",
 ]
 
 # Dependencies for neural network compilation
