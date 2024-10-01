@@ -144,8 +144,6 @@ def plot_banking_conflicts(df, output_path):
     """
     Creates a plot showing bank fires and stalls over time.
     """
-    # num_cycles = 140
-    # start_cycle = 3650
     num_banks = 32
     events = []
 
@@ -186,8 +184,7 @@ def plot_banking_conflicts(df, output_path):
             events.append(event)
 
     if not events:
-        print("No events found for plotting banking conflicts.")
-        return
+        raise RuntimeError("No events found for plotting banking conflicts.")
 
     df_events = pd.DataFrame(events)
 
