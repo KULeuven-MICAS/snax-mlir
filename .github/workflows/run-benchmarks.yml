@@ -38,7 +38,7 @@ jobs:
       - name: Commit and push benchmark files
         run: |
           git pull
-          git add docs/benchmarks/${{ matrix.kernel}}/output
+          git add docs/benchmarks/${{ matrix.kernel}}
           git commit -m "Update benchmark files and images"
           git push origin gh-pages
         env:
