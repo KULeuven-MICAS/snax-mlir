@@ -34,6 +34,7 @@ jobs:
         run: |
           rm -rf docs/benchmarks/${{ matrix.kernel }}
           mkdir docs/benchmarks/${{ matrix.kernel }}
+          mkdir docs/benchmarks/${{ matrix.kernel }}/output
           mv benchmarks/${{ matrix.kernel}}/output/* docs/benchmarks/${{ matrix.kernel }}/output/
       - name: Commit and push benchmark files
         run: |
