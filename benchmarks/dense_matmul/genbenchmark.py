@@ -1,6 +1,7 @@
 import itertools
 import json
 import pathlib
+from datetime import datetime
 from io import StringIO
 
 from xdsl.builder import ImplicitBuilder
@@ -74,13 +75,51 @@ def generate_tiled_benchmark(m, n, k) -> SNAXBenchmark:
         binary=binary,
         src_dir=str(pathlib.Path.cwd()),
         export_dir=str(pathlib.Path.cwd()),
+        output_dir=str(pathlib.Path.cwd()),
     )
     return bm
 
 
+def output_log() -> str:
+    result = "# Dense Matmul Benchmark Results\n"
+    dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    result += f"This test was run at {dt_string}\n"
+    result += "| benchmark | cycles | ideal | utilization |\n"
+    result += "| --- | --- | --- | --- |\n"
+    avg_utilization = 0
+    avg_n = 0
+    for benchmark in output_report:
+        result += f"| [{benchmark}]({benchmark}) "
+        result += f"| {output_report[benchmark]['cycles']} "
+        result += f"| {output_report[benchmark]['ideal']} "
+        result += f"| {output_report[benchmark]['utilization']} | \n"
+        avg_utilization += output_report[benchmark]["utilization"]
+        avg_n += 1
+    result += "| --- | --- | --- | --- |\n"
+    result += "| average | | |"
+    result += f"{avg_utilization/avg_n} |\n"
+    return result
+
+
+def output_log_benchmark(benchmark_name: str, utilization: dict[str, int]) -> str:
+    result: str = ""
+    result += f"# results for {benchmark_name}\n"
+    dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    result += f"This test was run at {dt_string}\n"
+    result += f"Utilization: {utilization['utilization']}\n"
+    result += (
+        f" ({utilization['ideal']} cycles ideal, {utilization['cycles']} cycles real)\n"
+    )
+    result += "[view banking conflicts plot](figures/banking_conflicts.pdf)\n"
+    result += f"[dowload logs and binaries that generated this result]({benchmark_name}_results.tar.gz)\n"
+    result += "![conflicts_bank](figures/nb_of_stalls_per_bank.png)\n"
+    result += "![conflicts_port](figures/nb_of_stalls_per_port.png)\n"
+    return result
+
+
 if __name__ == "__main__":
     """Runs the gendata.py script with specified arguments."""
-    selected_dims = [32, 48, 64]
+    selected_dims = [32]
 
     sizes = list(itertools.product(selected_dims, repeat=3))
 
@@ -101,9 +140,12 @@ if __name__ == "__main__":
         )
         bm.run()
         bm.trace()
+        bm.plot()
         bm.process_traces(folder)
         bm.copy_binary(folder)
         bm.copy_logs(folder)
+        bm.copy_plots()
+        bm.copy_results()
 
         # add to output report
         trace = bm.log_dir.joinpath(bm.input_file.format(hart="00000"))
@@ -112,24 +154,14 @@ if __name__ == "__main__":
         cycles = data[1]["cycles"]
         ideal = round((k / 8 + 1) * (m / 8) * (n / 8))
         utilization = ideal / cycles
-        output_report[bm.benchmark] = {
+        utilization = {
             "cycles": cycles,
             "ideal": ideal,
             "utilization": utilization,
         }
+        output_report[bm.benchmark] = utilization
 
-    with open("output_report.txt", "w") as file:
-        file.write("benchmark\tcycles\tideal\tutilization\t\n")
-        avg_utilization = 0
-        avg_n = 0
-        for benchmark in output_report:
-            file.write(f"{benchmark}\t")
-            file.write(f"{output_report[benchmark]['cycles']}\t")
-            file.write(f"{output_report[benchmark]['ideal']}\t")
-            file.write(f"{output_report[benchmark]['utilization']}\t")
-            file.write("\n")
-            avg_utilization += output_report[benchmark]["utilization"]
-            avg_n += 1
-        file.write("--------------------------\n")
-        file.write("average\t\t\t")
-        file.write(f"{avg_utilization/avg_n}\t\n")
+        bm.generate_output_log(lambda name: output_log_benchmark(name, utilization))
+
+        with open("output/index.md", "w") as file:
+            file.write(output_log())

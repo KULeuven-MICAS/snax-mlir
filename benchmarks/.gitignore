@@ -1,3 +1,8 @@
 results
+output
 generated*
 output_report.txt
+*.png
+*.pdf
+*.vcd
+*.csv

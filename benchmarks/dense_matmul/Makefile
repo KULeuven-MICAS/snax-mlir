@@ -30,7 +30,13 @@ data.c data.h:
 
 sim_%: %
 	rm -fr ./logs/
-	$(VLTSIM) $<
+	$(VLTSIM) $< --vcd
+
+sim.csv: sim.vcd
+	vcd-to-csv
+
+plots: sim.csv
+	$(PYTHON) ../../util/visualization/gemmx.py --input_file sim.csv --output_path ./
 
 RUN = $(addprefix run_, $(TESTS))
 $(RUN): run_%: sim_%
@@ -41,4 +47,4 @@ all: $(TESTS)
 allrun: $(RUN)
 
 clean:
-	rm -fr *.ll12 *.x *.o *.logs/ logs/ data.h data.c
+	rm -fr *.ll12 *.x *.o *.logs/ logs/ data.h data.c output results *.png *.pdf *.vcd *.csv
