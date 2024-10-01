@@ -17,12 +17,12 @@ def parse_and_prepare_data(input_file):
 
     # Initialize new columns for 'fire', 'stall', and 'bank' for each port
     for port in range(56):
-        valid_col = f'io_data_tcdm_req_{port}_valid'
-        ready_col = f'io_data_tcdm_req_{port}_ready'
-        addr_col = f'io_data_tcdm_req_{port}_bits_addr'
-        fire_col = f'io_data_tcdm_req_{port}_fire'
-        stall_col = f'io_data_tcdm_req_{port}_stall'
-        bank_col = f'io_data_tcdm_req_{port}_bank'
+        valid_col = f"io_data_tcdm_req_{port}_valid"
+        ready_col = f"io_data_tcdm_req_{port}_ready"
+        addr_col = f"io_data_tcdm_req_{port}_bits_addr"
+        fire_col = f"io_data_tcdm_req_{port}_fire"
+        stall_col = f"io_data_tcdm_req_{port}_stall"
+        bank_col = f"io_data_tcdm_req_{port}_bank"
 
         df[fire_col] = (df[valid_col] == 1) & (df[ready_col] == 1)
         df[stall_col] = (df[valid_col] == 1) & (df[ready_col] == 0)
@@ -40,8 +40,8 @@ def plot_stalls_and_fires_per_port(df, output_path):
     number_of_fires = np.zeros(56)
 
     for port in range(56):
-        stall_col = f'io_data_tcdm_req_{port}_stall'
-        fire_col = f'io_data_tcdm_req_{port}_fire'
+        stall_col = f"io_data_tcdm_req_{port}_stall"
+        fire_col = f"io_data_tcdm_req_{port}_fire"
 
         number_of_stalls[port] = df[stall_col].sum()
         number_of_fires[port] = df[fire_col].sum()
@@ -52,38 +52,40 @@ def plot_stalls_and_fires_per_port(df, output_path):
     indices = np.arange(len(ports))
 
     # Create bars for stalls and fires
-    ax.bar(indices, number_of_stalls, bar_width, label='Number of Stalls')
-    ax.bar(indices + bar_width, number_of_fires, bar_width, label='Number of Fires')
+    ax.bar(indices, number_of_stalls, bar_width, label="Number of Stalls")
+    ax.bar(indices + bar_width, number_of_fires, bar_width, label="Number of Fires")
 
     # Labeling and aesthetics
-    ax.set_xlabel('Port Number', fontsize=14)
-    ax.set_ylabel('Count', fontsize=14)
-    ax.set_title('Number of Stalls and Fires per Port of GeMMX', fontsize=16)
+    ax.set_xlabel("Port Number", fontsize=14)
+    ax.set_ylabel("Count", fontsize=14)
+    ax.set_title("Number of Stalls and Fires per Port of GeMMX", fontsize=16)
     ax.set_xticks(indices + bar_width / 2)
     ax.set_xticklabels(ports, rotation=90)
     ax.legend()
 
     # Annotate port groups
     group_positions = [
-        (0, 7, 'A'),      # Ports 0-7
-        (8, 15, 'B'),     # Ports 8-15
-        (16, 23, 'D8'),   # Ports 16-23
-        (24, 55, 'C/D32') # Ports 24-55
+        (0, 7, "A"),  # Ports 0-7
+        (8, 15, "B"),  # Ports 8-15
+        (16, 23, "D8"),  # Ports 16-23
+        (24, 55, "C/D32"),  # Ports 24-55
     ]
 
     # Add annotations
     for start, end, label in group_positions:
         center = (indices[start] + indices[end] + bar_width) / 2
-        ax.hlines(-8, indices[start], indices[end] + bar_width, color='black', linewidth=2)
-        ax.text(center, -11, label, ha='center', va='top', fontsize=12)
+        ax.hlines(
+            -8, indices[start], indices[end] + bar_width, color="black", linewidth=2
+        )
+        ax.text(center, -11, label, ha="center", va="top", fontsize=12)
 
     # Adjust plot limits
     ax.set_ylim(bottom=-20)
-    ax.spines['bottom'].set_position(('data', 0))
+    ax.spines["bottom"].set_position(("data", 0))
     plt.tight_layout()
 
     # Save the plot
-    output_file = os.path.join(output_path, 'nb_of_stalls_per_port.png')
+    output_file = os.path.join(output_path, "nb_of_stalls_per_port.png")
     plt.savefig(output_file)
     plt.close()
 
@@ -100,9 +102,9 @@ def plot_stalls_and_fires_per_bank(df, output_path):
         nb_stalls = 0
         nb_fires = 0
         for port in range(56):
-            stall_col = f'io_data_tcdm_req_{port}_stall'
-            fire_col = f'io_data_tcdm_req_{port}_fire'
-            bank_col = f'io_data_tcdm_req_{port}_bank'
+            stall_col = f"io_data_tcdm_req_{port}_stall"
+            fire_col = f"io_data_tcdm_req_{port}_fire"
+            bank_col = f"io_data_tcdm_req_{port}_bank"
 
             stalls = df[(df[stall_col]) & (df[bank_col] == bank_nb)]
             fires = df[(df[fire_col]) & (df[bank_col] == bank_nb)]
@@ -119,13 +121,13 @@ def plot_stalls_and_fires_per_bank(df, output_path):
     indices = np.arange(len(banks))
 
     # Create bars for stalls and fires
-    ax.bar(indices, number_of_stalls, bar_width, label='Number of Stalls')
-    ax.bar(indices + bar_width, number_of_fires, bar_width, label='Number of Fires')
+    ax.bar(indices, number_of_stalls, bar_width, label="Number of Stalls")
+    ax.bar(indices + bar_width, number_of_fires, bar_width, label="Number of Fires")
 
     # Labeling and aesthetics
-    ax.set_xlabel('Bank Number', fontsize=14)
-    ax.set_ylabel('Count', fontsize=14)
-    ax.set_title('Number of Stalls and Fires per Bank of TCDM', fontsize=16)
+    ax.set_xlabel("Bank Number", fontsize=14)
+    ax.set_ylabel("Count", fontsize=14)
+    ax.set_title("Number of Stalls and Fires per Bank of TCDM", fontsize=16)
     ax.set_xticks(indices + bar_width / 2)
     ax.set_xticklabels(banks, rotation=90)
     ax.legend()
@@ -133,7 +135,7 @@ def plot_stalls_and_fires_per_bank(df, output_path):
     plt.tight_layout()
 
     # Save the plot
-    output_file = os.path.join(output_path, 'nb_of_stalls_per_bank.png')
+    output_file = os.path.join(output_path, "nb_of_stalls_per_bank.png")
     plt.savefig(output_file)
     plt.close()
 
@@ -150,36 +152,36 @@ def plot_banking_conflicts(df, output_path):
     # Map ports to operands
     for port in range(56):
         if port < 8:
-            operand = 'A'
+            operand = "A"
         elif port < 16:
-            operand = 'B'
+            operand = "B"
         elif port < 24:
-            operand = 'F'
+            operand = "F"
         else:
-            operand = 'O'
+            operand = "O"
 
-        stall_col = f'io_data_tcdm_req_{port}_stall'
-        fire_col = f'io_data_tcdm_req_{port}_fire'
-        bank_col = f'io_data_tcdm_req_{port}_bank'
+        stall_col = f"io_data_tcdm_req_{port}_stall"
+        fire_col = f"io_data_tcdm_req_{port}_fire"
+        bank_col = f"io_data_tcdm_req_{port}_bank"
 
         stalls = df[df[stall_col]]
         fires = df[df[fire_col]]
 
         for cc, b in stalls[bank_col].items():
             event = {
-                'Time': cc,
-                'Operand': operand,
-                'Bank': int(b) + 1,  # Banks numbered from 1
-                'EventType': 'stall'
+                "Time": cc,
+                "Operand": operand,
+                "Bank": int(b) + 1,  # Banks numbered from 1
+                "EventType": "stall",
             }
             events.append(event)
 
         for cc, b in fires[bank_col].items():
             event = {
-                'Time': cc,
-                'Operand': operand,
-                'Bank': int(b) + 1,
-                'EventType': 'fire'
+                "Time": cc,
+                "Operand": operand,
+                "Bank": int(b) + 1,
+                "EventType": "fire",
             }
             events.append(event)
 
@@ -190,8 +192,8 @@ def plot_banking_conflicts(df, output_path):
     df_events = pd.DataFrame(events)
 
     # Determine start and end cycles
-    min_cycle = df_events['Time'].min()
-    max_cycle = df_events['Time'].max()
+    min_cycle = df_events["Time"].min()
+    max_cycle = df_events["Time"].max()
     start_cycle = max(0, min_cycle - 10)
     end_cycle = max_cycle + 10
     num_cycles = end_cycle - start_cycle + 1  # +1 to include end_cycle
@@ -200,9 +202,9 @@ def plot_banking_conflicts(df, output_path):
     fig, ax = plt.subplots(figsize=(num_banks / 2, num_cycles / 4))
 
     # Plot settings
-    ax.set_xlabel('Bank Number', fontsize=12)
-    ax.set_ylabel('Clock Cycle', fontsize=12)
-    ax.set_title('Bank Fires/Stalls Over Time', fontsize=14)
+    ax.set_xlabel("Bank Number", fontsize=12)
+    ax.set_ylabel("Clock Cycle", fontsize=12)
+    ax.set_title("Bank Fires/Stalls Over Time", fontsize=14)
     ax.set_xlim(0.5, num_banks + 0.5)
     ax.set_ylim(0.5, num_cycles + 0.5)
     ax.set_xticks(range(1, num_banks + 1))
@@ -216,38 +218,37 @@ def plot_banking_conflicts(df, output_path):
     ax.set_xticks(minor_ticks_x, minor=True)
 
     # Enable gridlines
-    ax.grid(which='minor', axis='y', linestyle='-', linewidth=1)
-    ax.grid(which='minor', axis='x', linestyle='-', linewidth=1)
+    ax.grid(which="minor", axis="y", linestyle="-", linewidth=1)
+    ax.grid(which="minor", axis="x", linestyle="-", linewidth=1)
 
     # Operand offsets for plotting
     operand_offsets = {
-        'A': (-0.15, -0.2),
-        'B': (0.15, -0.2),
-        'F': (-0.15, 0.25),
-        'O': (0.15, 0.25)
+        "A": (-0.15, -0.2),
+        "B": (0.15, -0.2),
+        "F": (-0.15, 0.25),
+        "O": (0.15, 0.25),
     }
 
     # Plot events
     for _, event in df_events.iterrows():
-        x = event['Bank']
-        y = event['Time'] - start_cycle
-        operand = event['Operand']
-        event_type = event['EventType']
+        x = event["Bank"]
+        y = event["Time"] - start_cycle
+        operand = event["Operand"]
+        event_type = event["EventType"]
 
-        color = 'green' if event_type == 'fire' else 'red'
+        color = "green" if event_type == "fire" else "red"
         assert isinstance(operand, str)
         dx, dy = operand_offsets.get(operand, (0, 0))
 
         ax.text(
-            x + dx, y + dy, operand, color=color,
-            fontsize=10, ha='center', va='center'
+            x + dx, y + dy, operand, color=color, fontsize=10, ha="center", va="center"
         )
 
-    ax.set_aspect('auto')
+    ax.set_aspect("auto")
     plt.tight_layout()
 
     # Save the plot
-    output_file = os.path.join(output_path, 'banking_conflicts.pdf')
+    output_file = os.path.join(output_path, "banking_conflicts.pdf")
     plt.savefig(output_file)
     plt.close()
 
@@ -256,9 +257,11 @@ def main():
     """
     Main function to parse arguments and execute the plotting functions.
     """
-    parser = argparse.ArgumentParser(description='Process CSV file and generate plots.')
-    parser.add_argument('--input_file', type=str, required=True, help='Input .csv file')
-    parser.add_argument('--output_path', type=str, default='.', help='Output directory for plots')
+    parser = argparse.ArgumentParser(description="Process CSV file and generate plots.")
+    parser.add_argument("--input_file", type=str, required=True, help="Input .csv file")
+    parser.add_argument(
+        "--output_path", type=str, default=".", help="Output directory for plots"
+    )
     args = parser.parse_args()
 
     df = parse_and_prepare_data(args.input_file)
@@ -268,5 +271,5 @@ def main():
     plot_banking_conflicts(df, args.output_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
