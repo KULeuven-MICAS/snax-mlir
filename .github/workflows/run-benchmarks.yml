@@ -19,7 +19,7 @@ jobs:
         with:
           lfs: true
       - name: Install snax-mlir
-        run: python3 -m pip install '-e.[dev]'
+        run: python3 -m pip install '-e.[dev,viz]'
       - name: Run benchmarks
         run: python3 genbenchmark.py
         working-directory: benchmarks/${{ matrix.kernel }}
