@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install snax-mlir
-        run: python3 -m pip install '-e.[dev,nn]'
+        run: python3 -m pip install '-e.[dev]'
       - name: Run benchmarks
         run: python3 genbenchmark.py
         working-directory: benchmarks/${{ matrix.kernel }}
