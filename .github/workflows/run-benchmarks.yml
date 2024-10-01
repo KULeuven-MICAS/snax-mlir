@@ -18,7 +18,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           lfs: true
-          persist-credentials: false
       - name: Install snax-mlir
         run: python3 -m pip install '-e.[dev,viz]'
       - name: Run benchmarks
@@ -27,8 +26,8 @@ jobs:
       - name: Checkout gh-pages branch
         run: |
           git config --global --add safe.directory /__w/snax-mlir/snax-mlir
-          git config --local user.name "Joren Dumoulin"
-          git config --local user.email "joren.dumoulin@kuleuven.be"
+          git config --local user.name "GitHub Action"
+          git config --local user.email "action@github.com"
           git fetch origin gh-pages
           git checkout gh-pages
       - name: Move benchmark files to docs
@@ -41,8 +40,7 @@ jobs:
           git pull
           git add docs/benchmarks/${{ matrix.kernel}}
           git commit -m "Update benchmark files and images"
-          # git push origin gh-pages
-          git push --force-with-lease https://x-access-token:${{ secrets.SNAX_MLIR_TOKEN }}@github.com/kuleuven-micas/snax-mlir.git gh-pages
+          git push origin gh-pages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     strategy:
