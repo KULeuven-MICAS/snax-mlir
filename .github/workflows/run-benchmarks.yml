@@ -12,10 +12,8 @@ jobs:
       image: ghcr.io/kuleuven-micas/snax:v0.2.2
     steps:
       - uses: actions/checkout@v3
-      - name: Install snax compiler
-        run: python3 -m pip install -e .
-      - name: Reinstall pip modules from requirements
-        run: python3 -m pip install -r requirements.txt
+      - name: Install snax-mlir
+        run: python3 -m pip install '-e.[dev,nn]'
       - name: Run benchmarks
         run: python3 genbenchmark.py
         working-directory: benchmarks/${{ matrix.kernel }}
