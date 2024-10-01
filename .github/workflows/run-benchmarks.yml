@@ -41,7 +41,7 @@ jobs:
           git add docs/benchmarks/${{ matrix.kernel}}
           git commit -m "Update benchmark files and images"
           git push origin gh-pages
-          git push --force-with-lease https://x-access-token:${{ secrets.SNAX_MLIR_TOKEN }}@github.com/kuleuven-micas/snaz-mlir.git gh-pages
+          git push --force-with-lease https://x-access-token:${{ secrets.SNAX_MLIR_TOKEN }}@github.com/kuleuven-micas/snax-mlir.git gh-pages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     strategy:
