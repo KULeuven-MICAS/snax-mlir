@@ -1,6 +1,33 @@
 [project]
-name = "snax-opt"
-version = "0.1.0"
+name = "snax-mlir"
+description = "Driving SNAX with MLIR"
+version = "0.2.2"
+
+dependencies = [
+    "xdsl @ git+https://github.com/xdslproject/xdsl.git@0d7eae3a1c9ee128986d6729ffc1d49786f7819d"
+]
+
+[project.optional-dependencies]
+
+# All optional dependencies for plotting and parsing
+dev = [
+    "pre-commit",
+    "filecheck==1.0.0",
+    "lit",
+    "numpy<2.0.0",
+    "pytest",
+]
+
+# All optional dependencies for graphical plotting
+viz = [
+    "pandas",
+    "matplotlib",
+]
+
+# Dependencies for neural network compilation
+nn = [
+    "tensorflow-cpu==2.15.0",
+]
 
 [project.scripts]
 snax-opt = "compiler.tools.snax_opt_main:main"

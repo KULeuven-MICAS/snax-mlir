@@ -33,9 +33,10 @@ graph LR
 
 This repository has various requirements based on what you want to do:
 
-* Development on `snax-opt` only requires the following python packages: `xdsl`, `lit`, `filecheck` and `pre-commit`. Currently all tests are performed with python 3.10.
+* Development with `snax-opt` on `xdsl`.
+* For testing, the required packages can be installed with `pip install '-e.[dev]'. Currently all tests are performed with python 3.10.
 * End-to-end compilation of kernels requires all the above packages, and a per-platform customized version of the `snitch_runtime` (`libSnRuntime.a`). 
-Furthermore you will need `numpy`, `tensorflow-cpu` (only required for importing MLPerf Tiny Benchmarks in MLIR), `clang`, `mlir-opt`, `mlir-translate` and `make`.
+Furthermore you will need `tensorflow-cpu` (only required for importing MLPerf Tiny Benchmarks in MLIR, installed with `pip install '-e.[nn]'`), `clang`, `mlir-opt`, `mlir-translate` and `make`.
 * Running RTL simulations of compiled kernels requires all above dependences, and a build of a verilated model. 
 The requirements in this case are specified at [KULeuven-MICAS/snax_cluster](https://github.com/KULeuven-MICAS/snax_cluster).
 Tracing requires a custom version of [`spike-dasm`](https://github.com/pulp-platform/riscv-isa-sim).

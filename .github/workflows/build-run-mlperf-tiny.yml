@@ -25,12 +25,9 @@ jobs:
             dir: kernels/mlperf_tiny_kws
     steps:
       - uses: actions/checkout@v3
-      - name: Install snax compiler
+      - name: Install snax-mlir
         run: |
-          python3 -m pip install -e .
-      - name: Reinstall pip modules from requirements
-        run: |
-          python3 -m pip install -r requirements.txt
+          python3 -m pip install '-e.[dev,nn]'
       - name: snax-opt network compilation
         run: |
           make ${{ matrix.model.name }}.o

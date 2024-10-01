@@ -18,18 +18,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Install pytest
-      shell: bash
-      run: |
-        python3 -m pip install pytest
-    - name: Reinstall pip modules from requirements
-      shell: bash
-      run: |
-        python3 -m pip install -r requirements.txt
     - name: Install snax-mlir
       shell: bash
       run: |
-        python3 -m pip install -e .
+        python3 -m pip install '-e.[dev]'
     - name: Test with pytest
       shell: bash
       run: |
