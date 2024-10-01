@@ -230,7 +230,7 @@ def plot_banking_conflicts(df, output_path):
     # Plot events
     for _, event in df_events.iterrows():
         x = event['Bank']
-        y = event['Time']
+        y = event['Time'] - start_cycle
         operand = event['Operand']
         event_type = event['EventType']
 
