@@ -12,16 +12,33 @@ jobs:
     container:
       image: ghcr.io/kuleuven-micas/snax:v0.2.2
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
       - name: Install snax-mlir
         run: python3 -m pip install '-e.[dev]'
       - name: Run benchmarks
         run: python3 genbenchmark.py
         working-directory: benchmarks/${{ matrix.kernel }}
-      - uses: actions/upload-artifact@v4
-        with:
-          name: output_report
-          path: benchmarks/${{ matrix.kernel }}/output_report.txt
+      - name: Checkout gh-pages branch
+        run: |
+          git fetch origin gh-pages
+          git checkout gh-pages
+      - name: Move benchmark files to docs
+        run: |
+          rm -rf docs/benchmarks/${{ matrix.kernel }}
+          mkdir docs/benchmarks/${{ matrix.kernel }}
+          mv benchmarks/${{ matrix.kernel}}/output/* docs/benchmarks/${{ matrix.kernel }}/output/
+      - name: Commit and push benchmark files
+        run: |
+          git config --local user.name "GitHub Action"
+          git config --local user.email "action@github.com"
+          git add docs/benchmarks/output
+          git commit -m "Update benchmark files and images"
+          git push --force-with-lease origin gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     strategy:
       matrix:
         kernel: [dense_matmul]
