@@ -116,7 +116,7 @@ def output_log_benchmark(benchmark_name: str, utilization: dict[str, int]) -> st
 
 if __name__ == "__main__":
     """Runs the gendata.py script with specified arguments."""
-    selected_dims = [32]
+    selected_dims = [32, 48, 64]
 
     sizes = list(itertools.product(selected_dims, repeat=3))
 
