@@ -40,7 +40,7 @@ jobs:
           workflow: run-benchmarks.yml
           workflow_conclusion: success
           path: docs/benchmarks
-          # branch: main # to do: enable
+          branch: main
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Build with Jekyll
