@@ -1,5 +1,7 @@
 # snax stuff
 *logs*
+*results*
+*output*
 
 .env
 .venv
