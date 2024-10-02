@@ -47,4 +47,4 @@ all: $(TESTS)
 allrun: $(RUN)
 
 clean:
-	rm -fr *.ll12 *.x *.o *.logs/ logs/ data.h data.c output results *.png *.pdf *.vcd *.csv
+	rm -fr *.ll12 *.x *.o *.logs/ logs/ data.h data.c *.png *.pdf *.vcd *.csv
