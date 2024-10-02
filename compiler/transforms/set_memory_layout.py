@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg
 from xdsl.parser import MemRefType
@@ -8,6 +10,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.utils.str_enum import StrEnum
 
 from compiler.dialects.kernel import QMacOp, RescaleOp
 from compiler.dialects.snax import LayoutCast
@@ -101,6 +104,12 @@ class AddMemoryLayoutSIMD(RewritePattern):
         pass
 
 
+class GemmLayout(StrEnum):
+    cyclic = "cyclic"
+    banked = "banked"
+
+
+@dataclass
 class AddMemoryLayout(RewritePattern):
     """
     This class represents a rewrite pattern for adding memory layout to a
@@ -111,6 +120,8 @@ class AddMemoryLayout(RewritePattern):
 
     Note: currently, only snax_gemm is supported.
     """
+
+    gemm_layout: GemmLayout = GemmLayout.cyclic
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
@@ -146,18 +157,28 @@ class AddMemoryLayout(RewritePattern):
             if k == -1:
                 k = None
 
+            # determine tile_stride = stride between two gemm tiles
+            match self.gemm_layout:
+                case GemmLayout.banked:
+                    tile_stride = 256
+                case GemmLayout.cyclic:
+                    tile_stride = 64
+
             tsl_input_a = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
                         TiledStride(
                             [
                                 Stride(
-                                    256 * k // 8 if k else None, m // 8 if m else None
+                                    tile_stride * k // 8 if k else None,
+                                    m // 8 if m else None,
                                 ),
                                 Stride(8, 8),
                             ]
                         ),
-                        TiledStride([Stride(256, k // 8 if k else None), Stride(1, 8)]),
+                        TiledStride(
+                            [Stride(tile_stride, k // 8 if k else None), Stride(1, 8)]
+                        ),
                     ]
                 )
             )
@@ -167,11 +188,14 @@ class AddMemoryLayout(RewritePattern):
             tsl_input_b = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
-                        TiledStride([Stride(256, k // 8 if k else None), Stride(1, 8)]),
+                        TiledStride(
+                            [Stride(tile_stride, k // 8 if k else None), Stride(1, 8)]
+                        ),
                         TiledStride(
                             [
                                 Stride(
-                                    256 * k // 8 if k else None, n // 8 if n else None
+                                    tile_stride * k // 8 if k else None,
+                                    n // 8 if n else None,
                                 ),
                                 Stride(8, 8),
                             ]
@@ -226,13 +250,17 @@ class AddMemoryLayout(RewritePattern):
         pass
 
 
+@dataclass(frozen=True)
 class SetMemoryLayout(ModulePass):
     name = "set-memory-layout"
+
+    gemm_layout: str = "cyclic"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             AddMemoryLayoutSIMD(), apply_recursively=False
         ).rewrite_module(op)
-        PatternRewriteWalker(AddMemoryLayout(), apply_recursively=False).rewrite_module(
-            op
-        )
+        PatternRewriteWalker(
+            AddMemoryLayout(gemm_layout=GemmLayout(self.gemm_layout)),
+            apply_recursively=False,
+        ).rewrite_module(op)
