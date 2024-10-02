@@ -2,6 +2,11 @@
 *logs*
 *results*
 *output*
+*generated*
+*.png
+*.pdf
+*.vcd
+*.csv
 
 .env
 .venv
