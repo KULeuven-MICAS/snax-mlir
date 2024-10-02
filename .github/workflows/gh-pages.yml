@@ -32,6 +32,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: gh-pages
       - name: Download benchmark artifacts
         uses: dawidd6/action-download-artifact@v6
         with:
