@@ -36,7 +36,7 @@ jobs:
         uses: dawidd6/action-download-artifact@v6
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          worflow: run-benchmarks.yml
+          workflow: run-benchmarks.yml
           workflow_conclusion: success
           path: docs/benchmarks
           # branch: main # to do: enable
