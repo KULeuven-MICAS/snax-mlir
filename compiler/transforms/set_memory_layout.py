@@ -10,6 +10,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.utils.str_enum import StrEnum
 
 from compiler.dialects.kernel import QMacOp, RescaleOp
 from compiler.dialects.snax import LayoutCast
@@ -103,6 +104,11 @@ class AddMemoryLayoutSIMD(RewritePattern):
         pass
 
 
+class GemmLayout(StrEnum):
+    cyclic = "cyclic"
+    banked = "banked"
+
+
 @dataclass
 class AddMemoryLayout(RewritePattern):
     """
@@ -115,7 +121,7 @@ class AddMemoryLayout(RewritePattern):
     Note: currently, only snax_gemm is supported.
     """
 
-    gemm_layout: str = "cyclic"
+    gemm_layout: GemmLayout = GemmLayout.cyclic
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
@@ -125,8 +131,6 @@ class AddMemoryLayout(RewritePattern):
             return
         else:
             library_call = linalg_op.library_call.data
-
-        assert self.gemm_layout in ("cyclic", "banked")
 
         # check for library call
         if library_call == "snax_gemmx" or library_call == "snax_gemmx_stream":
@@ -154,12 +158,11 @@ class AddMemoryLayout(RewritePattern):
                 k = None
 
             # determine tile_stride = stride between two gemm tiles
-            if self.gemm_layout == "banked":
-                tile_stride = 256  # = bank width -> banked layout
-            elif self.gemm_layout == "cyclic":  # cyclic
-                tile_stride = 64  # = tile width -> contiguous cyclic storage
-            else:
-                raise RuntimeError("Unknown Gemm Layout")
+            match self.gemm_layout:
+                case GemmLayout.banked:
+                    tile_stride = 256
+                case GemmLayout.cyclic:
+                    tile_stride = 64
 
             tsl_input_a = TiledStridedLayoutAttr(
                 TiledStridedLayout(
@@ -258,5 +261,6 @@ class SetMemoryLayout(ModulePass):
             AddMemoryLayoutSIMD(), apply_recursively=False
         ).rewrite_module(op)
         PatternRewriteWalker(
-            AddMemoryLayout(gemm_layout=self.gemm_layout), apply_recursively=False
+            AddMemoryLayout(gemm_layout=GemmLayout(self.gemm_layout)),
+            apply_recursively=False,
         ).rewrite_module(op)
