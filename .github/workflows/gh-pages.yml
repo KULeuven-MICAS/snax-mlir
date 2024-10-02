@@ -33,7 +33,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Download benchmark artifacts
-        uses: dawidd6/action-download-artifact
+        uses: dawidd6/action-download-artifact@v6
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           worflow: run-benchmarks.yml
