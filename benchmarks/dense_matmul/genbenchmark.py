@@ -71,7 +71,7 @@ def generate_dense_benchmark(m, n, k) -> SNAXBenchmark:
     write_module_to_file(module, "generated.mlir")
     binary = "generated.x"
     bm = SNAXBenchmark(
-        kernel=f"dense_matmul_generated_{k}x{n}x{m}",
+        kernel=f"dense_matmul_{layout}_{k}x{n}x{m}",
         binary=binary,
         src_dir=str(pathlib.Path.cwd()),
         export_dir=str(pathlib.Path.cwd()),
@@ -80,23 +80,31 @@ def generate_dense_benchmark(m, n, k) -> SNAXBenchmark:
     return bm
 
 
-def output_log() -> str:
+def output_log(output_report) -> str:
     result = "# Dense Matmul Benchmark Results\n\n"
     dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     result += f"This test was run at {dt_string}\n\n"
-    result += "| benchmark | cycles | ideal | utilization |\n"
-    result += "| --- | --- | --- | --- |\n"
-    avg_utilization = 0
-    avg_n = 0
-    for benchmark in output_report:
-        result += f"| [{benchmark}]({benchmark}) "
-        result += f"| {output_report[benchmark]['cycles']} "
-        result += f"| {output_report[benchmark]['ideal']} "
-        result += f"| {output_report[benchmark]['utilization']} | \n"
-        avg_utilization += output_report[benchmark]["utilization"]
-        avg_n += 1
-    result += "| average | | |"
-    result += f"{avg_utilization/avg_n} |\n"
+    for layout in ("cyclic", "banked"):
+        result += f"Results for a {layout} layout \n\n"
+        result += "| benchmark | layout | M | N | K | cycles | ideal | utilization |\n"
+        result += "| --- | --- | --- | --- |\n"
+        avg_utilization = 0
+        avg_n = 0
+        for benchmark in output_report:
+            if output_report[benchmark]["layout"] != layout:
+                continue
+            result += f"| [{benchmark}]({benchmark}) "
+            result += f"| {output_report[benchmark]['layout']} "
+            result += f"| {output_report[benchmark]['m']} "
+            result += f"| {output_report[benchmark]['n']} "
+            result += f"| {output_report[benchmark]['k']} "
+            result += f"| {output_report[benchmark]['cycles']} "
+            result += f"| {output_report[benchmark]['ideal']} "
+            result += f"| {output_report[benchmark]['utilization']} | \n"
+            avg_utilization += output_report[benchmark]["utilization"]
+            avg_n += 1
+        result += "| average | | |"
+        result += f"{avg_utilization/avg_n} |\n\n"
     return result
 
 
@@ -122,9 +130,9 @@ if __name__ == "__main__":
 
     output_report: dict[str, dict] = {}
 
-    for size in sizes:
+    for size, layout in itertools.product(sizes, ("cyclic", "banked")):
         k, m, n = size
-        folder = f"test_generated_{k}x{m}x{m}"
+        folder = f"test_{layout}_{k}x{m}x{m}"
         bm = generate_dense_benchmark(k, m, n)
         bm.clean()
         bm.build(
@@ -133,6 +141,7 @@ if __name__ == "__main__":
                 f"SIZE_M={m}",
                 f"SIZE_N={n}",
                 f"SIZE_K={k}",
+                f"LAYOUT={layout}",
             ]
         )
         bm.run()
@@ -151,14 +160,18 @@ if __name__ == "__main__":
         cycles = data[1]["cycles"]
         ideal = round((k / 8 + 1) * (m / 8) * (n / 8))
         utilization = ideal / cycles
-        utilization = {
+        results = {
+            "m": m,
+            "n": n,
+            "k": k,
+            "layout": layout,
             "cycles": cycles,
             "ideal": ideal,
             "utilization": utilization,
         }
-        output_report[bm.benchmark] = utilization
+        output_report[bm.benchmark] = results
 
-        bm.generate_output_log(lambda name: output_log_benchmark(name, utilization))
+        bm.generate_output_log(lambda name: output_log_benchmark(name, results))
 
-        with open("output/index.md", "w") as file:
-            file.write(output_log())
+    with open("output/index.md", "w") as file:
+        file.write(output_log(output_report))
