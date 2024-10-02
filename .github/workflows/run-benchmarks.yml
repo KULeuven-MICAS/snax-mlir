@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
   run-benchmarks:
@@ -11,12 +12,8 @@ jobs:
     container:
       image: ghcr.io/kuleuven-micas/snax:v0.2.2
     steps:
-      - name: Install git lfs
-        run: apt-get install -y git-lfs
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          lfs: true
       - name: Install snax-mlir
         run: python3 -m pip install '-e.[dev,viz]'
       - name: Run benchmarks
@@ -29,19 +26,11 @@ jobs:
           git config --local user.email "action@github.com"
           git fetch origin gh-pages
           git checkout gh-pages
-      - name: Move benchmark files to docs
-        run: |
-          rm -rf docs/benchmarks/${{ matrix.kernel }}
-          mkdir docs/benchmarks/${{ matrix.kernel }}
-          mv benchmarks/${{ matrix.kernel}}/output/* docs/benchmarks/${{ matrix.kernel }}/
-      - name: Commit and push benchmark files
-        run: |
-          git pull
-          git add docs/benchmarks/${{ matrix.kernel}}
-          git commit -m "Update benchmark files and images"
-          git push origin gh-pages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.kernel }}
+          path: benchmarks/${{ matrix.kernel }}/output
     strategy:
       matrix:
         kernel: [dense_matmul]
