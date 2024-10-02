@@ -32,8 +32,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          lfs: true
           ref: gh-pages
+      - name: Download benchmark artifacts
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow: run-benchmarks.yml
+          workflow_conclusion: success
+          path: docs/benchmarks
+          branch: main
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Build with Jekyll
