@@ -10,6 +10,7 @@ if __name__ == "__main__":
             binary=binary,
             src_dir=str(pathlib.Path.cwd()),
             export_dir=str(pathlib.Path.cwd()),
+            output_dir=str(pathlib.Path.cwd()),
         )
         bm.clean()
         bm.build(build_opts=[])

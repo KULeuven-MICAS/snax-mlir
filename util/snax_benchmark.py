@@ -1,6 +1,7 @@
 import pathlib
 import shutil
 import subprocess
+from collections.abc import Callable
 
 from util.tracing.trace_to_perfetto import process_traces
 
@@ -14,7 +15,10 @@ class SNAXBenchmark:
         kernel: str,
         binary: str,
         src_dir: str,
+        # export dir: for all results (useful for manual inspection)
         export_dir: str,
+        # output dir: for all benchmark outputs (for docs generation)
+        output_dir: str,
         benchmark: str | None = None,
     ):
         self.kernel = kernel
@@ -26,6 +30,7 @@ class SNAXBenchmark:
         else:
             self.benchmark = benchmark
         self.export_dir = export_dir / pathlib.Path("results") / self.benchmark
+        self.output_dir = output_dir / pathlib.Path("output") / self.benchmark
 
     def announce(self, string) -> None:
         str_len = len(string) + len(self.benchmark) + 5
@@ -49,6 +54,10 @@ class SNAXBenchmark:
     def trace(self):
         self.announce("Tracing benchmark")
         subprocess.run(["make", "traces"], cwd=self.src_dir, check=True)
+
+    def plot(self):
+        self.announce("Generating plots")
+        subprocess.run(["make", "plots"], cwd=self.src_dir, check=True)
 
     def process_traces(self, folder: str, file=None):
         self.announce("Processing Traces")
@@ -74,6 +83,14 @@ class SNAXBenchmark:
         )
         output_events.close()
 
+    def generate_output_log(self, generator: Callable[[str], str]) -> None:
+        self.announce("Generating output log")
+        output_folder = pathlib.Path(self.output_dir)
+        if not output_folder.exists():
+            output_folder.mkdir(parents=True)
+        with open(output_folder / "index.md", "w") as f:
+            f.write(generator(self.benchmark))
+
     def copy_binary(self, folder: str):
         self.announce("Copying binary")
         dst_folder = pathlib.Path(self.export_dir / folder)
@@ -86,3 +103,20 @@ class SNAXBenchmark:
         shutil.copytree(
             src=self.log_dir, dst=self.export_dir / folder, dirs_exist_ok=True
         )
+
+    def copy_plots(self):
+        self.announce("Copying plots to output folder")
+        plot_filenames = tuple(self.src_dir.glob("*.png"))
+        plot_filenames += tuple(self.src_dir.glob("*.pdf"))
+        output_folder = pathlib.Path(self.output_dir) / "figures"
+        if not output_folder.exists():
+            output_folder.mkdir(parents=True)
+        for plot in plot_filenames:
+            shutil.copy(src=plot, dst=output_folder)
+
+    def copy_results(self):
+        self.announce("Copying results to output folder")
+        archive_path = shutil.make_archive(
+            self.benchmark + "_results", "gztar", self.export_dir
+        )
+        shutil.move(archive_path, self.output_dir)

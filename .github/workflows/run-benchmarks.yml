@@ -11,16 +11,18 @@ jobs:
     container:
       image: ghcr.io/kuleuven-micas/snax:v0.2.2
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Install snax-mlir
-        run: python3 -m pip install '-e.[dev]'
+        run: python3 -m pip install '-e.[dev,viz]'
       - name: Run benchmarks
         run: python3 genbenchmark.py
         working-directory: benchmarks/${{ matrix.kernel }}
-      - uses: actions/upload-artifact@v4
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: output_report
-          path: benchmarks/${{ matrix.kernel }}/output_report.txt
+          name: ${{ matrix.kernel }}
+          path: benchmarks/${{ matrix.kernel }}/output
     strategy:
       matrix:
         kernel: [dense_matmul]

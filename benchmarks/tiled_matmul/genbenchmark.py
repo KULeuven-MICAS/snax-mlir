@@ -93,6 +93,7 @@ def generate_tiled_benchmark(m, n, k, tiling_factors) -> SNAXBenchmark:
         binary=binary,
         src_dir=str(pathlib.Path.cwd()),
         export_dir=str(pathlib.Path.cwd()),
+        output_dir=str(pathlib.Path.cwd()),
     )
     return bm
 
