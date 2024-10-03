@@ -5,13 +5,15 @@ from collections.abc import Sequence
 from xdsl.dialects import arith, builtin, llvm
 from xdsl.dialects.builtin import IntAttr, i32
 from xdsl.dialects.scf import Condition, While, Yield
-from xdsl.ir import Operation, SSAValue
+from xdsl.ir import Operation, OpResult, SSAValue
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.streamers import StreamerConfiguration
 from compiler.accelerators.streamers.streamers import StreamerFlag, StreamerOpts
 from compiler.dialects import accfg
 from compiler.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
+
+c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
 
 
 class SNAXAccelerator(Accelerator, ABC):
@@ -90,6 +92,8 @@ class SNAXStreamer(ABC):
     streamer_setup_fields: Sequence[str]
     streamer_launch_fields: Sequence[str]
 
+    zero_address = 0x1000_0040
+
     def __init__(
         self, streamer_config: StreamerConfiguration | StreamerConfigurationAttr
     ) -> None:
@@ -112,8 +116,20 @@ class SNAXStreamer(ABC):
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
 
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
+
+            # streamer must generate zero pattern if it is set to c0
+            is_zero_pattern = False
+            if isinstance(opresult := op.operands[operand], OpResult):
+                is_zero_pattern = (
+                    isinstance(opresult.op, arith.Constant) and opresult.op.value == c0_attr
+                )
+
             # base pointers (low, high)
-            result.append(([], op.operands[operand]))
+            if is_zero_pattern:
+                czero = arith.Constant.from_int_and_width(self.zero_address, i32)
+                result.append(([czero], czero.result))
+            else:
+                result.append(([], op.operands[operand]))
             result.append(
                 ([c0 := arith.Constant.from_int_and_width(0, i32)], c0.result)
             )
@@ -154,9 +170,14 @@ class SNAXStreamer(ABC):
 
             # channel mask option
             if StreamerOpts.HasChannelMask in streamer.opts:
-                # default to 32b111...111 (=-1) for now
-                n1 = arith.Constant.from_int_and_width(-1, i32)
-                result.append(([n1], n1.result))
+                if is_zero_pattern:
+                    # mask all channels such that they generate zeros
+                    c0 = arith.Constant.from_int_and_width(0, i32)
+                    result.append(([c0], c0.result))
+                else:
+                    # else, set to 32b111...111 (=-1) (all enabled)
+                    n1 = arith.Constant.from_int_and_width(-1, i32)
+                    result.append(([n1], n1.result))
 
         # transpose specifications
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
