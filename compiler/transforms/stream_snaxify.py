@@ -221,7 +221,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     ),
                 )
 
-                # point C to zero allocated row in TCDM.
+                # point C to c0
                 new_inputs.append(
                     # zero pointer will generate 0 values
                     arith.Constant.from_int_and_width(0, builtin.IndexType())

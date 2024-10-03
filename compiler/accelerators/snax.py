@@ -116,7 +116,7 @@ class SNAXStreamer(ABC):
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
 
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
-            # streamer must generate zero pattern if it is set to c0
+            # streamer must generate zero pattern if the stream is coming from c0
             is_zero_pattern = False
             if isinstance(opresult := op.operands[operand], OpResult):
                 is_zero_pattern = (
