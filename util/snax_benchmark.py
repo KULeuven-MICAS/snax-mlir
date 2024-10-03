@@ -119,4 +119,7 @@ class SNAXBenchmark:
         archive_path = shutil.make_archive(
             self.benchmark + "_results", "gztar", self.export_dir
         )
+        output_folder = pathlib.Path(self.output_dir)
+        if not output_folder.exists():
+            output_folder.mkdir(parents=True)
         shutil.move(archive_path, self.output_dir)

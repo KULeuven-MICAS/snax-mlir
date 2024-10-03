@@ -221,9 +221,10 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     ),
                 )
 
-                # point C to zero allocated row in TCDM.
+                # point C to c0
                 new_inputs.append(
-                    arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType())
+                    # zero pointer will generate 0 values
+                    arith.Constant.from_int_and_width(0, builtin.IndexType())
                 )
 
             else:
@@ -246,12 +247,14 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 snax_stride_patterns.insert(0, zero_pattern)
                 new_inputs.insert(
                     0,
-                    arith.Constant.from_int_and_width(0x1000_0040, builtin.IndexType()),
+                    # zero pointer will generate 0 values
+                    arith.Constant.from_int_and_width(0, builtin.IndexType()),
                 )
                 snax_stride_patterns.insert(1, zero_pattern)
                 new_inputs.insert(
                     1,
-                    arith.Constant.from_int_and_width(0x1000_0080, builtin.IndexType()),
+                    # zero pointer will generate 0 values
+                    arith.Constant.from_int_and_width(0, builtin.IndexType()),
                 )
 
                 # flip D8 and C such that they are in the right order
