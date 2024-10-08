@@ -122,8 +122,6 @@ class GenericOp(IRDLOperation):
     doc = opt_prop_def(StringAttr)
     library_call = opt_prop_def(StringAttr)
 
-    irdl_options = [AttrSizedOperandSegments(as_property=True)]
-
     def __init__(
         self,
         inputs: Sequence[SSAValue],
