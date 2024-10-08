@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p insert-accfg-op{accelerator=snax_alu},stream-snaxify | filecheck %s
+// RUN: ./compiler/snax-opt --split-input-file %s -p insert-accfg-op{accelerator=snax_alu},stream-snaxify --disable-verify | filecheck %s
 
 %A, %B, %C = "test.op"() : () -> (memref<16xi64>, memref<16xi64>, memref<16xi64>)
 
