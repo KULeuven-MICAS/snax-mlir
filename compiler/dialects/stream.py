@@ -31,6 +31,14 @@ from xdsl.irdl import (
     var_result_def,
 )
 
+"""
+Custom `stream` dialect, to simplify things in a more principled approach, including:
+- inherent support for tensors
+- streams with value semantics
+- no specified static bounds in access patterns: they are just affine maps
+- no stream ops outside of streaming regions allowed
+"""
+
 _StreamTypeElement = TypeVar("_StreamTypeElement", bound=Attribute)
 
 
@@ -42,7 +50,7 @@ class StreamType(
     ContainerType[_StreamTypeElement],
 ):
     """
-    A stream type with value sementics.
+    A stream type with value semantics.
     A stream is defined by an element type, and is produced as the result of
     an operation, or through a streaming region op.
     Streams can only be read from, there is no distinction between readable/writeable streams.
@@ -114,14 +122,14 @@ class YieldOp(AbstractYieldOperation[Attribute]):
 @irdl_op_definition
 class GenericOp(IRDLOperation):
     """
-    Generic that operates on streams.
-    As indexing maps / iterators are thus not relevant, they are removed.
+    Generic that operates on streams, similar to a linalg.generic.
+    Indexing maps / iterators are not relevant, so they are not included.
     """
 
     name = "stream.generic"
 
-    inputs = var_operand_def()
-    outputs = var_result_def()
+    inputs = var_operand_def(StreamType)
+    outputs = var_result_def(StreamType)
 
     body = region_def()
 
@@ -159,3 +167,4 @@ Stream = Dialect(
         StreamType,
     ],
 )
+
