@@ -167,4 +167,3 @@ Stream = Dialect(
         StreamType,
     ],
 )
-
