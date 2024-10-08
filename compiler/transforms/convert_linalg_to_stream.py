@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from xdsl.context import MLContext
 from xdsl.dialects import linalg
-from xdsl.dialects.builtin import ArrayAttr, ModuleOp, ShapedType
+from xdsl.dialects.builtin import ArrayAttr, ModuleOp, ShapedType, StringAttr
 from xdsl.ir import Block, Region
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -20,6 +20,15 @@ from compiler.dialects import stream
 class StreamifyGenericOpPattern(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter) -> None:
+
+        # place guard for library calls ending in _stream
+        if not op.library_call:
+            return
+        if op.library_call.data.endswith("_stream"):
+            op.library_call = StringAttr(op.library_call.data[: -len("_stream")])
+        else:
+            return
+
         input_count = len(op.inputs)
         streamable_input_indices = tuple(
             (index, arg.type)
@@ -79,13 +88,13 @@ class StreamifyGenericOpPattern(RewritePattern):
 
 
 @dataclass(frozen=True)
-class GuardedMemrefStreamify(ModulePass):
+class ConvertLinalgToStream(ModulePass):
     """
-    Converts a memref generic on memrefs to a memref generic on streams, by moving it into
+    Converts a linalg generic to a stream generic wrapped in
     a streaming region.
     """
 
-    name = "guarded-memref-streamify"
+    name = "convert-linalg-to-stream"
 
     def apply(self, ctx: MLContext, op: ModuleOp) -> None:
         PatternRewriteWalker(StreamifyGenericOpPattern()).rewrite_module(op)

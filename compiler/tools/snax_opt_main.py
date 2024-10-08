@@ -22,6 +22,7 @@ from compiler.transforms.convert_linalg_to_accfg import (
     TraceStatesPass,
 )
 from compiler.transforms.convert_linalg_to_kernel import ConvertLinalgToKernel
+from compiler.transforms.convert_linalg_to_stream import ConvertLinalgToStream
 from compiler.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
@@ -29,7 +30,6 @@ from compiler.transforms.frontend.preprocess_mlperf_tiny import PreprocessMLPerf
 from compiler.transforms.guarded_linalg_to_memref_stream import (
     GuardedLinalgToMemrefStreamPass,
 )
-from compiler.transforms.guarded_memref_streamify import GuardedMemrefStreamify
 from compiler.transforms.insert_accfg_op import InsertAccOp
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
@@ -124,7 +124,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(DebugToFuncPass.name, lambda: DebugToFuncPass)
         super().register_pass(PreprocessMLPerfTiny.name, lambda: PreprocessMLPerfTiny)
         super().register_pass(AddMcycleAroundLaunch.name, lambda: AddMcycleAroundLaunch)
-        super().register_pass(GuardedMemrefStreamify.name, lambda: GuardedMemrefStreamify)
+        super().register_pass(ConvertLinalgToStream.name, lambda: ConvertLinalgToStream)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
