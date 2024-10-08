@@ -111,13 +111,13 @@ class YieldOp(AbstractYieldOperation[Attribute]):
     traits = frozenset([IsTerminator()])
 
 
-
 @irdl_op_definition
 class GenericOp(IRDLOperation):
     """
     Generic that operates on streams.
     As indexing maps / iterators are thus not relevant, they are removed.
     """
+
     name = "stream.generic"
 
     inputs = var_operand_def()
