@@ -8,6 +8,7 @@ from compiler.dialects.accfg import ACCFG
 from compiler.dialects.kernel import Kernel
 from compiler.dialects.snax import Snax
 from compiler.dialects.snax_stream import SnaxStream
+from compiler.dialects.stream import Stream
 from compiler.dialects.test.debug import Debug
 from compiler.dialects.tsl import TSL
 from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
@@ -67,6 +68,8 @@ class SNAXOptMain(xDSLOptMain):
         ## Add custom dialects & passes
         # FIXME: override upstream accfg dialect. Remove this after upstreaming full downstream accfg dialect.
         self.ctx._registered_dialects.pop("accfg", None)  # pyright: ignore
+        # Warning: overrides upstream stream dialect.
+        self.ctx._registered_dialects.pop("stream", None)  # pyright: ignore
 
         self.ctx.load_dialect(Snax)
         self.ctx.load_dialect(TSL)
@@ -74,6 +77,7 @@ class SNAXOptMain(xDSLOptMain):
         self.ctx.load_dialect(ACCFG)
         self.ctx.load_dialect(SnaxStream)
         self.ctx.load_dialect(Debug)
+        self.ctx.load_dialect(Stream)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
