@@ -41,6 +41,13 @@ class StreamType(
     TypeAttribute,
     ContainerType[_StreamTypeElement],
 ):
+    """
+    A stream type with value sementics.
+    A stream is defined by an element type, and is produced as the result of
+    an operation, or through a streaming region op.
+    Streams can only be read from, there is no distinction between readable/writeable streams.
+    """
+
     name = "stream.stream"
 
     element_type: ParameterDef[_StreamTypeElement]
@@ -56,7 +63,7 @@ class StreamType(
 class StreamingRegionOp(IRDLOperation):
     """
     An operation that creates streams from tensors or memrefs, which are only available to
-    read from and write to within the body of the operation.
+    read from within the body of the operation.
 
     Within the loop body, memrefs/tensors that are streamed must not be otherwise accessed
     via any other access means, including extraction (e.g.: memref.view).
@@ -108,8 +115,8 @@ class YieldOp(AbstractYieldOperation[Attribute]):
 @irdl_op_definition
 class GenericOp(IRDLOperation):
     """
-    Generic that operates on streams. As indexing maps / iterators are thus not relevant,
-    they are removed. Also not possible to have results.
+    Generic that operates on streams.
+    As indexing maps / iterators are thus not relevant, they are removed.
     """
     name = "stream.generic"
 
