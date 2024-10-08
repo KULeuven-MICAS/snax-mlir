@@ -20,7 +20,6 @@ from compiler.dialects import stream
 class StreamifyGenericOpPattern(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter) -> None:
-
         # place guard for library calls ending in _stream
         if not op.library_call:
             return
@@ -32,18 +31,28 @@ class StreamifyGenericOpPattern(RewritePattern):
         input_count = len(op.inputs)
         streamable_input_indices = tuple(
             (index, arg.type)
-            for index, (i, arg) in enumerate(zip(op.inputs, op.body.block.args[:input_count]))
+            for index, (i, arg) in enumerate(
+                zip(op.inputs, op.body.block.args[:input_count])
+            )
             if isinstance(i.type, ShapedType) and arg.uses
         )
         streamable_output_indices = tuple(
             (index, arg.type)
-            for index, (o, arg) in enumerate(zip(op.outputs, op.body.block.args[input_count:]))
+            for index, (o, arg) in enumerate(
+                zip(op.outputs, op.body.block.args[input_count:])
+            )
             if isinstance(o.type, ShapedType)
         )
 
-        input_stream_types = tuple(stream.StreamType(el_type) for _, el_type in streamable_input_indices)
-        output_stream_types = tuple(stream.StreamType(el_type) for _, el_type in streamable_output_indices)
-        result_stream_types = tuple(stream.StreamType(el_type) for _, el_type in streamable_output_indices)
+        input_stream_types = tuple(
+            stream.StreamType(el_type) for _, el_type in streamable_input_indices
+        )
+        output_stream_types = tuple(
+            stream.StreamType(el_type) for _, el_type in streamable_output_indices
+        )
+        result_stream_types = tuple(
+            stream.StreamType(el_type) for _, el_type in streamable_output_indices
+        )
 
         patterns = ArrayAttr(
             indexing_map
