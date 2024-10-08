@@ -28,6 +28,7 @@ class StreamifyGenericOpPattern(RewritePattern):
         else:
             return
 
+        # find streamable operands: shaped operands of the generic op
         input_count = len(op.inputs)
         streamable_input_indices = tuple(
             (index, arg.type)
@@ -44,37 +45,39 @@ class StreamifyGenericOpPattern(RewritePattern):
             if isinstance(o.type, ShapedType)
         )
 
+        # create new stream.stream operand and result types
         input_stream_types = tuple(
             stream.StreamType(el_type) for _, el_type in streamable_input_indices
-        )
-        output_stream_types = tuple(
-            stream.StreamType(el_type) for _, el_type in streamable_output_indices
         )
         result_stream_types = tuple(
             stream.StreamType(el_type) for _, el_type in streamable_output_indices
         )
 
+        # copy patterns from generic op
         patterns = ArrayAttr(
             indexing_map
             for index, _ in (*streamable_input_indices, *streamable_output_indices)
             if (indexing_map := op.indexing_maps.data[index])
         )
 
+        # create the streaming region to wrap around the stream.generic
         streaming_region_op = stream.StreamingRegionOp(
             inputs=tuple(op.inputs[index] for index, _ in streamable_input_indices),
             outputs=tuple(op.outputs[index] for index, _ in streamable_output_indices),
             patterns=patterns,
-            body=Region(Block(arg_types=input_stream_types + output_stream_types)),
+            body=Region(Block(arg_types=input_stream_types + result_stream_types)),
             result_types=op.result_types,
             accelerator=op.library_call,
         )
 
         new_body = streaming_region_op.body.block
 
+        # construct new inputs for the stream.generic
         new_inputs = list(op.inputs)
         for stream_index, (index, _) in enumerate(streamable_input_indices):
             new_inputs[index] = new_body.args[stream_index]
 
+        # create stream.generic based on the linal.generic and put inside streaming region
         rewriter.insert_op(
             (
                 generic := stream.GenericOp(
