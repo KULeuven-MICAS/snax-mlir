@@ -7,7 +7,7 @@ include ../../runtime/Makefile.rules
 
 TESTS += generated.x
 
-SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,set-memory-space,set-memory-layout{gemm_layout=${LAYOUT}},realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=3},guarded-linalg-to-memref-stream,schedule-memref-linalg,stream-snaxify,convert-linalg-to-accfg,test-add-mcycle-around-launch,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,snax-lower-mcycle,clear-memory-space
+SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,set-memory-space,set-memory-layout{gemm_layout=${LAYOUT}},realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=3},guarded-linalg-to-memref-stream,schedule-memref-linalg,convert-stream-to-snax-stream,convert-linalg-to-accfg,test-add-mcycle-around-launch,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,snax-lower-mcycle,clear-memory-space
 
 GEN_DATA_OPTS += --m=${SIZE_M}
 GEN_DATA_OPTS += --n=${SIZE_N}

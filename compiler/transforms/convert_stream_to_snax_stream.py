@@ -250,8 +250,8 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
 
 @dataclass(frozen=True)
-class StreamSnaxify(ModulePass):
-    name = "stream-snaxify"
+class ConvertStreamToSnaxStream(ModulePass):
+    name = "convert-stream-to-snax-stream"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(MemrefStreamToSnaxPattern()).rewrite_module(op)

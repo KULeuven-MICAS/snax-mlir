@@ -23,6 +23,7 @@ from compiler.transforms.convert_linalg_to_accfg import (
 )
 from compiler.transforms.convert_linalg_to_kernel import ConvertLinalgToKernel
 from compiler.transforms.convert_linalg_to_stream import ConvertLinalgToStream
+from compiler.transforms.convert_stream_to_snax_stream import ConvertStreamToSnaxStream
 from compiler.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
@@ -38,7 +39,6 @@ from compiler.transforms.set_memory_space import SetMemorySpace
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
-from compiler.transforms.stream_snaxify import StreamSnaxify
 from compiler.transforms.test.debug_to_func import DebugToFuncPass
 from compiler.transforms.test.insert_debugs import InsertDebugPass
 from compiler.transforms.test.test_add_mcycle_around_launch import AddMcycleAroundLaunch
@@ -100,7 +100,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(
             AccfgConfigOverlapPass.name, lambda: AccfgConfigOverlapPass
         )
-        super().register_pass(StreamSnaxify.name, lambda: StreamSnaxify)
+        super().register_pass(ConvertStreamToSnaxStream.name, lambda: ConvertStreamToSnaxStream)
         super().register_pass(ReuseMemrefAllocs.name, lambda: ReuseMemrefAllocs)
         super().register_pass(RemoveMemrefCopyPass.name, lambda: RemoveMemrefCopyPass)
         super().register_pass(
