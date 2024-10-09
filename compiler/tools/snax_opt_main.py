@@ -100,7 +100,9 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(
             AccfgConfigOverlapPass.name, lambda: AccfgConfigOverlapPass
         )
-        super().register_pass(ConvertStreamToSnaxStream.name, lambda: ConvertStreamToSnaxStream)
+        super().register_pass(
+            ConvertStreamToSnaxStream.name, lambda: ConvertStreamToSnaxStream
+        )
         super().register_pass(ReuseMemrefAllocs.name, lambda: ReuseMemrefAllocs)
         super().register_pass(RemoveMemrefCopyPass.name, lambda: RemoveMemrefCopyPass)
         super().register_pass(
