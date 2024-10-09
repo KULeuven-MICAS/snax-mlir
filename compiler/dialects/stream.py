@@ -128,6 +128,7 @@ class GenericOp(IRDLOperation):
 
     name = "stream.generic"
 
+    # inputs can be streams or integers
     inputs = var_operand_def()
     outputs = var_result_def(StreamType)
 
