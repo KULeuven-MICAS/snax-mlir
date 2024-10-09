@@ -19,14 +19,16 @@ from compiler.dialects import stream
 @dataclass
 class FuseElementwisePattern(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: stream.StreamingRegionOp, rewriter: PatternRewriter):
+    def match_and_rewrite(
+        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
+    ):
         # only ops with 1 tensor result supported for now
         if len(op.results) != 1:
             return
 
         # get result and result_type
         result = op.results[0]
-        assert isinstance(result_type := result.type, builtin.TensorType)
+        assert isinstance(result.type, builtin.TensorType)
 
         # check if the result has exactly one use
         if len(result.uses) != 1:
@@ -81,11 +83,17 @@ class FuseElementwisePattern(RewritePattern):
         arg_types = tuple(arg.type for arg in op.body.block.args[:-1])
         # second op arg types
         arg_types += tuple(
-            arg.type for arg, operand in zip(user_op.body.block.args, user_op.operands) if operand is not result
+            arg.type
+            for arg, operand in zip(user_op.body.block.args, user_op.operands)
+            if operand is not result
         )
 
         streaming_region_op = stream.StreamingRegionOp(
-            new_inputs, new_outputs, patterns, Region(Block(arg_types=arg_types)), result_types=user_op.result_types
+            new_inputs,
+            new_outputs,
+            patterns,
+            Region(Block(arg_types=arg_types)),
+            result_types=user_op.result_types,
         )
 
         producer_generic = None
@@ -96,7 +104,8 @@ class FuseElementwisePattern(RewritePattern):
                     producer_generic := stream.GenericOp(
                         inputs=tuple(
                             streaming_region_op.body.block.args[i.index]
-                            if isinstance(i, BlockArgument) and isinstance(i.type, stream.StreamType)
+                            if isinstance(i, BlockArgument)
+                            and isinstance(i.type, stream.StreamType)
                             else i
                             for i in o.inputs
                         ),
@@ -123,7 +132,9 @@ class FuseElementwisePattern(RewritePattern):
                         inputs=tuple(
                             producer_generic.results[0]
                             if index == obliterating_index
-                            else streaming_region_op.body.block.args[index + len(op.inputs) - 1]
+                            else streaming_region_op.body.block.args[
+                                index + len(op.inputs) - 1
+                            ]
                             for index in range(len(o.inputs))
                         ),
                         body=rewriter.move_region_contents_to_new_regions(o.body),
@@ -136,7 +147,8 @@ class FuseElementwisePattern(RewritePattern):
             elif isinstance(o, stream.YieldOp):
                 assert consumer_generic
                 rewriter.insert_op(
-                    stream.YieldOp(consumer_generic.results[0]), InsertPoint.at_end(streaming_region_op.body.block)
+                    stream.YieldOp(consumer_generic.results[0]),
+                    InsertPoint.at_end(streaming_region_op.body.block),
                 )
 
             else:
@@ -151,4 +163,6 @@ class FuseStreamingRegions(ModulePass):
     name = "fuse-streaming-regions"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(FuseElementwisePattern(), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(
+            FuseElementwisePattern(), apply_recursively=False
+        ).rewrite_module(op)

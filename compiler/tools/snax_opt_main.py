@@ -127,7 +127,6 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(StreamBufferize.name, lambda: StreamBufferize)
         super().register_pass(SnaxBufferize.name, lambda: SnaxBufferize)
         super().register_pass(FuseStreamingRegions.name, lambda: FuseStreamingRegions)
-        super().register_pass(GuardedMemrefStreamify.name, lambda: GuardedMemrefStreamify)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
