@@ -38,7 +38,7 @@ class StreamifyGenericOpPattern(RewritePattern):
             if isinstance(i.type, ShapedType) and arg.uses
         )
         streamable_output_indices = tuple(
-            (index, arg.type)
+            (index + len(op.inputs), arg.type)
             for index, (o, arg) in enumerate(
                 zip(op.outputs, op.body.block.args[input_count:])
             )
@@ -62,8 +62,8 @@ class StreamifyGenericOpPattern(RewritePattern):
 
         # create the streaming region to wrap around the stream.generic
         streaming_region_op = stream.StreamingRegionOp(
-            inputs=tuple(op.inputs[index] for index, _ in streamable_input_indices),
-            outputs=tuple(op.outputs[index] for index, _ in streamable_output_indices),
+            inputs=tuple(op.operands[index] for index, _ in streamable_input_indices),
+            outputs=tuple(op.operands[index] for index, _ in streamable_output_indices),
             patterns=patterns,
             body=Region(Block(arg_types=input_stream_types + result_stream_types)),
             result_types=op.result_types,

@@ -1,16 +1,6 @@
-from xdsl.context import MLContext
-from xdsl.dialects import builtin, memref_stream, stream
-from xdsl.ir import Block, Region
 from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineExpr, AffineMap
-from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import (
-    PatternRewriter,
-    PatternRewriteWalker,
-    RewritePattern,
-    op_type_rewrite_pattern,
-)
-from xdsl.rewriter import InsertPoint
 
+from compiler.dialects import stream
 from compiler.dialects.kernel import QMacOp
 from compiler.util.canonicalize_affine import canonicalize_map
 
@@ -110,31 +100,36 @@ def tile_bounds(
     return bounds
 
 
-class ScheduleMemrefLinalgRewriter(RewritePattern):
-    """
-    Takes a memref_stream.generic op as input and wraps it in a memref_stream streaming region op
-    to determine the access patterns, the operation is scheduled to an accelerator template.
-    """
+def schedule_memref_linalg(
+    op: stream.StreamingRegionOp,
+) -> tuple[tuple[AffineMap, ...], tuple[int, ...]]:
+    if not op.accelerator or op.accelerator.data not in (
+        "snax_alu",
+        "snax_gemm",
+        "snax_gemmx",
+    ):
+        raise NotImplementedError(
+            "only snax_alu, snax_gemm and snax_gemmx are supported right now"
+        )
 
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: memref_stream.GenericOp, rewriter: PatternRewriter):
-        if any(isinstance(operand.type, stream.StreamType) for operand in op.operands):
-            # Already streamified
-            return
-
-        if not (
-            isinstance(op.library_call, builtin.StringAttr)
-            and op.library_call.data in ("snax_alu", "snax_gemm", "snax_gemmx")
-        ):
-            raise NotImplementedError(
-                "only snax_alu, snax_gemm and snax_gemmx are supported right now"
-            )
-
-        # only handle snax_alu and snax_gemm for now
-        if op.library_call.data == "snax_alu":
-            template = [AffineMap.from_callable(lambda x, y: (4 * x + y,))] * 3
-            template_bounds = (None, 4)
-        elif op.library_call.data == "snax_gemm":
+    # only handle snax_alu and snax_gemm for now
+    template = None
+    template_bounds = None
+    if op.accelerator.data == "snax_alu":
+        template = [AffineMap.from_callable(lambda x, y: (4 * x + y,))] * 3
+        template_bounds = (None, 4)
+    elif op.accelerator.data == "snax_gemm":
+        M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
+        template = [
+            AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
+            AffineMap(6, 0, (K * 8 + k, N * 8 + n)),
+            AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
+        ]
+        template_bounds = (None, None, None, 8, 8, 8)
+    elif op.accelerator.data == "snax_gemmx":
+        # TODO: move templates to accelerator definitions
+        if isinstance(op.body.block.first_op.body.block.first_op, QMacOp):
+            # gemm
             M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
             template = [
                 AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
@@ -142,181 +137,63 @@ class ScheduleMemrefLinalgRewriter(RewritePattern):
                 AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
             ]
             template_bounds = (None, None, None, 8, 8, 8)
-        elif op.library_call.data == "snax_gemmx":
-            # TODO: move templates to accelerator definitions
-            if isinstance(op.body.block.first_op, QMacOp):
-                # gemm
-                M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
-                template = [
-                    AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
-                    AffineMap(6, 0, (K * 8 + k, N * 8 + n)),
-                    AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
-                ]
-                template_bounds = (None, None, None, 8, 8, 8)
-            else:
-                # rescale function of gemmx
-                M, K, m, k = (AffineDimExpr(i) for i in range(4))
-                template = [
-                    AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
-                    AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
-                ]
-                template_bounds = (None, None, 8, 8)
-
-        # only take patterns of memref operands
-        schedule = [
-            imap.data
-            for imap, op in zip(op.indexing_maps.data, op.operands)
-            if isinstance(op.type, builtin.MemRefType)
-        ]
-
-        schedule_bounds: list[int | None] = [
-            bound.value.data for bound in op.bounds.data
-        ]
-
-        for i in range(template[0].num_dims):
-            # i = 0: look at the last dimension
-            # i = 1: look at the second to last dimension
-            template_dim = template[0].num_dims - i - 1
-            schedule_dim = schedule[0].num_dims - i - 1
-            match = False
-
-            for it in range(schedule_dim + 1):
-                # keep rotating the remaining dimensions until we have a match
-
-                template_check = tuple(
-                    disable_dims(map, template_dim) for map in template
-                )
-                schedule_check = tuple(
-                    disable_dims(map, schedule_dim) for map in schedule
-                )
-
-                if template_check == schedule_check:
-                    match = True
-                    break
-
-                # else rotate the for loops
-                schedule = tuple(rotate_dims(map, schedule_dim + 1) for map in schedule)
-                schedule_bounds = rotate_bounds(schedule_bounds, schedule_dim + 1)
-
-            if not match:
-                raise RuntimeError("failed to match template and schedule")
-
-            # now, check bounds and design potential transfomration map
-            if not (template_bound := template_bounds[template_dim]):
-                # nothing to worry about, continue to next dim
-                continue
-
-            schedule_bound = op.bounds.data[schedule_dim].value.data
-
-            if schedule_bound < template_bound:
-                # need to apply padding
-                raise NotImplementedError("padding not supported")
-            elif schedule_bound == template_bound:
-                # perfect!
-                # (i think?)
-                raise NotImplementedError("need to check behaviour in this case")
-            elif schedule_bound > template_bound:
-                # need to split up the schedule
-                assert schedule_bound % template_bound == 0
-                schedule = [
-                    tile_dim(schedule_map, schedule_dim, template_bound)
-                    for schedule_map in schedule
-                ]
-                schedule_bounds = tile_bounds(
-                    schedule_bounds, schedule_dim, template_bound
-                )
-
-        # if we get here we have now successfully determined a schedule for the operator
-        # this can be implemented with a memref streaming region
-        # the rest of this function just creates the wrapping memref streaming region
-        # the original generic op stays the same
-        # the indexing maps of that generic op are now pretty meaningless, but should
-        # not be looked at in following passes i think
-
-        input_streams = [
-            stream.ReadableStreamType(input.type.element_type)
-            for input in op.inputs
-            if isinstance(input.type, builtin.MemRefType)
-        ]
-
-        output_streams = [
-            stream.WritableStreamType(output.type.element_type)
-            for output in op.outputs
-            if isinstance(output.type, builtin.MemRefType)
-        ]
-
-        bounds_attr = builtin.ArrayAttr(
-            [
-                builtin.IntegerAttr(val if val else -1, builtin.IndexType())
-                for val in schedule_bounds
+        else:
+            # rescale function of gemmx
+            M, K, m, k = (AffineDimExpr(i) for i in range(4))
+            template = [
+                AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
+                AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
             ]
-        )
-        input_stride_patterns: list[memref_stream.StridePattern] = [
-            memref_stream.StridePattern(bounds_attr, builtin.AffineMapAttr(map))
-            for map in schedule
-        ]
+            template_bounds = (None, None, 8, 8)
 
-        streaming_region_op = memref_stream.StreamingRegionOp(
-            inputs=[
-                input
-                for input in op.inputs
-                if isinstance(input.type, builtin.MemRefType)
-            ],
-            outputs=[
-                output
-                for output in op.outputs
-                if isinstance(output.type, builtin.MemRefType)
-            ],
-            patterns=builtin.ArrayAttr(input_stride_patterns),
-            body=Region(Block(arg_types=input_streams + output_streams)),
-        )
+    assert template
+    assert template_bounds
 
-        streaming_args = list(streaming_region_op.body.block.args)
-        new_inputs = [
-            streaming_args.pop(0)
-            if isinstance(input.type, builtin.MemRefType)
-            else input
-            for input in op.inputs
-        ]
-        new_outputs = [
-            streaming_args.pop(0)
-            if isinstance(output.type, builtin.MemRefType)
-            else output
-            for output in op.outputs
-        ]
+    schedule = list(pattern.data for pattern in op.patterns.data)
+    schedule_bounds: list[int] = list(op.get_static_pattern_bounds())
 
-        new_generic_op = memref_stream.GenericOp(
-            inputs=new_inputs,
-            outputs=new_outputs,
-            inits=op.inits,
-            body=rewriter.move_region_contents_to_new_regions(op.body),
-            indexing_maps=op.indexing_maps,
-            iterator_types=op.iterator_types,
-            bounds=op.bounds,
-            init_indices=op.init_indices,
-            doc=op.doc,
-            library_call=op.library_call,
-        )
+    for i in range(template[0].num_dims):
+        # i = 0: look at the last dimension
+        # i = 1: look at the second to last dimension
+        template_dim = template[0].num_dims - i - 1
+        schedule_dim = schedule[0].num_dims - i - 1
+        match = False
 
-        rewriter.replace_matched_op(streaming_region_op)
-        rewriter.insert_op(
-            new_generic_op, InsertPoint.at_end(streaming_region_op.body.block)
-        )
+        for it in range(schedule_dim + 1):
+            # keep rotating the remaining dimensions until we have a match
 
+            template_check = tuple(disable_dims(map, template_dim) for map in template)
+            schedule_check = tuple(disable_dims(map, schedule_dim) for map in schedule)
 
-class ScheduleMemrefLinalg(ModulePass):
-    """
-    A pass to schedule a memref stream according
-    to an accelerator definition. The result is
-    wraped in a memref streaming region op that
-    contains the resulting schedule. The linalg
-    operation itself remains unchanged. As it is
-    schedule agnostic.
-    """
+            if template_check == schedule_check:
+                match = True
+                break
 
-    name = "schedule-memref-linalg"
+            # else rotate the for loops
+            schedule = tuple(rotate_dims(map, schedule_dim + 1) for map in schedule)
+            schedule_bounds = rotate_bounds(schedule_bounds, schedule_dim + 1)
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp):
-        PatternRewriteWalker(
-            ScheduleMemrefLinalgRewriter(), apply_recursively=False
-        ).rewrite_module(op)
+        if not match:
+            raise RuntimeError("failed to match template and schedule")
+
+        # now, check bounds and design potential transfomration map
+        if not (template_bound := template_bounds[template_dim]):
+            # nothing to worry about, continue to next dim
+            continue
+
+        schedule_bound = schedule_bounds[schedule_dim]
+
+        if schedule_bound < template_bound:
+            # need to apply padding
+            raise NotImplementedError("padding not supported")
+        elif schedule_bound >= template_bound:
+            # need to split up the schedule
+            assert schedule_bound % template_bound == 0
+            schedule = [
+                tile_dim(schedule_map, schedule_dim, template_bound)
+                for schedule_map in schedule
+            ]
+            schedule_bounds = tile_bounds(schedule_bounds, schedule_dim, template_bound)
+            pass
+
+    return tuple(schedule), tuple(schedule_bounds)

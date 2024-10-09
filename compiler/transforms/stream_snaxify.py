@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 
 from xdsl.context import MLContext
-from xdsl.dialects import arith, builtin, memref, memref_stream
-from xdsl.dialects.builtin import MemRefType, StringAttr
+from xdsl.dialects import arith, builtin, memref
+from xdsl.dialects.builtin import MemRefType
 from xdsl.ir import Operation
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
-    GreedyRewritePatternApplier,
     PatternRewriter,
     PatternRewriteWalker,
     RewritePattern,
@@ -15,50 +14,19 @@ from xdsl.pattern_rewriter import (
 )
 
 from compiler.accelerators import find_accelerator_op
-from compiler.dialects import snax_stream
+from compiler.dialects import snax_stream, stream
 from compiler.dialects.snax import StreamerConfigurationAttr
-
-
-@dataclass
-class HoistAcceleratorAttribute(RewritePattern):
-    """
-    A pattern to hoist the library call from within a memref
-    streaming region as an attribute of the op.
-    """
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: memref_stream.StreamingRegionOp, _):
-        # attribute already assigned to op
-        if getattr(op.attributes, "accelerator", None):
-            return
-
-        accelerator = None
-
-        for inner_op in op.body.walk():
-            # look for memref_stream.generic with library call
-            if not isinstance(inner_op, memref_stream.GenericOp):
-                continue
-
-            if not inner_op.library_call:
-                continue
-
-            if accelerator and inner_op.library_call != accelerator:
-                raise RuntimeError(
-                    "multiple different accelerator dispatches found in a single memref_stream.streaming_region op"
-                )
-
-            accelerator = inner_op.library_call.data
-
-        if accelerator:
-            op.attributes["accelerator"] = StringAttr(accelerator)
+from compiler.transforms.schedule_memref_linalg import schedule_memref_linalg
 
 
 @dataclass
 class MemrefStreamToSnaxPattern(RewritePattern):
     """
-    A pass to convert memref_stream operations to snax stream.
+    A pass to convert streaming region operations to snax stream.
 
-    This boils down to combining the data access patterns of a memref_stream op (operation -> data),
+    First, the operation is scheduled to an accelerator with the schedule_streams algorithm.
+
+    After this, this boils down to combining the data access patterns of a stream op (operation -> data),
     with a certain data layout: an affine map from (data -> memory) into a mapping (operation -> memory).
 
     This takes the form of a snax_stream access pattern, mapping (operation -> memory)
@@ -70,16 +38,14 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: memref_stream.StreamingRegionOp, rewriter: PatternRewriter
+        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
     ):
-        # Compliance checks:
-
-        # Handle only memref stream ops dispatched to an accelerator:
-        if "accelerator" not in op.attributes:
+        # Handle only stream ops dispatched to an accelerator:
+        if op.accelerator is None:
             return
 
         # Go and fetch the accelerator op
-        assert isinstance((accelerator_str := op.attributes["accelerator"]), StringAttr)
+        accelerator_str = op.accelerator.data
         acc_op = find_accelerator_op(op, accelerator_str)
 
         if not acc_op:
@@ -94,6 +60,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         for memref_operand in op.operands:
             if not isinstance(memref_operand.type, builtin.MemRefType):
                 return
+
+        # First, run the stream scheduling algorithm
+        schedule, schedule_bounds = schedule_memref_linalg(op)
 
         # We are now ready to convert the stream access patterns into snax stride patterns
         # construct the strided patterns for SNAX Streamers
@@ -114,7 +83,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             data_mem_map: AffineMap = memref_type.get_affine_map_in_bytes()
 
             # Mapping from access to data:
-            access_data_map: AffineMap = op.patterns.data[operand].index_map.data
+            access_data_map: AffineMap = schedule[operand]
 
             # Mapping from access to memory:
             access_mem_map: AffineMap = data_mem_map.compose(access_data_map)
@@ -148,7 +117,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     access_mem_map.eval(
                         generate_one_list(access_mem_map.num_dims, i), ()
                     )[0],
-                    op.patterns.data[operand].ub.data[i].value.data,
+                    schedule_bounds[i],
                 )
                 for i in reversed(range(access_mem_map.num_dims))
             )
@@ -285,8 +254,4 @@ class StreamSnaxify(ModulePass):
     name = "stream-snaxify"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(
-            GreedyRewritePatternApplier(
-                [HoistAcceleratorAttribute(), MemrefStreamToSnaxPattern()]
-            )
-        ).rewrite_module(op)
+        PatternRewriteWalker(MemrefStreamToSnaxPattern()).rewrite_module(op)

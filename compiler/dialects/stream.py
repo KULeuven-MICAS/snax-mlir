@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from typing import Generic, TypeVar
 
 from xdsl.dialects.builtin import (
@@ -6,6 +6,7 @@ from xdsl.dialects.builtin import (
     AnyShapedType,
     ArrayAttr,
     ContainerType,
+    ShapedType,
     StringAttr,
 )
 from xdsl.dialects.utils import AbstractYieldOperation
@@ -18,6 +19,7 @@ from xdsl.ir import (
     SSAValue,
     TypeAttribute,
 )
+from xdsl.ir.affine import AffineMap
 from xdsl.irdl import (
     AttrSizedOperandSegments,
     IRDLOperation,
@@ -109,6 +111,39 @@ class StreamingRegionOp(IRDLOperation):
                 "accelerator": accelerator,
             },
             result_types=[result_types],
+        )
+
+    def get_pattern_bounds_to_shapes_map(self) -> AffineMap:
+        """
+        Returns mapping from pattern iteration bounds to operand shapes
+        """
+        return AffineMap(
+            self.patterns.data[0].data.num_dims,
+            self.patterns.data[0].data.num_symbols,
+            tuple(res for map in self.patterns for res in map.data.results),
+        )
+
+    def get_shapes_to_pattern_bounds_map(self) -> AffineMap:
+        """
+        Returns mapping from operand shapes to pattern iteration bounds.
+        """
+        assert (result := self.get_pattern_bounds_to_shapes_map().inverse_permutation())
+        return result
+
+    def get_static_shapes(self) -> Iterable[int]:
+        """
+        Return the static shapes of all operands of this op.
+        """
+        for operand in self.operands:
+            assert isinstance(operand.type, ShapedType)
+            yield from operand.type.get_shape()
+
+    def get_static_pattern_bounds(self) -> Iterable[int]:
+        """
+        Return the static pattern bounds of this op.
+        """
+        return self.get_shapes_to_pattern_bounds_map().eval(
+            tuple(self.get_static_shapes()), []
         )
 
 
