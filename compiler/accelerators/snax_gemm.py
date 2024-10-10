@@ -163,7 +163,9 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         ]
 
     @staticmethod
-    def get_template(op: stream.StreamingRegionOp) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
+    def get_template(
+        op: stream.StreamingRegionOp,
+    ) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
         M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
         template = [
             AffineMap(6, 0, (M * 8 + m, K * 8 + k)),

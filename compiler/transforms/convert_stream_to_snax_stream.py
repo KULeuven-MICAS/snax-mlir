@@ -70,7 +70,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 return
 
         # First, run the stream scheduling algorithm
-        schedule, schedule_bounds = schedule_memref_linalg(op, template, template_bounds)
+        schedule, schedule_bounds = schedule_memref_linalg(
+            op, template, template_bounds
+        )
 
         # We are now ready to convert the stream access patterns into snax stride patterns
         # construct the strided patterns for SNAX Streamers

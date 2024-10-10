@@ -261,7 +261,9 @@ class SNAXStreamer(ABC):
 
     @abstractmethod
     @staticmethod
-    def get_template(op: stream.StreamingRegionOp) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
+    def get_template(
+        op: stream.StreamingRegionOp,
+    ) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
         """
         Get the template for this acelerator to schedule a given
         stream.streaming_region operation.

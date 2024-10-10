@@ -6,7 +6,6 @@ from xdsl.dialects.builtin import i8, i32
 from xdsl.ir import BlockArgument, Operation, SSAValue
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 
-import compiler.dialects.kernel as kernel
 from compiler.accelerators.dispatching import DispatchTemplate, SupportedKernel
 from compiler.accelerators.snax import (
     SNAXAccelerator,
@@ -263,7 +262,9 @@ class SNAXGEMMXAccelerator(
         ]
 
     @staticmethod
-    def get_template(op: stream.StreamingRegionOp) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
+    def get_template(
+        op: stream.StreamingRegionOp,
+    ) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
         assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
         if isinstance(generic_op.body.block.first_op, kernel.QMacOp):
             # gemm

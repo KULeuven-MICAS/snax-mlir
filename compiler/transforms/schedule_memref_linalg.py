@@ -1,8 +1,8 @@
 from collections.abc import Sequence
+
 from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineExpr, AffineMap
 
 from compiler.dialects import stream
-from compiler.dialects.kernel import QMacOp
 from compiler.util.canonicalize_affine import canonicalize_map
 
 
@@ -104,9 +104,8 @@ def tile_bounds(
 def schedule_memref_linalg(
     op: stream.StreamingRegionOp,
     template: Sequence[AffineMap],
-    template_bounds: Sequence[int | None]
+    template_bounds: Sequence[int | None],
 ) -> tuple[tuple[AffineMap, ...], tuple[int, ...]]:
-
     schedule = list(pattern.data for pattern in op.patterns.data)
     schedule_bounds: list[int] = list(op.get_static_pattern_bounds())
 
