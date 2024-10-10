@@ -14,7 +14,7 @@ from xdsl.rewriter import InsertPoint
 from xdsl.utils.str_enum import StrEnum
 
 from compiler.dialects import stream
-from compiler.dialects.kernel import QMacOp, RescaleOp
+from compiler.dialects.kernel import AddOp, QMacOp, RescaleOp
 from compiler.dialects.snax import LayoutCast
 from compiler.dialects.tsl import TiledStridedLayoutAttr
 from compiler.ir.tsl import Stride, TiledStride, TiledStridedLayout
@@ -143,6 +143,8 @@ class AddMemoryLayout(RewritePattern):
             else:
                 library_call = op.accelerator.data
 
+        has_add_c = False
+
         # check for library call
         if library_call == "snax_gemmx" or library_call == "snax_gemmx_stream":
             # only do so for qmac kernels
@@ -155,6 +157,11 @@ class AddMemoryLayout(RewritePattern):
                 )
                 if not isinstance(generic_op.body.block.first_op, QMacOp):
                     return
+
+                if isinstance(generic_op.next_op, stream.GenericOp):
+                    if isinstance(generic_op.next_op.body.block.first_op, AddOp):
+                        # gemm
+                        has_add_c = True
 
             # the layout should be as static as the memref is. no more, no less
             # get m, n, k
@@ -257,9 +264,21 @@ class AddMemoryLayout(RewritePattern):
                 (new_input_a, new_input_b, new_output), InsertPoint.before(op)
             )
 
-            op.operands[shaped_operands[0][0]] = new_input_a.dest
-            op.operands[shaped_operands[1][0]] = new_input_b.dest
-            op.operands[shaped_operands[2][0]] = new_output.dest
+            if has_add_c:
+                rewriter.insert_op(
+                    new_input_c := LayoutCast.from_type_and_target_layout(
+                        op.inputs[2], tsl_output
+                    ),
+                    InsertPoint.before(op),
+                )
+                op.operands[shaped_operands[0][0]] = new_input_a.dest
+                op.operands[shaped_operands[1][0]] = new_input_b.dest
+                op.operands[shaped_operands[2][0]] = new_input_c.dest
+                op.operands[shaped_operands[3][0]] = new_output.dest
+            else:
+                op.operands[shaped_operands[0][0]] = new_input_a.dest
+                op.operands[shaped_operands[1][0]] = new_input_b.dest
+                op.operands[shaped_operands[2][0]] = new_output.dest
 
 
 @dataclass(frozen=True)

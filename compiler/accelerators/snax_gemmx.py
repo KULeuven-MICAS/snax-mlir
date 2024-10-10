@@ -267,7 +267,7 @@ class SNAXGEMMXAccelerator(
     ) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
         assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
         if isinstance(generic_op.body.block.first_op, kernel.QMacOp):
-            # gemm
+            # matmul
             M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
             template = [
                 AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
@@ -275,13 +275,24 @@ class SNAXGEMMXAccelerator(
                 AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
             ]
             template_bounds = (None, None, None, 8, 8, 8)
+
+            if isinstance(generic_op.next_op, stream.GenericOp):
+                generic_op = generic_op.next_op
+                if isinstance(generic_op.body.block.first_op, kernel.AddOp):
+                    # gemm, add c pattern that is equal to output pattern
+                    template += [template[-1]]
+                else:
+                    raise RuntimeError("unsupported kernel")
         else:
-            # rescale function of gemmx
+            # rescale only function of gemmx
             M, K, m, k = (AffineDimExpr(i) for i in range(4))
             template = [
                 AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
                 AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
             ]
             template_bounds = (None, None, 8, 8)
+
+        if not isinstance(generic_op.next_op, stream.YieldOp):
+            raise RuntimeError("unsupported kernel")
 
         return template, template_bounds
