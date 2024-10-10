@@ -116,6 +116,8 @@ class FuseElementwisePattern(RewritePattern):
                     ),
                     InsertPoint.at_end(streaming_region_op.body.block),
                 )
+                for old_result, new_result in zip(o.results, producer_generic.results):
+                    rewriter._replace_all_uses_with(old_result, new_result)
             # do not use yield op from producer region
             elif isinstance(o, stream.YieldOp):
                 continue
@@ -163,6 +165,4 @@ class FuseStreamingRegions(ModulePass):
     name = "fuse-streaming-regions"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(
-            FuseElementwisePattern(), apply_recursively=False
-        ).rewrite_module(op)
+        PatternRewriteWalker(FuseElementwisePattern()).rewrite_module(op)
