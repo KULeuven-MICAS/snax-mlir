@@ -14,6 +14,8 @@ from xdsl.pattern_rewriter import (
 )
 
 from compiler.accelerators import find_accelerator_op
+from compiler.accelerators.registry import AcceleratorRegistry
+from compiler.accelerators.snax import SNAXStreamer
 from compiler.dialects import snax_stream, stream
 from compiler.dialects.snax import StreamerConfigurationAttr
 from compiler.transforms.schedule_memref_linalg import schedule_memref_linalg
@@ -56,13 +58,21 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         streamer_config = acc_op.attributes["streamer_config"]
         assert isinstance(streamer_config, StreamerConfigurationAttr)
 
+        # get template and template_bounds
+        accelerator_type = AcceleratorRegistry().get_acc_info(acc_op)
+        assert issubclass(accelerator_type, SNAXStreamer)
+
+        template, template_bounds = accelerator_type.get_template(op)
+
         # Make sure the operands are memrefs
         for memref_operand in op.operands:
             if not isinstance(memref_operand.type, builtin.MemRefType):
                 return
 
         # First, run the stream scheduling algorithm
-        schedule, schedule_bounds = schedule_memref_linalg(op)
+        schedule, schedule_bounds = schedule_memref_linalg(
+            op, template, template_bounds
+        )
 
         # We are now ready to convert the stream access patterns into snax stride patterns
         # construct the strided patterns for SNAX Streamers
@@ -93,23 +103,6 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 raise RuntimeError(
                     "Access patterns with symbols are not supported yet."
                 )
-
-            # Get the streamer
-            # FIXME: this is code copied from schedule memref linalg,
-            # move this to accelerator definitions to avoid code duplication
-            acc_str = acc_op.name_prop.root_reference.data
-            template_bounds: tuple[int | None, ...] = ()
-            if acc_str == "snax_alu":
-                template_bounds = (None, 4)
-            elif acc_str == "snax_gemm":
-                template_bounds = (None, None, None, 8, 8, 8)
-            elif acc_str == "snax_gemmx":
-                if len(op.inputs) > 1:
-                    # gemm
-                    template_bounds = (None, None, None, 8, 8, 8)
-                else:
-                    # simd only
-                    template_bounds = (None, None, 8, 8)
 
             # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)
             access_iter = iter(

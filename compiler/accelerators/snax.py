@@ -1,16 +1,17 @@
 import string
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, llvm
 from xdsl.dialects.builtin import IntAttr, i32
 from xdsl.dialects.scf import Condition, While, Yield
 from xdsl.ir import Operation, OpResult, SSAValue
+from xdsl.ir.affine import AffineMap
 
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.streamers import StreamerConfiguration
 from compiler.accelerators.streamers.streamers import StreamerFlag, StreamerOpts
-from compiler.dialects import accfg
+from compiler.dialects import accfg, stream
 from compiler.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
 
 c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
@@ -257,6 +258,19 @@ class SNAXStreamer(ABC):
         base_addr += 2
 
         return base_addr, streamer_launch
+
+    @staticmethod
+    @abstractmethod
+    def get_template(
+        op: stream.StreamingRegionOp,
+    ) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
+        """
+        Get the template for this acelerator to schedule a given
+        stream.streaming_region operation.
+
+        Returns template, template_bounds
+        """
+        raise NotImplementedError()
 
 
 class SNAXPollingBarrier(Accelerator, ABC):

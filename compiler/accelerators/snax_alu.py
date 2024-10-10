@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.dialects.builtin import i64
 from xdsl.ir import Operation, SSAValue
+from xdsl.ir.affine import AffineMap
 
 import compiler.dialects.kernel as kernel
 from compiler.accelerators.dispatching import DispatchTemplate, SupportedKernel
@@ -16,7 +17,7 @@ from compiler.accelerators.streamers import (
     StreamerConfiguration,
     StreamerType,
 )
-from compiler.dialects import accfg, snax_stream
+from compiler.dialects import accfg, snax_stream, stream
 
 default_streamer = StreamerConfiguration(
     [
@@ -188,3 +189,9 @@ class SNAXAluAccelerator(
         op.attributes["streamer_config"] = self.streamer_config
 
         return op
+
+    @staticmethod
+    def get_template(op: stream.StreamingRegionOp):
+        template = [AffineMap.from_callable(lambda x, y: (4 * x + y,))] * 3
+        template_bounds = (None, 4)
+        return template, template_bounds
