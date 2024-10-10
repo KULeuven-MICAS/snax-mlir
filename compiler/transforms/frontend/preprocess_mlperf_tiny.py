@@ -13,10 +13,10 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.rewriter import InsertPoint
-from xdsl.traits import SymbolTable
 from xdsl.transforms.mlir_opt import MLIROptPass
 
 from compiler.dialects import snax
+from compiler.transforms.alloc_to_global import AllocToGlobal
 from compiler.transforms.convert_tosa_to_kernel import RescaleClampPattern
 from compiler.transforms.test.insert_debugs import InsertDebugStatements
 
@@ -64,55 +64,6 @@ class DropOldFunction(RewritePattern):
         ## delete old main function which has been inlined
         if op.sym_name.data == "main":
             rewriter.erase_matched_op()
-
-
-class AllocToGlobal(RewritePattern):
-    """
-    Convert all static allocs to empty statically scheduled memref globals
-    """
-
-    # keep track of index to give memref globals a name
-    index: int = 0
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: memref.Alloc, rewriter: PatternRewriter):
-        # get module op
-        module_op = op
-        while not isinstance(module_op, builtin.ModuleOp):
-            assert module_op is not None
-            module_op = module_op.parent_op()
-
-        symbol_table = module_op.get_trait(SymbolTable)
-        assert symbol_table
-
-        # create global symbol name
-        global_sym_name = "_static_const_" + str(self.index)
-        self.index = self.index + 1
-
-        # check if it is not in the symbol table
-        assert SymbolTable.lookup_symbol(module_op, global_sym_name) is None
-
-        # create global
-        memref_global = memref.Global.get(
-            builtin.StringAttr(global_sym_name),
-            op.results[0].type,
-            initial_value=builtin.UnitAttr(),
-        )
-        SymbolTable.insert_or_update(module_op, memref_global)
-
-        # remove all the deallocs
-        deallocs = [
-            user_op.operation
-            for user_op in op.results[0].uses
-            if isinstance(user_op.operation, memref.Dealloc)
-        ]
-        for dealloc in deallocs:
-            rewriter.erase_op(dealloc)
-
-        # replace op by get global
-        memref_get = memref.GetGlobal(global_sym_name, op.results[0].type)
-
-        rewriter.replace_matched_op(memref_get)
 
 
 class RemoveZeroInits(RewritePattern):

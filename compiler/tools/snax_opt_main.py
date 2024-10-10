@@ -14,6 +14,7 @@ from compiler.dialects.tsl import TSL
 from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 from compiler.transforms.accfg_dedup import AccfgDeduplicate
 from compiler.transforms.accfg_insert_resets import InsertResetsPass
+from compiler.transforms.alloc_to_global import AllocToGlobalPass
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
 from compiler.transforms.convert_kernel_to_linalg import ConvertKernelToLinalg
@@ -124,6 +125,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(StreamBufferize.name, lambda: StreamBufferize)
         super().register_pass(SnaxBufferize.name, lambda: SnaxBufferize)
         super().register_pass(FuseStreamingRegions.name, lambda: FuseStreamingRegions)
+        super().register_pass(AllocToGlobalPass.name, lambda: AllocToGlobalPass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
