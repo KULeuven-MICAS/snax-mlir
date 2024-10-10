@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from xdsl.dialects import arith, builtin, llvm
 from xdsl.dialects.builtin import i8, i32
 from xdsl.ir import Operation, SSAValue
+from xdsl.ir.affine import AffineDimExpr, AffineMap
 
 import compiler.dialects.kernel as kernel
 from compiler.accelerators.dispatching import DispatchTemplate, SupportedKernel
@@ -12,7 +13,7 @@ from compiler.accelerators.streamers import (
     StreamerConfiguration,
     StreamerType,
 )
-from compiler.dialects import accfg, snax_stream
+from compiler.dialects import accfg, snax_stream, stream
 
 default_streamer = StreamerConfiguration(
     [
@@ -160,3 +161,14 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
                 has_side_effects=True,
             ),
         ]
+
+    @staticmethod
+    def get_template(op: stream.StreamingRegionOp) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
+        M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
+        template = [
+            AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
+            AffineMap(6, 0, (K * 8 + k, N * 8 + n)),
+            AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
+        ]
+        template_bounds = (None, None, None, 8, 8, 8)
+        return template, template_bounds

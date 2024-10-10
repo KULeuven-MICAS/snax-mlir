@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineExpr, AffineMap
 
 from compiler.dialects import stream
@@ -102,52 +103,9 @@ def tile_bounds(
 
 def schedule_memref_linalg(
     op: stream.StreamingRegionOp,
+    template: Sequence[AffineMap],
+    template_bounds: Sequence[int | None]
 ) -> tuple[tuple[AffineMap, ...], tuple[int, ...]]:
-    if not op.accelerator or op.accelerator.data not in (
-        "snax_alu",
-        "snax_gemm",
-        "snax_gemmx",
-    ):
-        raise NotImplementedError(
-            "only snax_alu, snax_gemm and snax_gemmx are supported right now"
-        )
-
-    # only handle snax_alu and snax_gemm for now
-    template = None
-    template_bounds = None
-    if op.accelerator.data == "snax_alu":
-        template = [AffineMap.from_callable(lambda x, y: (4 * x + y,))] * 3
-        template_bounds = (None, 4)
-    elif op.accelerator.data == "snax_gemm":
-        M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
-        template = [
-            AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
-            AffineMap(6, 0, (K * 8 + k, N * 8 + n)),
-            AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
-        ]
-        template_bounds = (None, None, None, 8, 8, 8)
-    elif op.accelerator.data == "snax_gemmx":
-        # TODO: move templates to accelerator definitions
-        if isinstance(op.body.block.first_op.body.block.first_op, QMacOp):
-            # gemm
-            M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
-            template = [
-                AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
-                AffineMap(6, 0, (K * 8 + k, N * 8 + n)),
-                AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
-            ]
-            template_bounds = (None, None, None, 8, 8, 8)
-        else:
-            # rescale function of gemmx
-            M, K, m, k = (AffineDimExpr(i) for i in range(4))
-            template = [
-                AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
-                AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
-            ]
-            template_bounds = (None, None, 8, 8)
-
-    assert template
-    assert template_bounds
 
     schedule = list(pattern.data for pattern in op.patterns.data)
     schedule_bounds: list[int] = list(op.get_static_pattern_bounds())
