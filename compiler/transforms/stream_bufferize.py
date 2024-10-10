@@ -18,9 +18,13 @@ from compiler.dialects import stream
 @dataclass
 class BufferizeStreamingRegion(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: stream.StreamingRegionOp, rewriter: PatternRewriter) -> None:
+    def match_and_rewrite(
+        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
+    ) -> None:
         # check if for operands that need to be bufferized:
-        operands_to_buffer = tuple(operand for operand in op.operands if isinstance(operand.type, TensorType))
+        operands_to_buffer = tuple(
+            operand for operand in op.operands if isinstance(operand.type, TensorType)
+        )
 
         # if not tensor operands, return
         if not operands_to_buffer:
@@ -33,7 +37,9 @@ class BufferizeStreamingRegion(RewritePattern):
             assert isinstance(tensor_type := operand.type, TensorType)
             tensor_to_memrefs[operand] = bufferization.ToMemrefOp(
                 operands=[operand],
-                result_types=(MemRefType(tensor_type.get_element_type(), tensor_type.get_shape()),),
+                result_types=(
+                    MemRefType(tensor_type.get_element_type(), tensor_type.get_shape()),
+                ),
             )
 
         # create new streaming region op that operates on the buffers
@@ -55,7 +61,10 @@ class BufferizeStreamingRegion(RewritePattern):
 
         # replace the old operation
         rewriter.replace_matched_op(
-            tuple(tensor_to_memrefs.values()) + (new_op,) + tuple(memref_to_tensors.values()), new_results
+            tuple(tensor_to_memrefs.values())
+            + (new_op,)
+            + tuple(memref_to_tensors.values()),
+            new_results,
         )
 
 

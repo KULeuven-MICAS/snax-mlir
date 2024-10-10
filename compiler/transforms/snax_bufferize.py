@@ -24,4 +24,4 @@ class SnaxBufferize(ModulePass):
     )
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-       self.mlir_bufferization_pass.apply(ctx, op)
+        self.mlir_bufferization_pass.apply(ctx, op)
