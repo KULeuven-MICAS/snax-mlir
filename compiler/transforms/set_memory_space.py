@@ -1,6 +1,7 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, func, linalg, memref
 from xdsl.ir import SSAValue
+from xdsl.parser import MemRefType
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -8,7 +9,9 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.rewriter import InsertPoint
 
+from compiler.dialects import stream
 from compiler.util.snax_memory import L1, L3
 
 
@@ -188,6 +191,41 @@ class InitLinalgMemorySpace(RewritePattern):
         rewriter.replace_matched_op(linalg_op)
 
 
+class InitStreamMemorySpace(RewritePattern):
+    """
+    Covnert all stream.streaming region ops to only use L1
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(
+        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
+    ):
+        operands_to_memory_cast = tuple(
+            x
+            for x in op.operands
+            if isinstance(x.type, builtin.MemRefType) and x.type.memory_space != L1
+        )
+
+        if not operands_to_memory_cast:
+            return
+
+        # insert memory cast for every value
+        memory_cast_ops: dict[SSAValue, memref.MemorySpaceCast] = {}
+        for operand in operands_to_memory_cast:
+            assert isinstance(memreftype := operand.type, MemRefType)
+            memory_cast_ops[
+                operand
+            ] = memref.MemorySpaceCast.from_type_and_target_space(
+                operand, memreftype, L1
+            )
+        rewriter.insert_op(tuple(memory_cast_ops.values()), InsertPoint.before(op))
+
+        # replace all operands to casted values
+        for i in range(len(op.operands)):
+            if op.operands[i] in operands_to_memory_cast:
+                op.operands[i] = memory_cast_ops[op.operands[i]].dest
+
+
 class HandleFuncReturns(RewritePattern):
     """Function returns which return a memref object must be replaced
     such that the memref object is returned in the memory space specified
@@ -247,3 +285,4 @@ class SetMemorySpace(ModulePass):
         PatternRewriteWalker(InitMemRefAllocMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(InitLinalgMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(HandleFuncReturns()).rewrite_module(op)
+        PatternRewriteWalker(InitStreamMemorySpace()).rewrite_module(op)
