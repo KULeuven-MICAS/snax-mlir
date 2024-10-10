@@ -14,6 +14,7 @@ from xdsl.ir import (
     Attribute,
     Dialect,
     IsTerminator,
+    Operation,
     ParametrizedAttribute,
     Region,
     SSAValue,
@@ -94,8 +95,8 @@ class StreamingRegionOp(IRDLOperation):
 
     def __init__(
         self,
-        inputs: Sequence[SSAValue],
-        outputs: Sequence[SSAValue],
+        inputs: Sequence[SSAValue | Operation],
+        outputs: Sequence[SSAValue | Operation],
         patterns: ArrayAttr[AffineMapAttr],
         body: Region,
         accelerator: str | StringAttr | None = None,
