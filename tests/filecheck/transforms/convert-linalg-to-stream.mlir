@@ -14,7 +14,7 @@
   %2 = kernel.qmac %in, %in_1 zp_lhs : %in_2 zp_rhs : %in_3 : i8, i8, i32, i32 -> i32
   linalg.yield %2 : i32
 } -> tensor<16x16xi32>
-// CHECK-NEXT: %1 = "stream.streaming_region"(%arg0, %arg1, %0) <{"patterns" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d2)>], "accelerator" = "snax_gemmx", "operandSegmentSizes" = array<i32: 2, 1>}> ({
+// CHECK-NEXT: %1 = "stream.streaming_region"(%arg0, %arg1, %0) <{"patterns" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>], "accelerator" = "snax_gemmx", "operandSegmentSizes" = array<i32: 2, 1>}> ({
 // CHECK-NEXT: ^0(%2 : !stream.stream<i8>, %3 : !stream.stream<i8>, %4 : !stream.stream<i32>):
 // CHECK-NEXT:   %5 = "stream.generic"(%2, %3, %c0_i32, %c0_i32) <{"library_call" = "snax_gemmx"}> ({
 // CHECK-NEXT:   ^1(%in : i8, %in_1 : i8, %in_2 : i32, %in_3 : i32, %out : i32):

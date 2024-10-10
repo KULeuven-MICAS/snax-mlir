@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from math import prod
 
-from xdsl.dialects import arith, builtin, memref_stream
+from xdsl.dialects import arith, builtin
 from xdsl.dialects.builtin import i8, i32
 from xdsl.ir import BlockArgument, Operation, SSAValue
 
@@ -18,7 +18,7 @@ from compiler.accelerators.streamers import (
     StreamerType,
 )
 from compiler.accelerators.streamers.streamers import StreamerOpts
-from compiler.dialects import accfg, snax_stream
+from compiler.dialects import accfg, snax_stream, stream
 from compiler.util.pack_bitlist import pack_bitlist
 
 default_streamer = StreamerConfiguration(
@@ -169,7 +169,7 @@ class SNAXGEMMXAccelerator(
 
         ops_to_add: list[Operation] = []
 
-        assert isinstance(generic_op := op.body.block.first_op, memref_stream.GenericOp)
+        assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
 
         if isinstance(qmac := generic_op.body.block.first_op, kernel.QMacOp):
             # gemm

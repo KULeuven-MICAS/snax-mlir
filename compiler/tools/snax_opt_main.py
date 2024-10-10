@@ -23,26 +23,22 @@ from compiler.transforms.convert_linalg_to_accfg import (
 )
 from compiler.transforms.convert_linalg_to_kernel import ConvertLinalgToKernel
 from compiler.transforms.convert_linalg_to_stream import ConvertLinalgToStream
+from compiler.transforms.convert_stream_to_snax_stream import ConvertStreamToSnaxStream
 from compiler.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.frontend.preprocess_mlperf_tiny import PreprocessMLPerfTiny
-from compiler.transforms.guarded_linalg_to_memref_stream import (
-    GuardedLinalgToMemrefStreamPass,
-)
 from compiler.transforms.insert_accfg_op import InsertAccOp
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.memref_to_snax import MemrefToSNAX
 from compiler.transforms.realize_memref_casts import RealizeMemrefCastsPass
 from compiler.transforms.reuse_memref_allocs import ReuseMemrefAllocs
-from compiler.transforms.schedule_memref_linalg import ScheduleMemrefLinalg
 from compiler.transforms.set_memory_layout import SetMemoryLayout
 from compiler.transforms.set_memory_space import SetMemorySpace
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
-from compiler.transforms.stream_snaxify import StreamSnaxify
 from compiler.transforms.test.debug_to_func import DebugToFuncPass
 from compiler.transforms.test.insert_debugs import InsertDebugPass
 from compiler.transforms.test.test_add_mcycle_around_launch import AddMcycleAroundLaunch
@@ -104,17 +100,14 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(
             AccfgConfigOverlapPass.name, lambda: AccfgConfigOverlapPass
         )
-        super().register_pass(StreamSnaxify.name, lambda: StreamSnaxify)
+        super().register_pass(
+            ConvertStreamToSnaxStream.name, lambda: ConvertStreamToSnaxStream
+        )
         super().register_pass(ReuseMemrefAllocs.name, lambda: ReuseMemrefAllocs)
         super().register_pass(RemoveMemrefCopyPass.name, lambda: RemoveMemrefCopyPass)
         super().register_pass(
             AddMcycleAroundLoopPass.name, lambda: AddMcycleAroundLoopPass
         )
-        super().register_pass(
-            GuardedLinalgToMemrefStreamPass.name,
-            lambda: GuardedLinalgToMemrefStreamPass,
-        )
-        super().register_pass(ScheduleMemrefLinalg.name, lambda: ScheduleMemrefLinalg)
         super().register_pass(ConvertLinalgToKernel.name, lambda: ConvertLinalgToKernel)
         super().register_pass(ConvertKernelToLinalg.name, lambda: ConvertKernelToLinalg)
         super().register_pass(

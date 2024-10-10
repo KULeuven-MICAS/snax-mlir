@@ -26,7 +26,7 @@ ifdef ACCFG_BOTH
 ACCFGOPT=accfg-dedup,accfg-config-overlap,
 endif
 
-SNAXOPTFLAGS = -p insert-accfg-op{accelerator=snax_gemm},convert-linalg-to-kernel,dispatch-kernels,set-memory-space,set-memory-layout,realize-memref-casts,${REMOVE_MEMREF_COPY}insert-sync-barrier,reuse-memref-allocs,test-add-mcycle-around-loop,snax-lower-mcycle,dispatch-regions,guarded-linalg-to-memref-stream,schedule-memref-linalg,stream-snaxify,convert-linalg-to-accfg,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,function-constant-pinning,mlir-opt{executable=mlir-opt\ generic=true\ arguments="-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic"},${ACCFGOPT}convert-accfg-to-csr,
+SNAXOPTFLAGS = -p insert-accfg-op{accelerator=snax_gemm},convert-linalg-to-kernel,dispatch-kernels,set-memory-space,set-memory-layout,realize-memref-casts,${REMOVE_MEMREF_COPY}insert-sync-barrier,reuse-memref-allocs,test-add-mcycle-around-loop,snax-lower-mcycle,dispatch-regions,convert-linalg-to-stream,convert-stream-to-snax-stream,convert-linalg-to-accfg,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,function-constant-pinning,mlir-opt{executable=mlir-opt\ generic=true\ arguments="-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic"},${ACCFGOPT}convert-accfg-to-csr,
 
 
 GEN_DATA_OPTS += --m=${SIZE_M}
