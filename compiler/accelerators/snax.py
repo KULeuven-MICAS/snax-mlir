@@ -259,8 +259,8 @@ class SNAXStreamer(ABC):
 
         return base_addr, streamer_launch
 
-    @abstractmethod
     @staticmethod
+    @abstractmethod
     def get_template(
         op: stream.StreamingRegionOp,
     ) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
