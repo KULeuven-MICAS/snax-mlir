@@ -181,7 +181,7 @@ if __name__ == "__main__":
         {"M": 128, "K": 792, "N": 8},
         {"M": 128, "K": 192, "N": 88},
     ]
-    size += nn_size
+    sizes += nn_size
 
     output_report: dict[str, dict] = {}
 
