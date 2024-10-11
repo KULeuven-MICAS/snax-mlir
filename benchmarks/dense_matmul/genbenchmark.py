@@ -138,7 +138,9 @@ if __name__ == "__main__":
     # some other relevant neural network sizes:
     nn_size = [
         # m, n, k
+        # tiled small matrix sizes from LSTM 
         [16, 32, 512],
+        # tiled small matrix sizes from MobileNetV2
         [448, 32, 32],
         [8, 192, 32],
         [8, 16, 16],
@@ -161,6 +163,7 @@ if __name__ == "__main__":
         [56, 64, 960],
         [56, 64, 320],
         [8, 40, 1280],
+        # tiled small matrix sizes from ResNet18
         [8, 32, 152],
         [8, 64, 576],
         [8, 128, 576],
@@ -173,12 +176,14 @@ if __name__ == "__main__":
         [56, 8, 512],
         [56, 128, 256],
         [8, 200, 512],
+        # tiled small matrix sizes from Vision-Transformer
         [40, 96, 768],
         [40, 200, 64],
         [200, 64, 200],
         [40, 8, 768],
         [8, 128, 192],
         [8, 40, 768],
+        # tiled small matrix sizes from I-BERTBase
         [32, 64, 768],
         [8, 512, 64],
         [32, 64, 512],
