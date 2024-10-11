@@ -138,7 +138,7 @@ if __name__ == "__main__":
     # some other relevant neural network sizes:
     nn_size = [
         # m, n, k
-        # tiled small matrix sizes from LSTM 
+        # tiled small matrix sizes from LSTM
         [16, 32, 512],
         # tiled small matrix sizes from MobileNetV2
         [448, 32, 32],
