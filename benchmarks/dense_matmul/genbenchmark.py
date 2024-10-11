@@ -98,10 +98,10 @@ def output_log(output_report) -> str:
             result += f"| {output_report[benchmark]['m']} "
             result += f"| {output_report[benchmark]['n']} "
             result += f"| {output_report[benchmark]['k']} "
-            result += f"| {output_report[benchmark]['']} "
             result += (
                 f"| {'yes' if output_report[benchmark]['plots_available'] else 'no'} "
             )
+            result += f"| {output_report[benchmark]['cycles']} "
             result += f"| {output_report[benchmark]['ideal']} "
             result += f"| {output_report[benchmark]['utilization']} | \n"
             avg_utilization += output_report[benchmark]["utilization"]
