@@ -193,7 +193,7 @@ class InitLinalgMemorySpace(RewritePattern):
 
 class InitStreamMemorySpace(RewritePattern):
     """
-    Covnert all stream.streaming region ops to only use L1
+    Convert all stream.streaming region ops to only use L1
     """
 
     @op_type_rewrite_pattern
