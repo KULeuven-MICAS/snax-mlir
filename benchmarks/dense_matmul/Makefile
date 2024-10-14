@@ -7,11 +7,19 @@ include ../../runtime/Makefile.rules
 
 TESTS += generated.x
 
-SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,set-memory-space,set-memory-layout{gemm_layout=${LAYOUT}},realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=3},convert-linalg-to-stream,convert-stream-to-snax-stream,convert-linalg-to-accfg,test-add-mcycle-around-launch,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,snax-lower-mcycle,clear-memory-space
+MLIRPREPROCFLAGS = --linalg-generalize-named-ops
+MLIRPREPROCFLAGS += --mlir-print-op-generic
+MLIRPREPROCFLAGS += --mlir-print-local-scope
+
+%.preprocfinal.mlir: %.mlir
+	$(MLIROPT) $(MLIRPREPROCFLAGS) -o $@ $<
+
+SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,stream-bufferize,snax-bufferize,alloc-to-global,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=3},convert-stream-to-snax-stream,convert-linalg-to-accfg,test-add-mcycle-around-launch,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,snax-lower-mcycle,clear-memory-space
 
 GEN_DATA_OPTS += --m=${SIZE_M}
 GEN_DATA_OPTS += --n=${SIZE_N}
 GEN_DATA_OPTS += --k=${SIZE_K}
+GEN_DATA_OPTS += --add_c=${ADD_C}
 
 
 CFLAGS += -std=gnu11
