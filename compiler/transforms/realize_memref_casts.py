@@ -10,6 +10,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
+from compiler.dialects import stream
 from compiler.dialects.snax import LayoutCast
 
 
@@ -94,11 +95,13 @@ class RealizeMemrefCasts(RewritePattern):
                 continue
             # check if input
             is_input = False
-            if not isinstance(use_op, linalg.Generic):
+            if isinstance(use_op, linalg.Generic):
                 # don't know if input or output, default to yes
-                is_input = True
-            else:
                 is_input = op.results[0] in use_op.inputs
+            elif isinstance(use_op, stream.StreamingRegionOp):
+                is_input = op.results[0] in use_op.inputs
+            else:
+                is_input = True
             if is_input:
                 # insert copy op
                 copy_op = memref.CopyOp(source_op.source, op.dest)
@@ -113,6 +116,8 @@ class RealizeMemrefCasts(RewritePattern):
             # check if input
             is_output = False
             if isinstance(use_op, linalg.Generic):
+                is_output = op.results[0] in use_op.outputs
+            elif isinstance(use_op, stream.StreamingRegionOp):
                 is_output = op.results[0] in use_op.outputs
             elif isinstance(use_op, func.Return):
                 is_output = False
