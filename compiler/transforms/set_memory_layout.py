@@ -10,8 +10,10 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.rewriter import InsertPoint
 from xdsl.utils.str_enum import StrEnum
 
+from compiler.dialects import stream
 from compiler.dialects.kernel import QMacOp, RescaleOp
 from compiler.dialects.snax import LayoutCast
 from compiler.dialects.tsl import TiledStridedLayoutAttr
@@ -124,31 +126,48 @@ class AddMemoryLayout(RewritePattern):
     gemm_layout: GemmLayout = GemmLayout.cyclic
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
+    def match_and_rewrite(
+        self, op: linalg.Generic | stream.StreamingRegionOp, rewriter: PatternRewriter
+    ):
         # check if operation is dispatched via library call, as set by e.g.
         # the dispatch-kernels pass
-        if linalg_op.library_call is None:
-            return
-        else:
-            library_call = linalg_op.library_call.data
+
+        if isinstance(op, linalg.Generic):
+            if op.library_call is None:
+                return
+            else:
+                library_call = op.library_call.data
+        elif isinstance(op, stream.StreamingRegionOp):
+            if op.accelerator is None:
+                return
+            else:
+                library_call = op.accelerator.data
 
         # check for library call
         if library_call == "snax_gemmx" or library_call == "snax_gemmx_stream":
             # only do so for qmac kernels
-            if not isinstance(linalg_op.body.block.first_op, QMacOp):
-                return
+            if isinstance(op, linalg.Generic):
+                if not isinstance(op.body.block.first_op, QMacOp):
+                    return
+            elif isinstance(op, stream.StreamingRegionOp):
+                assert isinstance(
+                    generic_op := op.body.block.first_op, stream.GenericOp
+                )
+                if not isinstance(generic_op.body.block.first_op, QMacOp):
+                    return
+
             # the layout should be as static as the memref is. no more, no less
             # get m, n, k
 
-            shaped_operands: list[MemRefType] = [
-                op.type
-                for op in linalg_op.operands
+            shaped_operands: list[tuple[int, MemRefType]] = [
+                (index, op.type)
+                for index, op in enumerate(op.operands)
                 if isinstance(op.type, builtin.MemRefType)
             ]
 
-            m = shaped_operands[0].get_shape()[0]
-            n = shaped_operands[1].get_shape()[1]
-            k = shaped_operands[0].get_shape()[1]
+            m = shaped_operands[0][1].get_shape()[0]
+            n = shaped_operands[1][1].get_shape()[1]
+            k = shaped_operands[0][1].get_shape()[1]
 
             if m == -1:
                 m = None
@@ -223,31 +242,24 @@ class AddMemoryLayout(RewritePattern):
 
             # insert layout_cast ops
             new_input_a = LayoutCast.from_type_and_target_layout(
-                linalg_op.inputs[0], tsl_input_a
+                op.inputs[0], tsl_input_a
             )
 
             new_input_b = LayoutCast.from_type_and_target_layout(
-                linalg_op.inputs[1], tsl_input_b
+                op.inputs[1], tsl_input_b
             )
 
             new_output = LayoutCast.from_type_and_target_layout(
-                linalg_op.outputs[0], tsl_output
+                op.outputs[0], tsl_output
             )
 
-            new_linalg_op = linalg.Generic(
-                inputs=[new_input_a, new_input_b, *linalg_op.inputs[2:]],
-                outputs=[new_output],
-                body=rewriter.move_region_contents_to_new_regions(linalg_op.regions[0]),
-                indexing_maps=linalg_op.indexing_maps,
-                iterator_types=linalg_op.iterator_types,
-                doc=linalg_op.doc,
-                library_call=linalg_op.library_call,
+            rewriter.insert_op(
+                (new_input_a, new_input_b, new_output), InsertPoint.before(op)
             )
 
-            rewriter.insert_op_before_matched_op([new_input_a, new_input_b, new_output])
-            rewriter.replace_op(linalg_op, new_linalg_op)
-
-        pass
+            op.operands[shaped_operands[0][0]] = new_input_a.dest
+            op.operands[shaped_operands[1][0]] = new_input_b.dest
+            op.operands[shaped_operands[2][0]] = new_output.dest
 
 
 @dataclass(frozen=True)
