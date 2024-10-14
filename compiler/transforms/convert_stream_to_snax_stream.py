@@ -161,9 +161,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0]
             )
             if len(snax_stride_patterns) == 3:
-                # gemm
+                # matmul
 
-                # for a gemm, the 8-bit output port D8 and the bias in put C
+                # for a matmul, the 8-bit output port D8 and the bias in put C
                 # are unused, so we create empty patterns for them here.
 
                 # insert empty patterns for D8 and zero pattern for C
@@ -187,6 +187,15 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 new_inputs.append(
                     # zero pointer will generate 0 values
                     arith.Constant.from_int_and_width(0, builtin.IndexType())
+                )
+            elif len(snax_stride_patterns) == 4:
+                # gemm
+                #
+                # for a gemm, the 8bit-output port D8 are unused, so we create
+                # empty patterns for them here
+                snax_stride_patterns.insert(2, empty_pattern)
+                new_inputs.insert(
+                    2, memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
                 )
 
             else:

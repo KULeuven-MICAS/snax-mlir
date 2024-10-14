@@ -51,7 +51,7 @@ func.func @streamer_matmul(%arg0 : tensor<16x16xi8>, %arg1 : tensor<16x16xi8>, %
 // CHECK-NEXT:     %0 = tensor.empty() : tensor<16x16xi32>
 // CHECK-NEXT:     %1 = tensor.empty() : tensor<16x16xi32>
 // CHECK-NEXT:     %2 = tensor.empty() : tensor<16x16xi32>
-// CHECK-NEXT:     %3 = "stream.streaming_region"(%arg0, %arg1, %arg2, %arg2, %2) <{"patterns" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>], "operandSegmentSizes" = array<i32: 4, 1>}> ({
+// CHECK-NEXT:     %3 = "stream.streaming_region"(%arg0, %arg1, %arg2, %arg2, %2) <{"patterns" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>], "accelerator" = "snax_gemmx", "operandSegmentSizes" = array<i32: 4, 1>}> ({
 // CHECK-NEXT:     ^0(%4 : !stream.stream<i8>, %5 : !stream.stream<i8>, %6 : !stream.stream<i32>, %7 : !stream.stream<i32>, %8 : !stream.stream<i32>):
 // CHECK-NEXT:       %9 = "stream.generic"(%4, %5, %c0_i32, %c0_i32) <{"library_call" = "snax_gemmx"}> ({
 // CHECK-NEXT:       ^1(%in : i8, %in_1 : i8, %in_2 : i32, %in_3 : i32, %out : i32):

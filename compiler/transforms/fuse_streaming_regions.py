@@ -93,6 +93,7 @@ class FuseElementwisePattern(RewritePattern):
             new_outputs,
             patterns,
             Region(Block(arg_types=arg_types)),
+            accelerator=op.accelerator,
             result_types=user_op.result_types,
         )
 

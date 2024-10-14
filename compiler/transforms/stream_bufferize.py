@@ -48,6 +48,7 @@ class BufferizeStreamingRegion(RewritePattern):
             outputs=[tensor_to_memrefs[output] for output in op.outputs],
             patterns=op.patterns,
             body=rewriter.move_region_contents_to_new_regions(op.body),
+            accelerator=op.accelerator,
         )
 
         # for every output, create a bufferization.to_tensor op
