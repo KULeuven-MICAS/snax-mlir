@@ -51,7 +51,14 @@ class ClearMemorySpace(ModulePass):
                 # change block args ssa values
                 if op_in_module.body.blocks:
                     old_args = [old_arg for old_arg in op_in_module.body.block._args]
-                    new_args = [BlockArgument(clear_memory_space(old_arg.type), op_in_module.body.block, index) for index, old_arg in enumerate(old_args)]
+                    new_args = [
+                        BlockArgument(
+                            clear_memory_space(old_arg.type),
+                            op_in_module.body.block,
+                            index,
+                        )
+                        for index, old_arg in enumerate(old_args)
+                    ]
                     for old_arg, new_arg in zip(old_args, new_args):
                         old_arg.replace_by(new_arg)
                     op_in_module.body.block._args = tuple(new_args)

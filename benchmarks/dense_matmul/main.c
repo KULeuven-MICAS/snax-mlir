@@ -15,7 +15,8 @@
 #include <snrt.h>
 
 // Kernel provided via external definition
-void _mlir_ciface_streamer_matmul(TwoDMemrefI32_t *d, TwoDMemrefI8_t *a, TwoDMemrefI8_t *b, TwoDMemrefI32_t *c);
+void _mlir_ciface_streamer_matmul(TwoDMemrefI32_t *d, TwoDMemrefI8_t *a,
+                                  TwoDMemrefI8_t *b, TwoDMemrefI32_t *c);
 
 int main() {
   {

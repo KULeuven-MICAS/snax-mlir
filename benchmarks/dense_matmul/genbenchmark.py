@@ -33,28 +33,34 @@ def create_matrix_multiply(m, n, k, add_c: bool = False):
     """
 
     arg_types = [
-        builtin.TensorType(i8, (m, k)), # A
-        builtin.TensorType(i8, (k, n)), # B
-        builtin.TensorType(i32, (m, n)), # C
+        builtin.TensorType(i8, (m, k)),  # A
+        builtin.TensorType(i8, (k, n)),  # B
+        builtin.TensorType(i32, (m, n)),  # C
     ]
 
     res_types = [
-        builtin.TensorType(i32, (m, n)), # D
+        builtin.TensorType(i32, (m, n)),  # D
     ]
 
     @Builder.implicit_region(arg_types)
     def func_body(args: tuple[BlockArgument, ...]) -> None:
         c0 = arith.Constant.from_int_and_width(0, 32)
         empty_tensor = tensor.EmptyOp([], (arg_types[-1]))
-        result = linalg.QuantizedMatmulOp([args[0], args[1], c0.result, c0.result], [empty_tensor.tensor])
+        result = linalg.QuantizedMatmulOp(
+            [args[0], args[1], c0.result, c0.result], [empty_tensor.tensor]
+        )
         if add_c:
             empty_tensor_2 = tensor.EmptyOp([], (arg_types[-1]))
-            newresult = linalg.AddOp([args[2], result.results[0]], [empty_tensor_2.tensor])
+            newresult = linalg.AddOp(
+                [args[2], result.results[0]], [empty_tensor_2.tensor]
+            )
             func.Return(newresult)
         else:
             func.Return(result)
 
-    function = func.FuncOp.from_region("streamer_matmul", arg_types, res_types, func_body)
+    function = func.FuncOp.from_region(
+        "streamer_matmul", arg_types, res_types, func_body
+    )
 
     module = builtin.ModuleOp([function])
 
@@ -201,7 +207,9 @@ if __name__ == "__main__":
 
     output_report: dict[str, dict] = {}
 
-    for size, layout, add_c in itertools.product(sizes, ("cyclic", "banked"), (True, False)):
+    for size, layout, add_c in itertools.product(
+        sizes, ("cyclic", "banked"), (True, False)
+    ):
         m, n, k = size
 
         # plot:
@@ -217,7 +225,7 @@ if __name__ == "__main__":
                 f"SIZE_N={n}",
                 f"SIZE_K={k}",
                 f"LAYOUT={layout}",
-                f"ADD_C={int(add_c)}"
+                f"ADD_C={int(add_c)}",
             ]
         )
         bm.run()
