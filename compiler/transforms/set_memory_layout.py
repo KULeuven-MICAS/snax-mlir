@@ -131,7 +131,7 @@ class AddMemoryLayout(RewritePattern):
     ):
         # check if operation is dispatched via library call, as set by e.g.
         # the dispatch-kernels pass
-        #
+
         if isinstance(op, linalg.Generic):
             if op.library_call is None:
                 return
