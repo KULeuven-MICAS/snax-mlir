@@ -1,7 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, func, linalg, memref
 from xdsl.ir import SSAValue
-from xdsl.parser import MemRefType
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -9,7 +8,6 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.rewriter import InsertPoint
 
 from compiler.dialects import stream
 from compiler.util.snax_memory import L1, L3
@@ -119,33 +117,25 @@ class InitMemRefAllocMemorySpace(RewritePattern):
         rewriter.replace_matched_op(new_op, new_results=[new_op.memref])
 
 
-class InitLinalgMemorySpace(RewritePattern):
-    """Walk through dispatchable operations (just linalg.Generic for now)
-    and change them to use only memrefs in memory space "L1". If they
-    currently use a memref in a different memory adress space, insert a
-    memref.memory_space_cast operation to convert the two"""
+class InitStreamAndLinalgMemorySpace(RewritePattern):
+    """
+    Convert all linalg.generics and stream.streaming region ops to only use L1
+    """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
-        # Op must have memref arguments with memory space not equal to L1
-        if not any(
-            [
-                isinstance(x.type, builtin.MemRefType) and x.type.memory_space != L1
-                for x in op.inputs
-            ]
-        ):
+    def match_and_rewrite(
+        self, op: linalg.Generic | stream.StreamingRegionOp, rewriter: PatternRewriter
+    ):
+        operands_to_memory_cast = tuple(
+            x
+            for x in op.operands
+            if isinstance(x.type, builtin.MemRefType) and x.type.memory_space != L1
+        )
+
+        if not operands_to_memory_cast:
             return
 
-        # Function to find/create casting operand if it is necessary
-        def get_cast_op(operand) -> None | memref.MemorySpaceCast:
-            # check if cast is required: must be a memref in wrong memory space
-            if not isinstance(operand, SSAValue):
-                return None
-            if not isinstance(operand.type, builtin.MemRefType):
-                return None
-            if operand.type.memory_space == L1:
-                return None
-
+        def get_cast_op(operand) -> memref.MemorySpaceCast:
             # cast required: find previous cast or create new one
             cast_op = None
             for use in operand.uses:
@@ -165,60 +155,10 @@ class InitLinalgMemorySpace(RewritePattern):
 
             return cast_op
 
-        # cast all inputs and outputs to correct memory space
-        new_inputs = [
-            inp if get_cast_op(inp) is None else get_cast_op(inp).dest
-            for inp in op.inputs
-        ]
-        new_outputs = [
-            out if get_cast_op(out) is None else get_cast_op(out).dest
-            for out in op.outputs
-        ]
-
-        # new linalg op with new inputs & outputs
-        linalg_op = linalg.Generic(
-            new_inputs,
-            new_outputs,
-            rewriter.move_region_contents_to_new_regions(op.regions[0]),
-            op.indexing_maps,
-            op.iterator_types,
-            [],
-            op.doc,
-            op.library_call,
-        )
-
-        # replace op
-        rewriter.replace_matched_op(linalg_op)
-
-
-class InitStreamMemorySpace(RewritePattern):
-    """
-    Convert all stream.streaming region ops to only use L1
-    """
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
-    ):
-        operands_to_memory_cast = tuple(
-            x
-            for x in op.operands
-            if isinstance(x.type, builtin.MemRefType) and x.type.memory_space != L1
-        )
-
-        if not operands_to_memory_cast:
-            return
-
         # insert memory cast for every value
         memory_cast_ops: dict[SSAValue, memref.MemorySpaceCast] = {}
         for operand in operands_to_memory_cast:
-            assert isinstance(memreftype := operand.type, MemRefType)
-            memory_cast_ops[
-                operand
-            ] = memref.MemorySpaceCast.from_type_and_target_space(
-                operand, memreftype, L1
-            )
-        rewriter.insert_op(tuple(memory_cast_ops.values()), InsertPoint.before(op))
+            memory_cast_ops[operand] = get_cast_op(operand)
 
         # replace all operands to casted values
         for i in range(len(op.operands)):
@@ -283,6 +223,5 @@ class SetMemorySpace(ModulePass):
         PatternRewriteWalker(InitFuncMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(InitMemRefGlobalMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(InitMemRefAllocMemorySpace()).rewrite_module(op)
-        PatternRewriteWalker(InitLinalgMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(HandleFuncReturns()).rewrite_module(op)
-        PatternRewriteWalker(InitStreamMemorySpace()).rewrite_module(op)
+        PatternRewriteWalker(InitStreamAndLinalgMemorySpace()).rewrite_module(op)
