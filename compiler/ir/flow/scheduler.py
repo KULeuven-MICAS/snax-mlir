@@ -2,7 +2,6 @@ from compiler.ir.flow.access_pattern import Schedule, Template
 
 
 def scheduler(template: Template, schedule: Schedule) -> Schedule:
-
     for i in range(template.num_dims):
         # i = 0: look at the last dimension
         # i = 1: look at the second to last dimension
@@ -12,7 +11,6 @@ def scheduler(template: Template, schedule: Schedule) -> Schedule:
 
         # maximum number of rotations
         for _ in range(schedule_dim + 1):
-
             # check if there is a match
             template_check = template.disable_dims(template_dim)
             schedule_check = schedule.disable_dims(schedule_dim)

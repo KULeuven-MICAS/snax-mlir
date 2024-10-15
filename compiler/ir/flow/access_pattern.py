@@ -22,7 +22,9 @@ class AccessPattern(ABC):
         bounds = tuple(bounds)
 
         if len(bounds) != pattern.num_dims:
-            raise ValueError("The number of bounds should be equal to the dimension of the pattern")
+            raise ValueError(
+                "The number of bounds should be equal to the dimension of the pattern"
+            )
 
         if pattern.num_symbols > 0:
             raise ValueError("Symbols in the pattern are not supported")
@@ -30,10 +32,9 @@ class AccessPattern(ABC):
         pattern = canonicalize_map(pattern)
 
         self = super().__new__(cls)
-        object.__setattr__(self, 'bounds', bounds)
-        object.__setattr__(self, 'pattern', pattern)
+        object.__setattr__(self, "bounds", bounds)
+        object.__setattr__(self, "pattern", pattern)
         return self
-
 
     @property
     def num_dims(self):
@@ -60,7 +61,9 @@ class AccessPattern(ABC):
         new_dims = new_dims[1:dim] + new_dims[:1] + new_dims[dim:]
         new_bounds = self.bounds[1:dim] + self.bounds[:1] + self.bounds[dim:]
 
-        new_pattern = self.pattern.replace_dims_and_symbols(new_dims, [], self.num_dims, 0)
+        new_pattern = self.pattern.replace_dims_and_symbols(
+            new_dims, [], self.num_dims, 0
+        )
         return type(self)(new_bounds, new_pattern)
 
     def disable_dims(self, dim: int) -> "AccessPattern":
@@ -114,9 +117,12 @@ class AccessPattern(ABC):
         new_pattern = self.pattern.compose(transform_map)
         bound_to_tile = self.bounds[dim]
         tiled_bound = bound_to_tile // template_bound if bound_to_tile else None
-        new_bounds = self.bounds[:dim] + (template_bound, tiled_bound) + self.bounds[dim+1:]
+        new_bounds = (
+            self.bounds[:dim] + (template_bound, tiled_bound) + self.bounds[dim + 1 :]
+        )
 
         return type(self)(new_bounds, new_pattern)
+
 
 @dataclass(frozen=True)
 class SchedulePattern(AccessPattern):
@@ -130,9 +136,10 @@ class SchedulePattern(AccessPattern):
     bounds: tuple[int, ...]
 
     def __new__(cls, bounds: Sequence[int], pattern: AffineMap):
-
         if any(bound is None or bound <= 0 for bound in bounds):
-            raise ValueError("All bounds must be static, strictly positive integers for a schedule")
+            raise ValueError(
+                "All bounds must be static, strictly positive integers for a schedule"
+            )
 
         return super().__new__(cls, bounds, pattern)
 
@@ -144,6 +151,7 @@ class SchedulePattern(AccessPattern):
 
     def disable_dims(self, dim: int) -> "SchedulePattern":
         return self.disable_dims(dim)
+
 
 @dataclass(frozen=True)
 class TemplatePattern(AccessPattern):
@@ -178,9 +186,8 @@ class TemplatePattern(AccessPattern):
 
 
 class Schedule(tuple[SchedulePattern]):
-
     @property
-    @deprecated('only valid in trivial cases')
+    @deprecated("only valid in trivial cases")
     def num_dims(self):
         return self[0].num_dims
 
@@ -195,9 +202,8 @@ class Schedule(tuple[SchedulePattern]):
 
 
 class Template(tuple[TemplatePattern]):
-
     @property
-    @deprecated('only valid in trivial cases')
+    @deprecated("only valid in trivial cases")
     def num_dims(self):
         return self[0].num_dims
 
@@ -205,12 +211,9 @@ class Template(tuple[TemplatePattern]):
         return Template(tp.disable_dims(dim) for tp in self)
 
     def matches(self, schedule: Schedule):
-
         if len(schedule) != len(self):
             return
         for sp, tp in zip(schedule, self):
             if not tp.matches(sp):
                 return False
         return True
-
-
