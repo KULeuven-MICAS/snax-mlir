@@ -18,7 +18,8 @@ from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
 from compiler.dialects import snax_stream, stream
 from compiler.dialects.snax import StreamerConfigurationAttr
-from compiler.transforms.schedule_memref_linalg import schedule_memref_linalg
+from compiler.ir.flow.access_pattern import Schedule, SchedulePattern
+from compiler.ir.flow.scheduler import scheduler
 
 
 @dataclass
@@ -62,7 +63,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         accelerator_type = AcceleratorRegistry().get_acc_info(acc_op)
         assert issubclass(accelerator_type, SNAXStreamer)
 
-        template, template_bounds = accelerator_type.get_template(op)
+        template = accelerator_type.get_template(op)
 
         # Make sure the operands are memrefs
         for memref_operand in op.operands:
@@ -70,9 +71,12 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 return
 
         # First, run the stream scheduling algorithm
-        schedule, schedule_bounds = schedule_memref_linalg(
-            op, template, template_bounds
+        schedule_bounds = tuple(op.get_static_pattern_bounds())
+        schedule = Schedule(
+            SchedulePattern(schedule_bounds, pattern.data)
+            for pattern in op.patterns.data
         )
+        schedule = scheduler(template, schedule)
 
         # We are now ready to convert the stream access patterns into snax stride patterns
         # construct the strided patterns for SNAX Streamers
@@ -93,7 +97,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             data_mem_map: AffineMap = memref_type.get_affine_map_in_bytes()
 
             # Mapping from access to data:
-            access_data_map: AffineMap = schedule[operand]
+            access_data_map: AffineMap = schedule[operand].pattern
 
             # Mapping from access to memory:
             access_mem_map: AffineMap = data_mem_map.compose(access_data_map)
@@ -123,7 +127,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             upper_bounds: list[int] = []
 
             # fill up all spatial strides
-            for _ in [x for x in template_bounds if x is not None]:
+            for _ in [x for x in template[0].bounds if x is not None]:
                 # FIXME: provide more general solution for new spatial streamer_config
                 # configuration, this works in all current cases and layouts but is far from generally correct.
                 spatial_strides = [8]
