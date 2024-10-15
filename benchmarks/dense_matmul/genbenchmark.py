@@ -216,7 +216,7 @@ if __name__ == "__main__":
         # only plot if max(m,n,k) <= 48
         to_plot = max(m, n, k) <= 48
         folder = f"test_{'gemm' if add_c else 'matmul'}_{layout}_{k}x{m}x{m}"
-        bm = generate_dense_benchmark(k, m, n, add_c)
+        bm = generate_dense_benchmark(m, n, k, add_c)
         bm.clean()
         bm.build(
             build_opts=[
