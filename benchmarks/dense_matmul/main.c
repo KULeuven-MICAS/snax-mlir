@@ -15,8 +15,8 @@
 #include <snrt.h>
 
 // Kernel provided via external definition
-void _mlir_ciface_streamer_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
-                                  TwoDMemrefI32_t *c);
+void _mlir_ciface_streamer_matmul(TwoDMemrefI32_t *d, TwoDMemrefI8_t *a,
+                                  TwoDMemrefI8_t *b, TwoDMemrefI32_t *c);
 
 int main() {
   {
@@ -49,7 +49,9 @@ int main() {
     memrefC.stride[1] = 1;
     memrefC.offset = 0;
 
-    _mlir_ciface_streamer_matmul(&memrefA, &memrefB, &memrefC);
+    TwoDMemrefI32_t memrefD;
+
+    _mlir_ciface_streamer_matmul(&memrefD, &memrefA, &memrefB, &memrefC);
 
     snrt_cluster_hw_barrier();
 
@@ -68,9 +70,9 @@ int main() {
 
     for (int i = 0; i < M_size * N_size; i++) {
       {
-        int32_t error = memrefC.aligned_data[i] - C_golden[i];
-        // printf("%d) %d -> %d\n", i, (int32_t)memrefC.aligned_data[i],
-        //        (int32_t)C_golden[i]);
+        int32_t error = memrefD.aligned_data[i] - D[i];
+        // printf("%d) %d -> %d\n", i, (int32_t)memrefD.aligned_data[i],
+        //        (int32_t)D[i]);
         if (error != 0)
           nerr += 1;
       }

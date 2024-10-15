@@ -1,5 +1,6 @@
 from xdsl.context import MLContext
-from xdsl.dialects import builtin, func, memref
+from xdsl.dialects import builtin, func
+from xdsl.ir import BlockArgument
 from xdsl.passes import ModulePass
 
 from compiler.dialects.tsl import TiledStridedLayoutAttr
@@ -8,20 +9,20 @@ from compiler.dialects.tsl import TiledStridedLayoutAttr
 class ClearMemorySpace(ModulePass):
     name = "clear-memory-space"
 
-    def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
+    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         # helper function to clear the memory space of a memref
         # also clears the layout information of the memref - not used anymore
         def clear_memory_space(t):
-            if isinstance(t, memref.MemRefType):
+            if isinstance(t, builtin.MemRefType):
                 if isinstance(t.layout, TiledStridedLayoutAttr):
-                    return memref.MemRefType(
+                    return builtin.MemRefType(
                         t.element_type,
                         t.get_shape(),
                         builtin.NoneAttr(),
                         builtin.NoneAttr(),
                     )
                 else:
-                    return memref.MemRefType(
+                    return builtin.MemRefType(
                         t.element_type,
                         t.get_shape(),
                         t.layout,
@@ -29,7 +30,7 @@ class ClearMemorySpace(ModulePass):
                     )
             return t
 
-        for op_in_module in module.walk():
+        for op_in_module in op.walk():
             for operand in op_in_module.operands:
                 operand.type = clear_memory_space(operand.type)
             for result in op_in_module.results:
@@ -46,3 +47,18 @@ class ClearMemorySpace(ModulePass):
                 )
 
                 op_in_module.function_type = new_function_type
+
+                # change block args ssa values
+                if op_in_module.body.blocks:
+                    old_args = [old_arg for old_arg in op_in_module.body.block._args]
+                    new_args = [
+                        BlockArgument(
+                            clear_memory_space(old_arg.type),
+                            op_in_module.body.block,
+                            index,
+                        )
+                        for index, old_arg in enumerate(old_args)
+                    ]
+                    for old_arg, new_arg in zip(old_args, new_args):
+                        old_arg.replace_by(new_arg)
+                    op_in_module.body.block._args = tuple(new_args)
