@@ -19,6 +19,7 @@ from compiler.accelerators.streamers import (
 )
 from compiler.accelerators.streamers.streamers import StreamerOpts
 from compiler.dialects import accfg, kernel, snax_stream, stream
+from compiler.ir.stream import Template, TemplatePattern
 from compiler.util.pack_bitlist import pack_bitlist
 
 default_streamer = StreamerConfiguration(
@@ -262,9 +263,7 @@ class SNAXGEMMXAccelerator(
         ]
 
     @staticmethod
-    def get_template(
-        op: stream.StreamingRegionOp,
-    ) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
+    def get_template(op: stream.StreamingRegionOp) -> Template:
         assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
         if isinstance(generic_op.body.block.first_op, kernel.QMacOp):
             # matmul
@@ -295,4 +294,4 @@ class SNAXGEMMXAccelerator(
         if not isinstance(generic_op.next_op, stream.YieldOp):
             raise RuntimeError("unsupported kernel")
 
-        return template, template_bounds
+        return Template(TemplatePattern(template_bounds, tp) for tp in template)

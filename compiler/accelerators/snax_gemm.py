@@ -14,6 +14,7 @@ from compiler.accelerators.streamers import (
     StreamerType,
 )
 from compiler.dialects import accfg, snax_stream, stream
+from compiler.ir.stream import Template, TemplatePattern
 
 default_streamer = StreamerConfiguration(
     [
@@ -163,9 +164,7 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         ]
 
     @staticmethod
-    def get_template(
-        op: stream.StreamingRegionOp,
-    ) -> tuple[Sequence[AffineMap], Sequence[int | None]]:
+    def get_template(op: stream.StreamingRegionOp) -> Template:
         M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
         template = [
             AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
@@ -173,4 +172,4 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
             AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
         ]
         template_bounds = (None, None, None, 8, 8, 8)
-        return template, template_bounds
+        return Template(TemplatePattern(template_bounds, tp) for tp in template)

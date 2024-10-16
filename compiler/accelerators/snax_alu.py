@@ -18,6 +18,7 @@ from compiler.accelerators.streamers import (
     StreamerType,
 )
 from compiler.dialects import accfg, snax_stream, stream
+from compiler.ir.stream import Template, TemplatePattern
 
 default_streamer = StreamerConfiguration(
     [
@@ -194,4 +195,4 @@ class SNAXAluAccelerator(
     def get_template(op: stream.StreamingRegionOp):
         template = [AffineMap.from_callable(lambda x, y: (4 * x + y,))] * 3
         template_bounds = (None, 4)
-        return template, template_bounds
+        return Template(TemplatePattern(template_bounds, tp) for tp in template)
