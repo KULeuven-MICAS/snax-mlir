@@ -1,8 +1,9 @@
 from abc import ABC
-from collections.abc import Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
+from typing import Generic
 
-from typing_extensions import Self, deprecated
+from typing_extensions import Self, TypeVar, deprecated, overload
 from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineMap
 
 from compiler.util.canonicalize_affine import canonicalize_map
@@ -175,10 +176,38 @@ class TemplatePattern(AccessPattern):
         return True
 
 
-class Schedule(tuple[SchedulePattern]):
+P = TypeVar("P", bound=AccessPattern)
+
+
+class PatternCollection(Sequence[P], Generic[P], ABC):
+    """
+    Abstract base class for collections of AccessPatterns.
+    Provides common methods and properties for Schedule and Template classes.
+    """
+
+    def __init__(self, patterns: Iterable[P]):
+        self._patterns = tuple(patterns)
+
+    @overload
+    def __getitem__(self, index: int) -> P:
+        ...
+
+    @overload
+    def __getitem__(self, index: slice) -> tuple[P]:
+        ...
+
+    def __getitem__(self, index: int | slice):
+        return self._patterns[index]
+
+    def __len__(self) -> int:
+        return len(self._patterns)
+
+    def __iter__(self) -> Iterator[P]:
+        return iter(self._patterns)
+
     @property
     @deprecated("only valid in trivial cases")
-    def num_dims(self):
+    def num_dims(self) -> int:
         return self[0].num_dims
 
     def rotate(self, dim: int) -> Self:
@@ -191,18 +220,22 @@ class Schedule(tuple[SchedulePattern]):
         return type(self)(sp.tile_dim(dim, template_bound) for sp in self)
 
 
-class Template(tuple[TemplatePattern]):
-    @property
-    @deprecated("only valid in trivial cases")
-    def num_dims(self):
-        return self[0].num_dims
+class Schedule(PatternCollection[SchedulePattern]):
+    """
+    A schedule consisting of multiple SchedulePatterns for different operands.
+    """
 
-    def disable_dims(self, dim: int) -> Self:
-        return type(self)(tp.disable_dims(dim) for tp in self)
+    ...
+
+
+class Template(PatternCollection[TemplatePattern]):
+    """
+    A schedule consisting of multiple TemplatePatterns for different operands.
+    """
 
     def matches(self, schedule: Schedule):
         if len(schedule) != len(self):
-            return
+            return False
         for sp, tp in zip(schedule, self):
             if not tp.matches(sp):
                 return False
