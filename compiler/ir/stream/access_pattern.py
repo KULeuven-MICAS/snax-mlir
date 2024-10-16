@@ -101,7 +101,7 @@ class SchedulePattern(AccessPattern):
         # --> (1, 2, 3, ..., dim-1, 0, dim, dim+1, ..., num_dims - 1)
 
         new_dims = tuple(AffineDimExpr(i) for i in range(self.num_dims))
-        new_dims = new_dims[1:dim] + new_dims[:1] + new_dims[dim:]
+        new_dims = new_dims[dim-1:dim] + new_dims[:dim-1] + new_dims[dim:]
         new_bounds = self.bounds[1:dim] + self.bounds[:1] + self.bounds[dim:]
 
         new_pattern = self.pattern.replace_dims_and_symbols(
@@ -155,7 +155,7 @@ class TemplatePattern(AccessPattern):
     Templates should not be transformed through either tiling/rotating/others.
     """
 
-    def __init__(self, bounds: Sequence[int], pattern: AffineMap):
+    def __init__(self, bounds: Sequence[int | None], pattern: AffineMap):
         super().__init__(bounds, pattern)
 
     def matches(self, sp: SchedulePattern):
@@ -198,6 +198,14 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
 
     def __iter__(self) -> Iterator[P]:
         return iter(self._patterns)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PatternCollection):
+            return False
+        print(f"checking eq, will return {self._patterns == other._patterns}")
+        print(self._patterns)
+        print(other._patterns)
+        return self._patterns == other._patterns
 
     @property
     @deprecated("only valid in trivial cases")

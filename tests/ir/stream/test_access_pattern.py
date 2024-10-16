@@ -44,7 +44,7 @@ def test_schedule_pattern_rotate():
     # test 2: 3 dims, rotate 3
     rotated_pattern = access_pattern.rotate(3)
     expected_bounds = (20, 30, 10)
-    expected_results = (AffineDimExpr(1), AffineDimExpr(2), AffineDimExpr(0))
+    expected_results = (AffineDimExpr(2), AffineDimExpr(0), AffineDimExpr(1))
     assert rotated_pattern.bounds == expected_bounds
     assert rotated_pattern.pattern.results == expected_results
     assert isinstance(rotated_pattern, AccessPattern)
@@ -56,6 +56,25 @@ def test_schedule_pattern_rotate():
     assert rotated_pattern.bounds == expected_bounds
     assert rotated_pattern.pattern.results == expected_results
     assert isinstance(rotated_pattern, AccessPattern)
+
+    # test 4 dims
+    pattern = AffineMap(
+        num_dims=4,
+        num_symbols=0,
+        results=(AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(2), AffineDimExpr(3)),
+    )
+    bounds = (10, 20, 30, 40)
+    access_pattern = SchedulePattern(bounds, pattern)
+
+    # test 4: 4 dims, rotate 3
+    rotated_pattern = access_pattern.rotate(3)
+    expected_bounds = (20, 30, 10, 40)
+    expected_results = (AffineDimExpr(2), AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(3))
+    assert rotated_pattern.bounds == expected_bounds
+    assert rotated_pattern.pattern.results == expected_results
+    assert isinstance(rotated_pattern, AccessPattern)
+
+
 
 
 def test_access_pattern_disable_dims():
