@@ -43,9 +43,49 @@ class AccessPattern(ABC):
     def num_dims(self):
         return len(self.bounds)
 
+    def disable_dims(self, dim: int) -> Self:
+        """
+        Returns an affine map with the leftmost `dim` dimensions set to 0
+
+        For example:
+            (d0, d1, d2) -> d0 + d1 + d2
+        For `dim` = 1, will return:
+            (d1, d2) -> d1 + d2
+        For `dim` = 2, will return:
+            (d2) -> d2
+        """
+        new_pattern = self.pattern.replace_dims_and_symbols(
+            tuple(AffineConstantExpr(0) for _ in range(dim))
+            + tuple(AffineDimExpr(i) for i in range(self.num_dims - dim)),
+            [],
+            self.num_dims - dim,
+            0,
+        )
+        return type(self)(self.bounds[dim:], new_pattern)
+
+
+@dataclass(frozen=True)
+class SchedulePattern(AccessPattern):
+    """
+    A schedule pattern is a pattern for a schedule of an operation.
+
+    Schedule patterns are constrained to have static bounds.
+    """
+
+    # constrain bounds to only be int
+    bounds: tuple[int, ...]
+
+    def __init__(self, bounds: Sequence[int], pattern: AffineMap):
+        if any(bound is None or bound <= 0 for bound in bounds):
+            raise ValueError(
+                "All bounds must be static, strictly positive integers for a schedule"
+            )
+
+        super().__init__(bounds, pattern)
+
     def rotate(self, dim: int) -> Self:
         """
-        Returns a new access pattern with the leftmost `dim` dimensions rotated
+        Returns a new schedule with the leftmost `dim` dimensions rotated
 
         For example:
             (d0, d1, d2) -> 1 * d0 + 2 * d1 + 3 * d2
@@ -68,26 +108,6 @@ class AccessPattern(ABC):
             new_dims, [], self.num_dims, 0
         )
         return type(self)(new_bounds, new_pattern)
-
-    def disable_dims(self, dim: int) -> Self:
-        """
-        Returns an affine map with the leftmost `dim` dimensions set to 0
-
-        For example:
-            (d0, d1, d2) -> d0 + d1 + d2
-        For `dim` = 1, will return:
-            (d1, d2) -> d1 + d2
-        For `dim` = 2, will return:
-            (d2) -> d2
-        """
-        new_pattern = self.pattern.replace_dims_and_symbols(
-            tuple(AffineConstantExpr(0) for _ in range(dim))
-            + tuple(AffineDimExpr(i) for i in range(self.num_dims - dim)),
-            [],
-            self.num_dims - dim,
-            0,
-        )
-        return type(self)(self.bounds[dim:], new_pattern)
 
     def tile_dim(self, dim: int, template_bound: int) -> Self:
         """
@@ -119,32 +139,12 @@ class AccessPattern(ABC):
         )
         new_pattern = self.pattern.compose(transform_map)
         bound_to_tile = self.bounds[dim]
-        tiled_bound = bound_to_tile // template_bound if bound_to_tile else None
+        tiled_bound = bound_to_tile // template_bound
         new_bounds = (
             self.bounds[:dim] + (tiled_bound, template_bound) + self.bounds[dim + 1 :]
         )
 
         return type(self)(new_bounds, new_pattern)
-
-
-@dataclass(frozen=True)
-class SchedulePattern(AccessPattern):
-    """
-    A schedule pattern is a pattern for a schedule of an operation.
-
-    Schedule patterns are constrained to have static bounds.
-    """
-
-    # constrain bounds to only be int
-    bounds: tuple[int, ...]
-
-    def __init__(self, bounds: Sequence[int], pattern: AffineMap):
-        if any(bound is None or bound <= 0 for bound in bounds):
-            raise ValueError(
-                "All bounds must be static, strictly positive integers for a schedule"
-            )
-
-        super().__init__(bounds, pattern)
 
 
 @dataclass(frozen=True)
@@ -157,12 +157,6 @@ class TemplatePattern(AccessPattern):
 
     def __init__(self, bounds: Sequence[int], pattern: AffineMap):
         super().__init__(bounds, pattern)
-
-    def tile_dim(self, dim: int, template_bound: int) -> Self:
-        raise RuntimeError("A template should not be tiled")
-
-    def rotate(self, dim: int) -> Self:
-        raise RuntimeError("A template should not be rotated")
 
     def matches(self, sp: SchedulePattern):
         """
