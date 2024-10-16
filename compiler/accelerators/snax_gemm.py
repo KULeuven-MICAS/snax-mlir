@@ -14,7 +14,7 @@ from compiler.accelerators.streamers import (
     StreamerType,
 )
 from compiler.dialects import accfg, snax_stream, stream
-from compiler.ir.flow.access_pattern import Template, TemplatePattern
+from compiler.ir.stream import Template, TemplatePattern
 
 default_streamer = StreamerConfiguration(
     [

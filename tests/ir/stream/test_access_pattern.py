@@ -1,7 +1,7 @@
 import pytest
 from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineMap
 
-from compiler.ir.flow import AccessPattern, SchedulePattern, TemplatePattern
+from compiler.ir.stream import AccessPattern, SchedulePattern, TemplatePattern
 
 
 # Pytest tests

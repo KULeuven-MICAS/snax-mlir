@@ -1,4 +1,4 @@
-from compiler.ir.flow.access_pattern import Schedule, Template
+from compiler.ir.stream.access_pattern import Schedule, Template
 
 
 def scheduler(template: Template, schedule: Schedule) -> Schedule:

@@ -19,7 +19,7 @@ from compiler.accelerators.streamers import (
 )
 from compiler.accelerators.streamers.streamers import StreamerOpts
 from compiler.dialects import accfg, kernel, snax_stream, stream
-from compiler.ir.flow.access_pattern import Template, TemplatePattern
+from compiler.ir.stream import Template, TemplatePattern
 from compiler.util.pack_bitlist import pack_bitlist
 
 default_streamer = StreamerConfiguration(

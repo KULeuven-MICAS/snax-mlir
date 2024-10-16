@@ -18,8 +18,7 @@ from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
 from compiler.dialects import snax_stream, stream
 from compiler.dialects.snax import StreamerConfigurationAttr
-from compiler.ir.flow.access_pattern import Schedule, SchedulePattern
-from compiler.ir.flow.scheduler import scheduler
+from compiler.ir.stream import Schedule, SchedulePattern, scheduler
 
 
 @dataclass
