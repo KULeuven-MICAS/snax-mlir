@@ -114,7 +114,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     access_mem_map.eval(
                         generate_one_list(access_mem_map.num_dims, i), ()
                     )[0],
-                    schedule_bounds[i],
+                    schedule[operand].bounds[i],
                 )
                 for i in reversed(range(access_mem_map.num_dims))
             )

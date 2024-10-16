@@ -107,7 +107,7 @@ def test_access_pattern_tile_dim():
     bounds = (10, 20, 30)
     access_pattern = AccessPattern(bounds, pattern)
     tiled_pattern = access_pattern.tile_dim(1, 5)
-    expected_bounds = (10, 5, 4, 30)
+    expected_bounds = (10, 4, 5, 30)
     expected_results = (
         AffineDimExpr(0),
         AffineDimExpr(1) * 5 + AffineDimExpr(2),

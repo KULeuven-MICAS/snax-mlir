@@ -2,7 +2,7 @@ from abc import ABC
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from typing_extensions import deprecated
+from typing_extensions import Self, deprecated
 from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineMap
 
 from compiler.util.canonicalize_affine import canonicalize_map
@@ -18,9 +18,11 @@ class AccessPattern(ABC):
     bounds: tuple[int | None, ...]
     pattern: AffineMap
 
-    def __new__(cls, bounds: Sequence[int | None], pattern: AffineMap):
+    def __init__(self, bounds: Sequence[int | None], pattern: AffineMap):
+        # Convert bounds to a tuple
         bounds = tuple(bounds)
 
+        # Perform validations
         if len(bounds) != pattern.num_dims:
             raise ValueError(
                 "The number of bounds should be equal to the dimension of the pattern"
@@ -29,18 +31,18 @@ class AccessPattern(ABC):
         if pattern.num_symbols > 0:
             raise ValueError("Symbols in the pattern are not supported")
 
-        pattern = canonicalize_map(pattern)
+        # Canonicalize the pattern
+        new_pattern = canonicalize_map(pattern)
 
-        self = super().__new__(cls)
+        # Assign attributes using object.__setattr__ due to frozen=True
         object.__setattr__(self, "bounds", bounds)
-        object.__setattr__(self, "pattern", pattern)
-        return self
+        object.__setattr__(self, "pattern", new_pattern)
 
     @property
     def num_dims(self):
         return len(self.bounds)
 
-    def rotate(self, dim: int) -> "AccessPattern":
+    def rotate(self, dim: int) -> Self:
         """
         Returns a new access pattern with the leftmost `dim` dimensions rotated
 
@@ -66,7 +68,7 @@ class AccessPattern(ABC):
         )
         return type(self)(new_bounds, new_pattern)
 
-    def disable_dims(self, dim: int) -> "AccessPattern":
+    def disable_dims(self, dim: int) -> Self:
         """
         Returns an affine map with the leftmost `dim` dimensions set to 0
 
@@ -86,7 +88,7 @@ class AccessPattern(ABC):
         )
         return type(self)(self.bounds[dim:], new_pattern)
 
-    def tile_dim(self, dim: int, template_bound: int) -> "AccessPattern":
+    def tile_dim(self, dim: int, template_bound: int) -> Self:
         """
         Returns a new access pattern with the `dim` dimension split up into two
         This translates to creating two for loops with adjusted bounds from one for loop
@@ -118,7 +120,7 @@ class AccessPattern(ABC):
         bound_to_tile = self.bounds[dim]
         tiled_bound = bound_to_tile // template_bound if bound_to_tile else None
         new_bounds = (
-            self.bounds[:dim] + (template_bound, tiled_bound) + self.bounds[dim + 1 :]
+            self.bounds[:dim] + (tiled_bound, template_bound) + self.bounds[dim + 1 :]
         )
 
         return type(self)(new_bounds, new_pattern)
@@ -135,22 +137,13 @@ class SchedulePattern(AccessPattern):
     # constrain bounds to only be int
     bounds: tuple[int, ...]
 
-    def __new__(cls, bounds: Sequence[int], pattern: AffineMap):
+    def __init__(self, bounds: Sequence[int], pattern: AffineMap):
         if any(bound is None or bound <= 0 for bound in bounds):
             raise ValueError(
                 "All bounds must be static, strictly positive integers for a schedule"
             )
 
-        return super().__new__(cls, bounds, pattern)
-
-    def rotate(self, dim: int) -> "SchedulePattern":
-        return self.rotate(dim)
-
-    def tile_dim(self, dim: int, template_bound: int) -> "SchedulePattern":
-        return self.tile_dim(dim, template_bound)
-
-    def disable_dims(self, dim: int) -> "SchedulePattern":
-        return self.disable_dims(dim)
+        super().__init__(bounds, pattern)
 
 
 @dataclass(frozen=True)
@@ -161,14 +154,14 @@ class TemplatePattern(AccessPattern):
     Templates should not be transformed through either tiling/rotating/others.
     """
 
-    def tile_dim(self, dim: int, template_bound: int) -> "TemplatePattern":
+    def __init__(self, bounds: Sequence[int], pattern: AffineMap):
+        super().__init__(bounds, pattern)
+
+    def tile_dim(self, dim: int, template_bound: int) -> Self:
         raise RuntimeError("A template should not be tiled")
 
-    def rotate(self, dim: int) -> "TemplatePattern":
+    def rotate(self, dim: int) -> Self:
         raise RuntimeError("A template should not be rotated")
-
-    def disable_dims(self, dim: int) -> "TemplatePattern":
-        return self.disable_dims(dim)
 
     def matches(self, sp: SchedulePattern):
         """
@@ -179,9 +172,6 @@ class TemplatePattern(AccessPattern):
             return False
         if sp.pattern != self.pattern:
             return False
-        for sp_bound, tp_bound in zip(sp.bounds, self.bounds):
-            if tp_bound and tp_bound != sp_bound:
-                return False
         return True
 
 
@@ -191,14 +181,14 @@ class Schedule(tuple[SchedulePattern]):
     def num_dims(self):
         return self[0].num_dims
 
-    def rotate(self, dim: int) -> "Schedule":
-        return Schedule(sp.rotate(dim) for sp in self)
+    def rotate(self, dim: int) -> Self:
+        return type(self)(sp.rotate(dim) for sp in self)
 
-    def disable_dims(self, dim: int) -> "Schedule":
-        return Schedule(sp.disable_dims(dim) for sp in self)
+    def disable_dims(self, dim: int) -> Self:
+        return type(self)(sp.disable_dims(dim) for sp in self)
 
-    def tile_dim(self, dim: int, template_bound: int) -> "Schedule":
-        return Schedule(sp.tile_dim(dim, template_bound) for sp in self)
+    def tile_dim(self, dim: int, template_bound: int) -> Self:
+        return type(self)(sp.tile_dim(dim, template_bound) for sp in self)
 
 
 class Template(tuple[TemplatePattern]):
@@ -207,8 +197,8 @@ class Template(tuple[TemplatePattern]):
     def num_dims(self):
         return self[0].num_dims
 
-    def disable_dims(self, dim: int) -> "Template":
-        return Template(tp.disable_dims(dim) for tp in self)
+    def disable_dims(self, dim: int) -> Self:
+        return type(self)(tp.disable_dims(dim) for tp in self)
 
     def matches(self, schedule: Schedule):
         if len(schedule) != len(self):
