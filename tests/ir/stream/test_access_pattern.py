@@ -24,14 +24,14 @@ def test_access_pattern_creation():
     assert access_pattern.num_dims == 3
 
 
-def test_access_pattern_rotate():
+def test_schedule_pattern_rotate():
     pattern = AffineMap(
         num_dims=3,
         num_symbols=0,
         results=(AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(2)),
     )
     bounds = (10, 20, 30)
-    access_pattern = AccessPattern(bounds, pattern)
+    access_pattern = SchedulePattern(bounds, pattern)
 
     # test 1: 3 dims, rotate 2
     rotated_pattern = access_pattern.rotate(2)
@@ -104,14 +104,14 @@ def test_access_pattern_disable_dims():
     assert isinstance(disabled_pattern, AccessPattern)
 
 
-def test_access_pattern_tile_dim():
+def test_schedule_pattern_tile_dim():
     pattern = AffineMap(
         num_dims=3,
         num_symbols=0,
         results=(AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(2)),
     )
     bounds = (10, 20, 30)
-    access_pattern = AccessPattern(bounds, pattern)
+    access_pattern = SchedulePattern(bounds, pattern)
     tiled_pattern = access_pattern.tile_dim(1, 5)
     expected_bounds = (10, 4, 5, 30)
     expected_results = (
@@ -133,26 +133,6 @@ def test_template_pattern_creation():
     assert template_pattern.bounds == bounds
     assert template_pattern.pattern == pattern
     assert template_pattern.num_dims == 2
-
-
-def test_template_pattern_tile_dim_exception():
-    pattern = AffineMap(
-        num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
-    )
-    bounds = (5, 10)
-    template_pattern = TemplatePattern(bounds, pattern)
-    with pytest.raises(RuntimeError, match="A template should not be tiled"):
-        template_pattern.tile_dim(0, 2)
-
-
-def test_template_pattern_rotate_exception():
-    pattern = AffineMap(
-        num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
-    )
-    bounds = (5, 10)
-    template_pattern = TemplatePattern(bounds, pattern)
-    with pytest.raises(RuntimeError, match="A template should not be rotated"):
-        template_pattern.rotate(1)
 
 
 def test_schedule_pattern_creation():
