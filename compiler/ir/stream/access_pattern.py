@@ -230,7 +230,7 @@ class Schedule(PatternCollection[SchedulePattern]):
 
 class Template(PatternCollection[TemplatePattern]):
     """
-    A schedule consisting of multiple TemplatePatterns for different operands.
+    A template consisting of multiple TemplatePatterns for different operands.
     """
 
     def matches(self, schedule: Schedule):
