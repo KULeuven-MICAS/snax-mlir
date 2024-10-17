@@ -34,6 +34,7 @@ def canonicalize_addition(expr: AffineBinaryOpExpr) -> AffineExpr:
         folding the op if both operands are constant
         omitting a + 0
         ordering the operands by their dimension
+        changing (a + b) + c into a + (b + c)
     """
     # always put the constant on rhs
     assert expr.kind is AffineBinaryOpKind.Add
@@ -56,7 +57,18 @@ def canonicalize_addition(expr: AffineBinaryOpExpr) -> AffineExpr:
     dim_rhs = get_dim(expr.rhs)
     if dim_rhs is not None:
         if dim_lhs is None or dim_lhs > dim_rhs:
-            return expr.rhs + expr.lhs
+            new_expr = expr.rhs + expr.lhs
+            # TODO: make __add__ typing more specific in xdsl to avoid this
+            assert isinstance(new_expr, AffineBinaryOpExpr)
+            expr = new_expr
+    # turn (a + b) + c into a + (b + c)
+    if (
+        isinstance(expr.lhs, AffineBinaryOpExpr)
+        and expr.lhs.kind is AffineBinaryOpKind.Add
+    ):
+        new_expr = expr.lhs.lhs + (expr.lhs.rhs + expr.rhs)
+        assert isinstance(new_expr, AffineBinaryOpExpr)
+        expr = new_expr
     return expr
 
 
@@ -67,6 +79,7 @@ def canonicalize_multiplication(expr: AffineBinaryOpExpr) -> AffineExpr:
         folding the op if both operands are constant
         omitting a * 1
         ordering the operands by their dimension
+        (a + b) * cst = (a * cst) + (b * cst)
     """
     # always put the constant on rhs
     assert expr.kind is AffineBinaryOpKind.Mul
@@ -77,12 +90,20 @@ def canonicalize_multiplication(expr: AffineBinaryOpExpr) -> AffineExpr:
             return AffineConstantExpr(expr.lhs.value * expr.rhs.value)
         else:
             # move constant to rhs
-            return AffineBinaryOpExpr(expr.kind, expr.rhs, expr.lhs)
+            expr = AffineBinaryOpExpr(expr.kind, expr.rhs, expr.lhs)
     if isinstance(expr.rhs, AffineConstantExpr):
         # rhs is constant, lhs is not
         # multiplication by 1 can be omitted
         if expr.rhs.value == 1:
             return expr.lhs
+        # turn (a + b) * cst into (a * cst) + (b * cst)
+        if (
+            isinstance(expr.lhs, AffineBinaryOpExpr)
+            and expr.lhs.kind is AffineBinaryOpKind.Add
+        ):
+            new_expr = (expr.lhs.lhs * expr.rhs) + (expr.lhs.rhs * expr.rhs)
+            assert isinstance(new_expr, AffineBinaryOpExpr)
+            expr = new_expr
     return expr
 
 
@@ -128,10 +149,15 @@ def canonicalize_binary_op(expr: AffineBinaryOpExpr) -> AffineExpr:
 
 
 def canonicalize_expr(expr: AffineExpr) -> AffineExpr:
-    if isinstance(expr, AffineBinaryOpExpr):
-        return canonicalize_binary_op(expr)
+    new_expr = expr
 
-    return expr
+    if isinstance(expr, AffineBinaryOpExpr):
+        new_expr = canonicalize_binary_op(expr)
+
+    if new_expr == expr:
+        return new_expr
+
+    return canonicalize_expr(new_expr)
 
 
 # helper function to canonicalize affine maps

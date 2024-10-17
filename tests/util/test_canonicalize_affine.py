@@ -15,6 +15,8 @@ def test_canonicalize():
 
     d0 = AffineDimExpr(0)
     d1 = AffineDimExpr(1)
+    d2 = AffineDimExpr(2)
+    d3 = AffineDimExpr(3)
 
     # additions:
     # expr + 0
@@ -27,6 +29,14 @@ def test_canonicalize():
     assert canonicalize_expr(d1 + d0) == d0 + d1
     # (d1 * 4) + (d0 * 4)
     assert canonicalize_expr(d1 * c4 + d0 * c4) == d0 * c4 + d1 * c4
+
+    # (a + b) + c
+    assert canonicalize_expr((d1 + d2) + d3) == d1 + (d2 + d3)
+    # ((a + b) + c) + d
+    assert canonicalize_expr(((d0 + d1) + d2) + d3) == d0 + (d1 + (d2 + d3))
+
+    # (a + b) * cst
+    assert canonicalize_expr((d0 + d1) * c2) == (d0 * c2) + (d1 * c2)
 
     # multiplications:
     assert canonicalize_expr(c4 * d1) == d1 * c4
