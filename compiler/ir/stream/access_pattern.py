@@ -236,7 +236,7 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
 
     def clear_unused_dims(self, bounds: tuple[int] | None = None) -> Self:
         """
-        Returns a patterncollection of which all dimensions that have bound 1 are cleared.
+        Returns a PatternCollection of which all dimensions that have bound 1 are cleared.
         Optionally, specify custom bounds.
         """
         if bounds is None:
