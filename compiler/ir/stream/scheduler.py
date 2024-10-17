@@ -35,7 +35,7 @@ def scheduler(template: Template, schedule: Schedule) -> Schedule:
         if schedule_bound < template_bound:
             # need to apply padding
             raise NotImplementedError("padding not supported")
-        elif schedule_bound > template_bound:
+        elif schedule_bound >= template_bound:
             # need to split up the schedule
             assert schedule_bound % template_bound == 0
             schedule = schedule.tile_dim(schedule_dim, template_bound)

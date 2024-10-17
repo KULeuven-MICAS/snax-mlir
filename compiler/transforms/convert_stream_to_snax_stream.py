@@ -181,7 +181,8 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     3,
                     snax_stream.StridePattern(
                         upper_bounds=snax_stride_patterns[3].upper_bounds,
-                        temporal_strides=[0] * 3,
+                        temporal_strides=[0]
+                        * len(snax_stride_patterns[3].upper_bounds),
                         spatial_strides=[8],
                     ),
                 )

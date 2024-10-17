@@ -101,7 +101,7 @@ class SchedulePattern(AccessPattern):
         # --> (1, 2, 3, ..., dim-1, 0, dim, dim+1, ..., num_dims - 1)
 
         new_dims = tuple(AffineDimExpr(i) for i in range(self.num_dims))
-        new_dims = new_dims[dim-1:dim] + new_dims[:dim-1] + new_dims[dim:]
+        new_dims = new_dims[dim - 1 : dim] + new_dims[: dim - 1] + new_dims[dim:]
         new_bounds = self.bounds[1:dim] + self.bounds[:1] + self.bounds[dim:]
 
         new_pattern = self.pattern.replace_dims_and_symbols(
@@ -144,6 +144,24 @@ class SchedulePattern(AccessPattern):
             self.bounds[:dim] + (tiled_bound, template_bound) + self.bounds[dim + 1 :]
         )
 
+        return type(self)(new_bounds, new_pattern)
+
+    def add_dim(self) -> Self:
+        """
+        Returns a new schedule pattern with an extra empty dimension inserted.
+        For example:
+            (d0, d1) -> d0 + d1
+        Will result in:
+            (d0, d1, d2) -> d1 + d2
+        """
+        new_pattern = self.pattern
+        transform_map = AffineMap(
+            num_dims=self.num_dims + 1,
+            num_symbols=0,
+            results=tuple(AffineDimExpr(i + 1) for i in range(self.num_dims)),
+        )
+        new_pattern = self.pattern.compose(transform_map)
+        new_bounds = (1,) + self.bounds
         return type(self)(new_bounds, new_pattern)
 
 
@@ -212,14 +230,40 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
     def num_dims(self) -> int:
         return self[0].num_dims
 
-    def rotate(self, dim: int) -> Self:
-        return type(self)(sp.rotate(dim) for sp in self)
+    @property
+    def max_dim(self) -> int:
+        return max(pattern.num_dims for pattern in self._patterns)
 
     def disable_dims(self, dim: int) -> Self:
         return type(self)(sp.disable_dims(dim) for sp in self)
 
-    def tile_dim(self, dim: int, template_bound: int) -> Self:
-        return type(self)(sp.tile_dim(dim, template_bound) for sp in self)
+    def clear_unused_dims(self, bounds: tuple[int] | None = None) -> Self:
+        """
+        Returns a patterncollection of which all dimensions that have bound 1 are cleared.
+        Optionally, specify custom bounds.
+        """
+        if bounds is None:
+            pattern_bounds = self._patterns[0].bounds
+        else:
+            pattern_bounds = bounds
+        unused_dims = tuple(i for i, bound in enumerate(pattern_bounds) if bound == 1)
+        dim_substitutions = []
+        unused_counter = 0
+        for dim in range(self.num_dims):
+            if dim not in unused_dims:
+                dim_substitutions.append(AffineDimExpr(dim - unused_counter))
+            else:
+                dim_substitutions.append(AffineConstantExpr(0))
+                unused_counter += 1
+        return type(self)(
+            type(self._patterns[0])(
+                tuple(bound for bound in pattern_bounds if bound != 1),
+                sp.pattern.replace_dims_and_symbols(
+                    dim_substitutions, [], self.num_dims - unused_counter, 0
+                ),
+            )
+            for sp in self
+        )
 
 
 class Schedule(PatternCollection[SchedulePattern]):
@@ -227,7 +271,14 @@ class Schedule(PatternCollection[SchedulePattern]):
     A schedule consisting of multiple SchedulePatterns for different operands.
     """
 
-    ...
+    def rotate(self, dim: int) -> Self:
+        return type(self)(sp.rotate(dim) for sp in self)
+
+    def tile_dim(self, dim: int, template_bound: int) -> Self:
+        return type(self)(sp.tile_dim(dim, template_bound) for sp in self)
+
+    def add_dim(self) -> Self:
+        return type(self)(sp.add_dim() for sp in self)
 
 
 class Template(PatternCollection[TemplatePattern]):
