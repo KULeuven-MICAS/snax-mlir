@@ -220,9 +220,6 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PatternCollection):
             return False
-        print(f"checking eq, will return {self._patterns == other._patterns}")
-        print(self._patterns)
-        print(other._patterns)
         return self._patterns == other._patterns
 
     @property
