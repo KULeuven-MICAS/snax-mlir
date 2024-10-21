@@ -13,7 +13,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 from xdsl.utils.str_enum import StrEnum
 
-from compiler.dialects import stream
+from compiler.dialects import stream, tsl
 from compiler.dialects.kernel import AddOp, QMacOp, RescaleOp
 from compiler.dialects.snax import LayoutCast
 from compiler.dialects.tsl import TiledStridedLayoutAttr
@@ -40,6 +40,11 @@ class AddMemoryLayoutSIMD(RewritePattern):
                 for op in linalg_op.operands
                 if isinstance(op.type, builtin.MemRefType)
             ]
+
+            # do not alter existing set layouts
+            for memreftype in shaped_operands:
+                if isinstance(memreftype.layout, tsl.TiledStridedLayoutAttr):
+                    return
 
             m = shaped_operands[0].get_shape()[0]
             n = shaped_operands[0].get_shape()[1]
@@ -172,6 +177,11 @@ class AddMemoryLayout(RewritePattern):
                 if isinstance(op.type, builtin.MemRefType)
             ]
 
+            # do not alter existing set layouts
+            for _, memreftype in shaped_operands:
+                if isinstance(memreftype.layout, tsl.TiledStridedLayoutAttr):
+                    return
+
             m = shaped_operands[0][1].get_shape()[0]
             n = shaped_operands[1][1].get_shape()[1]
             k = shaped_operands[0][1].get_shape()[1]
@@ -288,10 +298,7 @@ class SetMemoryLayout(ModulePass):
     gemm_layout: str = "cyclic"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+        PatternRewriteWalker(AddMemoryLayoutSIMD()).rewrite_module(op)
         PatternRewriteWalker(
-            AddMemoryLayoutSIMD(), apply_recursively=False
-        ).rewrite_module(op)
-        PatternRewriteWalker(
-            AddMemoryLayout(gemm_layout=GemmLayout(self.gemm_layout)),
-            apply_recursively=False,
+            AddMemoryLayout(gemm_layout=GemmLayout(self.gemm_layout))
         ).rewrite_module(op)
