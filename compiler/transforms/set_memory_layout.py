@@ -157,6 +157,9 @@ class AddMemoryLayout(RewritePattern):
                 if not isinstance(op.body.block.first_op, QMacOp):
                     return
             elif isinstance(op, stream.StreamingRegionOp):
+                # TODO: this is a bit hacky, detect conv/gemm based on rank of input tensor:
+                if len(op.operands[0].type.get_shape()) > 2:
+                    return
                 assert isinstance(
                     generic_op := op.body.block.first_op, stream.GenericOp
                 )
@@ -291,6 +294,150 @@ class AddMemoryLayout(RewritePattern):
                 op.operands[shaped_operands[2][0]] = new_output.dest
 
 
+@dataclass
+class AddConvMemoryLayout(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(
+        self, op: linalg.Generic | stream.StreamingRegionOp, rewriter: PatternRewriter
+    ):
+        # check if operation is dispatched via library call, as set by e.g.
+        # the dispatch-kernels pass
+
+        if isinstance(op, linalg.Generic):
+            if op.library_call is None:
+                return
+            else:
+                library_call = op.library_call.data
+        elif isinstance(op, stream.StreamingRegionOp):
+            if op.accelerator is None:
+                return
+            else:
+                library_call = op.accelerator.data
+
+        has_add_c = False
+
+        # check for library call
+        if library_call == "snax_gemmx" or library_call == "snax_gemmx_stream":
+            # only do so for qmac kernels
+            if isinstance(op, linalg.Generic):
+                if not isinstance(op.body.block.first_op, QMacOp):
+                    return
+            elif isinstance(op, stream.StreamingRegionOp):
+                # TODO: this is a bit hacky, detect conv/gemm based on rank of input tensor:
+                if len(op.operands[0].type.get_shape()) != 4:
+                    return
+                assert isinstance(
+                    generic_op := op.body.block.first_op, stream.GenericOp
+                )
+                if not isinstance(generic_op.body.block.first_op, QMacOp):
+                    return
+
+            # the layout should be as static as the memref is. no more, no less
+            # get b, ox, oy, fx, fy, c, k
+
+            shaped_operands: list[tuple[int, MemRefType]] = [
+                (index, op.type)
+                for index, op in enumerate(op.operands)
+                if isinstance(op.type, builtin.MemRefType)
+            ]
+
+            # do not alter existing set layouts
+            for _, memreftype in shaped_operands:
+                if isinstance(memreftype.layout, tsl.TiledStridedLayoutAttr):
+                    return
+
+            b = shaped_operands[0][1].get_shape()[0]
+            ix = shaped_operands[0][1].get_shape()[1]
+            iy = shaped_operands[0][1].get_shape()[2]
+            ox = shaped_operands[2][1].get_shape()[1]
+            oy = shaped_operands[2][1].get_shape()[2]
+            fx = shaped_operands[1][1].get_shape()[1]
+            fy = shaped_operands[1][1].get_shape()[2]
+            c = shaped_operands[0][1].get_shape()[3]
+            k = shaped_operands[2][1].get_shape()[3]
+
+            # lots of current limitations:
+            assert b == 1
+            assert ix > 0
+            assert iy > 0
+            assert ox > 0
+            assert oy > 0
+            assert fx > 0
+            assert fy > 0
+            assert c > 0
+            assert c % 8 == 0
+            assert k % 8 == 0
+            assert ox % 8 == 0
+
+            tsl_input_a = TiledStridedLayoutAttr(
+                TiledStridedLayout(
+                    [
+                        TiledStride([Stride(ix * iy * c, 1)]),  # b
+                        TiledStride([Stride(ix * 8, iy)]),  # iy
+                        TiledStride([Stride(8, ix)]),  # ix
+                        TiledStride([Stride(iy * ix * 8, c // 8), Stride(1, 8)]),  # c
+                    ]
+                )
+            )
+
+            tsl_input_b = TiledStridedLayoutAttr(
+                TiledStridedLayout(
+                    [
+                        TiledStride(
+                            [Stride(8 * fy * fx * c, k // 8), Stride(8, 8)]
+                        ),  # k
+                        TiledStride([Stride(64 * fy, fx)]),  # fy
+                        TiledStride([Stride(64, fy)]),  # fx
+                        TiledStride([Stride(64 * fy * fx, c // 8), Stride(1, 8)]),  # c
+                    ]
+                )
+            )
+
+            tsl_output = TiledStridedLayoutAttr(
+                TiledStridedLayout(
+                    [
+                        TiledStride([Stride(ox * oy * k, 1)]),  # b
+                        TiledStride([Stride(8, oy)]),  # oy
+                        TiledStride([Stride(oy * 8, ox)]),  # ox
+                        TiledStride([Stride(ox * oy * 8, k // 8), Stride(1, 8)]),  # k
+                    ]
+                )
+            )
+
+            # insert layout_cast ops
+            new_input_a = LayoutCast.from_type_and_target_layout(
+                op.inputs[0], tsl_input_a
+            )
+
+            new_input_b = LayoutCast.from_type_and_target_layout(
+                op.inputs[1], tsl_input_b
+            )
+
+            new_output = LayoutCast.from_type_and_target_layout(
+                op.outputs[0], tsl_output
+            )
+
+            rewriter.insert_op(
+                (new_input_a, new_input_b, new_output), InsertPoint.before(op)
+            )
+
+            if has_add_c:
+                rewriter.insert_op(
+                    new_input_c := LayoutCast.from_type_and_target_layout(
+                        op.inputs[2], tsl_output
+                    ),
+                    InsertPoint.before(op),
+                )
+                op.operands[shaped_operands[0][0]] = new_input_a.dest
+                op.operands[shaped_operands[1][0]] = new_input_b.dest
+                op.operands[shaped_operands[2][0]] = new_input_c.dest
+                op.operands[shaped_operands[3][0]] = new_output.dest
+            else:
+                op.operands[shaped_operands[0][0]] = new_input_a.dest
+                op.operands[shaped_operands[1][0]] = new_input_b.dest
+                op.operands[shaped_operands[2][0]] = new_output.dest
+
+
 @dataclass(frozen=True)
 class SetMemoryLayout(ModulePass):
     name = "set-memory-layout"
@@ -302,3 +449,4 @@ class SetMemoryLayout(ModulePass):
         PatternRewriteWalker(
             AddMemoryLayout(gemm_layout=GemmLayout(self.gemm_layout))
         ).rewrite_module(op)
+        PatternRewriteWalker(AddConvMemoryLayout()).rewrite_module(op)
