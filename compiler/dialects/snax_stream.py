@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 
+from typing_extensions import Self
 from xdsl.dialects.builtin import ArrayAttr, IndexType, IntAttr, StringAttr
 from xdsl.ir import (
     Attribute,
@@ -110,6 +111,32 @@ class StridePattern(ParametrizedAttribute):
                 )
             )
             return (ub, ts, ss)
+
+    def collapse_dimensions(self) -> Self:
+        """
+        Collapses multiple perfect nested compatible for loops into 1
+        for i = 0 .. 3
+            for j = 0 .. 3
+                a = 4 * i + j
+
+        will turn into
+        for i = 0 .. 16
+            a = 16
+        """
+        new_temporal_strides: list[int] = []
+        new_upper_bounds: list[int] = []
+
+        for stride, bound in zip(self.temporal_strides.data, self.upper_bounds.data):
+            if bound.data == 1:
+                # unused dim
+                continue
+            if len(new_temporal_strides) > 0:
+                if new_temporal_strides[-1] * new_upper_bounds[-1] == stride.data:
+                    new_upper_bounds[-1] *= bound.data
+                    continue
+            new_upper_bounds.append(bound.data)
+            new_temporal_strides.append(stride.data)
+        return type(self)(new_upper_bounds, new_temporal_strides, self.spatial_strides)
 
 
 @irdl_op_definition

@@ -18,7 +18,7 @@ from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
 from compiler.dialects import snax_stream, stream
 from compiler.dialects.snax import StreamerConfigurationAttr
-from compiler.ir.stream import Schedule, SchedulePattern, scheduler
+from compiler.ir.stream import Schedule, SchedulePattern, optimizer, scheduler
 
 
 @dataclass
@@ -76,6 +76,21 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             for pattern in op.patterns.data
         )
         schedule = scheduler(template, schedule)
+
+        # FIXME: for stationary bounds, this is hardcoded
+        schedules = [pattern for pattern in schedule]
+        for i in range(2, len(schedule)):
+            new_bounds = list(schedules[i].bounds)
+            if len(new_bounds) > 2:
+                new_bounds[-4] = 1
+            if len(new_bounds) == 10:
+                # specific conv example
+                new_bounds[1] = 1
+                new_bounds[2] = 1
+            schedules[i] = SchedulePattern(new_bounds, schedules[i].pattern)
+        schedule = Schedule(schedules)
+
+        schedule = optimizer(template, schedule)
 
         # We are now ready to convert the stream access patterns into snax stride patterns
         # construct the strided patterns for SNAX Streamers
@@ -143,7 +158,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 upper_bounds=upper_bounds,
                 temporal_strides=temporal_strides,
                 spatial_strides=spatial_strides,
-            )
+            ).collapse_dimensions()
             snax_stride_patterns.append(snax_stride_pattern)
 
         # get base addresses of the streaming region ops
