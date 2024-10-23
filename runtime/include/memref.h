@@ -42,7 +42,29 @@ struct TwoDMemrefI8 {
   uint32_t stride[2];
 };
 
+struct FourDMemrefI32 {
+  int32_t *data; // allocated pointer: Pointer to data buffer as allocated,
+                 // only used for deallocating the memref
+  int32_t *aligned_data; // aligned pointer: Pointer to properly aligned data
+                         // that memref indexes
+  uint32_t offset;
+  uint32_t shape[4];
+  uint32_t stride[4];
+};
+
+struct FourDMemrefI8 {
+  int8_t *data; // allocated pointer: Pointer to data buffer as allocated,
+                // only used for deallocating the memref
+  int8_t *aligned_data; // aligned pointer: Pointer to properly aligned data
+                        // that memref indexes
+  uint32_t offset;
+  uint32_t shape[4];
+  uint32_t stride[4];
+};
+
 typedef struct OneDMemrefI32 OneDMemrefI32_t;
 typedef struct OneDMemrefI64 OneDMemrefI64_t;
 typedef struct TwoDMemrefI8 TwoDMemrefI8_t;
 typedef struct TwoDMemrefI32 TwoDMemrefI32_t;
+typedef struct FourDMemrefI8 FourDMemrefI8_t;
+typedef struct FourDMemrefI32 FourDMemrefI32_t;
