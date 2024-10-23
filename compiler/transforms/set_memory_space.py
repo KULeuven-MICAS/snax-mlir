@@ -222,6 +222,6 @@ class SetMemorySpace(ModulePass):
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(InitFuncMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(InitMemRefGlobalMemorySpace()).rewrite_module(op)
-        PatternRewriteWalker(InitMemRefAllocMemorySpace()).rewrite_module(op)
+        # PatternRewriteWalker(InitMemRefAllocMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(HandleFuncReturns()).rewrite_module(op)
         PatternRewriteWalker(InitStreamAndLinalgMemorySpace()).rewrite_module(op)

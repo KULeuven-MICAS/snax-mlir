@@ -38,18 +38,18 @@ default_streamer = StreamerConfiguration(
         ),
         Streamer(  # D8
             StreamerType.Writer,
-            temporal_dims=("r", "n", "n"),
+            temporal_dims=("n", "n", "n"),
             spatial_dims=("n",),
         ),
         Streamer(  # C
             StreamerType.Reader,
-            temporal_dims=("r", "n", "n"),
+            temporal_dims=("n", "n", "n"),
             spatial_dims=("n",),
             opts=(StreamerOpts.HasChannelMask,),
         ),
         Streamer(  # D32
             StreamerType.Writer,
-            temporal_dims=("r", "n", "n"),
+            temporal_dims=("n", "n", "n"),
             spatial_dims=("n",),
         ),
     ],
@@ -162,10 +162,6 @@ class SNAXGEMMXAccelerator(
 
         c0 = arith.Constant.from_int_and_width(0, 32)
         c1 = arith.Constant.from_int_and_width(1, 32)
-        knm: list = [
-            (((cst := arith.Constant.from_int_and_width(val.data, 32)),), cst.result)
-            for val in op.stride_patterns.data[0].upper_bounds
-        ]
 
         streamer_setup_vals = list(self._generate_streamer_setup_vals(op))
 
@@ -174,6 +170,16 @@ class SNAXGEMMXAccelerator(
         assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
 
         if isinstance(qmac := generic_op.body.block.first_op, kernel.QMacOp):
+            # compute knm: fix n = 1
+            n = 1
+            m = prod(x.data for x in op.stride_patterns.data[-1].upper_bounds) // n
+            k = prod(x.data for x in op.stride_patterns.data[0].upper_bounds) // m
+
+            knm: list = [
+                (((cst := arith.Constant.from_int_and_width(val, 32)),), cst.result)
+                for val in (k, n, m)
+            ]
+
             # gemm
             # bypass simd and set all related values to 0
             bypassSIMD = c1.result  # bypass simd
@@ -201,10 +207,16 @@ class SNAXGEMMXAccelerator(
 
         elif isinstance(rescale := generic_op.body.block.first_op, kernel.RescaleOp):
             # extract and compute correct value for csr's based on kernel rescale op
-            # set k to 1
-            knm.insert(
-                0, ((cst := arith.Constant.from_int_and_width(1, 32),), cst.result)
-            )
+            # set k and n to 1
+            k = 1
+            n = 1
+            m = prod(x.data for x in op.stride_patterns.data[0].upper_bounds)
+
+            knm: list = [
+                (((cst := arith.Constant.from_int_and_width(val, 32)),), cst.result)
+                for val in (k, n, m)
+            ]
+
             # simd
             bypassSIMD = c0.result
             subtractions = c0.result

@@ -28,6 +28,7 @@ from compiler.transforms.convert_stream_to_snax_stream import ConvertStreamToSna
 from compiler.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
+from compiler.transforms.double_buffer import DoubleBuffer
 from compiler.transforms.frontend.preprocess_mlperf_tiny import PreprocessMLPerfTiny
 from compiler.transforms.fuse_streaming_regions import FuseStreamingRegions
 from compiler.transforms.insert_accfg_op import InsertAccOp
@@ -104,6 +105,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(
             AccfgConfigOverlapPass.name, lambda: AccfgConfigOverlapPass
         )
+        super().register_pass(DoubleBuffer.name, lambda: DoubleBuffer)
         super().register_pass(
             ConvertStreamToSnaxStream.name, lambda: ConvertStreamToSnaxStream
         )
