@@ -2,7 +2,6 @@ import itertools
 import json
 import pathlib
 from io import StringIO
-from pprint import pprint
 
 import pandas as pd
 from xdsl.builder import Builder, ImplicitBuilder
@@ -185,4 +184,3 @@ if __name__ == "__main__":
 
     with open("output/index.md", "w") as file:
         file.write(markdown_table)
-
