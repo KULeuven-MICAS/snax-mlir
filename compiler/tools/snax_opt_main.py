@@ -46,6 +46,7 @@ from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.stream_bufferize import StreamBufferize
 from compiler.transforms.test.debug_to_func import DebugToFuncPass
 from compiler.transforms.test.insert_debugs import InsertDebugPass
+from compiler.transforms.test.rescale_to_trunc import TestRescaleToTrunc
 from compiler.transforms.test.test_add_mcycle_around_launch import AddMcycleAroundLaunch
 from compiler.transforms.test_add_mcycle_around_loop import AddMcycleAroundLoopPass
 from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
@@ -128,6 +129,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(SnaxBufferize.name, lambda: SnaxBufferize)
         super().register_pass(FuseStreamingRegions.name, lambda: FuseStreamingRegions)
         super().register_pass(AllocToGlobalPass.name, lambda: AllocToGlobalPass)
+        super().register_pass(TestRescaleToTrunc.name, lambda: TestRescaleToTrunc)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
