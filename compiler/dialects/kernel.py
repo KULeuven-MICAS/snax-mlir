@@ -142,6 +142,29 @@ class QMacOp(KernelOp, QuantizedBinaryOp, Parsable):
 
 
 @irdl_op_definition
+class MaxOp(KernelOp, BinaryOp, Parsable):
+    name = "kernel.max"
+    assembly_format = (
+        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    )
+
+    @property
+    def equivalent_region(self) -> Region:
+        @Builder.implicit_region(
+            (
+                SSAValue.get(self.lhs).type,
+                SSAValue.get(self.rhs).type,
+                *self.result_types,
+            )
+        )
+        def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
+            max = arith.MaxSI(args[0], args[1])
+            linalg.YieldOp(max)
+
+        return equivalent_region
+
+
+@irdl_op_definition
 class RescaleOp(KernelOp):
     """
     Operation applying rescaling according to the spec in
@@ -175,6 +198,7 @@ Kernel = Dialect(
         AddOp,
         MacOp,
         QMacOp,
+        MaxOp,
         RescaleOp,
     ],
 )
