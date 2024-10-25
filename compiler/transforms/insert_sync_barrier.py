@@ -1,5 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin
+from xdsl.ir import OpResult
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -9,6 +10,7 @@ from xdsl.pattern_rewriter import (
 )
 
 from compiler.dialects import snax
+from compiler.dialects.stream import StreamingRegionOp
 from compiler.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
 
 
@@ -41,7 +43,10 @@ class InsertSyncBarrierRewriter(RewritePattern):
             # check all operands of current op
             for operand in [*op.operands, *op.results]:
                 # check all ops that use the operand -> dependency with current op
-                for op_use in operand.uses:
+                uses = operand.uses
+                if isinstance(operand, OpResult) and isinstance(operand.op, snax.LayoutCast):
+                    uses = uses.union(operand.op.source.uses)
+                for op_use in uses:
                     # now check if op is dispatched to a specific core and the result
                     # is used on another core - if yes, there must be a synchronisation
                     # barrier between the two ops
