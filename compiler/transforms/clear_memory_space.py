@@ -2,8 +2,19 @@ from xdsl.context import MLContext
 from xdsl.dialects import builtin, func
 from xdsl.ir import BlockArgument
 from xdsl.passes import ModulePass
+from xdsl.pattern_rewriter import PatternRewriteWalker, PatternRewriter, RewritePattern, op_type_rewrite_pattern
 
+from compiler.dialects.snax import LayoutCast
 from compiler.dialects.tsl import TiledStridedLayoutAttr
+
+
+class RemoveRemainingCasts(RewritePattern):
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: LayoutCast, rewriter: PatternRewriter):
+        if op.source.type == op.dest.type:
+            op.dest.replace_by(op.source)
+            rewriter.erase_matched_op()
 
 
 class ClearMemorySpace(ModulePass):
@@ -62,3 +73,5 @@ class ClearMemorySpace(ModulePass):
                     for old_arg, new_arg in zip(old_args, new_args):
                         old_arg.replace_by(new_arg)
                     op_in_module.body.block._args = tuple(new_args)
+
+        PatternRewriteWalker(RemoveRemainingCasts()).rewrite_module(op)
