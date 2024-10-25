@@ -172,7 +172,7 @@ class SNAXGEMMXAccelerator(
         if isinstance(qmac := generic_op.body.block.first_op, kernel.QMacOp):
             # compute knm: fix n = 1
             n = 1
-            m = prod(x.data for x in op.stride_patterns.data[-1].upper_bounds) // n
+            m = prod(x.data for x in op.stride_patterns.data[3].upper_bounds) // n
             k = prod(x.data for x in op.stride_patterns.data[0].upper_bounds) // m
 
             knm: list = [
@@ -180,30 +180,73 @@ class SNAXGEMMXAccelerator(
                 for val in (k, n, m)
             ]
 
-            # gemm
-            # bypass simd and set all related values to 0
-            bypassSIMD = c1.result  # bypass simd
-            loop_bound = c0
-            csr0 = c0.result
-            csr1 = c0.result
-            shift_vals = (c0.result for _ in range(2))
-            mult_vals = (c0.result for _ in range(8))
 
-            # get zero points for gemm
-            assert isinstance(qmac.zp_lhs, BlockArgument)
-            zp_a = generic_op.inputs[qmac.zp_lhs.index]
-            assert isinstance(qmac.zp_rhs, BlockArgument)
-            zp_b = generic_op.inputs[qmac.zp_rhs.index]
+            if isinstance(generic_op.next_op, stream.GenericOp) and isinstance(rescale_op := generic_op.next_op.body.block.first_op, kernel.RescaleOp):
+                bypassSIMD = c0.result
+                subtractions = c0.result
+                max_int = arith.Constant.from_int_and_width(rescale_op.max_int.value, i32)
+                min_int = arith.Constant.from_int_and_width(rescale_op.min_int.value, i32)
+                double_round = arith.Constant.from_int_and_width(
+                    rescale_op.double_round.value, i32
+                )
+                shift = arith.Constant.from_int_and_width(rescale_op.shift.value, i32)
+                mult = arith.Constant.from_int_and_width(rescale_op.multiplier.value, i32)
+                zp_in = arith.Constant.from_int_and_width(rescale_op.input_zp.value, i32)
+                zp_out = arith.Constant.from_int_and_width(rescale_op.output_zp.value, i32)
+                ops_to_add.extend(
+                    [max_int, min_int, double_round, shift, mult, zp_in, zp_out]
+                )
 
-            # bitwise and with 8b'11111111 to avoid the sign bits extending the 8-bit field
-            # when bitlist packing
-            ops_to_add.append(cst255 := arith.Constant.from_int_and_width(255, 32))
-            ops_to_add.append(zp_a := arith.AndI(zp_a, cst255))
-            ops_to_add.append(zp_b := arith.AndI(zp_b, cst255))
+                # force values that can be negative to 8 bits
+                cst255 = arith.Constant.from_int_and_width(255, 32)
+                max_int = arith.AndI(max_int, cst255)
+                min_int = arith.AndI(min_int, cst255)
+                zp_in = arith.AndI(zp_in, cst255)
+                zp_out = arith.AndI(zp_out, cst255)
+                ops_to_add.extend([cst255, max_int, min_int, zp_in, zp_out])
 
-            bitlist = list(pack_bitlist((zp_a, zp_b), [0, 8]))
-            ops_to_add.extend(bitlist)
-            subtractions = bitlist[-1].results[0]
+                # bitpacking
+                ops_to_add.extend(
+                    pack_bitlist([min_int, max_int, zp_out, zp_in], [24, 16, 8, 0])
+                )
+                csr0 = ops_to_add[-1].results[0].op.results[0]
+                csr1 = double_round.result
+
+                shift_bitlist = list(pack_bitlist((shift,) * 4, (24, 16, 8, 0)))
+                ops_to_add.extend(shift_bitlist)
+
+                shift_vals = (shift_bitlist[-1].results[0] for _ in range(2))
+                mult_vals = (mult.result for _ in range(8))
+
+                loop_bound = prod(x.data for x in op.stride_patterns.data[2].upper_bounds)
+                loop_bound = arith.Constant.from_int_and_width(loop_bound, i32)
+                ops_to_add.append(loop_bound)
+            else:
+
+                # gemm
+                # bypass simd and set all related values to 0
+                bypassSIMD = c1.result  # bypass simd
+                loop_bound = c0
+                csr0 = c0.result
+                csr1 = c0.result
+                shift_vals = (c0.result for _ in range(2))
+                mult_vals = (c0.result for _ in range(8))
+
+                # get zero points for gemm
+                assert isinstance(qmac.zp_lhs, BlockArgument)
+                zp_a = generic_op.inputs[qmac.zp_lhs.index]
+                assert isinstance(qmac.zp_rhs, BlockArgument)
+                zp_b = generic_op.inputs[qmac.zp_rhs.index]
+
+                # bitwise and with 8b'11111111 to avoid the sign bits extending the 8-bit field
+                # when bitlist packing
+                ops_to_add.append(cst255 := arith.Constant.from_int_and_width(255, 32))
+                ops_to_add.append(zp_a := arith.AndI(zp_a, cst255))
+                ops_to_add.append(zp_b := arith.AndI(zp_b, cst255))
+
+                bitlist = list(pack_bitlist((zp_a, zp_b), [0, 8]))
+                ops_to_add.extend(bitlist)
+                subtractions = bitlist[-1].results[0]
 
         elif isinstance(rescale := generic_op.body.block.first_op, kernel.RescaleOp):
             # extract and compute correct value for csr's based on kernel rescale op
@@ -292,6 +335,9 @@ class SNAXGEMMXAccelerator(
                 if isinstance(generic_op.body.block.first_op, kernel.AddOp):
                     # gemm, add c pattern that is equal to output pattern
                     template += [template[-1]]
+                elif isinstance(generic_op.body.block.first_op, kernel.RescaleOp):
+                    # nothing todo, templates stay the same.
+                    pass
                 else:
                     raise RuntimeError("unsupported kernel")
         else:
