@@ -8,6 +8,9 @@ def dispatch_to_dm(op):
     for now, this is only memref copy operations"""
     if isinstance(op, memref.CopyOp):
         return True
+    if isinstance(op, linalg.Generic):
+        if op.library_call is not None and op.library_call.data == "snax_xdma":
+            return True
     return False
 
 
@@ -18,6 +21,8 @@ def dispatch_to_compute(op):
     and streaming regions
     """
     if isinstance(op, linalg.Generic):
+        if op.library_call is not None and op.library_call.data == "snax_xdma":
+            return False
         return True
     if isinstance(op, stream.StreamingRegionOp):
         return True
