@@ -278,7 +278,7 @@ class ConvertLinalgToAccPass(ModulePass):
     name = "convert-linalg-to-accfg"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(ConvertLinalgToAcceleratorPattern(op)).rewrite_module(op)
+        # PatternRewriteWalker(ConvertLinalgToAcceleratorPattern(op)).rewrite_module(op)
         PatternRewriteWalker(ConvertSnaxStreamToAcceleratorPattern(op)).rewrite_module(
             op
         )
