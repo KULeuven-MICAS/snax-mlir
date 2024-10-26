@@ -8,7 +8,8 @@ include ./snax-gemmx-xdma.rules
 include ../../runtime/Makefile.rules
 
 TESTS =
-TESTS += toy.x
+#TESTS += toy.x
+TESTS += toy_for.x
 
 MLIRPREPROCFLAGS = --linalg-generalize-named-ops
 MLIRPREPROCFLAGS += --mlir-print-op-generic
@@ -27,7 +28,8 @@ MLIRPREPROCFLAGS += --mlir-print-local-scope
 # SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},insert-accfg-op{accelerator=snax_xdma},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,stream-bufferize,snax-bufferize,alloc-to-global,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=2},convert-stream-to-snax-stream,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma{test_ignore_transform=true},memref-to-snax,snax-to-func,clear-memory-space,convert-kernel-to-linalg,test-rescale-to-trunc,linalg-to-library-call
 
 # with all optimizations:
-SNAXOPTFLAGS = -p 'convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},insert-accfg-op{accelerator=snax_xdma},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,stream-bufferize,snax-bufferize,alloc-to-local,set-memory-space,realize-memref-casts,set-memory-layout,insert-sync-barrier,dispatch-regions{nb_cores=2},convert-stream-to-snax-stream,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma{test_ignore_transform=true},memref-to-snax,clear-memory-space,mlir-opt{generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic},snax-to-func{test_static_alloc=true},convert-kernel-to-linalg,test-rescale-to-trunc,linalg-to-library-call'
+# do not use: SNAXOPTFLAGS = -p 'convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},insert-accfg-op{accelerator=snax_xdma},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,stream-bufferize,snax-bufferize,alloc-to-local,set-memory-space,realize-memref-casts,set-memory-layout,insert-sync-barrier,dispatch-regions{nb_cores=2},convert-stream-to-snax-stream,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma{test_ignore_transform=true},memref-to-snax,clear-memory-space,mlir-opt{generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic},snax-to-func{test_static_alloc=true},convert-kernel-to-linalg,test-rescale-to-trunc,linalg-to-library-call'
+SNAXOPTFLAGS = -p 'convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},insert-accfg-op{accelerator=snax_xdma},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,stream-bufferize,snax-bufferize,reuse-memref-allocs,alloc-to-local,set-memory-space,realize-memref-casts,reuse-memref-allocs,set-memory-layout,insert-sync-barrier,pipeline,dispatch-regions{nb_cores=2},convert-stream-to-snax-stream,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma{test_ignore_transform=true},memref-to-snax,clear-memory-space,mlir-opt{generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic},snax-to-func{test_static_alloc=true},convert-kernel-to-linalg,test-rescale-to-trunc,linalg-to-library-call'
 
 
 %.snax-opt.mlir: %.preprocfinal.mlir
