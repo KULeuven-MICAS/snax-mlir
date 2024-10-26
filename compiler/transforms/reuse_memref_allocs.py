@@ -308,7 +308,7 @@ class ReuseMemrefAllocs(ModulePass):
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
                 [
-                    LoopHoistPureOperations([memref.Alloc]),
+                    LoopHoistPureOperations([memref.Alloc, memref.CollapseShapeOp]),
                     MoveMemrefDims(),
                 ]
             ),

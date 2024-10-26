@@ -43,7 +43,6 @@ class AllocToLocal(RewritePattern):
         rewriter.replace_matched_op(new_op)
 
 
-
 @dataclass(frozen=True)
 class AllocToLocalPass(ModulePass):
     name = "alloc-to-local"
