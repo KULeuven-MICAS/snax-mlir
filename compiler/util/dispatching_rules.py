@@ -21,9 +21,14 @@ def dispatch_to_compute(op):
     and streaming regions
     """
     if isinstance(op, linalg.Generic):
-        if op.library_call is not None and op.library_call.data == "snax_xdma":
+        if op.library_call is not None and op.library_call.data in ("snax_xdma", "none"):
             return False
         return True
     if isinstance(op, stream.StreamingRegionOp):
         return True
     return False
+
+def dispatch_alternative(op):
+    if isinstance(op, linalg.Generic):
+        if op.library_call is not None and op.library_call.data == "none":
+            return True

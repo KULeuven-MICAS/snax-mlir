@@ -14,7 +14,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 from xdsl.traits import SymbolTable
 
-from compiler.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
+from compiler.util.dispatching_rules import dispatch_alternative, dispatch_to_compute, dispatch_to_dm
 
 
 @dataclass
@@ -109,6 +109,28 @@ class DispatchRegionsRewriter(RewritePattern):
             if inserted_function_call:
                 # If function call is already inserted, insert check after
                 rewriter.insert_op(condition_compute, InsertPoint.after(func_call))
+            else:
+                # If function call is not yet inserted, insert check and function call in beginning
+                rewriter.insert_op(
+                    [func_call, *condition_compute],
+                    InsertPoint.at_start(func_op.body.blocks[0]),
+                )
+
+
+        # dispatch compute core ops, insert function call
+        # in dominator block if changes made
+        condition_alternative = [
+            cst_1 := arith.Constant.from_int_and_width(1, builtin.i32),
+            comparison_alternative := arith.Cmpi(func_call, cst_1, "eq"),
+        ]
+        if any(
+            dispatcher(block, comparison_alternative.result, dispatch_alternative)
+            for block in func_op.body.blocks
+        ):
+            # insert function call in dominator block (first one)
+            if inserted_function_call:
+                # If function call is already inserted, insert check after
+                rewriter.insert_op(condition_alternative, InsertPoint.after(func_call))
             else:
                 # If function call is not yet inserted, insert check and function call in beginning
                 rewriter.insert_op(
