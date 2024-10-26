@@ -6,6 +6,7 @@ from xdsl.xdsl_opt_main import xDSLOptMain
 
 from compiler.dialects.accfg import ACCFG
 from compiler.dialects.kernel import Kernel
+from compiler.dialects.pipeline import Pipeline
 from compiler.dialects.snax import Snax
 from compiler.dialects.snax_stream import SnaxStream
 from compiler.dialects.stream import Stream
@@ -36,6 +37,7 @@ from compiler.transforms.insert_accfg_op import InsertAccOp
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.memref_to_snax import MemrefToSNAX
+from compiler.transforms.pipeline import PipelinePass
 from compiler.transforms.realize_memref_casts import RealizeMemrefCastsPass
 from compiler.transforms.reuse_memref_allocs import ReuseMemrefAllocs
 from compiler.transforms.set_memory_layout import SetMemoryLayout
@@ -82,6 +84,7 @@ class SNAXOptMain(xDSLOptMain):
         self.ctx.load_dialect(SnaxStream)
         self.ctx.load_dialect(Debug)
         self.ctx.load_dialect(Stream)
+        self.ctx.load_dialect(Pipeline)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
@@ -132,6 +135,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(AllocToGlobalPass.name, lambda: AllocToGlobalPass)
         super().register_pass(AllocToLocalPass.name, lambda: AllocToLocalPass)
         super().register_pass(TestRescaleToTrunc.name, lambda: TestRescaleToTrunc)
+        super().register_pass(PipelinePass.name, lambda: PipelinePass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
