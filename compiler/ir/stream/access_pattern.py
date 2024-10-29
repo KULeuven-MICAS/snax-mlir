@@ -230,7 +230,7 @@ class TemplatePattern(AccessPattern):
         Check if a given schedule pattern matches this
         template pattern.
         """
-        return Multiset(self.pattern.results).is_subset(Multiset(sp.pattern.results))
+        return Multiset(self.pattern.results[-len(sp.pattern.results):]).is_subset(Multiset(sp.pattern.results))
 
 
 P = TypeVar("P", bound=AccessPattern)

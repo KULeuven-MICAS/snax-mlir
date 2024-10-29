@@ -31,7 +31,7 @@ from compiler.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.double_buffer import DoubleBuffer
-from compiler.transforms.frontend.preprocess_mlperf_tiny import PreprocessMLPerfTiny
+from compiler.transforms.frontend.preprocess_mlperf_tiny import PreprocessMLPerfTiny, PreprocessMLPerfTiny2
 from compiler.transforms.fuse_streaming_regions import FuseStreamingRegions
 from compiler.transforms.insert_accfg_op import InsertAccOp
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
@@ -127,6 +127,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(InsertDebugPass.name, lambda: InsertDebugPass)
         super().register_pass(DebugToFuncPass.name, lambda: DebugToFuncPass)
         super().register_pass(PreprocessMLPerfTiny.name, lambda: PreprocessMLPerfTiny)
+        super().register_pass(PreprocessMLPerfTiny2.name, lambda: PreprocessMLPerfTiny2)
         super().register_pass(AddMcycleAroundLaunch.name, lambda: AddMcycleAroundLaunch)
         super().register_pass(ConvertLinalgToStream.name, lambda: ConvertLinalgToStream)
         super().register_pass(StreamBufferize.name, lambda: StreamBufferize)

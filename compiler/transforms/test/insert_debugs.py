@@ -11,6 +11,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.rewriter import InsertPoint
 
+from compiler.dialects import stream
 from compiler.dialects.test import debug
 
 
@@ -22,7 +23,7 @@ class InsertDebugStatements(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: stream.StreamingRegionOp, rewriter: PatternRewriter):
         kernel_type = op.body.block.first_op
         assert kernel_type
         kernel_name = kernel_type.name

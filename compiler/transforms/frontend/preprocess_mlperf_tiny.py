@@ -196,6 +196,7 @@ class OrganizeGetGlobals(RewritePattern):
 
 @dataclass(frozen=True)
 class PreprocessMLPerfTiny(ModulePass):
+
     name = "preprocess-mlperftiny"
 
     executable: str = field(default="mlir-opt")
@@ -226,9 +227,9 @@ class PreprocessMLPerfTiny(ModulePass):
         arguments=(
             "--test-linalg-transform-patterns=test-generalize-pad-tensor",
             "--linalg-generalize-named-ops",
-            "--empty-tensor-to-alloc-tensor",
-            "--one-shot-bufferize=bufferize-function-boundaries allow-return-allocs-from-loops"
-            + " function-boundary-type-conversion=identity-layout-map",
+        #     "--empty-tensor-to-alloc-tensor",
+        #     "--one-shot-bufferize=bufferize-function-boundaries allow-return-allocs-from-loops"
+        #     + " function-boundary-type-conversion=identity-layout-map",
             "--mlir-print-op-generic",
             "--mlir-print-local-scope",
             "--allow-unregistered-dialect",
@@ -250,6 +251,20 @@ class PreprocessMLPerfTiny(ModulePass):
             RemoveTransposeConstants(), apply_recursively=False
         ).rewrite_module(op)
         self.mlir_bufferization_pass.apply(ctx, op)
+        # PatternRewriteWalker(AllocToGlobal()).rewrite_module(op)
+        # PatternRewriteWalker(
+        #     InsertMemoryClears(), apply_recursively=False
+        # ).rewrite_module(op)
+        # PatternRewriteWalker(
+        #     OrganizeGetGlobals(), apply_recursively=False
+        # ).rewrite_module(op)
+        #
+
+@dataclass(frozen=True)
+class PreprocessMLPerfTiny2(ModulePass):
+    name = "preprocess-mlperftiny-2"
+
+    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(AllocToGlobal()).rewrite_module(op)
         PatternRewriteWalker(
             InsertMemoryClears(), apply_recursively=False

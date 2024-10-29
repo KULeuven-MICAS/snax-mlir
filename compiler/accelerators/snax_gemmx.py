@@ -335,6 +335,12 @@ class SNAXGEMMXAccelerator(
                 if isinstance(generic_op.body.block.first_op, kernel.AddOp):
                     # gemm, add c pattern that is equal to output pattern
                     template += [template[-1]]
+                    if isinstance(generic_op.next_op, stream.GenericOp):
+                        generic_op = generic_op.next_op
+                        if isinstance(generic_op.body.block.first_op, kernel.RescaleOp):
+                            # rescale op
+                            # nothing to do , templates stay the same
+                            pass
                 elif isinstance(generic_op.body.block.first_op, kernel.RescaleOp):
                     # nothing todo, templates stay the same.
                     pass
