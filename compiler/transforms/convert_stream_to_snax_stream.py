@@ -223,13 +223,27 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 snax_stride_patterns.append(empty_pattern)
 
                 new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
-            elif len(snax_stride_patterns) == 4:
+            elif len(snax_stride_patterns) == 4 and len(op.body.block.ops) == 3:
                 # gemm
                 #
                 # for a gemm, the 8bit-output port D8 are unused, so we create
                 # empty patterns for them here
                 snax_stride_patterns.insert(2, empty_pattern)
                 new_inputs.insert(2, memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
+
+            elif len(snax_stride_patterns) == 4 and len(op.body.block.ops) == 4:
+                # gemm with rescale
+
+                # for gemm, only D32 is unused
+
+                #put output at third place
+                snax_stride_patterns[-1], snax_stride_patterns[-2] = snax_stride_patterns[-2], snax_stride_patterns[-1]
+                new_inputs[-1], new_inputs[-2] = new_inputs[-2], new_inputs[-1]
+
+                # insert empty patterns for D32
+                snax_stride_patterns.append(empty_pattern)
+
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
 
             else:
                 # simd
