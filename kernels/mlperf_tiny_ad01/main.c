@@ -14,29 +14,29 @@
  * */
 #include <snrt.h>
 
-
 void _mlir_ciface_run_network(TwoDMemrefI8_t *output, TwoDMemrefI8_t *input);
 
-void _mlir_ciface_debug_kernel_qmac(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr_c, int32_t when) {
+void _mlir_ciface_debug_kernel_qmac(int32_t _ptr_a, int32_t _ptr_b,
+                                    int32_t _ptr_c, int32_t when) {
   // gemm
   int8_t *ptr_a, *ptr_b;
   int32_t *ptr_c;
-  ptr_a = (int8_t*) _ptr_a;
-  ptr_b = (int8_t*) _ptr_b;
-  ptr_c = (int32_t*) _ptr_c;
+  ptr_a = (int8_t *)_ptr_a;
+  ptr_b = (int8_t *)_ptr_b;
+  ptr_c = (int32_t *)_ptr_c;
 
   int thisc = snrt_cluster_core_idx();
 
   if (thisc == 0) {
-    printf("Debugging GeMM at t = %d with A at %p, B at %p, C at %p\n", when, ptr_a, ptr_b, ptr_c);
+    printf("Debugging GeMM at t = %d with A at %p, B at %p, C at %p\n", when,
+           ptr_a, ptr_b, ptr_c);
 
     for (int i = 0; i < 5; i++) {
       printf("i%d -> A=%d, B=%d, C=%d\n", i, ptr_a[i], ptr_b[i], ptr_c[i]);
     }
-
   }
 
-  for(uint8_t i = 0; i < 20; i++) {
+  for (uint8_t i = 0; i < 20; i++) {
     if (thisc == i) {
       printf("Core %d present.\n", thisc);
       if (snrt_is_dm_core()) {
@@ -45,26 +45,27 @@ void _mlir_ciface_debug_kernel_qmac(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr
     }
     snrt_cluster_hw_barrier();
   }
-
 }
 
-void _mlir_ciface_debug_kernel_add(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr_c, int32_t when) {
+void _mlir_ciface_debug_kernel_add(int32_t _ptr_a, int32_t _ptr_b,
+                                   int32_t _ptr_c, int32_t when) {
   // bias addition
   int32_t *ptr_a, *ptr_b, *ptr_c;
-  ptr_a = (int32_t*) _ptr_a;
-  ptr_b = (int32_t*) _ptr_b;
-  ptr_c = (int32_t*) _ptr_c;
+  ptr_a = (int32_t *)_ptr_a;
+  ptr_b = (int32_t *)_ptr_b;
+  ptr_c = (int32_t *)_ptr_c;
 
   int thisc = snrt_cluster_core_idx();
   if (thisc == 0) {
-    printf("Debugging bias at t = %d with A at %p, B at %p, C at %p\n", when, ptr_a, ptr_b, ptr_c);
+    printf("Debugging bias at t = %d with A at %p, B at %p, C at %p\n", when,
+           ptr_a, ptr_b, ptr_c);
 
     for (int i = 0; i < 5; i++) {
       printf("i%d -> A=%d, B=%d, C=%d\n", i, ptr_a[i], ptr_b[i], ptr_c[i]);
     }
   }
 
-  for(uint8_t i = 0; i < 20; i++) {
+  for (uint8_t i = 0; i < 20; i++) {
     if (thisc == i) {
       printf("Core %d present.\n", thisc);
       if (snrt_is_dm_core()) {
@@ -73,26 +74,26 @@ void _mlir_ciface_debug_kernel_add(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr_
     }
     snrt_cluster_hw_barrier();
   }
-
 }
 
-void _mlir_ciface_debug_kernel_rescale(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr_c, int32_t when) {
+void _mlir_ciface_debug_kernel_rescale(int32_t _ptr_a, int32_t _ptr_b,
+                                       int32_t _ptr_c, int32_t when) {
   // simd rescale
   int32_t *ptr_a;
   int8_t *ptr_c;
-  ptr_a = (int32_t*) _ptr_a;
-  ptr_c = (int8_t*) _ptr_c;
-
+  ptr_a = (int32_t *)_ptr_a;
+  ptr_c = (int8_t *)_ptr_c;
 
   int thisc = snrt_cluster_core_idx();
   if (thisc == 0) {
-    printf("Debugging SIMD at t = %d with A at %p, C at %p\n", when, ptr_a, ptr_c);
+    printf("Debugging SIMD at t = %d with A at %p, C at %p\n", when, ptr_a,
+           ptr_c);
 
     for (int i = 0; i < 5; i++) {
       printf("i%d -> A=%d, C=%d\n", i, ptr_a[i], ptr_c[i]);
     }
   }
-  for(uint8_t i = 0; i < 20; i++) {
+  for (uint8_t i = 0; i < 20; i++) {
     if (thisc == i) {
       printf("Core %d present.\n", thisc);
       if (snrt_is_dm_core()) {
@@ -101,7 +102,6 @@ void _mlir_ciface_debug_kernel_rescale(int32_t _ptr_a, int32_t _ptr_b, int32_t _
     }
     snrt_cluster_hw_barrier();
   }
-
 }
 
 int main() {

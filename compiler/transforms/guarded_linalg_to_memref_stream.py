@@ -34,6 +34,7 @@ class GuardedGenericOpPattern(RewritePattern):
             op.library_call = StringAttr(op.library_call.data[: -len("_stream")])
             ConvertGenericOpPattern().match_and_rewrite(op, rewriter)
 
+
 class GuardedYieldOpPattern(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.YieldOp, rewriter: PatternRewriter):

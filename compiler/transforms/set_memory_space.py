@@ -1,6 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, func, linalg, memref
-from xdsl.ir import Operation, SSAValue
+from xdsl.ir import SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -26,7 +26,8 @@ class InitFuncMemorySpace(RewritePattern):
         # Function must have memref arguments with an undefined memory space
         if not any(
             [
-                isinstance(x, builtin.MemRefType) and isinstance(x.memory_space, builtin.NoneAttr)
+                isinstance(x, builtin.MemRefType)
+                and isinstance(x.memory_space, builtin.NoneAttr)
                 for x in [*op.function_type.inputs, *op.function_type.outputs]
             ]
         ):

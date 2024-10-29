@@ -18,7 +18,6 @@ from xdsl.transforms.mlir_opt import MLIROptPass
 from compiler.dialects import snax
 from compiler.transforms.alloc_to_global import AllocToGlobal
 from compiler.transforms.convert_tosa_to_kernel import RescaleClampPattern
-from compiler.transforms.test.insert_debugs import InsertDebugStatements
 
 
 class InsertStaticFunctionCall(RewritePattern):
