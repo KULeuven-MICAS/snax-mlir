@@ -238,7 +238,9 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
                 #put output at third place
                 snax_stride_patterns[-1], snax_stride_patterns[-2] = snax_stride_patterns[-2], snax_stride_patterns[-1]
-                new_inputs[-1], new_inputs[-2] = new_inputs[-2], new_inputs[-1]
+                new_inputs.insert(2, new_outputs.pop())
+
+                #new_inputs[-1], new_inputs[-2] = new_inputs[-2], new_inputs[-1]
 
                 # insert empty patterns for D32
                 snax_stride_patterns.append(empty_pattern)

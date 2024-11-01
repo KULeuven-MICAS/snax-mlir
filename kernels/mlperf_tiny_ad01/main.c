@@ -16,23 +16,24 @@
 
 void _mlir_ciface_run_network(TwoDMemrefI8_t *output, TwoDMemrefI8_t *input);
 
-void _mlir_ciface_debug_kernel_qmac(int32_t _ptr_a, int32_t _ptr_b,
-                                    int32_t _ptr_c, int32_t when) {
+void _mlir_ciface_debug_stream_generic(int32_t _ptr_a, int32_t _ptr_b,
+                                    int32_t _ptr_c, int32_t _ptr_d, int32_t when) {
   // gemm
-  int8_t *ptr_a, *ptr_b;
+  int8_t *ptr_a, *ptr_b, *ptr_d;
   int32_t *ptr_c;
   ptr_a = (int8_t *)_ptr_a;
   ptr_b = (int8_t *)_ptr_b;
   ptr_c = (int32_t *)_ptr_c;
+  ptr_d = (int8_t *)_ptr_d;
 
   int thisc = snrt_cluster_core_idx();
 
   if (thisc == 0) {
-    printf("Debugging GeMM at t = %d with A at %p, B at %p, C at %p\n", when,
-           ptr_a, ptr_b, ptr_c);
+    printf("Debugging Generic at t = %d with A at %p, B at %p, C at %p, D at %p\n", when,
+           ptr_a, ptr_b, ptr_c, ptr_d);
 
     for (int i = 0; i < 5; i++) {
-      printf("i%d -> A=%d, B=%d, C=%d\n", i, ptr_a[i], ptr_b[i], ptr_c[i]);
+      printf("i%d -> A=%d, B=%d, C=%d, D=%d\n", i, ptr_a[i], ptr_b[i], ptr_c[i], ptr_d[i]);
     }
   }
 

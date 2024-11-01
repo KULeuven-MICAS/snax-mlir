@@ -15,7 +15,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 from xdsl.transforms.mlir_opt import MLIROptPass
 
-from compiler.dialects import snax
+from compiler.dialects import snax, stream
 from compiler.transforms.alloc_to_global import AllocToGlobal
 from compiler.transforms.convert_tosa_to_kernel import RescaleClampPattern
 
@@ -166,7 +166,7 @@ class InsertMemoryClears(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: linalg.Generic | stream.StreamingRegionOp, rewriter: PatternRewriter):
         dump = snax.ClearL1()
         rewriter.insert_op(dump, InsertPoint.before(op))
 

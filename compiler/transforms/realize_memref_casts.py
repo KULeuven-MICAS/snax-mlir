@@ -11,6 +11,7 @@ from xdsl.pattern_rewriter import (
 )
 
 from compiler.dialects import stream
+from compiler.dialects.test import debug
 from compiler.dialects.snax import LayoutCast
 
 
@@ -120,6 +121,8 @@ class RealizeMemrefCasts(RewritePattern):
                 is_output = op.results[0] in use_op.outputs
             elif isinstance(use_op, stream.StreamingRegionOp):
                 is_output = op.results[0] in use_op.outputs
+            elif isinstance(use_op, debug.DebugLinalgOp):
+                is_output = False
             elif isinstance(use_op, func.Return):
                 is_output = False
             else:

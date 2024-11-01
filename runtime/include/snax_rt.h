@@ -50,11 +50,11 @@ void _mlir_ciface_snax_clear_l1() {
   // this has a similar function to the zero register of risc-v
   snrt_l1alloc(256);
   // memset all to 0 with DMA
-  if (snrt_is_dm_core()) {
-    snrt_dma_start_2d((int32_t *)0x10000040, (int32_t *)0x10000000, 0x40, 0x40,
-                      0, 0x1800);
-    snrt_dma_wait_all();
-  }
+  // if (snrt_is_dm_core()) {
+  //   snrt_dma_start_2d((int32_t *)0x10000040, (int32_t *)0x10000000, 0x40, 0x40,
+  //                     0, 0x1800);
+  //   snrt_dma_wait_all();
+  // }
   snrt_cluster_hw_barrier();
   return;
 }

@@ -180,10 +180,38 @@ class SNAXGEMMXAccelerator(
                 for val in (k, n, m)
             ]
 
+            # default values:
+            bypassSIMD = c1.result  # bypass simd
+            subtractions = c0.result
+            loop_bound = c0
+            csr0 = c0.result
+            csr1 = c0.result
+            shift_vals = (c0.result for _ in range(2))
+            mult_vals = (c0.result for _ in range(8))
+
+            # get zero points for gemm
+            assert isinstance(qmac.zp_lhs, BlockArgument)
+            zp_a = generic_op.inputs[qmac.zp_lhs.index]
+            assert isinstance(qmac.zp_rhs, BlockArgument)
+            zp_b = generic_op.inputs[qmac.zp_rhs.index]
+
+            # bitwise and with 8b'11111111 to avoid the sign bits extending the 8-bit field
+            # when bitlist packing
+            ops_to_add.append(cst255 := arith.Constant.from_int_and_width(255, 32))
+            ops_to_add.append(zp_a := arith.AndI(zp_a, cst255))
+            ops_to_add.append(zp_b := arith.AndI(zp_b, cst255))
+
+            bitlist = list(pack_bitlist((zp_a, zp_b), [0, 8]))
+            ops_to_add.extend(bitlist)
+            subtractions = bitlist[-1].results[0]
+
+            if isinstance(generic_op.next_op, stream.GenericOp) and isinstance(add_op := generic_op.next_op.body.block.first_op, kernel.AddOp):
+                # don't really have to do anything
+                generic_op = generic_op.next_op
+                pass
 
             if isinstance(generic_op.next_op, stream.GenericOp) and isinstance(rescale_op := generic_op.next_op.body.block.first_op, kernel.RescaleOp):
                 bypassSIMD = c0.result
-                subtractions = c0.result
                 max_int = arith.Constant.from_int_and_width(rescale_op.max_int.value, i32)
                 min_int = arith.Constant.from_int_and_width(rescale_op.min_int.value, i32)
                 double_round = arith.Constant.from_int_and_width(
@@ -221,32 +249,6 @@ class SNAXGEMMXAccelerator(
                 loop_bound = prod(x.data for x in op.stride_patterns.data[2].upper_bounds)
                 loop_bound = arith.Constant.from_int_and_width(loop_bound, i32)
                 ops_to_add.append(loop_bound)
-            else:
-
-                # gemm
-                # bypass simd and set all related values to 0
-                bypassSIMD = c1.result  # bypass simd
-                loop_bound = c0
-                csr0 = c0.result
-                csr1 = c0.result
-                shift_vals = (c0.result for _ in range(2))
-                mult_vals = (c0.result for _ in range(8))
-
-                # get zero points for gemm
-                assert isinstance(qmac.zp_lhs, BlockArgument)
-                zp_a = generic_op.inputs[qmac.zp_lhs.index]
-                assert isinstance(qmac.zp_rhs, BlockArgument)
-                zp_b = generic_op.inputs[qmac.zp_rhs.index]
-
-                # bitwise and with 8b'11111111 to avoid the sign bits extending the 8-bit field
-                # when bitlist packing
-                ops_to_add.append(cst255 := arith.Constant.from_int_and_width(255, 32))
-                ops_to_add.append(zp_a := arith.AndI(zp_a, cst255))
-                ops_to_add.append(zp_b := arith.AndI(zp_b, cst255))
-
-                bitlist = list(pack_bitlist((zp_a, zp_b), [0, 8]))
-                ops_to_add.extend(bitlist)
-                subtractions = bitlist[-1].results[0]
 
         elif isinstance(rescale := generic_op.body.block.first_op, kernel.RescaleOp):
             # extract and compute correct value for csr's based on kernel rescale op
