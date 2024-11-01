@@ -48,6 +48,7 @@ from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.stream_bufferize import StreamBufferize
 from compiler.transforms.test.debug_to_func import DebugToFuncPass
+from compiler.transforms.test.dma_to_insn import DMAToInsnPass
 from compiler.transforms.test.insert_debugs import InsertDebugPass
 from compiler.transforms.test.rescale_to_trunc import TestRescaleToTrunc
 from compiler.transforms.test.test_add_mcycle_around_launch import AddMcycleAroundLaunch
@@ -137,6 +138,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(AllocToLocalPass.name, lambda: AllocToLocalPass)
         super().register_pass(TestRescaleToTrunc.name, lambda: TestRescaleToTrunc)
         super().register_pass(PipelinePass.name, lambda: PipelinePass)
+        super().register_pass(DMAToInsnPass.name, lambda: DMAToInsnPass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
