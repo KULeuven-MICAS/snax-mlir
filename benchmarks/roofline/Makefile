@@ -14,7 +14,7 @@ MLIRPREPROCFLAGS += --mlir-print-local-scope
 %.preprocfinal.mlir: %.mlir
 	$(MLIROPT) $(MLIRPREPROCFLAGS) -o $@ $<
 
-SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-stream,set-memory-space,set-memory-layout,realize-memref-casts,reuse-memref-allocs,double-buffer,dce,insert-sync-barrier,dispatch-regions{nb_cores=3},convert-stream-to-snax-stream,convert-linalg-to-accfg,accfg-config-overlap,convert-accfg-to-csr,snax-copy-to-dma{test_ignore_transform=true},memref-to-snax,snax-to-func,snax-lower-mcycle,clear-memory-space,test-dma-to-insn
+SNAXOPTFLAGS = -p 'convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-stream,set-memory-space,set-memory-layout,realize-memref-casts,reuse-memref-allocs,insert-sync-barrier,pipeline,dispatch-regions{nb_cores=3},convert-stream-to-snax-stream,convert-linalg-to-accfg,accfg-config-overlap,convert-accfg-to-csr,snax-copy-to-dma{test_ignore_transform=true},memref-to-snax,clear-memory-space,mlir-opt{generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic},snax-to-func{test_static_alloc=true},snax-lower-mcycle,test-dma-to-insn'
 
 GEN_DATA_OPTS += --m=${SIZE_M}
 GEN_DATA_OPTS += --n=${SIZE_N}

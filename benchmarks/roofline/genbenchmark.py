@@ -155,7 +155,8 @@ if __name__ == "__main__":
         ops_tile = m_tiled * n_tiled * k
         ai_tile = ops_tile / size_tile
 
-        tiles = (m / m_tiled) * (n / n_tiled)
+        # * 2 because of poor pipelining pass
+        tiles = (m / m_tiled) * (n / n_tiled) * 2
 
         performance = ops_tile * tiles / cycles
         avg_bandwidth = size_tile * tiles / cycles

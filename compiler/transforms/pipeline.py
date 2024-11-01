@@ -31,6 +31,8 @@ from compiler.util.snax_memory import L1
 class ConstructPipeline(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: scf.For, rewriter: PatternRewriter):
+        if isinstance(op.body.block.first_op, scf.For):
+            return
         # create pipeline op inside
         pipeline_op = PipelineOp(Region(Block()))
 
