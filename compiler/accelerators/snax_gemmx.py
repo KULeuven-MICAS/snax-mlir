@@ -305,7 +305,62 @@ class SNAXGEMMXAccelerator(
             ops_to_add.append(loop_bound)
 
         else:
-            raise NotImplementedError()
+            # add, rescale should be the next op
+            rescale = generic_op.next_op.body.block.first_op
+            assert isinstance(rescale, kernel.RescaleOp)
+            k = 1
+            n = 1
+            m = prod(x.data for x in op.stride_patterns.data[0].upper_bounds)
+
+            knm: list = [
+                (((cst := arith.Constant.from_int_and_width(val, 32)),), cst.result)
+                for val in (k, n, m)
+            ]
+
+            # simd
+            bypassSIMD = c0.result
+            subtractions = c0.result
+
+            max_int = arith.Constant.from_int_and_width(rescale.max_int.value, i32)
+            min_int = arith.Constant.from_int_and_width(rescale.min_int.value, i32)
+            double_round = arith.Constant.from_int_and_width(
+                rescale.double_round.value, i32
+            )
+            shift = arith.Constant.from_int_and_width(rescale.shift.value, i32)
+            mult = arith.Constant.from_int_and_width(rescale.multiplier.value, i32)
+            zp_in = arith.Constant.from_int_and_width(rescale.input_zp.value, i32)
+            zp_out = arith.Constant.from_int_and_width(rescale.output_zp.value, i32)
+            ops_to_add.extend(
+                [max_int, min_int, double_round, shift, mult, zp_in, zp_out]
+            )
+
+            # force values that can be negative to 8 bits
+            cst255 = arith.Constant.from_int_and_width(255, 32)
+            max_int = arith.AndI(max_int, cst255)
+            min_int = arith.AndI(min_int, cst255)
+            zp_in = arith.AndI(zp_in, cst255)
+            zp_out = arith.AndI(zp_out, cst255)
+            ops_to_add.extend([cst255, max_int, min_int, zp_in, zp_out])
+
+            # bitpacking
+            ops_to_add.extend(
+                pack_bitlist([min_int, max_int, zp_out, zp_in], [24, 16, 8, 0])
+            )
+            csr0 = ops_to_add[-1].results[0].op.results[0]
+            csr1 = double_round.result
+
+            shift_bitlist = list(pack_bitlist((shift,) * 4, (24, 16, 8, 0)))
+            ops_to_add.extend(shift_bitlist)
+
+            shift_vals = (shift_bitlist[-1].results[0] for _ in range(2))
+            mult_vals = (mult.result for _ in range(8))
+
+            loop_bound = prod(x.data for x in op.stride_patterns.data[0].upper_bounds)
+            loop_bound = arith.Constant.from_int_and_width(loop_bound, i32)
+            ops_to_add.append(loop_bound)
+
+            #breakpoint()
+            #raise NotImplementedError()
 
         return [
             *streamer_setup_vals,
@@ -348,6 +403,19 @@ class SNAXGEMMXAccelerator(
                     pass
                 else:
                     raise RuntimeError("unsupported kernel")
+        elif isinstance(generic_op.body.block.first_op, kernel.AddOp):
+            # addition deployed to accelerator
+            M, K, m, k = (AffineDimExpr(i) for i in range(4))
+            template = [
+                AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
+                AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
+                AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
+            ]
+            template_bounds = (None, None, 8, 8)
+
+            if isinstance(generic_op.next_op, stream.GenericOp):
+                generic_op = generic_op.next_op
+
         else:
             # rescale only function of gemmx
             M, K, m, k = (AffineDimExpr(i) for i in range(4))
