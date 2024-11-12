@@ -67,6 +67,7 @@ class SNAXGEMMXAccelerator(
 
     supported_kernels = (
         SupportedKernel(kernel.QMacOp, (i8, i8, i32, i32, i32)),
+        SupportedKernel(kernel.MacOp, (i8, i8, i32)),
         SupportedKernel(kernel.AddOp, (i32, i32, i32)),
         SupportedKernel(kernel.RescaleOp, (i32, i8)),
     )

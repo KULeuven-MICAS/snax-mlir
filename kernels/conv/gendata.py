@@ -1,6 +1,7 @@
 # simple script to generate inputs and expected outputs for simple_matmult
 
 import numpy as np
+import torch.nn as nn
 
 from util.gendata import create_data, create_header
 

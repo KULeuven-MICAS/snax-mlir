@@ -101,7 +101,10 @@ class MacOp(KernelOp, BinaryOp, Parsable):
             )
         )
         def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
-            mul = arith.Muli(args[0], args[1])
+            assert isinstance(output_type := args[2].type, IntegerType)
+            inp1 = arith.ExtSIOp(args[0], output_type)
+            inp2 = arith.ExtSIOp(args[1], output_type)
+            mul = arith.Muli(inp1, inp2)
             mac = arith.Addi(args[2], mul)
             linalg.YieldOp(mac)
 
