@@ -332,6 +332,11 @@ class AddConvMemoryLayout(RewritePattern):
                 if not isinstance(generic_op.body.block.first_op, QMacOp):
                     return
 
+                if isinstance(generic_op.next_op, stream.GenericOp):
+                    if isinstance(generic_op.next_op.body.block.first_op, AddOp):
+                        # gemm
+                        has_add_c = True
+
             # the layout should be as static as the memref is. no more, no less
             # get b, ox, oy, fx, fy, c, k
 
@@ -349,12 +354,12 @@ class AddConvMemoryLayout(RewritePattern):
             b = shaped_operands[0][1].get_shape()[0]
             ix = shaped_operands[0][1].get_shape()[1]
             iy = shaped_operands[0][1].get_shape()[2]
-            ox = shaped_operands[2][1].get_shape()[1]
-            oy = shaped_operands[2][1].get_shape()[2]
+            ox = shaped_operands[-1][1].get_shape()[1]
+            oy = shaped_operands[-1][1].get_shape()[2]
             fx = shaped_operands[1][1].get_shape()[1]
             fy = shaped_operands[1][1].get_shape()[2]
             c = shaped_operands[0][1].get_shape()[3]
-            k = shaped_operands[2][1].get_shape()[3]
+            k = shaped_operands[-1][1].get_shape()[3]
 
             # lots of current limitations:
             assert b == 1
@@ -365,7 +370,8 @@ class AddConvMemoryLayout(RewritePattern):
             assert fx > 0
             assert fy > 0
             assert c > 0
-            assert c % 8 == 0
+            # set 'padded layout'
+            # assert c % 8 == 0
             assert k % 8 == 0
             assert ox % 8 == 0
 
@@ -422,15 +428,9 @@ class AddConvMemoryLayout(RewritePattern):
             )
 
             if has_add_c:
-                rewriter.insert_op(
-                    new_input_c := LayoutCast.from_type_and_target_layout(
-                        op.inputs[2], tsl_output
-                    ),
-                    InsertPoint.before(op),
-                )
                 op.operands[shaped_operands[0][0]] = new_input_a.dest
                 op.operands[shaped_operands[1][0]] = new_input_b.dest
-                op.operands[shaped_operands[2][0]] = new_input_c.dest
+                #op.operands[shaped_operands[2][0]] = new_input_c.dest
                 op.operands[shaped_operands[3][0]] = new_output.dest
             else:
                 op.operands[shaped_operands[0][0]] = new_input_a.dest

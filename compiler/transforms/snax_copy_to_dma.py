@@ -82,11 +82,11 @@ class MatchSimpleCopy(RewritePattern):
                 not isinstance(op.source.type, MemRefType),
                 not isinstance(op.destination.type, MemRefType),
                 not isinstance(op.source.type.layout, NoneAttr),
-                not isinstance(op.destination.type.layout, NoneAttr),
+                # not isinstance(op.destination.type.layout, NoneAttr),
                 not op.destination.type.get_shape() == op.source.type.get_shape(),
                 not op.destination.type.get_element_type()
                 == op.source.type.get_element_type(),
-                not isinstance(op.source.type.get_element_type(), IntegerType),
+                # not isinstance(op.source.type.get_element_type(), IntegerType),
             ]
         ):
             return

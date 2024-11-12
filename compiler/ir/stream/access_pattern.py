@@ -230,7 +230,10 @@ class TemplatePattern(AccessPattern):
         Check if a given schedule pattern matches this
         template pattern.
         """
-        return Multiset(self.pattern.results[-len(sp.pattern.results):]).is_subset(Multiset(sp.pattern.results))
+        # apply extreme canonicalization
+        schedule_pattern = canonicalize_map(sp.pattern, True)
+        template_pattern = canonicalize_map(self.pattern, True)
+        return Multiset(template_pattern.results[-len(sp.pattern.results):]).is_subset(Multiset(schedule_pattern.results))
 
 
 P = TypeVar("P", bound=AccessPattern)

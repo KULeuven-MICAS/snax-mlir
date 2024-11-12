@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from pandas.core.algorithms import is_extension_array_dtype
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, memref
 from xdsl.dialects.builtin import MemRefType
@@ -17,7 +18,7 @@ from xdsl.pattern_rewriter import (
 from compiler.accelerators import find_accelerator_op
 from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
-from compiler.dialects import snax_stream, stream
+from compiler.dialects import kernel, snax_stream, stream
 from compiler.dialects.snax import StreamerConfigurationAttr
 from compiler.ir.stream import Schedule, SchedulePattern, optimizer, scheduler
 
@@ -70,13 +71,26 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
         # First, run the stream scheduling algorithm
         schedule_bounds = tuple(op.get_static_pattern_bounds())
+
+        #FIXME: hack for input layer for resnet
+        if schedule_bounds == (1, 32, 32, 16, 3, 3, 3):
+            # assume padding until 8
+            schedule_bounds = (1, 32, 32, 16, 3, 3, 8)
+
+        is_exemption = False
+        if isinstance(op.body.block.first_op.body.block.first_op, kernel.AddOp):
+            is_exemption = True
+
         schedule = Schedule(SchedulePattern(schedule_bounds, pattern.data) for pattern in op.patterns.data)
+
         schedule = scheduler(template, schedule)
 
         # FIXME: for stationary bounds, this is hardcoded
         schedules = [pattern for pattern in schedule]
         for i in range(2, len(schedule)):
             new_bounds = list(schedules[i].bounds)
+            if is_exemption:
+                continue
             if len(new_bounds) > 2:
                 new_bounds[-4] = 1
             if len(new_bounds) == 10:
