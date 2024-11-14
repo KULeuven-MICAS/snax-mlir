@@ -69,6 +69,7 @@ def process_traces(
     elf: str,
     addr2line: str,
     output: typing.IO[str] | None = None,
+    debug: bool = False,
 ):
     """
     Main processing function that calculates sections and processes traces.
@@ -87,16 +88,29 @@ def process_traces(
     executor = ProcessPoolExecutor()
     futures = []
 
-    # Submit trace processing tasks to the executor
-    for hartid, file in enumerate(traces):
-        futures.append(executor.submit(worker, file))
+    if not debug:
+        # Submit trace processing tasks to the executor
+        for hartid, file in enumerate(traces):
+            futures.append(executor.submit(worker, file))
+    else:
+        # Process traces sequentially for debuggin purposes
+        for hartid, file in enumerate(traces):
+            result = worker(file)
+            futures.append(result)
 
     # Calculate events using provided inputs and arguments
     events = calculate_sections(inputs, elf, addr2line, traces)
 
-    # Collect results from the executor and convert events to the desired format
-    for hartid, f in enumerate(futures):
-        events += map(lambda e: e.to_chrome_tracing(hartid), f.result())
+    if not debug:
+        # Collect results from the executor and convert events to the desired format
+        for hartid, f in enumerate(futures):
+            events += map(lambda e: e.to_chrome_tracing(hartid), f.result())
+    else:
+        # Run sequentially for debugging purposes
+        for hartid, result in enumerate(
+            futures
+        ):  # `result` is already the output of `worker`
+            events += map(lambda e: e.to_chrome_tracing(hartid), result)
 
     # Create and write the TraceViewer JSON object
     json.dump({"traceEvents": events, "displayTimeUnit": "ns"}, output, indent=2)
