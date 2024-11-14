@@ -19,7 +19,7 @@ class TiledStridedLayout:
     """
 
     tstrides: list[TiledStride]
-    offset: int | None = 0
+    offset: int = 0
 
     @staticmethod
     def from_strides(
@@ -75,6 +75,9 @@ class TiledStridedLayout:
         """Get the stride at a particular dimension and depth of
         the Tiled Strided Layout"""
         return self.tstrides[dim].strides[depth]
+
+    def simplify(self):
+        return TiledStridedLayout([tstride.simplify() for tstride in self.tstrides], self.offset)
 
     def all_values(self) -> np.ndarray:
         """

@@ -63,6 +63,20 @@ class TiledStride:
         )
         return f"[{bounds}] -> ({strides})"
 
+    def simplify(self):
+        strides = []
+        for stride in self.strides:
+            if not strides:
+                strides.append(stride)
+            elif stride.bound == 1:
+                continue
+            elif strides[-1].bound * strides[-1].step == stride.step:
+                strides[-1] = Stride(stride.step, strides[-1].bound * stride.bound)
+            else:
+                strides.append(stride)
+
+        return TiledStride(strides)
+
     def __iter__(self) -> Iterator[tuple[int, Stride]]:
         """Returns an iterator of (depth, stride) over all
             the strides of the Tiled Stride
