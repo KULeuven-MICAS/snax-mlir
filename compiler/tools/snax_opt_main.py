@@ -15,6 +15,8 @@ from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 from compiler.transforms.accfg_dedup import AccfgDeduplicate
 from compiler.transforms.accfg_insert_resets import InsertResetsPass
 from compiler.transforms.alloc_to_global import AllocToGlobalPass
+from compiler.transforms.autoflow_layout_resolution import AutoflowLayoutResolutionPass, AutoflowLayoutResolutionPattern
+from compiler.transforms.autoflow_scheduler import AutoflowSchedulerPass
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
 from compiler.transforms.convert_kernel_to_linalg import ConvertKernelToLinalg
@@ -126,6 +128,8 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(SnaxBufferize.name, lambda: SnaxBufferize)
         super().register_pass(FuseStreamingRegions.name, lambda: FuseStreamingRegions)
         super().register_pass(AllocToGlobalPass.name, lambda: AllocToGlobalPass)
+        super().register_pass(AutoflowSchedulerPass.name, lambda: AutoflowSchedulerPass)
+        super().register_pass(AutoflowLayoutResolutionPass.name, lambda: AutoflowLayoutResolutionPass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
