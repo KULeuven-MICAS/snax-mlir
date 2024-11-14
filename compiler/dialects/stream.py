@@ -6,6 +6,9 @@ from xdsl.dialects.builtin import (
     AnyShapedType,
     ArrayAttr,
     ContainerType,
+    IndexType,
+    IntAttr,
+    IntegerAttr,
     ShapedType,
     StringAttr,
 )
@@ -70,8 +73,7 @@ class StreamType(
         return self.element_type
 
 
-@irdl_op_definition
-class StreamingRegionOp(IRDLOperation):
+class StreamingRegionOpBase(IRDLOperation):
     """
     An operation that creates streams from tensors or memrefs, which are only available to
     read from within the body of the operation.
@@ -79,8 +81,6 @@ class StreamingRegionOp(IRDLOperation):
     Within the loop body, memrefs/tensors that are streamed must not be otherwise accessed
     via any other access means, including extraction (e.g.: memref.view).
     """
-
-    name = "stream.streaming_region"
 
     inputs = var_operand_def(AnyShapedType())
     outputs = var_operand_def(AnyShapedType())
@@ -147,6 +147,55 @@ class StreamingRegionOp(IRDLOperation):
             tuple(self.get_static_shapes()), []
         )
 
+@irdl_op_definition
+class StreamingRegionOp(StreamingRegionOpBase):
+
+    name = "stream.streaming_region"
+
+
+
+@irdl_op_definition
+class ScheduleOp(IRDLOperation):
+
+    name = "stream.schedule"
+
+    inputs = var_operand_def(AnyShapedType())
+    outputs = var_operand_def(AnyShapedType())
+    result_tensors = var_result_def()
+    patterns = prop_def(ArrayAttr[AffineMapAttr])
+    bounds = prop_def(ParameterDef[ArrayAttr[ArrayAttr[IntAttr]]])
+
+    body = region_def("single_block")
+
+    accelerator = opt_prop_def(StringAttr)
+
+    irdl_options = [AttrSizedOperandSegments(as_property=True)]
+
+    def __init__(
+        self,
+        inputs: Sequence[SSAValue | Operation],
+        outputs: Sequence[SSAValue | Operation],
+        patterns: ArrayAttr[AffineMapAttr],
+        bounds: Sequence[Sequence[int]],
+        body: Region,
+        accelerator: str | StringAttr | None = None,
+        result_types: Sequence[Attribute] = (),
+    ) -> None:
+        if isinstance(accelerator, str):
+            accelerator = StringAttr(accelerator)
+
+        bounds_attr = ArrayAttr(ArrayAttr(IntAttr(x) for x in y) for y in bounds)
+        super().__init__(
+            operands=[inputs, outputs],
+            regions=[body],
+            properties={
+                "patterns": patterns,
+                "accelerator": accelerator,
+                "bounds": bounds_attr,
+            },
+            result_types=[result_types],
+        )
+
 
 @irdl_op_definition
 class YieldOp(AbstractYieldOperation[Attribute]):
@@ -197,6 +246,7 @@ Stream = Dialect(
     "stream",
     [
         StreamingRegionOp,
+        ScheduleOp,
         GenericOp,
         YieldOp,
     ],
