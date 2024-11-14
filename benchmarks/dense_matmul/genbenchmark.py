@@ -174,7 +174,7 @@ if __name__ == "__main__":
         bm.trace()
         if to_plot:
             bm.plot()
-        bm.process_traces(folder)
+        bm.process_traces(folder, accelerator="snax_gemmx")
         bm.copy_binary(folder)
         bm.copy_logs(folder)
         if to_plot:

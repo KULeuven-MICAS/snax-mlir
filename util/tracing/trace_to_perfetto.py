@@ -116,7 +116,7 @@ def process_traces(
     traces: list[str],
     elf: str,
     addr2line: str,
-    accelerator: str,
+    accelerator: str | None = None,
     output: typing.IO[str] | None = None,
     annotate_kernels: bool = False,
     sequential: bool = False,
