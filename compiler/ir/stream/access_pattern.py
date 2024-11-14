@@ -89,6 +89,9 @@ class AccessPattern(ABC):
 
         return any(expr_depends_on(result, dim) for result in self.pattern.results)
 
+    def __str__(self) -> str:
+        return str(self.bounds) + str(self.pattern)
+
 
 @dataclass(frozen=True)
 class SchedulePattern(AccessPattern):
@@ -327,6 +330,9 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
             )
             for sp in self
         )
+
+    def __str__(self) -> str:
+        return "\n".join(str(pattern) for pattern in self._patterns)
 
 
 class Schedule(PatternCollection[SchedulePattern]):
