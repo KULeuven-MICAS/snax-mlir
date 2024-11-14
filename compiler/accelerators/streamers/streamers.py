@@ -17,6 +17,11 @@ class StreamerOpts(StrEnum):
     HasTranspose = "t"
     # Streamer with channel mask capabilities
     HasChannelMask = "c"
+    # Weird address remap thingy
+    HasAddressRemap = "r"
+    # Broadcasting
+    HasBroadcast = "b"
+
 
 
 class StreamerFlag(StrEnum):
