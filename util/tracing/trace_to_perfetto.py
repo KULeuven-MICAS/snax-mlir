@@ -17,16 +17,20 @@ from util.tracing.state import get_trace_state
 
 
 def worker(file: str, accelerator: str):
-    accelerator_op = (
-        AcceleratorRegistry().registered_accelerators[accelerator]().generate_acc_op()
-    )
     events = []
     generators = [
         BarrierEventGenerator(),
         StreamingEventGenerator(),
         DMAEventGenerator(),
-        SNAXAcceleratorEventGenerator(accelerator_op),
     ]
+    if accelerator is not None:
+        accelerator_op = (
+            AcceleratorRegistry()
+            .registered_accelerators[accelerator]()
+            .generate_acc_op()
+        )
+        generators.append(SNAXAcceleratorEventGenerator(accelerator_op))
+
     with open(file) as f:
         for index, l in enumerate(f):
             state = get_trace_state(l)
@@ -65,7 +69,7 @@ def parse_arguments():
     parser.add_argument(
         "--accelerator",
         choices=AcceleratorRegistry().registered_accelerators.keys(),
-        default="snax_gemmx",
+        default=None,
         help="SNAX accelerator for SNAX Event Annotator",
     )
     parser.add_argument("--elf", help="ELF from which the traces were generated")
