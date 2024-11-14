@@ -43,13 +43,22 @@ def parse_arguments():
         metavar="<inputs>",
         type=argparse.FileType("rb"),
         nargs="+",
-        help="Input performance metric dumps",
+        required=True,
+        help='Input performance metric dumps ("*.trace.json")',
     )
     parser.add_argument(
-        "--traces", metavar="<trace>", nargs="*", help="Simulation traces to process"
+        "--traces",
+        metavar="<trace>",
+        nargs="+",
+        required=True,
+        help='Simulation traces to process ("*.dasm")',
+    )
+    parser.add_argument(
+        "--addr2line",
+        default="llvm-addr2line",
+        help="llvm-addr2line from quidditch toolchain",
     )
     parser.add_argument("--elf", help="ELF from which the traces were generated")
-    parser.add_argument("--addr2line", help="llvm-addr2line from quidditch toolchain")
     parser.add_argument(
         "-o",
         "--output",
@@ -59,7 +68,23 @@ def parse_arguments():
         default="events.json",
         help="Output JSON file",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--annotate-kernels",
+        action="store_true",
+        help="Annotate sections between mcycle with llvm-addr2line, requires --elf and --addr2line",
+    )
+    parser.add_argument(
+        "--sequential",
+        action="store_true",
+        default=False,
+        help="Don't use ProcessPoolExecutor for parallelizing tracing, useful for debugging",
+    )
+    args = parser.parse_args()
+    # Custom validation: If `--annotate-trace` is set, then `--elf` and `--addr2line` are required
+    if args.annotate_kernels and (args.elf is None or args.addr2line is None):
+        parser.error("--elf and --addr2line are required when using --annotate-trace")
+
+    return args
 
 
 # Function that encapsulates the main logic
@@ -69,7 +94,8 @@ def process_traces(
     elf: str,
     addr2line: str,
     output: typing.IO[str] | None = None,
-    debug: bool = False,
+    annotate_kernels: bool = False,
+    sequential: bool = False,
 ):
     """
     Main processing function that calculates sections and processes traces.
@@ -88,7 +114,7 @@ def process_traces(
     executor = ProcessPoolExecutor()
     futures = []
 
-    if not debug:
+    if not sequential:
         # Submit trace processing tasks to the executor
         for hartid, file in enumerate(traces):
             futures.append(executor.submit(worker, file))
@@ -99,9 +125,12 @@ def process_traces(
             futures.append(result)
 
     # Calculate events using provided inputs and arguments
-    events = calculate_sections(inputs, elf, addr2line, traces)
+    if annotate_kernels:
+        events = calculate_sections(inputs, elf, addr2line, traces)
+    else:
+        events = []
 
-    if not debug:
+    if not sequential:
         # Collect results from the executor and convert events to the desired format
         for hartid, f in enumerate(futures):
             events += map(lambda e: e.to_chrome_tracing(hartid), f.result())
@@ -123,4 +152,12 @@ def process_traces(
 # If the script is run directly, use command-line arguments
 if __name__ == "__main__":
     args = parse_arguments()
-    process_traces(args.inputs, args.traces, args.elf, args.addr2line, args.output)
+    process_traces(
+        args.inputs,
+        args.traces,
+        args.elf,
+        args.addr2line,
+        args.output,
+        args.annotate_kernels,
+        args.sequential,
+    )
