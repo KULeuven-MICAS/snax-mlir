@@ -169,6 +169,11 @@ class SNAXStreamer(ABC):
                 cst = arith.ConstantOp.from_int_and_width(stride.data, i32)
                 result.append(([cst], cst.result))
 
+            # address remap:
+            if StreamerOpts.HasAddressRemap in streamer.opts:
+                c0 = arith.Constant.from_int_and_width(0, i32)
+                result.append(([c0], c0.result))
+
             # channel mask option
             if StreamerOpts.HasChannelMask in streamer.opts:
                 if is_zero_pattern:
@@ -189,6 +194,11 @@ class SNAXStreamer(ABC):
                 c1 = arith.ConstantOp.from_int_and_width(1, i32)
                 result.append(([c1], c1.result))
 
+        for operand, streamer in enumerate(self.streamer_config.data.streamers):
+            if StreamerOpts.HasBroadcast in streamer.opts:
+                c0 = arith.Constant.from_int_and_width(0, i32)
+                result.append(([c0], c0.result))
+
         return result
 
     def get_streamer_setup_fields(self) -> Sequence[str]:
@@ -206,6 +216,8 @@ class SNAXStreamer(ABC):
             # temporal strides
             result.extend([f"{name}_tstride_{i}" for i in range(streamer.temporal_dim)])
             # options
+            if StreamerOpts.HasAddressRemap in streamer.opts:
+                result.append(f"{name}_address_remap")
             if StreamerOpts.HasChannelMask in streamer.opts:
                 result.append(f"{name}_channel_mask")
 
@@ -215,6 +227,12 @@ class SNAXStreamer(ABC):
         ):
             if StreamerOpts.HasTranspose in streamer.opts:
                 result.append(f"{name}_transpose")
+
+        for streamer, name in zip(
+            self.streamer_config.data.streamers, self.streamer_names
+        ):
+            if StreamerOpts.HasBroadcast in streamer.opts:
+                result.append(f"{name}_broadcast")
 
         return result
 
