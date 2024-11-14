@@ -1,13 +1,10 @@
 from dataclasses import dataclass, field
 
-from util.tracing.annotation import EventGenerator
-from util.tracing.state import TraceState, CSRInstruction
-
-from util.tracing.event import *
-
-
-from compiler.accelerators.snax_gemm import SNAXGEMMAccelerator
+from compiler.accelerators.snax_gemmx import SNAXGEMMXAccelerator
 from compiler.dialects.accfg import AcceleratorOp
+from util.tracing.annotation import EventGenerator
+from util.tracing.event import DurationEvent
+from util.tracing.state import CSRInstruction, TraceState
 
 
 @dataclass
@@ -20,7 +17,7 @@ class SettingUp(_CurrentEvent):
     number_setups: int = field(default=1)
     number_of_launches: int = field(default=0)
     """
-    Since we only end this region when we see the *second* write to launch, we need to keep track of the number 
+    Since we only end this region when we see the *second* write to launch, we need to keep track of the number
     of launches
     """
 
@@ -66,7 +63,7 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
     def __init__(self):
         super().__init__()
         self.state = None
-        self.acc = SNAXGEMMAccelerator().generate_acc_op()
+        self.acc = SNAXGEMMXAccelerator().generate_acc_op()
         self.fields = {val.value.data for val in self.acc.fields.data.values()}
         self.launch_fields = {
             val.value.data for val in self.acc.launch_fields.data.values()
@@ -81,7 +78,7 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
 
         # if state is None, check if we are setting up, if so, switch state to "setting up"
         if self.state is None:
-            if ins.csr in self.fields or self.launch_fields:
+            if (ins.csr in self.fields) or (ins.csr in self.launch_fields):
                 self.state = SettingUp(
                     start=state.clock_cycle,
                 )
