@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 
-from compiler.accelerators.snax_gemmx import SNAXGEMMXAccelerator
 from compiler.dialects.accfg import AcceleratorOp
 from util.tracing.annotation import EventGenerator
 from util.tracing.event import DurationEvent
@@ -60,10 +59,10 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
     launch_fields: set[int]
     barrier_addr: int
 
-    def __init__(self):
+    def __init__(self, acc_op: AcceleratorOp):
         super().__init__()
         self.state = None
-        self.acc = SNAXGEMMXAccelerator().generate_acc_op()
+        self.acc = acc_op
         self.fields = {val.value.data for val in self.acc.fields.data.values()}
         self.launch_fields = {
             val.value.data for val in self.acc.launch_fields.data.values()

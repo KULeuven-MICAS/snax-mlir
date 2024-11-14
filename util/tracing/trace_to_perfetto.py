@@ -5,6 +5,7 @@ import json
 import typing
 from concurrent.futures import ProcessPoolExecutor
 
+from compiler.accelerators.registry import AcceleratorRegistry
 from util.tracing.annotation import (
     BarrierEventGenerator,
     DMAEventGenerator,
@@ -15,13 +16,16 @@ from util.tracing.snax_event_generator import SNAXAcceleratorEventGenerator
 from util.tracing.state import get_trace_state
 
 
-def worker(file: str):
+def worker(file: str, accelerator: str):
+    accelerator_op = (
+        AcceleratorRegistry().registered_accelerators[accelerator]().generate_acc_op()
+    )
     events = []
     generators = [
         BarrierEventGenerator(),
         StreamingEventGenerator(),
         DMAEventGenerator(),
-        SNAXAcceleratorEventGenerator(),
+        SNAXAcceleratorEventGenerator(accelerator_op),
     ]
     with open(file) as f:
         for index, l in enumerate(f):
@@ -58,6 +62,12 @@ def parse_arguments():
         default="llvm-addr2line",
         help="llvm-addr2line from quidditch toolchain",
     )
+    parser.add_argument(
+        "--accelerator",
+        choices=AcceleratorRegistry().registered_accelerators.keys(),
+        default="snax_gemmx",
+        help="SNAX accelerator for SNAX Event Annotator",
+    )
     parser.add_argument("--elf", help="ELF from which the traces were generated")
     parser.add_argument(
         "-o",
@@ -79,6 +89,7 @@ def parse_arguments():
         default=False,
         help="Don't use ProcessPoolExecutor for parallelizing tracing, useful for debugging",
     )
+
     args = parser.parse_args()
     # Custom validation: If `--annotate-trace` is set, then `--elf` and `--addr2line` are required
     if args.annotate_kernels and (args.elf is None or args.addr2line is None):
@@ -93,6 +104,7 @@ def process_traces(
     traces: list[str],
     elf: str,
     addr2line: str,
+    accelerator: str,
     output: typing.IO[str] | None = None,
     annotate_kernels: bool = False,
     sequential: bool = False,
@@ -117,11 +129,11 @@ def process_traces(
     if not sequential:
         # Submit trace processing tasks to the executor
         for hartid, file in enumerate(traces):
-            futures.append(executor.submit(worker, file))
+            futures.append(executor.submit(worker, file, accelerator))
     else:
         # Process traces sequentially for debuggin purposes
         for hartid, file in enumerate(traces):
-            result = worker(file)
+            result = worker(file, accelerator)
             futures.append(result)
 
     # Calculate events using provided inputs and arguments
@@ -157,6 +169,7 @@ if __name__ == "__main__":
         args.traces,
         args.elf,
         args.addr2line,
+        args.accelerator,
         args.output,
         args.annotate_kernels,
         args.sequential,
