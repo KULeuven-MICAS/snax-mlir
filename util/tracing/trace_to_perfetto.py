@@ -6,6 +6,7 @@ import typing
 from concurrent.futures import ProcessPoolExecutor
 
 from compiler.accelerators.registry import AcceleratorRegistry
+from compiler.accelerators.snax import SNAXAccelerator
 from util.tracing.annotation import (
     BarrierEventGenerator,
     DMAEventGenerator,
@@ -66,9 +67,16 @@ def parse_arguments():
         default="llvm-addr2line",
         help="llvm-addr2line from quidditch toolchain",
     )
+
+    # Only allow SNAX accelerators for now
+    snax_accelerators = []
+    for accelerator, acc_class in AcceleratorRegistry().registered_accelerators.items():
+        if issubclass(acc_class, SNAXAccelerator):
+            snax_accelerators.append(accelerator)
+
     parser.add_argument(
         "--accelerator",
-        choices=AcceleratorRegistry().registered_accelerators.keys(),
+        choices=snax_accelerators,
         default=None,
         help="SNAX accelerator for SNAX Event Annotator",
     )
