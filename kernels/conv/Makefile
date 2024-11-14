@@ -15,8 +15,7 @@ MLIRPREPROCFLAGS += --mlir-print-local-scope
 %.preprocfinal.mlir: %.mlir
 	$(MLIROPT) $(MLIRPREPROCFLAGS) -o $@ $<
 
-
-SNAXOPTFLAGS = --print-op-generic -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,stream-bufferize#,snax-bufferize#,alloc-to-global#,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=3},convert-stream-to-snax-stream,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
+SNAXOPTFLAGS = --print-op-generic -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,stream-bufferize,snax-bufferize,alloc-to-global,autoflow-scheduler,set-memory-space,set-memory-layout,realize-memref-casts,autoflow-layout-resolution#,insert-sync-barrier,dispatch-regions{nb_cores=3},convert-stream-to-snax-stream,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra

@@ -55,7 +55,7 @@ def generate_conv_ir(spec: ConvSpec):
     strides = DenseIntOrFPElementsAttr.tensor_from_list([1], i64, [2])
 
     @Builder.implicit_region([])
-    def func_body(args: tuple[BlockArgument, ...]) -> None:
+    def func_body(_) -> None:
         inputs = arith.Constant(DenseIntOrFPElementsAttr.from_list(input_type, input_vals), input_type)
         weights = arith.Constant(DenseIntOrFPElementsAttr.from_list(kernel_type, weight_vals), kernel_type)
         golden = arith.Constant(DenseIntOrFPElementsAttr.from_list(output_type, output_vals), output_type)
