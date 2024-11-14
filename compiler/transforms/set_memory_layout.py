@@ -17,6 +17,7 @@ from compiler.dialects import stream
 from compiler.dialects.kernel import AddOp, QMacOp, RescaleOp
 from compiler.dialects.snax import LayoutCast
 from compiler.dialects.tsl import TiledStridedLayoutAttr
+from compiler.ir.stream import Schedule, SchedulePattern
 from compiler.ir.tsl import Stride, TiledStride, TiledStridedLayout
 
 
@@ -333,7 +334,7 @@ class AddConvMemoryLayout(RewritePattern):
 
             # do not alter existing set layouts
             for _, memreftype in shaped_operands:
-                if isinstance(memreftype.layout, tsl.TiledStridedLayoutAttr):
+                if isinstance(memreftype.layout, TiledStridedLayoutAttr):
                     return
 
             b = shaped_operands[0][1].get_shape()[0]
@@ -427,6 +428,68 @@ class AddConvMemoryLayout(RewritePattern):
                 op.operands[shaped_operands[1][0]] = new_input_b.dest
                 op.operands[shaped_operands[2][0]] = new_output.dest
 
+@dataclass
+class AddCyclicMemoryLayout(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: stream.ScheduleOp, rewriter: PatternRewriter):
+
+        # do not alter existing set layouts
+        for operand in op.operands:
+            if isinstance(operand.type, MemRefType):
+                if isinstance(operand.type.layout, TiledStridedLayoutAttr):
+                    return
+
+        # recreate schedule from op
+        schedule = Schedule(
+            SchedulePattern(
+                bounds=[x.data for x in bounds.data],
+                pattern=pattern.data
+            )
+            for pattern, bounds in zip(op.patterns.data, op.bounds.data)
+        )
+
+
+        def generate_one_list(n: int, i: int):
+            return [1 if j == i else 0 for j in range(n)]
+
+
+        new_operands = []
+
+        for operand, schedule_pattern in zip(op.operands, schedule):
+
+            assert isinstance(optype := operand.type, MemRefType)
+
+            strides = [[] for i in range(optype.get_num_dims())]
+            current_stride = 1
+
+            for i in reversed(range(schedule_pattern.num_dims)):
+                result = schedule_pattern.pattern.eval(generate_one_list(schedule_pattern.num_dims, i), [])
+                result_1 = [1 if x else 0 for x in result]
+                if 1 in result_1:
+                    dim = result_1.index(1)
+                    existing_bound = 1
+                    if strides[dim]:
+                        existing_bound = strides[dim][0].bound
+                    dim_shape = optype.get_shape()[dim] // existing_bound
+                    if dim_shape % schedule_pattern.bounds[i] == 0:
+                        bound = schedule_pattern.bounds[i]
+                    else:
+                        bound = dim_shape
+                    strid_obj = Stride(current_stride, bound)
+                    current_stride = current_stride * bound
+                    strides[result_1.index(1)].append(strid_obj)
+
+            layout = TiledStridedLayout([TiledStride(s) for s in strides])
+            layout = layout.simplify()
+            tsl = TiledStridedLayoutAttr(layout)
+
+            # insert layout_cast ops
+            new_operands.append(LayoutCast.from_type_and_target_layout(operand, tsl))
+
+        rewriter.insert_op(new_operands, InsertPoint.before(op))
+
+        for i, new_operand in enumerate(new_operands):
+            op.operands[i] = new_operand.dest
 
 @dataclass(frozen=True)
 class SetMemoryLayout(ModulePass):
@@ -443,3 +506,4 @@ class SetMemoryLayout(ModulePass):
             apply_recursively=False,
         ).rewrite_module(op)
         PatternRewriteWalker(AddConvMemoryLayout()).rewrite_module(op)
+        PatternRewriteWalker(AddCyclicMemoryLayout()).rewrite_module(op)
