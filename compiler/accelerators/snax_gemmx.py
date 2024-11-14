@@ -26,31 +26,33 @@ default_streamer = StreamerConfiguration(
     [
         Streamer(  # A
             StreamerType.Reader,
-            temporal_dims=("n", "n", "n", "n", "n", "n"),
+            temporal_dims=("n", "n", "n", "n", "n", "n", "n"),
             spatial_dims=("n",),
-            opts=(StreamerOpts.HasTranspose,),
+            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
         ),
         Streamer(  # B
             StreamerType.Reader,
-            temporal_dims=("n", "n", "n"),
+            temporal_dims=("n", "n", "n", "n", "n", "n", "n"),
             spatial_dims=("n",),
-            opts=(StreamerOpts.HasTranspose,),
+            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
         ),
         Streamer(  # D8
             StreamerType.Writer,
             temporal_dims=("n", "n", "n"),
             spatial_dims=("n",),
+            opts=(StreamerOpts.HasAddressRemap,),
         ),
         Streamer(  # C
             StreamerType.Reader,
-            temporal_dims=("n", "n", "n"),
-            spatial_dims=("n",),
-            opts=(StreamerOpts.HasChannelMask,),
+            temporal_dims=("n", "n", "n", "n", "n", "n", "n"),
+            spatial_dims=("n", "n"),
+            opts=(StreamerOpts.HasChannelMask, StreamerOpts.HasAddressRemap, StreamerOpts.HasBroadcast),
         ),
         Streamer(  # D32
             StreamerType.Writer,
-            temporal_dims=("n", "n", "n"),
-            spatial_dims=("n",),
+            temporal_dims=("n", "n", "n", "n", "n", "n", "n"),
+            spatial_dims=("n", "n"),
+            opts=(StreamerOpts.HasAddressRemap,),
         ),
     ],
 )
