@@ -1,6 +1,7 @@
 from collections.abc import Iterable, Iterator
 
 from compiler.ir.stream import Schedule, Template
+from compiler.ir.stream.access_pattern import SchedulePattern
 
 
 def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iterator[Schedule]:
@@ -11,13 +12,14 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iter
     # print('Template:')
     # print(template)
 
-    if dim >= schedule.num_dims:
+    if dim - 1 >= schedule.num_dims:
         yield schedule
 
     N = schedule.num_dims - dim
     K = template.num_dims - dim
 
-    for n in range(N):
+
+    for n in range(N + 1):
 
         # print('Checking the following schedule:')
         # print(schedule)
@@ -48,6 +50,7 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iter
                             ok = False
                         i -= 1
                 if ok:
+                    pass
                     yield from scheduler_backtrack(template, schedule, dim + 1)
 
             else:
@@ -69,9 +72,10 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iter
                         pass
                         # print('imperfect factorization, no support yet')
                     else:
+                        pass
                         # print('match, will apply tiling')
-                        schedule = schedule.tile_dim(N, template_bound)
-                        yield from scheduler_backtrack(template, schedule, dim + 1)
+                        tiled_schedule = schedule.tile_dim(N, template_bound)
+                        yield from scheduler_backtrack(template, tiled_schedule, dim + 1)
         else:
             pass
             # print('no match')
@@ -80,11 +84,20 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iter
         schedule = schedule.rotate(N + 1)
 
 
-def scheduler(template: Template, schedule: Schedule) -> Schedule:
+def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0) -> Schedule:
+
+    # prune away the 1-bounded dimensions:
+    schedule = schedule.clear_unused_dims()
 
     schedules = scheduler_backtrack(template, schedule)
 
     schedules = list(schedules)
 
-    # return first match
-    return schedules[0]
+    for i, schedule in enumerate(schedules):
+        print(i)
+        print(schedule)
+
+    breakpoint()
+
+    # match at schedule idx
+    return schedules[schedule_idx]

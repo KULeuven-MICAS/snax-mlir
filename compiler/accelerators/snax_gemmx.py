@@ -262,6 +262,38 @@ class SNAXGEMMXAccelerator(
             loop_bound = arith.Constant.from_int_and_width(loop_bound, i32)
             ops_to_add.append(loop_bound)
 
+        elif isinstance(mac := generic_op.body.block.first_op, kernel.MacOp):
+            # compute knm: fix n = 1
+            n = 1
+            m = prod(x.data for x in op.stride_patterns.data[-1].upper_bounds) // n
+            k = prod(x.data for x in op.stride_patterns.data[0].upper_bounds) // m
+
+            knm: list = [
+                (((cst := arith.Constant.from_int_and_width(val, 32)),), cst.result)
+                for val in (k, n, m)
+            ]
+
+            # gemm
+            # bypass simd and set all related values to 0
+            bypassSIMD = c1.result  # bypass simd
+            loop_bound = c0
+            csr0 = c0.result
+            csr1 = c0.result
+            shift_vals = (c0.result for _ in range(2))
+            mult_vals = (c0.result for _ in range(8))
+
+            # get zero points for gemm
+            zp_a = c0
+            zp_b = c0
+
+            # bitwise and with 8b'11111111 to avoid the sign bits extending the 8-bit field
+            # when bitlist packing
+            ops_to_add.append(cst255 := arith.Constant.from_int_and_width(255, 32))
+
+            bitlist = list(pack_bitlist((zp_a, zp_b), [0, 8]))
+            ops_to_add.extend(bitlist)
+            subtractions = bitlist[-1].results[0]
+
         else:
             raise NotImplementedError()
 

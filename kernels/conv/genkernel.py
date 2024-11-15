@@ -65,7 +65,7 @@ def generate_conv_ir(spec: ConvSpec):
         )
         func.Return(result, golden)
 
-    function = func.FuncOp.from_region("streamer_matmul", [], res_types, func_body)
+    function = func.FuncOp.from_region("conv", [], res_types, func_body)
 
     module = builtin.ModuleOp([function])
 

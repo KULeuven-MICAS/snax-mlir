@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from math import prod
 
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg
@@ -463,21 +464,28 @@ class AddCyclicMemoryLayout(RewritePattern):
             current_stride = 1
 
             for i in reversed(range(schedule_pattern.num_dims)):
+
                 result = schedule_pattern.pattern.eval(generate_one_list(schedule_pattern.num_dims, i), [])
                 result_1 = [1 if x else 0 for x in result]
                 if 1 in result_1:
                     dim = result_1.index(1)
-                    existing_bound = 1
-                    if strides[dim]:
-                        existing_bound = strides[dim][0].bound
+                    existing_bound = prod(s.bound for s in strides[dim])
                     dim_shape = optype.get_shape()[dim] // existing_bound
-                    if dim_shape % schedule_pattern.bounds[i] == 0:
+                    # can we apply further tiling?
+                    # FIXME: need better check, now relying on the fact that ix will never
+                    # be divisible and fx will always be odd
+                    if dim_shape % schedule_pattern.bounds[i] == 0 and schedule_pattern.bounds[i] % 2 == 0:
                         bound = schedule_pattern.bounds[i]
                     else:
                         bound = dim_shape
                     strid_obj = Stride(current_stride, bound)
                     current_stride = current_stride * bound
-                    strides[result_1.index(1)].append(strid_obj)
+                    strides[result_1.index(1)].insert(0, strid_obj)
+
+            for stride in strides:
+                if not stride:
+                    stride.append(Stride(current_stride, 1))
+
 
             layout = TiledStridedLayout([TiledStride(s) for s in strides])
             layout = layout.simplify()

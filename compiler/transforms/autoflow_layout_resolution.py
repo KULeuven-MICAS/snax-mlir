@@ -134,7 +134,7 @@ class AutoflowLayoutResolutionPattern(RewritePattern):
             data_mem_map: AffineMap = memref_type.get_affine_map_in_bytes()
 
             # Mapping from access to data:
-            access_data_map: AffineMap = schedule[operand].pattern
+            access_data_map: AffineMap = schedules[operand].pattern
 
             # Mapping from access to memory:
             access_mem_map: AffineMap = data_mem_map.compose(access_data_map)
@@ -151,7 +151,7 @@ class AutoflowLayoutResolutionPattern(RewritePattern):
                     access_mem_map.eval(
                         generate_one_list(access_mem_map.num_dims, i), ()
                     )[0],
-                    schedule[operand].bounds[i],
+                    schedules[operand].bounds[i],
                 )
                 for i in reversed(range(access_mem_map.num_dims))
             )
@@ -169,6 +169,7 @@ class AutoflowLayoutResolutionPattern(RewritePattern):
                 # configuration, this works in all current cases and layouts but is far from generally correct.
                 spatial_strides = [8]
                 stride, bound = next(access_iter, (None, None))
+                print(f"operand {operand} stride {stride} bound {bound}")
 
             # remaining are temporal strides
             while stride is not None and bound is not None:
@@ -280,6 +281,18 @@ class AutoflowLayoutResolutionPattern(RewritePattern):
                 new_inputs.append(
                     memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
                 )
+
+        # make last spatial stride patterns 2d
+        snax_stride_patterns[-2] =  snax_stream.StridePattern(
+            upper_bounds=snax_stride_patterns[-2].upper_bounds,
+            temporal_strides=snax_stride_patterns[-2].temporal_strides,
+            spatial_strides=[8, 32],
+        )
+        snax_stride_patterns[-1] =  snax_stream.StridePattern(
+            upper_bounds=snax_stride_patterns[-1].upper_bounds,
+            temporal_strides=snax_stride_patterns[-1].temporal_strides,
+            spatial_strides=[8, 32],
+        )
 
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(

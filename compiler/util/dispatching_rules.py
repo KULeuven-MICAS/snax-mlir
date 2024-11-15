@@ -21,4 +21,6 @@ def dispatch_to_compute(op):
         return True
     if isinstance(op, stream.StreamingRegionOp):
         return True
+    if isinstance(op, stream.ScheduleOp):
+        return True
     return False

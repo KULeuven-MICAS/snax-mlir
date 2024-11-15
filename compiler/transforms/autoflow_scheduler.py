@@ -25,6 +25,9 @@ from compiler.ir.stream.access_pattern import Template, TemplatePattern
 
 @dataclass
 class AutoflowSchedulerPattern(RewritePattern):
+
+    schedule_idx: int = 0
+
     """
     A pass to convert streaming region operations to snax stream.
 
@@ -89,7 +92,7 @@ class AutoflowSchedulerPattern(RewritePattern):
 
         template = Template(TemplatePattern(template_bounds, tp) for tp in template)
 
-        schedule = scheduler(template, schedule)
+        schedule = scheduler(template, schedule, self.schedule_idx)
 
         # replace by stream schedule op
         new_op = stream.ScheduleOp(
@@ -304,5 +307,7 @@ class AutoflowSchedulerPattern(RewritePattern):
 class AutoflowSchedulerPass(ModulePass):
     name = "autoflow-scheduler"
 
+    schedule_idx: int = 0
+
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(AutoflowSchedulerPattern()).rewrite_module(op)
+        PatternRewriteWalker(AutoflowSchedulerPattern(self.schedule_idx)).rewrite_module(op)

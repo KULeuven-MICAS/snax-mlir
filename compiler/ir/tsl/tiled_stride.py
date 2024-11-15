@@ -65,15 +65,15 @@ class TiledStride:
 
     def simplify(self):
         strides = []
-        for stride in self.strides:
+        for stride in reversed(self.strides):
             if not strides:
                 strides.append(stride)
             elif stride.bound == 1:
                 continue
             elif strides[-1].bound * strides[-1].step == stride.step:
-                strides[-1] = Stride(stride.step, strides[-1].bound * stride.bound)
+                strides[-1] = Stride(strides[-1].step, strides[-1].bound * stride.bound)
             else:
-                strides.append(stride)
+                strides.insert(0, stride)
 
         return TiledStride(strides)
 

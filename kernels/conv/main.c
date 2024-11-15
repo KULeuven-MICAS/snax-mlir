@@ -1,6 +1,5 @@
 #include "stdint.h"
 
-#include "data.h"
 #include "memref.h"
 #include "snax_rt.h"
 
@@ -15,32 +14,29 @@
 #include <snrt.h>
 
 // Kernel provided via external definition
-void _mlir_ciface_conv(FourDMemrefI32_t *o, FourDMemrefI8_t *i,
-                       FourDMemrefI8_t *w);
+void _mlir_ciface_conv(int32_t *test);
 
 int main() {
   {
 
-    // Create memref objects for data stored in L3
-    FourDMemrefI8_t memrefI;
-    memrefI.data = &I;
-    memrefI.aligned_data = memrefI.data;
 
-    FourDMemrefI8_t memrefW;
-    memrefW.data = &W;
-    memrefW.aligned_data = memrefW.data;
+    FourDMemrefI32_t results[2];
 
-    FourDMemrefI32_t memrefO;
+    FourDMemrefI32_t *golden, *computed;
+    golden = &results[0];
+    computed = &results[1];
+
+    int32_t* some_data = results;
 
     // allocate zero row in tcdm
     snrt_l1alloc(256);
 
     (void)snrt_mcycle();
-
-    _mlir_ciface_conv(&memrefO, &memrefI, &memrefW);
-
     snrt_cluster_hw_barrier();
 
+    _mlir_ciface_conv(results);
+
+    snrt_cluster_hw_barrier();
     (void)snrt_mcycle();
 
     // Correctness check -
@@ -49,8 +45,34 @@ int main() {
     if (thiscore != 0)
       return 0;
 
-    // do not check errors for now, golden model not available
+    printf("Got golden result:\n");
+    printf("Pointer at %p\n", golden->data);
+    printf("Aligned Pointer at %p\n", golden->aligned_data);
 
-    return 0;
+
+    printf("Got computed result:\n");
+    printf("Pointer at %p\n", computed->data);
+    printf("Aligned Pointer at %p\n", computed->aligned_data);
+
+    int total_results = 1;
+    for (int i = 0; i < 4; i++) total_results *= computed->shape[i];
+
+    printf("Checking %d results...\n", total_results);
+
+    int nerr = 0;
+
+    for(int i = 0; i < total_results; i ++) {
+
+      if (golden->aligned_data[i] != computed->aligned_data[i]) {
+        printf("(%d) %d -> %d\n", i, golden->aligned_data[i], computed->aligned_data[i]);
+        nerr++;
+      }
+    }
+
+    printf("Finished, nb errors: %d\n", nerr);
+
+    if (nerr > 0) return 1;
+    else return 0;
+
   }
 }
