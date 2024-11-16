@@ -479,7 +479,16 @@ class AddCyclicMemoryLayout(RewritePattern):
                     else:
                         bound = dim_shape
                     strid_obj = Stride(current_stride, bound)
-                    current_stride = current_stride * bound
+
+                    # maybe some padding for next stride
+                    if bound < 8 and current_stride == 1:
+                        raise NotImplementedError()
+                        # check: maybe possible with transpose?
+                    elif bound < 8 and current_stride == 8:
+                        current_stride = current_stride * 8
+                    else:
+                        current_stride = current_stride * bound
+
                     strides[result_1.index(1)].insert(0, strid_obj)
 
             for stride in strides:
@@ -494,6 +503,7 @@ class AddCyclicMemoryLayout(RewritePattern):
             # insert layout_cast ops
             new_operands.append(LayoutCast.from_type_and_target_layout(operand, tsl))
 
+        breakpoint()
         rewriter.insert_op(new_operands, InsertPoint.before(op))
 
         for i, new_operand in enumerate(new_operands):
