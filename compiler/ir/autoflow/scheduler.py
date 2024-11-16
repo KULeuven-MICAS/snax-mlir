@@ -42,12 +42,12 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim=1) -> Iterat
                 ok = True
 
                 # extra check (1): constrain to pure output stationary
-                if schedule[-1].depends_on(i):
-                    # no further reductions can be allowed
-                    while i >= 0:
-                        if not schedule[-1].depends_on(i):
-                            ok = False
-                        i -= 1
+                # if schedule[-1].depends_on(i):
+                #     # no further reductions can be allowed
+                #     while i >= 0:
+                #         if not schedule[-1].depends_on(i):
+                #             ok = False
+                #         i -= 1
 
                 # extra check (2): make sure there is correct memory flexibility
                 def generate_one_list(n: int, i: int):

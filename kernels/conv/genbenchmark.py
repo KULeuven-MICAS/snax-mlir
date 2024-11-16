@@ -26,7 +26,7 @@ if __name__ == "__main__":
     spec = ConvSpec(1, 16, 16, 3, 3, 16, 16)
     module = generate_conv_ir(spec)
 
-    for schedule_idx in range(4):
+    for schedule_idx in range(1440):
 
         binary = "generated.x"
         bm = SNAXBenchmark(
