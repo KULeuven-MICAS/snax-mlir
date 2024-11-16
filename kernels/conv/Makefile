@@ -60,6 +60,8 @@ $(CONV_DIRS):
 	@echo "sim_generated.x completed for $@" >> $@/sim_generated.log
 	@$(MAKE) -C $@ traces >> $@/traces.log 2>&1
 	@echo "traces completed for $@" >> $@/traces.log
+	@$(MAKE) -C $@ clean >> $@/cleaning.log 2>&1
+	@echo "cleaning completed for $@" >> $@/cleaning.log
 	$(eval COMPLETED := $(shell echo $$(( $(COMPLETED) + 1 ))))
 
 .PHONY: all $(CONV_DIRS)

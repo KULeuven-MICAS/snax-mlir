@@ -14,13 +14,19 @@ def write_module_to_file(module, file):
     with open(file, "w") as output_file:
         output_file.write(output.getvalue())
 
+def write_makefile(file):
+
+    with open(file, "w") as output_file:
+        output_file.write("include $(realpath ../../Makefile)\n")
+        output_file.write("clean:\n")
+        output_file.write("\trm -rf logs/*.txt logs/*.dasm\n")
 
 if __name__ == "__main__":
 
     spec = ConvSpec(1, 16, 16, 3, 3, 16, 16)
     module = generate_conv_ir(spec)
 
-    for schedule_idx in range(1440):
+    for schedule_idx in range(4):
 
         binary = "generated.x"
         bm = SNAXBenchmark(
@@ -37,5 +43,6 @@ if __name__ == "__main__":
         #bm.run()
         #bm.trace()
         bm.copy_binary('')
+        write_makefile(bm.export_dir / 'Makefile')
         #bm.copy_logs('')
         bm.clean()
