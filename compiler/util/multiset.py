@@ -47,6 +47,14 @@ class Multiset:
         """Return a new multiset that is the difference of this and another multiset"""
         return Multiset(self.counter - other.counter)
 
+    def __contains__(self, item):
+        """Check if an element is in the multiset"""
+        return item in self.counter
+
+    def __iter__(self):
+        """Allow iteration over the multiset as (element, cardinality) pairs"""
+        return iter(self.counter.items())
+
     def __repr__(self):
         """String representation of the multiset"""
         return f"Multiset({self.counter})"

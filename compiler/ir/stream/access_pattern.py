@@ -192,6 +192,15 @@ class SchedulePattern(AccessPattern):
 
         return type(self)(new_bounds, new_pattern)
 
+    def pad_dim(self, dim: int, template_bound: int) -> Self:
+        """
+        Returns a new schedule pattern with the `dim` dimension padded up
+        to the template dimension
+        """
+        new_bounds = list(self.bounds)
+        new_bounds[dim] = template_bound
+        return type(self)(new_bounds, self.pattern)
+
     def add_dim(self) -> Self:
         """
         Returns a new schedule pattern with an extra empty dimension inserted.
@@ -348,6 +357,9 @@ class Schedule(PatternCollection[SchedulePattern]):
 
     def tile_dim(self, dim: int, template_bound: int) -> Self:
         return type(self)(sp.tile_dim(dim, template_bound) for sp in self)
+
+    def pad_dim(self, dim: int, template_bound: int) -> Self:
+        return type(self)(sp.pad_dim(dim, template_bound) for sp in self)
 
     def add_dim(self) -> Self:
         return type(self)(sp.add_dim() for sp in self)

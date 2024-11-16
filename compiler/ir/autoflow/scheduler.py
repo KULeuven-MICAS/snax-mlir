@@ -2,10 +2,10 @@ from collections.abc import Iterable, Iterator
 
 from compiler.ir.stream import Schedule, Template
 from compiler.ir.stream.access_pattern import SchedulePattern
+from compiler.util.multiset import Multiset
 
 
-def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iterator[Schedule]:
-
+def scheduler_backtrack(template: Template, schedule: Schedule, dim=1) -> Iterator[Schedule]:
     # print(f'Running Scheduler Backtracking for dim = {dim}')
     # print('Schedule:')
     # print(schedule)
@@ -18,9 +18,7 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iter
     N = schedule.num_dims - dim
     K = template.num_dims - dim
 
-
     for n in range(N + 1):
-
         # print('Checking the following schedule:')
         # print(schedule)
 
@@ -37,19 +35,40 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iter
         # print(schedule_check)
 
         if template_check.matches(schedule_check):
-
             if dim > template.num_dims:
                 # programmatic acces, should be fine from now on
                 # extra check: constrain to output-stationary
                 i = schedule.num_dims - dim
                 ok = True
-                # allow everything from now on
-                # if schedule[-1].depends_on(i):
-                #     # no further reductions can be allowed
-                #     while i >= 0:
-                #         if not schedule[-1].depends_on(i):
-                #             ok = False
-                #         i -= 1
+
+                # extra check (1): constrain to pure output stationary
+                if schedule[-1].depends_on(i):
+                    # no further reductions can be allowed
+                    while i >= 0:
+                        if not schedule[-1].depends_on(i):
+                            ok = False
+                        i -= 1
+
+                # extra check (2): make sure there is correct memory flexibility
+                def generate_one_list(n: int, i: int):
+                    return [1 if j == i else 0 for j in range(n)]
+
+                # only keep spatial dims:
+                for sp in schedule:
+                    res = sp.disable_dims(schedule.num_dims - template.num_dims).pattern.eval(
+                        [1] * template.num_dims, ()
+                    )
+                    # for these dimensions, more only one of the upper loops can have
+                    # something not divisible by 8
+                    nbs_left = 1
+                    for idx in [index for index, value in enumerate(res) if value > 0]:
+                        for i in range(schedule.num_dims - template.num_dims):
+                            result = sp.pattern.eval(generate_one_list(schedule.num_dims, i), ())[idx]
+                            if result % 8 != 0:
+                                nbs_left -= 1
+                    if nbs_left < 0:
+                        ok = False
+
                 if ok:
                     pass
                     yield from scheduler_backtrack(template, schedule, dim + 1)
@@ -57,7 +76,7 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iter
             else:
                 # check bounds
                 template_bound = template[0].bounds[-dim]
-                assert template_bound # must have bound from now on
+                assert template_bound  # must have bound from now on
                 schedule_bound = schedule[0].bounds[-dim]
 
                 if schedule_bound == template_bound:
@@ -65,9 +84,10 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iter
                     # print('perfect match, check behaviour')
                 elif schedule_bound < template_bound:
                     pass
-                    # print('underutilized array, no support yet')
+                    # apply padding:
+                    padded_schedule = schedule.pad_dim(N, template_bound)
                     # otherwise:
-                    # yield from scheduler_backtrack(template, schedule, dim + 1)
+                    yield from scheduler_backtrack(template, schedule, dim + 1)
                 elif schedule_bound > template_bound:
                     if schedule_bound % template_bound != 0:
                         pass
@@ -86,7 +106,6 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iter
 
 
 def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0) -> Schedule:
-
     # prune away the 1-bounded dimensions:
     schedule = schedule.clear_unused_dims()
 
@@ -94,9 +113,11 @@ def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0) -> 
 
     schedules = list(schedules)
 
-    # for i, schedule in enumerate(schedules):
-    #     print(i)
-    #     print(schedule)
+    for i, schedule in enumerate(schedules):
+        print(i)
+        print(schedule)
+
+    breakpoint()
 
     # match at schedule idx
     return schedules[schedule_idx]
