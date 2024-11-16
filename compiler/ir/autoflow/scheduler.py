@@ -113,11 +113,5 @@ def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0) -> 
 
     schedules = list(schedules)
 
-    for i, schedule in enumerate(schedules):
-        print(i)
-        print(schedule)
-
-    breakpoint()
-
     # match at schedule idx
     return schedules[schedule_idx]

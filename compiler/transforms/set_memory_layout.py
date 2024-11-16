@@ -503,7 +503,6 @@ class AddCyclicMemoryLayout(RewritePattern):
             # insert layout_cast ops
             new_operands.append(LayoutCast.from_type_and_target_layout(operand, tsl))
 
-        breakpoint()
         rewriter.insert_op(new_operands, InsertPoint.before(op))
 
         for i, new_operand in enumerate(new_operands):
