@@ -107,7 +107,6 @@ class AutoflowLayoutResolutionPattern(RewritePattern):
             else:
                 break
 
-
         schedules = [pattern for pattern in schedule]
         schedules[-1] = SchedulePattern(new_output_bounds, schedules[-1].pattern)
 
@@ -169,7 +168,7 @@ class AutoflowLayoutResolutionPattern(RewritePattern):
                 # configuration, this works in all current cases and layouts but is far from generally correct.
                 spatial_strides = [8]
                 stride, bound = next(access_iter, (None, None))
-                print(f"operand {operand} stride {stride} bound {bound}")
+                # print(f"operand {operand} stride {stride} bound {bound}")
 
             # remaining are temporal strides
             while stride is not None and bound is not None:
@@ -182,7 +181,7 @@ class AutoflowLayoutResolutionPattern(RewritePattern):
                 upper_bounds=upper_bounds,
                 temporal_strides=temporal_strides,
                 spatial_strides=spatial_strides,
-            ).collapse_dimensions()
+            )
             snax_stride_patterns.append(snax_stride_pattern)
 
         # get base addresses of the streaming region ops
@@ -220,17 +219,17 @@ class AutoflowLayoutResolutionPattern(RewritePattern):
                     3,
                     snax_stream.StridePattern(
                         upper_bounds=snax_stride_patterns[3].upper_bounds,
-                        temporal_strides=[0]
-                        * len(snax_stride_patterns[3].upper_bounds),
+                        temporal_strides=snax_stride_patterns[3].temporal_strides,
                         spatial_strides=[8],
                     ),
                 )
 
-                # point C to c0
-                new_inputs.append(
-                    # zero pointer will generate 0 values
-                    arith.Constant.from_int_and_width(0, builtin.IndexType())
-                )
+                # convs: point C to D32
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.outputs[0]))
+                # new_inputs.append(
+                #     # zero pointer will generate 0 values
+                #     arith.Constant.from_int_and_width(0, builtin.IndexType())
+                # )
             elif len(snax_stride_patterns) == 4:
                 # gemm
                 #

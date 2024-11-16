@@ -43,12 +43,13 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim = 1) -> Iter
                 # extra check: constrain to output-stationary
                 i = schedule.num_dims - dim
                 ok = True
-                if schedule[-1].depends_on(i):
-                    # no further reductions can be allowed
-                    while i >= 0:
-                        if not schedule[-1].depends_on(i):
-                            ok = False
-                        i -= 1
+                # allow everything from now on
+                # if schedule[-1].depends_on(i):
+                #     # no further reductions can be allowed
+                #     while i >= 0:
+                #         if not schedule[-1].depends_on(i):
+                #             ok = False
+                #         i -= 1
                 if ok:
                     pass
                     yield from scheduler_backtrack(template, schedule, dim + 1)
@@ -93,11 +94,9 @@ def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0) -> 
 
     schedules = list(schedules)
 
-    for i, schedule in enumerate(schedules):
-        print(i)
-        print(schedule)
-
-    breakpoint()
+    # for i, schedule in enumerate(schedules):
+    #     print(i)
+    #     print(schedule)
 
     # match at schedule idx
     return schedules[schedule_idx]
