@@ -96,6 +96,10 @@ def scheduler_backtrack(template: Template, schedule: Schedule, pure_output_stat
                     if schedule_bound % template_bound != 0:
                         pass
                         print('imperfect factorization, no support yet')
+                        padded_schedule = schedule.pad_dim(N, schedule_bound + (schedule_bound % template_bound))
+                        tiled_schedule = padded_schedule.tile_dim(N, template_bound)
+                        # try again with padded schedule, but no increased dim
+                        yield from scheduler_backtrack(template, tiled_schedule, pure_output_stationary, dim + 1)
                     else:
                         pass
                         print('match, will apply tiling')
@@ -116,6 +120,8 @@ def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0, pur
     schedules = scheduler_backtrack(template, schedule, pure_output_stationary)
 
     schedules = list(schedules)
+
+    breakpoint()
 
     # match at schedule idx
     return schedules[schedule_idx]

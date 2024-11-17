@@ -92,7 +92,7 @@ def generate_resnet_benchmark():
     ]
 
 
-    for i, spec in enumerate(specs[0:1]):
+    for i, spec in enumerate(specs):
 
         module = generate_conv_ir(spec, generate_constants = False)
 
