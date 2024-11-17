@@ -27,7 +27,7 @@ def get_dim(expr: AffineExpr) -> int | None:
             return result
 
 
-def canonicalize_addition(expr: AffineBinaryOpExpr) -> AffineExpr:
+def canonicalize_addition(expr: AffineBinaryOpExpr, extreme = False) -> AffineExpr:
     """
     Canonicalizes an addition by:
         putting the constant on rhs
@@ -72,7 +72,7 @@ def canonicalize_addition(expr: AffineBinaryOpExpr) -> AffineExpr:
     return expr
 
 
-def canonicalize_multiplication(expr: AffineBinaryOpExpr) -> AffineExpr:
+def canonicalize_multiplication(expr: AffineBinaryOpExpr, extreme = False) -> AffineExpr:
     """
     Canonicalizes a multiplication by:
         putting the constant on rhs
@@ -94,7 +94,7 @@ def canonicalize_multiplication(expr: AffineBinaryOpExpr) -> AffineExpr:
     if isinstance(expr.rhs, AffineConstantExpr):
         # rhs is constant, lhs is not
         # multiplication by 1 can be omitted
-        if expr.rhs.value == 1:
+        if expr.rhs.value == 1 or extreme:
             return expr.lhs
         # turn (a + b) * cst into (a * cst) + (b * cst)
         if (
@@ -107,7 +107,7 @@ def canonicalize_multiplication(expr: AffineBinaryOpExpr) -> AffineExpr:
     return expr
 
 
-def canonicalize_floordiv(expr: AffineBinaryOpExpr) -> AffineExpr:
+def canonicalize_floordiv(expr: AffineBinaryOpExpr, extreme = False) -> AffineExpr:
     """
     Canonicalizes a floordiv by:
         omitting a // 1
@@ -120,7 +120,7 @@ def canonicalize_floordiv(expr: AffineBinaryOpExpr) -> AffineExpr:
     return expr
 
 
-def canonicalize_mod(expr: AffineBinaryOpExpr) -> AffineExpr:
+def canonicalize_mod(expr: AffineBinaryOpExpr, extreme = False) -> AffineExpr:
     """
     Canonicalizes a module operation by:
         replacing a % 1 by constant 0
@@ -133,38 +133,38 @@ def canonicalize_mod(expr: AffineBinaryOpExpr) -> AffineExpr:
     return expr
 
 
-def canonicalize_binary_op(expr: AffineBinaryOpExpr) -> AffineExpr:
+def canonicalize_binary_op(expr: AffineBinaryOpExpr, extreme = False) -> AffineExpr:
     expr = AffineBinaryOpExpr(
-        expr.kind, canonicalize_expr(expr.lhs), canonicalize_expr(expr.rhs)
+        expr.kind, canonicalize_expr(expr.lhs, extreme), canonicalize_expr(expr.rhs, extreme)
     )
     if expr.kind is AffineBinaryOpKind.Add:
-        return canonicalize_addition(expr)
+        return canonicalize_addition(expr, extreme)
     if expr.kind is AffineBinaryOpKind.Mul:
-        return canonicalize_multiplication(expr)
+        return canonicalize_multiplication(expr, extreme)
     if expr.kind is AffineBinaryOpKind.FloorDiv:
-        return canonicalize_floordiv(expr)
+        return canonicalize_floordiv(expr, extreme)
     if expr.kind is AffineBinaryOpKind.Mod:
-        return canonicalize_mod(expr)
+        return canonicalize_mod(expr, extreme)
     return expr
 
 
-def canonicalize_expr(expr: AffineExpr) -> AffineExpr:
+def canonicalize_expr(expr: AffineExpr, extreme = False) -> AffineExpr:
     new_expr = expr
 
     if isinstance(expr, AffineBinaryOpExpr):
-        new_expr = canonicalize_binary_op(expr)
+        new_expr = canonicalize_binary_op(expr, extreme)
 
     if new_expr == expr:
         return new_expr
 
-    return canonicalize_expr(new_expr)
+    return canonicalize_expr(new_expr, extreme)
 
 
 # helper function to canonicalize affine maps
-def canonicalize_map(map: AffineMap) -> AffineMap:
+def canonicalize_map(map: AffineMap, extreme = False) -> AffineMap:
     # canonicalize each result expression of the map and construct new affine map
     return AffineMap(
         map.num_dims,
         map.num_symbols,
-        tuple(canonicalize_expr(expr) for expr in map.results),
+        tuple(canonicalize_expr(expr, extreme) for expr in map.results),
     )
