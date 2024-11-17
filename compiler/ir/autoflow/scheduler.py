@@ -121,7 +121,5 @@ def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0, pur
 
     schedules = list(schedules)
 
-    breakpoint()
-
     # match at schedule idx
     return schedules[schedule_idx]
