@@ -482,7 +482,7 @@ class AddCyclicMemoryLayout(RewritePattern):
 
                     # maybe some padding for next stride
                     if bound < 8 and current_stride == 1:
-                        raise NotImplementedError()
+                        current_stride = current_stride * 8
                         # check: maybe possible with transpose?
                     elif bound < 8 and current_stride == 8:
                         current_stride = current_stride * 8
@@ -497,6 +497,7 @@ class AddCyclicMemoryLayout(RewritePattern):
 
 
             layout = TiledStridedLayout([TiledStride(s) for s in strides])
+            breakpoint()
             layout = layout.simplify()
             tsl = TiledStridedLayoutAttr(layout)
 

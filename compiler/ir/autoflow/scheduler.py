@@ -18,8 +18,6 @@ def scheduler_backtrack(template: Template, schedule: Schedule, pure_output_stat
     N = schedule.num_dims - dim
     K = template.num_dims - dim
 
-    breakpoint()
-
     for n in range(N + 1):
         print('Checking the following schedule:')
         print(schedule)
@@ -120,6 +118,8 @@ def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0, pur
     schedules = scheduler_backtrack(template, schedule, pure_output_stationary)
 
     schedules = list(schedules)
+
+    breakpoint()
 
     # match at schedule idx
     return schedules[schedule_idx]
