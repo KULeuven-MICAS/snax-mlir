@@ -17,10 +17,14 @@ ifndef SCHEDULE_IDX
 SCHEDULE_IDX=0
 endif
 
+ifndef PURE_OUTPUT_STATIONARY
+PURE_OUTPUT_STATIONARY=true
+endif
+
 %.preprocfinal.mlir: %.mlir
 	$(MLIROPT) $(MLIRPREPROCFLAGS) -o $@ $<
 
-SNAXOPTFLAGS = --print-op-generic -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,stream-bufferize,snax-bufferize,alloc-to-global,autoflow-scheduler{schedule_idx=${SCHEDULE_IDX}},set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=3},autoflow-layout-resolution,convert-linalg-to-accfg,test-add-mcycle-around-launch,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,snax-lower-mcycle,clear-memory-space
+SNAXOPTFLAGS = --print-op-generic -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,stream-bufferize,snax-bufferize,alloc-to-global,autoflow-scheduler{schedule_idx=${SCHEDULE_IDX}, pure_output_stationary=${PURE_OUTPUT_STATIONARY}},set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=3},autoflow-layout-resolution,convert-linalg-to-accfg,test-add-mcycle-around-launch,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,snax-lower-mcycle,clear-memory-space
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra

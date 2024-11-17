@@ -5,12 +5,12 @@ from compiler.ir.stream.access_pattern import SchedulePattern
 from compiler.util.multiset import Multiset
 
 
-def scheduler_backtrack(template: Template, schedule: Schedule, dim=1) -> Iterator[Schedule]:
-    # print(f'Running Scheduler Backtracking for dim = {dim}')
-    # print('Schedule:')
-    # print(schedule)
-    # print('Template:')
-    # print(template)
+def scheduler_backtrack(template: Template, schedule: Schedule, pure_output_stationary: bool, dim=1) -> Iterator[Schedule]:
+    print(f'Running Scheduler Backtracking for dim = {dim}')
+    print('Schedule:')
+    print(schedule)
+    print('Template:')
+    print(template)
 
     if dim - 1 >= schedule.num_dims:
         yield schedule
@@ -18,9 +18,11 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim=1) -> Iterat
     N = schedule.num_dims - dim
     K = template.num_dims - dim
 
+    breakpoint()
+
     for n in range(N + 1):
-        # print('Checking the following schedule:')
-        # print(schedule)
+        print('Checking the following schedule:')
+        print(schedule)
 
         if K > 0:
             schedule_check = schedule.disable_dims(N)
@@ -29,10 +31,10 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim=1) -> Iterat
             schedule_check = schedule.disable_dims(schedule.num_dims - template.num_dims)
             template_check = template
 
-        # print('Template check:')
-        # print(template_check)
-        # print('Schedule check:')
-        # print(schedule_check)
+        print('Template check:')
+        print(template_check)
+        print('Schedule check:')
+        print(schedule_check)
 
         if template_check.matches(schedule_check):
             if dim > template.num_dims:
@@ -42,12 +44,14 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim=1) -> Iterat
                 ok = True
 
                 # extra check (1): constrain to pure output stationary
-                # if schedule[-1].depends_on(i):
-                #     # no further reductions can be allowed
-                #     while i >= 0:
-                #         if not schedule[-1].depends_on(i):
-                #             ok = False
-                #         i -= 1
+                if pure_output_stationary:
+                    if schedule[-1].depends_on(i):
+                        # no further reductions can be allowed
+                        while i >= 0:
+                            if not schedule[-1].depends_on(i):
+                                print('not output stationary!')
+                                ok = False
+                            i -= 1
 
                 # extra check (2): make sure there is correct memory flexibility
                 def generate_one_list(n: int, i: int):
@@ -67,11 +71,12 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim=1) -> Iterat
                             if result % 8 != 0:
                                 nbs_left -= 1
                     if nbs_left < 0:
+                        print('not legal for memory!')
                         ok = False
 
                 if ok:
                     pass
-                    yield from scheduler_backtrack(template, schedule, dim + 1)
+                    yield from scheduler_backtrack(template, schedule, pure_output_stationary, dim + 1)
 
             else:
                 # check bounds
@@ -81,35 +86,38 @@ def scheduler_backtrack(template: Template, schedule: Schedule, dim=1) -> Iterat
 
                 if schedule_bound == template_bound:
                     pass
-                    # print('perfect match, check behaviour')
+                    print('perfect match, check behaviour')
                 elif schedule_bound < template_bound:
                     pass
+                    print('applying padding...')
                     # apply padding:
                     padded_schedule = schedule.pad_dim(N, template_bound)
                     # otherwise:
-                    yield from scheduler_backtrack(template, schedule, dim + 1)
+                    yield from scheduler_backtrack(template, schedule, pure_output_stationary, dim + 1)
                 elif schedule_bound > template_bound:
                     if schedule_bound % template_bound != 0:
                         pass
-                        # print('imperfect factorization, no support yet')
+                        print('imperfect factorization, no support yet')
                     else:
                         pass
-                        # print('match, will apply tiling')
+                        print('match, will apply tiling')
                         tiled_schedule = schedule.tile_dim(N, template_bound)
-                        yield from scheduler_backtrack(template, tiled_schedule, dim + 1)
+                        yield from scheduler_backtrack(template, tiled_schedule, pure_output_stationary, dim + 1)
         else:
             pass
-            # print('no match')
+            print('no match')
 
-        # print('rotating...')
+        print('rotating...')
         schedule = schedule.rotate(N + 1)
 
 
-def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0) -> Schedule:
+def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0, pure_output_stationary: bool = True) -> Schedule:
     # prune away the 1-bounded dimensions:
     schedule = schedule.clear_unused_dims()
 
-    schedules = scheduler_backtrack(template, schedule)
+    breakpoint()
+
+    schedules = scheduler_backtrack(template, schedule, pure_output_stationary)
 
     schedules = list(schedules)
 
