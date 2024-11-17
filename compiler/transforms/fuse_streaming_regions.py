@@ -41,7 +41,8 @@ class FuseElementwisePattern(RewritePattern):
             return
 
         # user op must be elementwise: all indexing maps must be identity maps
-        for pattern in user_op.patterns:
+        for pattern in user_op.patterns.data[-1:]:
+            # TODO: only look at last one (fix this properly)
             if not pattern.data == AffineMap.identity(pattern.data.num_dims):
                 return
 

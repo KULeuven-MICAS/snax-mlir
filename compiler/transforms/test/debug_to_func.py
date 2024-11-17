@@ -21,14 +21,16 @@ class DebugToFunc(RewritePattern):
         ptr_a = memref.ExtractAlignedPointerAsIndexOp.get(op.op_a)
         ptr_b = memref.ExtractAlignedPointerAsIndexOp.get(op.op_b)
         ptr_c = memref.ExtractAlignedPointerAsIndexOp.get(op.op_c)
+        ptr_d = memref.ExtractAlignedPointerAsIndexOp.get(op.op_d)
 
-        ops_to_insert: list[Operation] = [ptr_a, ptr_b, ptr_c]
+        ops_to_insert: list[Operation] = [ptr_a, ptr_b, ptr_c, ptr_d]
 
         ptr_a = arith.IndexCastOp(ptr_a, builtin.i32)
         ptr_b = arith.IndexCastOp(ptr_b, builtin.i32)
         ptr_c = arith.IndexCastOp(ptr_c, builtin.i32)
+        ptr_d = arith.IndexCastOp(ptr_d, builtin.i32)
 
-        ops_to_insert.extend([ptr_a, ptr_b, ptr_c])
+        ops_to_insert.extend([ptr_a, ptr_b, ptr_c, ptr_d])
 
         match (op.when.data, op.level.data):
             case "before", "L3":
@@ -46,14 +48,14 @@ class DebugToFunc(RewritePattern):
         ops_to_insert.append(when)
 
         func_call = func.Call(
-            f"debug_{op.debug_type.data}", [ptr_a, ptr_b, ptr_c, when], []
+            f"debug_{op.debug_type.data}", [ptr_a, ptr_b, ptr_c, ptr_d, when], []
         )
         ops_to_insert.append(func_call)
         rewriter.replace_matched_op(ops_to_insert)
 
         func_decl = func.FuncOp.external(
             f"debug_{op.debug_type.data}",
-            [builtin.i32, builtin.i32, builtin.i32, builtin.i32],
+            [builtin.i32, builtin.i32, builtin.i32, builtin.i32, builtin.i32],
             [],
         )
         module_op = func_call

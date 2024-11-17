@@ -6,6 +6,7 @@ from xdsl.xdsl_opt_main import xDSLOptMain
 
 from compiler.dialects.accfg import ACCFG
 from compiler.dialects.kernel import Kernel
+from compiler.dialects.pipeline import Pipeline
 from compiler.dialects.snax import Snax
 from compiler.dialects.snax_stream import SnaxStream
 from compiler.dialects.stream import Stream
@@ -15,6 +16,7 @@ from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 from compiler.transforms.accfg_dedup import AccfgDeduplicate
 from compiler.transforms.accfg_insert_resets import InsertResetsPass
 from compiler.transforms.alloc_to_global import AllocToGlobalPass
+from compiler.transforms.alloc_to_local import AllocToLocalPass
 from compiler.transforms.clear_memory_space import ClearMemorySpace
 from compiler.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
 from compiler.transforms.convert_kernel_to_linalg import ConvertKernelToLinalg
@@ -28,12 +30,14 @@ from compiler.transforms.convert_stream_to_snax_stream import ConvertStreamToSna
 from compiler.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
-from compiler.transforms.frontend.preprocess_mlperf_tiny import PreprocessMLPerfTiny
+from compiler.transforms.double_buffer import DoubleBuffer
+from compiler.transforms.frontend.preprocess_mlperf_tiny import PreprocessMLPerfTiny, PreprocessMLPerfTiny2
 from compiler.transforms.fuse_streaming_regions import FuseStreamingRegions
 from compiler.transforms.insert_accfg_op import InsertAccOp
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.memref_to_snax import MemrefToSNAX
+from compiler.transforms.pipeline import PipelinePass
 from compiler.transforms.realize_memref_casts import RealizeMemrefCastsPass
 from compiler.transforms.reuse_memref_allocs import ReuseMemrefAllocs
 from compiler.transforms.set_memory_layout import SetMemoryLayout
@@ -44,7 +48,9 @@ from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.stream_bufferize import StreamBufferize
 from compiler.transforms.test.debug_to_func import DebugToFuncPass
+from compiler.transforms.test.dma_to_insn import DMAToInsnPass
 from compiler.transforms.test.insert_debugs import InsertDebugPass
+from compiler.transforms.test.rescale_to_trunc import TestRescaleToTrunc
 from compiler.transforms.test.test_add_mcycle_around_launch import AddMcycleAroundLaunch
 from compiler.transforms.test_add_mcycle_around_loop import AddMcycleAroundLoopPass
 from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
@@ -79,6 +85,7 @@ class SNAXOptMain(xDSLOptMain):
         self.ctx.load_dialect(SnaxStream)
         self.ctx.load_dialect(Debug)
         self.ctx.load_dialect(Stream)
+        self.ctx.load_dialect(Pipeline)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
@@ -104,6 +111,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(
             AccfgConfigOverlapPass.name, lambda: AccfgConfigOverlapPass
         )
+        super().register_pass(DoubleBuffer.name, lambda: DoubleBuffer)
         super().register_pass(
             ConvertStreamToSnaxStream.name, lambda: ConvertStreamToSnaxStream
         )
@@ -120,12 +128,17 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(InsertDebugPass.name, lambda: InsertDebugPass)
         super().register_pass(DebugToFuncPass.name, lambda: DebugToFuncPass)
         super().register_pass(PreprocessMLPerfTiny.name, lambda: PreprocessMLPerfTiny)
+        super().register_pass(PreprocessMLPerfTiny2.name, lambda: PreprocessMLPerfTiny2)
         super().register_pass(AddMcycleAroundLaunch.name, lambda: AddMcycleAroundLaunch)
         super().register_pass(ConvertLinalgToStream.name, lambda: ConvertLinalgToStream)
         super().register_pass(StreamBufferize.name, lambda: StreamBufferize)
         super().register_pass(SnaxBufferize.name, lambda: SnaxBufferize)
         super().register_pass(FuseStreamingRegions.name, lambda: FuseStreamingRegions)
         super().register_pass(AllocToGlobalPass.name, lambda: AllocToGlobalPass)
+        super().register_pass(AllocToLocalPass.name, lambda: AllocToLocalPass)
+        super().register_pass(TestRescaleToTrunc.name, lambda: TestRescaleToTrunc)
+        super().register_pass(PipelinePass.name, lambda: PipelinePass)
+        super().register_pass(DMAToInsnPass.name, lambda: DMAToInsnPass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)

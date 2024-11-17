@@ -17,6 +17,10 @@ class StreamerOpts(StrEnum):
     HasTranspose = "t"
     # Streamer with channel mask capabilities
     HasChannelMask = "c"
+    # Streamer with byte mask capabilities
+    HasByteMask = "b"
+    # Streamer with bypass signal
+    HasBypass = "s"
 
 
 class StreamerFlag(StrEnum):

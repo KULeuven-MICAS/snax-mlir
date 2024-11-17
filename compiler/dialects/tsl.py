@@ -85,7 +85,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             was made for which TSL Stride.
         """
 
-        result: list[Operation] = []
+        result: list[Operation] = [c1 := Constant.from_int_and_width(1, IndexType())]
         result_mapping: dict[(int, int), Operation] = {}
 
         tsl = self.data
@@ -103,6 +103,9 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         else:
             # shape ops are already supplied, use them directly
             shapes = memref_op_or_shapes
+
+            while len(shapes) < tsl.dimension():
+                shapes.insert(0, c1)
 
         for dim in range(tsl.dimension()):
             depth = 0  # outermost tile

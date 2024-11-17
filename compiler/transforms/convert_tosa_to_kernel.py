@@ -111,7 +111,7 @@ class RescaleClampPattern(RewritePattern):
                 )
                 for _ in range(2)
             ],
-            iterator_types=builtin.ArrayAttr([linalg.IteratorTypeAttr.parallel()] * 2),
+            iterator_types=builtin.ArrayAttr([linalg.IteratorTypeAttr.parallel()] * nb_dims),
             result_types=(clamp_op.output.type,),
         )
 

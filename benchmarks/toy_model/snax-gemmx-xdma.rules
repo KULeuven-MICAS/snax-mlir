@@ -1,0 +1,5 @@
+# build proper system and put under /snax_cluster/target/snitch_cluster/
+SNITCH_SW_PATH = /snax_cluster/
+VLTSIM        = /snax_cluster/target/snitch_cluster/bin/snitch_cluster.vlt
+CFLAGS += -I/snax_cluster/target/snitch_cluster/sw/snax/xdma/include
+LDFLAGS += /snax_cluster/target/snitch_cluster/sw/snax/xdma/build/snax-xdma-lib.o

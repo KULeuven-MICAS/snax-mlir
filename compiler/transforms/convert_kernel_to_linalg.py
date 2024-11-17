@@ -37,8 +37,8 @@ class LowerLinalgBody(RewritePattern):
                 linalg_op.indexing_maps,
                 linalg_op.iterator_types,
                 linalg_op.result_types,
-                linalg_op.library_call,
                 linalg_op.doc,
+                linalg_op.library_call,
             )
         )
 

@@ -15,7 +15,7 @@
 }) : () -> ()
 
 //CHECK: "builtin.module"() ({
-//CHECK-NEXT:   %0 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<640xi32, "L1">
+//CHECK-NEXT:   %0 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<640xi32>
 //CHECK-NEXT: }) : () -> ()
 
 // -----

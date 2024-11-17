@@ -11,6 +11,7 @@ from xdsl.pattern_rewriter import (
 )
 
 from compiler.dialects import stream
+from compiler.dialects.test import debug
 from compiler.dialects.snax import LayoutCast
 
 
@@ -33,7 +34,8 @@ class RealizeMemrefCasts(RewritePattern):
         # if the casting is not used anymore (perhaps made useless by previous
         # cast realizations), we do not need to do anything. dce will remove it later
         if not op.dest.uses:
-            return
+            # dead code:
+            return rewriter.erase_matched_op()
 
         # due to previous passes, it is common for multiple memref casting
         # ops to be chained together. For now all the transformations are handled
@@ -119,6 +121,8 @@ class RealizeMemrefCasts(RewritePattern):
                 is_output = op.results[0] in use_op.outputs
             elif isinstance(use_op, stream.StreamingRegionOp):
                 is_output = op.results[0] in use_op.outputs
+            elif isinstance(use_op, debug.DebugLinalgOp):
+                is_output = False
             elif isinstance(use_op, func.Return):
                 is_output = False
             else:

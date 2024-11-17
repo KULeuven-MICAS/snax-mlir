@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 
+from pandas.core.algorithms import is_extension_array_dtype
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, memref
 from xdsl.dialects.builtin import MemRefType
 from xdsl.ir import Operation
 from xdsl.ir.affine import AffineMap
+from xdsl.ir.affine.affine_expr import AffineConstantExpr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -16,9 +18,9 @@ from xdsl.pattern_rewriter import (
 from compiler.accelerators import find_accelerator_op
 from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
-from compiler.dialects import snax_stream, stream
+from compiler.dialects import kernel, snax_stream, stream
 from compiler.dialects.snax import StreamerConfigurationAttr
-from compiler.ir.stream import Schedule, SchedulePattern, scheduler
+from compiler.ir.stream import Schedule, SchedulePattern, optimizer, scheduler
 
 
 @dataclass
@@ -39,9 +41,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: stream.StreamingRegionOp, rewriter: PatternRewriter):
         # Handle only stream ops dispatched to an accelerator:
         if op.accelerator is None:
             return
@@ -71,11 +71,36 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
         # First, run the stream scheduling algorithm
         schedule_bounds = tuple(op.get_static_pattern_bounds())
-        schedule = Schedule(
-            SchedulePattern(schedule_bounds, pattern.data)
-            for pattern in op.patterns.data
-        )
+
+        #FIXME: hack for input layer for resnet
+        if schedule_bounds == (1, 32, 32, 16, 3, 3, 3):
+            # assume padding until 8
+            schedule_bounds = (1, 32, 32, 16, 3, 3, 8)
+
+        is_exemption = False
+        if isinstance(op.body.block.first_op.body.block.first_op, kernel.AddOp):
+            is_exemption = True
+
+        schedule = Schedule(SchedulePattern(schedule_bounds, pattern.data) for pattern in op.patterns.data)
+
         schedule = scheduler(template, schedule)
+
+        # FIXME: for stationary bounds, this is hardcoded
+        schedules = [pattern for pattern in schedule]
+        for i in range(2, len(schedule)):
+            new_bounds = list(schedules[i].bounds)
+            if is_exemption:
+                continue
+            if len(new_bounds) > 2:
+                new_bounds[-4] = 1
+            if len(new_bounds) == 10:
+                # specific conv example
+                new_bounds[1] = 1
+                new_bounds[2] = 1
+            schedules[i] = SchedulePattern(new_bounds, schedules[i].pattern)
+        schedule = Schedule(schedules)
+
+        schedule = optimizer(template, schedule)
 
         # We are now ready to convert the stream access patterns into snax stride patterns
         # construct the strided patterns for SNAX Streamers
@@ -98,21 +123,26 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             # Mapping from access to data:
             access_data_map: AffineMap = schedule[operand].pattern
 
+            # TODO: tsl is wrong here in some cases, resolve set-memory-layout for this
+            while len(access_data_map.results) < data_mem_map.num_dims:
+                # insert 0 dimension in front
+                access_data_map = AffineMap(
+                    access_data_map.num_dims,
+                    access_data_map.num_symbols,
+                    (AffineConstantExpr(0),) + access_data_map.results,
+                )
+
             # Mapping from access to memory:
             access_mem_map: AffineMap = data_mem_map.compose(access_data_map)
 
             # Make sure no symbols are used (not supported yet)
             if access_mem_map.num_symbols != 0:
-                raise RuntimeError(
-                    "Access patterns with symbols are not supported yet."
-                )
+                raise RuntimeError("Access patterns with symbols are not supported yet.")
 
             # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)
             access_iter = iter(
                 (
-                    access_mem_map.eval(
-                        generate_one_list(access_mem_map.num_dims, i), ()
-                    )[0],
+                    access_mem_map.eval(generate_one_list(access_mem_map.num_dims, i), ())[0],
                     schedule[operand].bounds[i],
                 )
                 for i in reversed(range(access_mem_map.num_dims))
@@ -143,18 +173,14 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 upper_bounds=upper_bounds,
                 temporal_strides=temporal_strides,
                 spatial_strides=spatial_strides,
-            )
+            ).collapse_dimensions()
             snax_stride_patterns.append(snax_stride_pattern)
 
         # get base addresses of the streaming region ops
         # TODO: generalize and fix for offsets
 
-        new_inputs: list[Operation] = [
-            memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs
-        ]
-        new_outputs = [
-            memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs
-        ]
+        new_inputs: list[Operation] = [memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs]
+        new_outputs = [memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs]
 
         # TODO: what is still required is a better system for the unused operands
         # of snax_gemmx / other accelerators. this now fills in empty/zero patterns for the unused operands.
@@ -163,7 +189,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             empty_pattern = snax_stream.StridePattern(
                 upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0]
             )
-            if len(snax_stride_patterns) == 3:
+            if len(snax_stride_patterns) == 3 and len(op.body.block.ops) == 2:
                 # matmul
 
                 # for a matmul, the 8-bit output port D8 and the bias in put C
@@ -171,9 +197,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
                 # insert empty patterns for D8 and zero pattern for C
                 snax_stride_patterns.insert(2, empty_pattern)
-                new_inputs.append(
-                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                )
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
 
                 # insert zero pattern for C, using the same pattern as D32 but pointing to zero
                 # this way, the bias used by the gemm is just a bunch of zeros
@@ -181,8 +205,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     3,
                     snax_stream.StridePattern(
                         upper_bounds=snax_stride_patterns[3].upper_bounds,
-                        temporal_strides=[0]
-                        * len(snax_stride_patterns[3].upper_bounds),
+                        temporal_strides=[0] * len(snax_stride_patterns[3].upper_bounds),
                         spatial_strides=[8],
                     ),
                 )
@@ -192,15 +215,51 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     # zero pointer will generate 0 values
                     arith.Constant.from_int_and_width(0, builtin.IndexType())
                 )
-            elif len(snax_stride_patterns) == 4:
+            elif len(snax_stride_patterns) == 3 and len(op.body.block.ops) == 3:
+                # matmul with rescale
+
+                # insert zero pattern for C, using the same pattern as D8 but pointing to zero
+                # this way, the bias used by the gemm is just a bunch of zeros
+                snax_stride_patterns.append(
+                    snax_stream.StridePattern(
+                        upper_bounds=snax_stride_patterns[2].upper_bounds,
+                        temporal_strides=[0] * len(snax_stride_patterns[2].upper_bounds),
+                        spatial_strides=[8],
+                    ),
+                )
+                # point C to c0
+                new_inputs.append(
+                    # zero pointer will generate 0 values
+                    arith.Constant.from_int_and_width(0, builtin.IndexType())
+                )
+
+                # insert empty patterns for D32 and zero pattern for C
+                snax_stride_patterns.append(empty_pattern)
+
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
+            elif len(snax_stride_patterns) == 4 and len(op.body.block.ops) == 3:
                 # gemm
                 #
                 # for a gemm, the 8bit-output port D8 are unused, so we create
                 # empty patterns for them here
                 snax_stride_patterns.insert(2, empty_pattern)
-                new_inputs.insert(
-                    2, memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                )
+                new_inputs.insert(2, memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
+
+            elif len(snax_stride_patterns) == 4 and len(op.body.block.ops) == 4:
+                # gemm with rescale
+
+                # for gemm, only D32 is unused
+
+                #put output at third place
+                snax_stride_patterns[-1], snax_stride_patterns[-2] = snax_stride_patterns[-2], snax_stride_patterns[-1]
+                new_inputs.insert(2, new_outputs.pop())
+
+                #new_inputs[-1], new_inputs[-2] = new_inputs[-2], new_inputs[-1]
+
+                # insert empty patterns for D32
+                snax_stride_patterns.append(empty_pattern)
+
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
 
             else:
                 # simd
@@ -239,9 +298,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 # empty pattern for D32
                 snax_stride_patterns.append(empty_pattern)
                 # dummy base pointer for D32
-                new_inputs.append(
-                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                )
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
 
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(

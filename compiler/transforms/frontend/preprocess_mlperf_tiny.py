@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from xdsl.builder import Builder
 from xdsl.context import MLContext
-from xdsl.dialects import arith, builtin, func, linalg, memref, tensor
+from xdsl.dialects import arith, builtin, func, linalg, memref, tensor, tosa
 from xdsl.ir import BlockArgument, Operation, OpResult
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
@@ -15,10 +15,9 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 from xdsl.transforms.mlir_opt import MLIROptPass
 
-from compiler.dialects import snax
+from compiler.dialects import snax, stream
 from compiler.transforms.alloc_to_global import AllocToGlobal
 from compiler.transforms.convert_tosa_to_kernel import RescaleClampPattern
-from compiler.transforms.test.insert_debugs import InsertDebugStatements
 
 
 class InsertStaticFunctionCall(RewritePattern):
@@ -30,12 +29,21 @@ class InsertStaticFunctionCall(RewritePattern):
         to a static value. After inlining and canonicalization, everything is static.
         """
 
+        # for ad01:
         # define types
-        static_input = builtin.TensorType(builtin.IntegerType(8), (8, 640))
-        dynamic_input = builtin.TensorType(builtin.IntegerType(8), (-1, 640))
+        # static_input = builtin.TensorType(builtin.IntegerType(8), (8, 640))
+        # dynamic_input = builtin.TensorType(builtin.IntegerType(8), (-1, 640))
 
-        static_output = builtin.TensorType(builtin.IntegerType(8), (8, 640))
-        dynamic_output = builtin.TensorType(builtin.IntegerType(8), (-1, 640))
+        # static_output = builtin.TensorType(builtin.IntegerType(8), (8, 640))
+        # dynamic_output = builtin.TensorType(builtin.IntegerType(8), (-1, 640))
+
+        # for resnet:
+        static_input = builtin.TensorType(builtin.IntegerType(8), (1, 32, 32, 3))
+        dynamic_input = builtin.TensorType(builtin.IntegerType(8), (-1, 32, 32, 3))
+
+        static_output = builtin.TensorType(builtin.IntegerType(8), (1, 10))
+        dynamic_output = builtin.TensorType(builtin.IntegerType(8), (-1, 10))
+
 
         @Builder.implicit_region((static_input,))
         def func_region(args: tuple[BlockArgument, ...]):
@@ -51,6 +59,23 @@ class InsertStaticFunctionCall(RewritePattern):
         )
 
         rewriter.insert_op(main_func, InsertPoint.at_end(op.body.block))
+
+class EradicateDoubleRescales(RewritePattern):
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: tosa.RescaleOp, rewriter:PatternRewriter):
+        if len(op.output.uses) != 1:
+            return
+        use = list(op.output.uses)[0]
+        if not isinstance(use.operation, tosa.RescaleOp):
+            return
+        if use.operation.output.type != op.input.type:
+            use.operation.output.replace_by(op.output)
+            rewriter.erase_op(use.operation)
+            return
+        use.operation.output.replace_by(op.input)
+        rewriter.erase_op(use.operation)
+        rewriter.erase_op(op)
 
 
 class DropOldFunction(RewritePattern):
@@ -84,6 +109,24 @@ class RemoveZeroInits(RewritePattern):
         if not isinstance((intattr := const_op.value), builtin.IntegerAttr):
             return
         if intattr.value.data != 0:
+            return
+
+        # erase the op
+        rewriter._replace_all_uses_with(op.results[0], op.outputs[0])
+        rewriter.erase_matched_op()
+
+
+class RemoveZeroInits2(RewritePattern):
+    """
+    These ops initialize memory to zero before doing a matmul.
+    With the gemm accelerator we use, this is not necessary.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
+
+        # only has yield
+        if not isinstance(op.body.block.first_op, linalg.YieldOp):
             return
 
         # erase the op
@@ -167,7 +210,7 @@ class InsertMemoryClears(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: linalg.Generic | stream.StreamingRegionOp, rewriter: PatternRewriter):
         dump = snax.ClearL1()
         rewriter.insert_op(dump, InsertPoint.before(op))
 
@@ -197,6 +240,7 @@ class OrganizeGetGlobals(RewritePattern):
 
 @dataclass(frozen=True)
 class PreprocessMLPerfTiny(ModulePass):
+
     name = "preprocess-mlperftiny"
 
     executable: str = field(default="mlir-opt")
@@ -227,9 +271,9 @@ class PreprocessMLPerfTiny(ModulePass):
         arguments=(
             "--test-linalg-transform-patterns=test-generalize-pad-tensor",
             "--linalg-generalize-named-ops",
-            "--empty-tensor-to-alloc-tensor",
-            "--one-shot-bufferize=bufferize-function-boundaries allow-return-allocs-from-loops"
-            + " function-boundary-type-conversion=identity-layout-map",
+        #     "--empty-tensor-to-alloc-tensor",
+        #     "--one-shot-bufferize=bufferize-function-boundaries allow-return-allocs-from-loops"
+        #     + " function-boundary-type-conversion=identity-layout-map",
             "--mlir-print-op-generic",
             "--mlir-print-local-scope",
             "--allow-unregistered-dialect",
@@ -242,6 +286,7 @@ class PreprocessMLPerfTiny(ModulePass):
         ).rewrite_module(op)
         self.mlir_inliner_pass.apply(ctx, op)
         PatternRewriteWalker(DropOldFunction()).rewrite_module(op)
+        PatternRewriteWalker(EradicateDoubleRescales()).rewrite_module(op)
         PatternRewriteWalker(RescaleClampPattern()).rewrite_module(op)
         self.mlir_lowering_pass.apply(ctx, op)
         PatternRewriteWalker(RemoveZeroInits(), apply_recursively=False).rewrite_module(
@@ -251,12 +296,27 @@ class PreprocessMLPerfTiny(ModulePass):
             RemoveTransposeConstants(), apply_recursively=False
         ).rewrite_module(op)
         self.mlir_bufferization_pass.apply(ctx, op)
+        PatternRewriteWalker(RemoveZeroInits2(), apply_recursively=False).rewrite_module(
+            op
+        )
+ 
+        # PatternRewriteWalker(AllocToGlobal()).rewrite_module(op)
+        # PatternRewriteWalker(
+        #     InsertMemoryClears(), apply_recursively=False
+        # ).rewrite_module(op)
+        # PatternRewriteWalker(
+        #     OrganizeGetGlobals(), apply_recursively=False
+        # ).rewrite_module(op)
+        #
+
+@dataclass(frozen=True)
+class PreprocessMLPerfTiny2(ModulePass):
+    name = "preprocess-mlperftiny-2"
+
+    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(AllocToGlobal()).rewrite_module(op)
         PatternRewriteWalker(
             InsertMemoryClears(), apply_recursively=False
-        ).rewrite_module(op)
-        PatternRewriteWalker(
-            InsertDebugStatements(), apply_recursively=False
         ).rewrite_module(op)
         PatternRewriteWalker(
             OrganizeGetGlobals(), apply_recursively=False

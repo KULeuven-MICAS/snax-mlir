@@ -9,6 +9,7 @@ from compiler.accelerators.snax_alu import SNAXAluAccelerator
 from compiler.accelerators.snax_gemm import SNAXGEMMAccelerator
 from compiler.accelerators.snax_gemmx import SNAXGEMMXAccelerator
 from compiler.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
+from compiler.accelerators.snax_xdma import SNAXXDMAAccelerator
 from compiler.dialects.accfg import AcceleratorOp
 
 
@@ -24,6 +25,7 @@ class AcceleratorRegistry:
         "snax_gemm": SNAXGEMMAccelerator,
         "gemmini": GemminiAccelerator,
         "snax_gemmx": SNAXGEMMXAccelerator,
+        "snax_xdma": SNAXXDMAAccelerator,
     }
 
     def lookup_acc_info(

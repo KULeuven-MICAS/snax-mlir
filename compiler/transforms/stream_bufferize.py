@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from xdsl.context import MLContext
 from xdsl.dialects import bufferization
-from xdsl.dialects.builtin import MemRefType, ModuleOp, TensorType
+from xdsl.dialects.builtin import MemRefType, ModuleOp, TensorType, UnitAttr
 from xdsl.ir import Operation, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -35,11 +35,14 @@ class BufferizeStreamingRegion(RewritePattern):
 
         for operand in set(operands_to_buffer):
             assert isinstance(tensor_type := operand.type, TensorType)
+            properties = {}
+            properties["read_only"] = UnitAttr()
             tensor_to_memrefs[operand] = bufferization.ToMemrefOp(
                 operands=[operand],
                 result_types=(
                     MemRefType(tensor_type.get_element_type(), tensor_type.get_shape()),
                 ),
+                properties=properties
             )
 
         # create new streaming region op that operates on the buffers

@@ -27,6 +27,9 @@ class AddExternalFunc(RewritePattern):
             if op.library_call is None:
                 continue
 
+            if op.library_call.data == "none":
+                continue
+
             # all memref arguments must be cast to a new memref with a dynamic shape
             # to avoid type mismatching for multiple function calls with different
             # argument shapes

@@ -25,6 +25,7 @@ class DebugLinalgOp(IRDLOperation):
     op_a = operand_def(MemRefType[Attribute])
     op_b = operand_def(MemRefType[Attribute])
     op_c = operand_def(MemRefType[Attribute])
+    op_d = operand_def(MemRefType[Attribute])
 
     # what linalg kernel am i debugging?
     debug_type = prop_def(StringAttr)
@@ -40,12 +41,13 @@ class DebugLinalgOp(IRDLOperation):
         op_a: SSAValue,
         op_b: SSAValue,
         op_c: SSAValue,
+        op_d: SSAValue,
         debug_type: str,
         when: str,
         level: str = "L1",
     ):
         super().__init__(
-            operands=[op_a, op_b, op_c],
+            operands=[op_a, op_b, op_c, op_d],
             result_types=[],
             properties={
                 "debug_type": StringAttr(debug_type),

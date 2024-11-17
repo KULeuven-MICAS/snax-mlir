@@ -11,6 +11,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.rewriter import InsertPoint
 
+from compiler.dialects import stream
 from compiler.dialects.test import debug
 
 
@@ -22,7 +23,7 @@ class InsertDebugStatements(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: stream.StreamingRegionOp, rewriter: PatternRewriter):
         kernel_type = op.body.block.first_op
         assert kernel_type
         kernel_name = kernel_type.name
@@ -42,12 +43,13 @@ class InsertDebugStatements(RewritePattern):
         # this just sends the first input twice.
         input1 = op.inputs[0]
         input2 = op.inputs[1] if len(op.inputs) >= 2 else op.inputs[0]
+        input3 = op.inputs[2] if len(op.inputs) >= 3 else op.inputs[0]
 
         debug_before = debug.DebugLinalgOp(
-            input1, input2, op.outputs[0], kernel_name, "before", level
+            input1, input2, input3, op.outputs[0], kernel_name, "before", level
         )
         debug_after = debug.DebugLinalgOp(
-            input1, input2, op.outputs[0], kernel_name, "after", level
+            input1, input2, input3, op.outputs[0], kernel_name, "after", level
         )
         rewriter.insert_op(debug_before, InsertPoint.before(op))
         rewriter.insert_op(debug_after, InsertPoint.after(op))

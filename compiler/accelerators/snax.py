@@ -180,6 +180,16 @@ class SNAXStreamer(ABC):
                     n1 = arith.Constant.from_int_and_width(-1, i32)
                     result.append(([n1], n1.result))
 
+            # channel mask option
+            if StreamerOpts.HasByteMask in streamer.opts:
+                n1 = arith.Constant.from_int_and_width(-1, i32)
+                result.append(([n1], n1.result))
+
+            # bypass option
+            if StreamerOpts.HasBypass in streamer.opts:
+                c0 = arith.Constant.from_int_and_width(0, i32)
+                result.append(([c0], c0.result))
+
         # transpose specifications
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             if StreamerOpts.HasTranspose in streamer.opts:
@@ -208,6 +218,13 @@ class SNAXStreamer(ABC):
             # options
             if StreamerOpts.HasChannelMask in streamer.opts:
                 result.append(f"{name}_channel_mask")
+            # channel mask option
+            if StreamerOpts.HasByteMask in streamer.opts:
+                result.append(f"{name}_byte_mask")
+            # bypass option
+            if StreamerOpts.HasBypass in streamer.opts:
+                result.append(f"{name}_bypass")
+
 
         # transpose specifications
         for streamer, name in zip(
