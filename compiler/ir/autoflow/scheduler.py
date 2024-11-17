@@ -113,13 +113,9 @@ def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0, pur
     # prune away the 1-bounded dimensions:
     schedule = schedule.clear_unused_dims()
 
-    breakpoint()
-
     schedules = scheduler_backtrack(template, schedule, pure_output_stationary)
 
     schedules = list(schedules)
-
-    breakpoint()
 
     # match at schedule idx
     return schedules[schedule_idx]

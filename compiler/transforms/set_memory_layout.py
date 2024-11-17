@@ -497,7 +497,6 @@ class AddCyclicMemoryLayout(RewritePattern):
 
 
             layout = TiledStridedLayout([TiledStride(s) for s in strides])
-            breakpoint()
             layout = layout.simplify()
             tsl = TiledStridedLayoutAttr(layout)
 

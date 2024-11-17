@@ -48,6 +48,7 @@ from compiler.transforms.stream_bufferize import StreamBufferize
 from compiler.transforms.test.debug_to_func import DebugToFuncPass
 from compiler.transforms.test.insert_debugs import InsertDebugPass
 from compiler.transforms.test.test_add_mcycle_around_launch import AddMcycleAroundLaunch
+from compiler.transforms.test.test_remove_copies import RemoveCopiesPass
 from compiler.transforms.test_add_mcycle_around_loop import AddMcycleAroundLoopPass
 from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
 
@@ -130,6 +131,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(AllocToGlobalPass.name, lambda: AllocToGlobalPass)
         super().register_pass(AutoflowSchedulerPass.name, lambda: AutoflowSchedulerPass)
         super().register_pass(AutoflowLayoutResolutionPass.name, lambda: AutoflowLayoutResolutionPass)
+        super().register_pass(RemoveCopiesPass.name, lambda: RemoveCopiesPass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
