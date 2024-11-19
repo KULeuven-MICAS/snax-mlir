@@ -23,11 +23,11 @@ def write_makefile(file):
 
 def generate_temp_mapping_benchmark():
 
-    spec = ConvSpec(1, 16, 16, 3, 3, 16, 16)
+    spec = ConvSpec(1, 32, 32, 3, 3, 128, 128)
 
-    module = generate_conv_ir(spec)
+    module = generate_conv_ir(spec, generate_constants=False)
 
-    for schedule_idx in range(1440):
+    for schedule_idx in range(720):
 
         binary = "generated.x"
         bm = SNAXBenchmark(
@@ -117,5 +117,5 @@ def generate_resnet_benchmark():
 
 if __name__ == "__main__":
 
-    # generate_temp_mapping_benchmark()
-    generate_resnet_benchmark()
+    generate_temp_mapping_benchmark()
+    # generate_resnet_benchmark()

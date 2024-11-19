@@ -41,6 +41,11 @@ def scheduler_backtrack(template: Template, schedule: Schedule, pure_output_stat
                 i = schedule.num_dims - dim
                 ok = True
 
+                # make sure to be at least one output stationary
+                if dim == template.num_dims + 1:
+                    if schedule[-1].depends_on(i):
+                        ok = False
+
                 # extra check (1): constrain to pure output stationary
                 if pure_output_stationary:
                     if schedule[-1].depends_on(i):
@@ -117,7 +122,7 @@ def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0, pur
     # prune away the 1-bounded dimensions:
     schedule = schedule.clear_unused_dims()
 
-    schedules = scheduler_backtrack(template, schedule, pure_output_stationary)
+    schedules = scheduler_backtrack(template, schedule, False)
 
     schedules = list(schedules)
 
