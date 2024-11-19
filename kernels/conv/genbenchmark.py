@@ -62,7 +62,7 @@ def generate_layout_benchmark_gemm():
 
 def generate_layout_benchmark_conv():
 
-    selected_dims = [32, 40, 48, 52, 64, 72, 80, 96]
+    selected_dims = [32, 40, 48, 56, 64, 72, 80, 96]
     selected_layouts = [0, 1]
 
     specs = [
