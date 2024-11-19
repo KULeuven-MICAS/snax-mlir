@@ -26,13 +26,18 @@ def write_makefile(file, schedule_idx = None):
 
 def generate_temp_mapping_benchmark():
 
+    # conv
     # spec = ConvSpec(1, 32, 16, 3, 3, 64, 64)
 
-    spec = ConvSpec(1, 14, 14, 1, 1, 1024, 256)
+    # pw conv
+    # spec = ConvSpec(1, 14, 14, 1, 1, 1024, 256)
+
+    # gemm
+    spec = ConvSpec(1, 256, 1, 1, 1, 256, 256)
 
     module = generate_conv_ir(spec, generate_constants=False)
 
-    for schedule_idx in range(12):
+    for schedule_idx in range(2):
 
         binary = "generated.x"
         bm = SNAXBenchmark(
