@@ -14,10 +14,12 @@ def write_module_to_file(module, file):
     with open(file, "w") as output_file:
         output_file.write(output.getvalue())
 
-def write_makefile(file):
+def write_makefile(file, schedule_idx = None):
 
     with open(file, "w") as output_file:
         output_file.write("include $(realpath ../../Makefile)\n")
+        if schedule_idx is not None:
+            output_file.write(f'SCHEDULE_IDX={schedule_idx}\n')
         output_file.write("clean:\n")
         output_file.write("\trm -rf logs/*.txt logs/*.dasm\n")
 
@@ -27,7 +29,7 @@ def generate_temp_mapping_benchmark():
 
     module = generate_conv_ir(spec, generate_constants=False)
 
-    for schedule_idx in range(720):
+    for schedule_idx in range(5):
 
         binary = "generated.x"
         bm = SNAXBenchmark(
@@ -38,15 +40,18 @@ def generate_temp_mapping_benchmark():
             output_dir=str(pathlib.Path.cwd()),
         )
 
-        bm.clean()
-        write_module_to_file(module, "generated.mlir")
-        bm.build([f"SCHEDULE_IDX={schedule_idx}", "PURE_OUTPUT_SATIONARY=false"])
+        # bm.cdst_folder = pathlib.Path(self.export_dir / folder)
+        if not bm.export_dir.exists():
+            bm.export_dir.mkdir(parents=True)
+        # write_module_to_file(module, bm.export_dir / "generated.mlir")
+        write_module_to_file(module, bm.export_dir / "generated.mlir")
+        # bm.build([f"SCHEDULE_IDX={schedule_idx}", "PURE_OUTPUT_SATIONARY=false"])
         #bm.run()
         #bm.trace()
-        bm.copy_binary('')
-        write_makefile(bm.export_dir / 'Makefile')
+        # bm.copy_binary('')
+        write_makefile(bm.export_dir / 'Makefile', schedule_idx)
         #bm.copy_logs('')
-        bm.clean()
+        # bm.clean()
 
 def generate_resnet_benchmark():
 
