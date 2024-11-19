@@ -59,6 +59,41 @@ def generate_layout_benchmark_gemm():
             # bm.copy_logs('')
             bm.clean()
 
+
+def generate_layout_benchmark_conv():
+
+    selected_dims = [32, 40, 48, 52, 64, 72, 80, 96]
+    selected_layouts = [0, 1]
+
+    specs = [
+        ConvSpec(1, 8, 16, 5, 5, c, k)
+        for c, k in itertools.product(selected_dims, repeat=2)
+    ]
+
+    for layout in selected_layouts:
+        for i, spec in enumerate(specs):
+            module = generate_conv_ir(spec, generate_constants=False)
+
+            binary = "generated.x"
+            bm = SNAXBenchmark(
+                kernel=f"layout_{layout}_{i:03d}",
+                binary=binary,
+                src_dir=str(pathlib.Path.cwd()),
+                export_dir=str(pathlib.Path.cwd()),
+                output_dir=str(pathlib.Path.cwd()),
+            )
+
+            bm.clean()
+            write_module_to_file(module, "generated.mlir")
+            bm.build(["PURE_OUTPUT_STATIONARY=true", f"LAYOUT={layout}"])
+            # bm.run()
+            # bm.trace()
+            bm.copy_binary("")
+            write_makefile(bm.export_dir / "Makefile")
+            # bm.copy_logs('')
+            bm.clean()
+
+
 def generate_temp_mapping_benchmark():
     # conv 3x3
     # spec = ConvSpec(1, 32, 16, 3, 3, 64, 64)
@@ -163,6 +198,7 @@ def generate_resnet_benchmark():
 
 
 if __name__ == "__main__":
-    generate_layout_benchmark_gemm()
+    # generate_layout_benchmark_gemm()
+    generate_layout_benchmark_conv()
     #generate_temp_mapping_benchmark()
     # generate_resnet_benchmark()
