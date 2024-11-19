@@ -30,7 +30,7 @@ def generate_conv_ir(spec: ConvSpec, generate_constants: bool = True):
     low_bound = 0
     high_bound = 10
 
-    I_size = [spec.b, spec.c, (spec.oy * spec.stride) + spec.fy - 1, (spec.stride * spec.ox) + spec.fx - 1]
+    I_size = [spec.b, spec.c, (spec.oy * spec.stride) + spec.dilation*(spec.fy - 1), (spec.stride * spec.ox) + spec.dilation*(spec.fx - 1)]
     W_size = [spec.k, spec.c, spec.fy, spec.fx]
 
     if generate_constants:
@@ -50,14 +50,14 @@ def generate_conv_ir(spec: ConvSpec, generate_constants: bool = True):
         output_vals = [0]
         weight_vals = [0]
 
-    input_type = builtin.TensorType(i8, (spec.b, spec.c, (spec.oy * spec.stride) + spec.fy - 1, (spec.ox * spec.stride) + spec.fx - 1))
+    input_type = builtin.TensorType(i8, (spec.b, spec.c, (spec.oy * spec.stride) + (spec.fy - 1) * spec.dilation, (spec.ox * spec.stride) + (spec.fx - 1)*spec.dilation))
     kernel_type = builtin.TensorType(i8, (spec.k, spec.c, spec.fy, spec.fx))
     output_type = builtin.TensorType(i32, (spec.b, spec.k, spec.oy, spec.ox))
 
     # function returns golden output + computed output
     res_types = [output_type, output_type]
 
-    dilations = DenseIntOrFPElementsAttr.tensor_from_list([1], i64, [2])
+    dilations = DenseIntOrFPElementsAttr.tensor_from_list([spec.dilation], i64, [2])
     strides = DenseIntOrFPElementsAttr.tensor_from_list([spec.stride], i64, [2])
 
     @Builder.implicit_region([])
