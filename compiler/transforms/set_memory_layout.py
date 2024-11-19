@@ -404,6 +404,8 @@ class AddCyclicMemoryLayout(RewritePattern):
 
         new_operands = []
 
+        breakpoint()
+
         for operand, schedule_pattern in zip(op.operands, schedule):
             assert isinstance(optype := operand.type, MemRefType)
 
@@ -416,14 +418,15 @@ class AddCyclicMemoryLayout(RewritePattern):
                 if 1 in result_1:
                     dim = result_1.index(1)
                     existing_bound = prod(s.bound for s in strides[dim])
-                    dim_shape = optype.get_shape()[dim] // existing_bound
+                    dim_shape = -(optype.get_shape()[dim] // -existing_bound) # take ceildiv
                     # can we apply further tiling?
                     # FIXME: need better check, now relying on the fact that ix will never
                     # be divisible and fx will always be odd
                     if (
-                        dim_shape % schedule_pattern.bounds[i] == 0
-                        and schedule_pattern.bounds[i] % 2 == 0
+                        # dim_shape % schedule_pattern.bounds[i] == 0 and
+                        schedule_pattern.bounds[i] % 2 == 0
                         and self.layout_idx == 0
+                        and dim_shape != 1
                     ):
                         bound = schedule_pattern.bounds[i]
                     else:
@@ -451,6 +454,7 @@ class AddCyclicMemoryLayout(RewritePattern):
 
             # insert layout_cast ops
             new_operands.append(LayoutCast.from_type_and_target_layout(operand, tsl))
+
 
         rewriter.insert_op(new_operands, InsertPoint.before(op))
 
