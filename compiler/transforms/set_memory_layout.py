@@ -404,7 +404,6 @@ class AddCyclicMemoryLayout(RewritePattern):
 
         new_operands = []
 
-        breakpoint()
 
         for operand, schedule_pattern in zip(op.operands, schedule):
             assert isinstance(optype := operand.type, MemRefType)
