@@ -30,13 +30,16 @@ def generate_temp_mapping_benchmark():
     # spec = ConvSpec(1, 32, 16, 3, 3, 64, 64)
 
     # conv 7x7
-    spec = ConvSpec(1, 16, 16, 7, 7, 64, 16)
+    # spec = ConvSpec(1, 16, 16, 7, 7, 64, 16)
 
     # pw conv
     # spec = ConvSpec(1, 14, 14, 1, 1, 1024, 256)
 
     # gemm
     # spec = ConvSpec(1, 256, 1, 1, 1, 256, 256)
+
+    # strided conv
+    spec = ConvSpec(1, 16, 16, 4, 4, 64, 64)
 
     module = generate_conv_ir(spec, generate_constants=False)
 
