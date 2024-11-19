@@ -1,4 +1,5 @@
 import pathlib
+import shutil
 
 from genkernel import ConvSpec, generate_conv_ir
 from xdsl.ir import StringIO
@@ -48,7 +49,7 @@ def generate_temp_mapping_benchmark():
         # bm.build([f"SCHEDULE_IDX={schedule_idx}", "PURE_OUTPUT_SATIONARY=false"])
         #bm.run()
         #bm.trace()
-        # bm.copy_binary('')
+        shutil.copy(src=bm.src_dir / 'main.c', dst=bm.export_dir / 'main.c')
         write_makefile(bm.export_dir / 'Makefile', schedule_idx)
         #bm.copy_logs('')
         # bm.clean()
