@@ -28,7 +28,7 @@ def write_makefile(file, schedule_idx=None):
 
 def generate_layout_benchmark_gemm():
 
-    selected_dims = [128, 136, 144, 156]
+    selected_dims = [128, 136, 144, 152]
     selected_layouts = [0, 1]
 
     specs = [
