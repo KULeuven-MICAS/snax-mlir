@@ -108,10 +108,10 @@ def generate_temp_mapping_benchmark():
     # spec = ConvSpec(1, 256, 1, 1, 1, 256, 256)
 
     # strided conv
-    spec = ConvSpec(1, 16, 16, 4, 4, 64, 64)
+    # spec = ConvSpec(1, 16, 16, 4, 4, 64, 64)
 
     # dilated conv
-    # spec = ConvSpec(1, 16, 16, 5, 5, 64, 64, dilation=2)
+    spec = ConvSpec(1, 16, 16, 5, 5, 64, 64, dilation=2)
 
     module = generate_conv_ir(spec, generate_constants=False)
 
