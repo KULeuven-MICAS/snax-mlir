@@ -144,6 +144,8 @@ def generate_resnet_benchmark():
         # input layer:
         ConvSpec(1, 112, 112, 7, 7, 3, 64, stride=2),
         # block 1:
+        # downsampling layer:
+        ConvSpec(1, 56, 56, 1, 1, 64, 64),
         # bottleneck:
         ConvSpec(1, 56, 56, 1, 1, 256, 64),
         ConvSpec(1, 56, 56, 3, 3, 64, 64),
@@ -175,6 +177,7 @@ def generate_resnet_benchmark():
     ]
 
     for i, spec in enumerate(specs):
+
         module = generate_conv_ir(spec, generate_constants=False)
 
         binary = "generated.x"
@@ -186,16 +189,19 @@ def generate_resnet_benchmark():
             output_dir=str(pathlib.Path.cwd()),
         )
 
-        bm.clean()
-        write_module_to_file(module, "generated.mlir")
-        bm.build(["PURE_OUTPUT_STAIONARY=true"])
+        if not bm.export_dir.exists():
+            bm.export_dir.mkdir(parents=True)
+        # write_module_to_file(module, bm.export_dir / "generated.mlir")
+        write_module_to_file(module, bm.export_dir / "generated.mlir")
+        # bm.build([f"SCHEDULE_IDX={schedule_idx}", "PURE_OUTPUT_STATIONARY=false"])
         # bm.run()
         # bm.trace()
-        bm.copy_binary("")
         shutil.copy(src=bm.src_dir / "main.c", dst=bm.export_dir / "main.c")
         write_makefile(bm.export_dir / "Makefile")
         # bm.copy_logs('')
         bm.clean()
+
+
 
 
 if __name__ == "__main__":
