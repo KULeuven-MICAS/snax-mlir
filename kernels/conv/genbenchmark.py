@@ -166,7 +166,7 @@ def generate_resnet_benchmark():
         ConvSpec(1, 14, 14, 1, 1, 256, 1024),
         # block 4:
         # downsampling layer:
-        ConvSpec(1, 7, 7, 1, 1, 1024, 512, stride=2),
+        ConvSpec(1, 7, 7, 1, 1, 1024, 2048, stride=2),
         # bottleneck:
         ConvSpec(1, 7, 7, 1, 1, 1024, 512),
         ConvSpec(1, 7, 7, 1, 1, 2048, 512),
