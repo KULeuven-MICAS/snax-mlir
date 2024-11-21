@@ -96,10 +96,10 @@ def generate_layout_benchmark_conv():
 
 def generate_temp_mapping_benchmark():
     # conv 3x3
-    spec = ConvSpec(1, 32, 16, 3, 3, 64, 64)
+    # spec = ConvSpec(1, 32, 16, 3, 3, 64, 64)
 
     # conv 7x7
-    # spec = ConvSpec(1, 16, 16, 7, 7, 64, 16)
+    spec = ConvSpec(1, 16, 16, 7, 7, 64, 16)
 
     # pw conv
     # spec = ConvSpec(1, 14, 14, 1, 1, 1024, 256)
@@ -207,5 +207,5 @@ def generate_resnet_benchmark():
 if __name__ == "__main__":
     # generate_layout_benchmark_gemm()
     # generate_layout_benchmark_conv()
-# generate_temp_mapping_benchmark()
-    generate_resnet_benchmark()
+    generate_temp_mapping_benchmark()
+# generate_resnet_benchmark()
