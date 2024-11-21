@@ -42,7 +42,7 @@ def generate_layout_benchmark_gemm():
 
             binary = "generated.x"
             bm = SNAXBenchmark(
-                kernel=f"layout_{layout}_{i:03d}",
+                kernel=f"gemm_layout_{layout}_{i:03d}",
                 binary=binary,
                 src_dir=str(pathlib.Path.cwd()),
                 export_dir=str(pathlib.Path.cwd()),
@@ -76,7 +76,7 @@ def generate_layout_benchmark_conv():
 
             binary = "generated.x"
             bm = SNAXBenchmark(
-                kernel=f"layout_{layout}_{i:03d}",
+                kernel=f"conv_layout_{layout}_{i:03d}",
                 binary=binary,
                 src_dir=str(pathlib.Path.cwd()),
                 export_dir=str(pathlib.Path.cwd()),
@@ -205,7 +205,7 @@ def generate_resnet_benchmark():
 
 
 if __name__ == "__main__":
-    # generate_layout_benchmark_gemm()
-    # generate_layout_benchmark_conv()
-    generate_temp_mapping_benchmark()
-# generate_resnet_benchmark()
+    generate_layout_benchmark_gemm()
+    generate_layout_benchmark_conv()
+    # generate_temp_mapping_benchmark()
+    # generate_resnet_benchmark()
