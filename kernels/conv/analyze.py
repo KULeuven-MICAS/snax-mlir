@@ -4,7 +4,7 @@ import pandas as pd
 
 # Define the base directory for test folders
 base_dir = "results"
-conv_dirs = [os.path.join(base_dir, d) for d in os.listdir(base_dir) if d.startswith("conv_")]
+conv_dirs = [os.path.join(base_dir, d) for d in os.listdir(base_dir)]
 
 data = []
 

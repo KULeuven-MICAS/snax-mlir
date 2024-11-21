@@ -56,7 +56,7 @@ clean:
 	rm -fr *.ll12 *.x *.o *.logs/ logs/ data.h data.c *.mlir
 
 # List of directories
-CONV_DIRS := $(wildcard results/conv_*/)
+CONV_DIRS := $(wildcard results/*/)
 
 # Variable to count completed jobs
 COMPLETED := 0
