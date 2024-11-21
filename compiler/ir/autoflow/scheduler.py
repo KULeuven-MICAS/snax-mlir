@@ -122,7 +122,7 @@ def scheduler(template: Template, schedule: Schedule, schedule_idx: int = 0, pur
     # prune away the 1-bounded dimensions:
     schedule = schedule.clear_unused_dims()
 
-    schedules = scheduler_backtrack(template, schedule, True)
+    schedules = scheduler_backtrack(template, schedule, False)
 
     schedules = list(schedules)
 
