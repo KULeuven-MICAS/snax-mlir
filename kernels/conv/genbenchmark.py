@@ -96,7 +96,7 @@ def generate_layout_benchmark_conv():
 
 def generate_temp_mapping_benchmark():
     # conv 3x3
-    # spec = ConvSpec(1, 32, 16, 3, 3, 64, 64)
+    spec = ConvSpec(1, 32, 16, 3, 3, 64, 64)
 
     # conv 7x7
     # spec = ConvSpec(1, 16, 16, 7, 7, 64, 16)
@@ -111,7 +111,7 @@ def generate_temp_mapping_benchmark():
     # spec = ConvSpec(1, 16, 16, 4, 4, 64, 64)
 
     # dilated conv
-    spec = ConvSpec(1, 16, 16, 5, 5, 64, 64, dilation=2)
+    # spec = ConvSpec(1, 16, 16, 5, 5, 64, 64, dilation=2)
 
     module = generate_conv_ir(spec, generate_constants=False)
 
@@ -199,6 +199,6 @@ def generate_resnet_benchmark():
 
 if __name__ == "__main__":
     # generate_layout_benchmark_gemm()
-    generate_layout_benchmark_conv()
-    #generate_temp_mapping_benchmark()
+    # generate_layout_benchmark_conv()
+    generate_temp_mapping_benchmark()
     # generate_resnet_benchmark()
