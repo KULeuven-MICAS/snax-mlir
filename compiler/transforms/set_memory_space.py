@@ -124,7 +124,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: linalg.Generic | stream.StreamingRegionOp, rewriter: PatternRewriter
+        self, op: linalg.Generic | stream.StreamingRegionOp | stream.ScheduleOp, rewriter: PatternRewriter
     ):
         operands_to_memory_cast = tuple(
             x

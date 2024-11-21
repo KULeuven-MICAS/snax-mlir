@@ -2,9 +2,9 @@ from dataclasses import dataclass
 
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, memref
-from xdsl.dialects.builtin import MemRefType
+from xdsl.dialects.builtin import AffineMapAttr, ArrayAttr, MemRefType
 from xdsl.ir import Operation
-from xdsl.ir.affine import AffineMap
+from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -18,11 +18,16 @@ from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
 from compiler.dialects import snax_stream, stream
 from compiler.dialects.snax import StreamerConfigurationAttr
-from compiler.ir.stream import Schedule, SchedulePattern, optimizer, scheduler
+from compiler.ir.autoflow import scheduler
+from compiler.ir.stream import Schedule, SchedulePattern, optimizer
+from compiler.ir.stream.access_pattern import Template, TemplatePattern
 
 
 @dataclass
-class MemrefStreamToSnaxPattern(RewritePattern):
+class AutoflowSchedulerPattern(RewritePattern):
+    schedule_idx: int = 0
+    pure_output_stationary: bool = True
+
     """
     A pass to convert streaming region operations to snax stream.
 
@@ -39,9 +44,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: stream.StreamingRegionOp, rewriter: PatternRewriter):
         # Handle only stream ops dispatched to an accelerator:
         if op.accelerator is None:
             return
@@ -71,11 +74,35 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
         # First, run the stream scheduling algorithm
         schedule_bounds = tuple(op.get_static_pattern_bounds())
-        schedule = Schedule(
-            SchedulePattern(schedule_bounds, pattern.data)
-            for pattern in op.patterns.data
+        schedule = Schedule(SchedulePattern(schedule_bounds, pattern.data) for pattern in op.patterns.data)
+
+        # overwrite template for gemmx:
+        m, n, k = (AffineDimExpr(i) for i in range(3))
+        template = [
+            AffineMap(3, 0, (m, k)),
+            AffineMap(3, 0, (k, n)),
+            AffineMap(3, 0, (m, n)),
+        ]
+        template_bounds = (8, 8, 8)
+
+        template = Template(TemplatePattern(template_bounds, tp) for tp in template)
+
+        schedule = scheduler(template, schedule, self.schedule_idx, self.pure_output_stationary)
+
+        # replace by stream schedule op
+        new_op = stream.ScheduleOp(
+            op.inputs,
+            op.outputs,
+            ArrayAttr([AffineMapAttr(s.pattern) for s in schedule]),
+            [s.bounds for s in schedule],
+            rewriter.move_region_contents_to_new_regions(op.body),
+            op.accelerator,
+            op.result_types,
         )
-        schedule = scheduler(template, schedule)
+
+        rewriter.replace_matched_op(new_op)
+
+        return
 
         # FIXME: for stationary bounds, this is hardcoded
         schedules = [pattern for pattern in schedule]
@@ -118,16 +145,12 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
             # Make sure no symbols are used (not supported yet)
             if access_mem_map.num_symbols != 0:
-                raise RuntimeError(
-                    "Access patterns with symbols are not supported yet."
-                )
+                raise RuntimeError("Access patterns with symbols are not supported yet.")
 
             # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)
             access_iter = iter(
                 (
-                    access_mem_map.eval(
-                        generate_one_list(access_mem_map.num_dims, i), ()
-                    )[0],
+                    access_mem_map.eval(generate_one_list(access_mem_map.num_dims, i), ())[0],
                     schedule[operand].bounds[i],
                 )
                 for i in reversed(range(access_mem_map.num_dims))
@@ -164,12 +187,8 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         # get base addresses of the streaming region ops
         # TODO: generalize and fix for offsets
 
-        new_inputs: list[Operation] = [
-            memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs
-        ]
-        new_outputs = [
-            memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs
-        ]
+        new_inputs: list[Operation] = [memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs]
+        new_outputs = [memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs]
 
         # TODO: what is still required is a better system for the unused operands
         # of snax_gemmx / other accelerators. this now fills in empty/zero patterns for the unused operands.
@@ -186,9 +205,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
                 # insert empty patterns for D8 and zero pattern for C
                 snax_stride_patterns.insert(2, empty_pattern)
-                new_inputs.append(
-                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                )
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
 
                 # insert zero pattern for C, using the same pattern as D32 but pointing to zero
                 # this way, the bias used by the gemm is just a bunch of zeros
@@ -196,8 +213,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     3,
                     snax_stream.StridePattern(
                         upper_bounds=snax_stride_patterns[3].upper_bounds,
-                        temporal_strides=[0]
-                        * len(snax_stride_patterns[3].upper_bounds),
+                        temporal_strides=[0] * len(snax_stride_patterns[3].upper_bounds),
                         spatial_strides=[8],
                     ),
                 )
@@ -213,9 +229,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 # for a gemm, the 8bit-output port D8 are unused, so we create
                 # empty patterns for them here
                 snax_stride_patterns.insert(2, empty_pattern)
-                new_inputs.insert(
-                    2, memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                )
+                new_inputs.insert(2, memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
 
             else:
                 # simd
@@ -254,21 +268,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 # empty pattern for D32
                 snax_stride_patterns.append(empty_pattern)
                 # dummy base pointer for D32
-                new_inputs.append(
-                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                )
-
-        # make last spatial stride patterns 2d
-        snax_stride_patterns[-2] =  snax_stream.StridePattern(
-            upper_bounds=snax_stride_patterns[-2].upper_bounds,
-            temporal_strides=snax_stride_patterns[-2].temporal_strides,
-            spatial_strides=[8, 32],
-        )
-        snax_stride_patterns[-1] =  snax_stream.StridePattern(
-            upper_bounds=snax_stride_patterns[-1].upper_bounds,
-            temporal_strides=snax_stride_patterns[-1].temporal_strides,
-            spatial_strides=[8, 32],
-        )
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1]))
 
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(
@@ -283,8 +283,13 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
 
 @dataclass(frozen=True)
-class ConvertStreamToSnaxStream(ModulePass):
-    name = "convert-stream-to-snax-stream"
+class AutoflowSchedulerPass(ModulePass):
+    name = "autoflow-scheduler"
+
+    schedule_idx: int = 0
+    pure_output_stationary: bool = True
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(MemrefStreamToSnaxPattern()).rewrite_module(op)
+        PatternRewriteWalker(AutoflowSchedulerPattern(self.schedule_idx, self.pure_output_stationary)).rewrite_module(
+            op
+        )

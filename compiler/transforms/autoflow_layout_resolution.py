@@ -1,10 +1,11 @@
+
 from dataclasses import dataclass
 
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, memref
-from xdsl.dialects.builtin import MemRefType
+from xdsl.dialects.builtin import AffineMapAttr, ArrayAttr, MemRefType
 from xdsl.ir import Operation
-from xdsl.ir.affine import AffineMap
+from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -18,11 +19,13 @@ from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
 from compiler.dialects import snax_stream, stream
 from compiler.dialects.snax import StreamerConfigurationAttr
-from compiler.ir.stream import Schedule, SchedulePattern, optimizer, scheduler
+from compiler.ir.autoflow import scheduler
+from compiler.ir.stream import Schedule, SchedulePattern, optimizer
+from compiler.ir.stream.access_pattern import Template, TemplatePattern
 
 
 @dataclass
-class MemrefStreamToSnaxPattern(RewritePattern):
+class AutoflowLayoutResolutionPattern(RewritePattern):
     """
     A pass to convert streaming region operations to snax stream.
 
@@ -40,7 +43,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
+        self, op: stream.ScheduleOp, rewriter: PatternRewriter
     ):
         # Handle only stream ops dispatched to an accelerator:
         if op.accelerator is None:
@@ -62,35 +65,54 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         accelerator_type = AcceleratorRegistry().get_acc_info(acc_op)
         assert issubclass(accelerator_type, SNAXStreamer)
 
-        template = accelerator_type.get_template(op)
+
+        # overwrite template for gemmx:
+        m, n, k = (AffineDimExpr(i) for i in range(3))
+        template = [
+            AffineMap(3, 0, (m, k)),
+            AffineMap(3, 0, (k, n)),
+            AffineMap(3, 0, (m, n)),
+        ]
+        template_bounds = (8, 8, 8)
+
+        template = Template(TemplatePattern(template_bounds, tp) for tp in template)
+
+
 
         # Make sure the operands are memrefs
         for memref_operand in op.operands:
             if not isinstance(memref_operand.type, builtin.MemRefType):
                 return
 
-        # First, run the stream scheduling algorithm
-        schedule_bounds = tuple(op.get_static_pattern_bounds())
+        # recreate schedule from op
         schedule = Schedule(
-            SchedulePattern(schedule_bounds, pattern.data)
-            for pattern in op.patterns.data
+            SchedulePattern(
+                bounds=[x.data for x in bounds.data],
+                pattern=pattern.data
+            )
+            for pattern, bounds in zip(op.patterns.data, op.bounds.data)
         )
-        schedule = scheduler(template, schedule)
 
-        # FIXME: for stationary bounds, this is hardcoded
+        # assess stationarity and implement it
+
+        # for now, only weight stationarity is functional
+        dim = schedule.num_dims - template.num_dims - 1
+
+        new_output_bounds = list(schedule[-1].bounds)
+
+        for dim in reversed(range(schedule.num_dims - template.num_dims)):
+            # only check output stationarity
+            if not schedule[-1].depends_on(dim):
+                new_output_bounds[dim] = 1
+            else:
+                break
+
         schedules = [pattern for pattern in schedule]
-        for i in range(2, len(schedule)):
-            new_bounds = list(schedules[i].bounds)
-            if len(new_bounds) > 2:
-                new_bounds[-4] = 1
-            if len(new_bounds) == 10:
-                # specific conv example
-                new_bounds[1] = 1
-                new_bounds[2] = 1
-            schedules[i] = SchedulePattern(new_bounds, schedules[i].pattern)
-        schedule = Schedule(schedules)
+        schedules[-1] = SchedulePattern(new_output_bounds, schedules[-1].pattern)
 
-        schedule = optimizer(template, schedule)
+
+        # do not optimize for now
+        # schedule = optimizer(template, schedule)
 
         # We are now ready to convert the stream access patterns into snax stride patterns
         # construct the strided patterns for SNAX Streamers
@@ -111,7 +133,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             data_mem_map: AffineMap = memref_type.get_affine_map_in_bytes()
 
             # Mapping from access to data:
-            access_data_map: AffineMap = schedule[operand].pattern
+            access_data_map: AffineMap = schedules[operand].pattern
 
             # Mapping from access to memory:
             access_mem_map: AffineMap = data_mem_map.compose(access_data_map)
@@ -128,7 +150,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     access_mem_map.eval(
                         generate_one_list(access_mem_map.num_dims, i), ()
                     )[0],
-                    schedule[operand].bounds[i],
+                    schedules[operand].bounds[i],
                 )
                 for i in reversed(range(access_mem_map.num_dims))
             )
@@ -146,6 +168,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 # configuration, this works in all current cases and layouts but is far from generally correct.
                 spatial_strides = [8]
                 stride, bound = next(access_iter, (None, None))
+                # print(f"operand {operand} stride {stride} bound {bound}")
 
             # remaining are temporal strides
             while stride is not None and bound is not None:
@@ -158,7 +181,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 upper_bounds=upper_bounds,
                 temporal_strides=temporal_strides,
                 spatial_strides=spatial_strides,
-            ).collapse_dimensions()
+            )
             snax_stride_patterns.append(snax_stride_pattern)
 
         # get base addresses of the streaming region ops
@@ -196,17 +219,17 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     3,
                     snax_stream.StridePattern(
                         upper_bounds=snax_stride_patterns[3].upper_bounds,
-                        temporal_strides=[0]
-                        * len(snax_stride_patterns[3].upper_bounds),
+                        temporal_strides=snax_stride_patterns[3].temporal_strides,
                         spatial_strides=[8],
                     ),
                 )
 
-                # point C to c0
-                new_inputs.append(
-                    # zero pointer will generate 0 values
-                    arith.Constant.from_int_and_width(0, builtin.IndexType())
-                )
+                # convs: point C to D32
+                new_inputs.append(memref.ExtractAlignedPointerAsIndexOp.get(op.outputs[0]))
+                # new_inputs.append(
+                #     # zero pointer will generate 0 values
+                #     arith.Constant.from_int_and_width(0, builtin.IndexType())
+                # )
             elif len(snax_stride_patterns) == 4:
                 # gemm
                 #
@@ -283,8 +306,8 @@ class MemrefStreamToSnaxPattern(RewritePattern):
 
 
 @dataclass(frozen=True)
-class ConvertStreamToSnaxStream(ModulePass):
-    name = "convert-stream-to-snax-stream"
+class AutoflowLayoutResolutionPass(ModulePass):
+    name = "autoflow-layout-resolution"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(MemrefStreamToSnaxPattern()).rewrite_module(op)
+        PatternRewriteWalker(AutoflowLayoutResolutionPattern()).rewrite_module(op)

@@ -26,31 +26,33 @@ default_streamer = StreamerConfiguration(
     [
         Streamer(  # A
             StreamerType.Reader,
-            temporal_dims=("n", "n", "n", "n", "n", "n"),
+            temporal_dims=("n", "n", "n", "n", "n", "n", "n"),
             spatial_dims=("n",),
-            opts=(StreamerOpts.HasTranspose,),
+            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
         ),
         Streamer(  # B
             StreamerType.Reader,
-            temporal_dims=("n", "n", "n"),
+            temporal_dims=("n", "n", "n", "n", "n", "n", "n"),
             spatial_dims=("n",),
-            opts=(StreamerOpts.HasTranspose,),
+            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
         ),
         Streamer(  # D8
             StreamerType.Writer,
-            temporal_dims=("r", "n", "n"),
+            temporal_dims=("n", "n", "n"),
             spatial_dims=("n",),
+            opts=(StreamerOpts.HasAddressRemap,),
         ),
         Streamer(  # C
             StreamerType.Reader,
-            temporal_dims=("r", "n", "n"),
-            spatial_dims=("n",),
-            opts=(StreamerOpts.HasChannelMask,),
+            temporal_dims=("n", "n", "n", "n", "n", "n", "n"),
+            spatial_dims=("n", "n"),
+            opts=(StreamerOpts.HasChannelMask, StreamerOpts.HasAddressRemap, StreamerOpts.HasBroadcast),
         ),
         Streamer(  # D32
             StreamerType.Writer,
-            temporal_dims=("r", "n", "n"),
-            spatial_dims=("n",),
+            temporal_dims=("n", "n", "n", "n", "n", "n", "n"),
+            spatial_dims=("n", "n"),
+            opts=(StreamerOpts.HasAddressRemap,),
         ),
     ],
 )
@@ -67,6 +69,7 @@ class SNAXGEMMXAccelerator(
 
     supported_kernels = (
         SupportedKernel(kernel.QMacOp, (i8, i8, i32, i32, i32)),
+        SupportedKernel(kernel.MacOp, (i8, i8, i32)),
         SupportedKernel(kernel.AddOp, (i32, i32, i32)),
         SupportedKernel(kernel.RescaleOp, (i32, i8)),
     )
@@ -162,10 +165,6 @@ class SNAXGEMMXAccelerator(
 
         c0 = arith.Constant.from_int_and_width(0, 32)
         c1 = arith.Constant.from_int_and_width(1, 32)
-        knm: list = [
-            (((cst := arith.Constant.from_int_and_width(val.data, 32)),), cst.result)
-            for val in op.stride_patterns.data[0].upper_bounds
-        ]
 
         streamer_setup_vals = list(self._generate_streamer_setup_vals(op))
 
@@ -174,6 +173,16 @@ class SNAXGEMMXAccelerator(
         assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
 
         if isinstance(qmac := generic_op.body.block.first_op, kernel.QMacOp):
+            # compute knm: fix n = 1
+            n = 1
+            m = prod(x.data for x in op.stride_patterns.data[-1].upper_bounds) // n
+            k = prod(x.data for x in op.stride_patterns.data[0].upper_bounds) // m
+
+            knm: list = [
+                (((cst := arith.Constant.from_int_and_width(val, 32)),), cst.result)
+                for val in (k, n, m)
+            ]
+
             # gemm
             # bypass simd and set all related values to 0
             bypassSIMD = c1.result  # bypass simd
@@ -201,10 +210,16 @@ class SNAXGEMMXAccelerator(
 
         elif isinstance(rescale := generic_op.body.block.first_op, kernel.RescaleOp):
             # extract and compute correct value for csr's based on kernel rescale op
-            # set k to 1
-            knm.insert(
-                0, ((cst := arith.Constant.from_int_and_width(1, 32),), cst.result)
-            )
+            # set k and n to 1
+            k = 1
+            n = 1
+            m = prod(x.data for x in op.stride_patterns.data[0].upper_bounds)
+
+            knm: list = [
+                (((cst := arith.Constant.from_int_and_width(val, 32)),), cst.result)
+                for val in (k, n, m)
+            ]
+
             # simd
             bypassSIMD = c0.result
             subtractions = c0.result
@@ -246,6 +261,38 @@ class SNAXGEMMXAccelerator(
             loop_bound = prod(x.data for x in op.stride_patterns.data[0].upper_bounds)
             loop_bound = arith.Constant.from_int_and_width(loop_bound, i32)
             ops_to_add.append(loop_bound)
+
+        elif isinstance(mac := generic_op.body.block.first_op, kernel.MacOp):
+            # compute knm: fix n = 1
+            n = 1
+            m = prod(x.data for x in op.stride_patterns.data[-1].upper_bounds) // n
+            k = prod(x.data for x in op.stride_patterns.data[0].upper_bounds) // m
+
+            knm: list = [
+                (((cst := arith.Constant.from_int_and_width(val, 32)),), cst.result)
+                for val in (k, n, m)
+            ]
+
+            # gemm
+            # bypass simd and set all related values to 0
+            bypassSIMD = c1.result  # bypass simd
+            loop_bound = c0
+            csr0 = c0.result
+            csr1 = c0.result
+            shift_vals = (c0.result for _ in range(2))
+            mult_vals = (c0.result for _ in range(8))
+
+            # get zero points for gemm
+            zp_a = c0
+            zp_b = c0
+
+            # bitwise and with 8b'11111111 to avoid the sign bits extending the 8-bit field
+            # when bitlist packing
+            ops_to_add.append(cst255 := arith.Constant.from_int_and_width(255, 32))
+
+            bitlist = list(pack_bitlist((zp_a, zp_b), [0, 8]))
+            ops_to_add.extend(bitlist)
+            subtractions = bitlist[-1].results[0]
 
         else:
             raise NotImplementedError()

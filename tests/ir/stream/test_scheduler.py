@@ -18,7 +18,7 @@ def test_matching_1o():
 
     resulting_schedule = scheduler(template, schedule)
 
-    assert schedule == resulting_schedule.clear_unused_dims()
+    assert template.matches(resulting_schedule.clear_unused_dims())
 
 
 def test_matching_2o():
@@ -30,7 +30,7 @@ def test_matching_2o():
 
     resulting_schedule = scheduler(template, schedule)
 
-    assert schedule == resulting_schedule.clear_unused_dims()
+    assert template.matches(resulting_schedule.clear_unused_dims())
 
 
 def test_tiling_1o1_1d():

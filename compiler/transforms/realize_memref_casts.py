@@ -100,6 +100,8 @@ class RealizeMemrefCasts(RewritePattern):
                 is_input = op.results[0] in use_op.inputs
             elif isinstance(use_op, stream.StreamingRegionOp):
                 is_input = op.results[0] in use_op.inputs
+            elif isinstance(use_op, stream.ScheduleOp):
+                is_input = op.results[0] in use_op.inputs
             else:
                 is_input = True
             if is_input:
@@ -118,6 +120,8 @@ class RealizeMemrefCasts(RewritePattern):
             if isinstance(use_op, linalg.Generic):
                 is_output = op.results[0] in use_op.outputs
             elif isinstance(use_op, stream.StreamingRegionOp):
+                is_output = op.results[0] in use_op.outputs
+            elif isinstance(use_op, stream.ScheduleOp):
                 is_output = op.results[0] in use_op.outputs
             elif isinstance(use_op, func.Return):
                 is_output = False

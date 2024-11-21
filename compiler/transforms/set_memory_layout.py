@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from math import prod
 
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, linalg
@@ -17,6 +18,7 @@ from compiler.dialects import stream
 from compiler.dialects.kernel import AddOp, QMacOp, RescaleOp
 from compiler.dialects.snax import LayoutCast
 from compiler.dialects.tsl import TiledStridedLayoutAttr
+from compiler.ir.stream import Schedule, SchedulePattern
 from compiler.ir.tsl import Stride, TiledStride, TiledStridedLayout
 
 
@@ -36,9 +38,7 @@ class AddMemoryLayoutSIMD(RewritePattern):
                 return
 
             shaped_operands: list[MemRefType] = [
-                op.type
-                for op in linalg_op.operands
-                if isinstance(op.type, builtin.MemRefType)
+                op.type for op in linalg_op.operands if isinstance(op.type, builtin.MemRefType)
             ]
 
             m = shaped_operands[0].get_shape()[0]
@@ -54,9 +54,7 @@ class AddMemoryLayoutSIMD(RewritePattern):
                     [
                         TiledStride(
                             [
-                                Stride(
-                                    256 * n // 8 if n else None, m // 8 if m else None
-                                ),
+                                Stride(256 * n // 8 if n else None, m // 8 if m else None),
                                 Stride(8, 8),
                             ]
                         ),
@@ -70,9 +68,7 @@ class AddMemoryLayoutSIMD(RewritePattern):
                     [
                         TiledStride(
                             [
-                                Stride(
-                                    256 * n // 8 if n else None, m // 8 if m else None
-                                ),
+                                Stride(256 * n // 8 if n else None, m // 8 if m else None),
                                 Stride(8, 8),
                             ]
                         ),
@@ -82,13 +78,9 @@ class AddMemoryLayoutSIMD(RewritePattern):
             )
 
             # insert layout_cast ops
-            new_input_a = LayoutCast.from_type_and_target_layout(
-                linalg_op.inputs[0], tsl_input
-            )
+            new_input_a = LayoutCast.from_type_and_target_layout(linalg_op.inputs[0], tsl_input)
 
-            new_output = LayoutCast.from_type_and_target_layout(
-                linalg_op.outputs[0], tsl_output
-            )
+            new_output = LayoutCast.from_type_and_target_layout(linalg_op.outputs[0], tsl_output)
 
             new_linalg_op = linalg.Generic(
                 inputs=[new_input_a.dest],
@@ -126,9 +118,7 @@ class AddMemoryLayout(RewritePattern):
     gemm_layout: GemmLayout = GemmLayout.cyclic
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: linalg.Generic | stream.StreamingRegionOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: linalg.Generic | stream.StreamingRegionOp, rewriter: PatternRewriter):
         # check if operation is dispatched via library call, as set by e.g.
         # the dispatch-kernels pass
 
@@ -152,9 +142,10 @@ class AddMemoryLayout(RewritePattern):
                 if not isinstance(op.body.block.first_op, QMacOp):
                     return
             elif isinstance(op, stream.StreamingRegionOp):
-                assert isinstance(
-                    generic_op := op.body.block.first_op, stream.GenericOp
-                )
+                # TODO: this is a bit hacky, detect conv/gemm based on rank of input tensor:
+                if len(op.operands[0].type.get_shape()) > 2:
+                    return
+                assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
                 if not isinstance(generic_op.body.block.first_op, QMacOp):
                     return
 
@@ -167,9 +158,7 @@ class AddMemoryLayout(RewritePattern):
             # get m, n, k
 
             shaped_operands: list[tuple[int, MemRefType]] = [
-                (index, op.type)
-                for index, op in enumerate(op.operands)
-                if isinstance(op.type, builtin.MemRefType)
+                (index, op.type) for index, op in enumerate(op.operands) if isinstance(op.type, builtin.MemRefType)
             ]
 
             m = shaped_operands[0][1].get_shape()[0]
@@ -202,9 +191,7 @@ class AddMemoryLayout(RewritePattern):
                                 Stride(8, 8),
                             ]
                         ),
-                        TiledStride(
-                            [Stride(tile_stride, k // 8 if k else None), Stride(1, 8)]
-                        ),
+                        TiledStride([Stride(tile_stride, k // 8 if k else None), Stride(1, 8)]),
                     ]
                 )
             )
@@ -214,9 +201,7 @@ class AddMemoryLayout(RewritePattern):
             tsl_input_b = TiledStridedLayoutAttr(
                 TiledStridedLayout(
                     [
-                        TiledStride(
-                            [Stride(tile_stride, k // 8 if k else None), Stride(1, 8)]
-                        ),
+                        TiledStride([Stride(tile_stride, k // 8 if k else None), Stride(1, 8)]),
                         TiledStride(
                             [
                                 Stride(
@@ -236,9 +221,7 @@ class AddMemoryLayout(RewritePattern):
                     [
                         TiledStride(
                             [
-                                Stride(
-                                    64 * n // 8 if n else None, m // 8 if m else None
-                                ),
+                                Stride(64 * n // 8 if n else None, m // 8 if m else None),
                                 Stride(8, 8),
                             ]
                         ),
@@ -248,27 +231,17 @@ class AddMemoryLayout(RewritePattern):
             )
 
             # insert layout_cast ops
-            new_input_a = LayoutCast.from_type_and_target_layout(
-                op.inputs[0], tsl_input_a
-            )
+            new_input_a = LayoutCast.from_type_and_target_layout(op.inputs[0], tsl_input_a)
 
-            new_input_b = LayoutCast.from_type_and_target_layout(
-                op.inputs[1], tsl_input_b
-            )
+            new_input_b = LayoutCast.from_type_and_target_layout(op.inputs[1], tsl_input_b)
 
-            new_output = LayoutCast.from_type_and_target_layout(
-                op.outputs[0], tsl_output
-            )
+            new_output = LayoutCast.from_type_and_target_layout(op.outputs[0], tsl_output)
 
-            rewriter.insert_op(
-                (new_input_a, new_input_b, new_output), InsertPoint.before(op)
-            )
+            rewriter.insert_op((new_input_a, new_input_b, new_output), InsertPoint.before(op))
 
             if has_add_c:
                 rewriter.insert_op(
-                    new_input_c := LayoutCast.from_type_and_target_layout(
-                        op.inputs[2], tsl_output
-                    ),
+                    new_input_c := LayoutCast.from_type_and_target_layout(op.inputs[2], tsl_output),
                     InsertPoint.before(op),
                 )
                 op.operands[shaped_operands[0][0]] = new_input_a.dest
@@ -281,17 +254,225 @@ class AddMemoryLayout(RewritePattern):
                 op.operands[shaped_operands[2][0]] = new_output.dest
 
 
+@dataclass
+class AddConvMemoryLayout(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: linalg.Generic | stream.StreamingRegionOp, rewriter: PatternRewriter):
+        # check if operation is dispatched via library call, as set by e.g.
+        # the dispatch-kernels pass
+
+        if isinstance(op, linalg.Generic):
+            if op.library_call is None:
+                return
+            else:
+                library_call = op.library_call.data
+        elif isinstance(op, stream.StreamingRegionOp):
+            if op.accelerator is None:
+                return
+            else:
+                library_call = op.accelerator.data
+
+        has_add_c = False
+
+        # check for library call
+        if library_call == "snax_gemmx" or library_call == "snax_gemmx_stream":
+            # only do so for qmac kernels
+            if isinstance(op, linalg.Generic):
+                if not isinstance(op.body.block.first_op, QMacOp):
+                    return
+            elif isinstance(op, stream.StreamingRegionOp):
+                # TODO: this is a bit hacky, detect conv/gemm based on rank of input tensor:
+                if len(op.operands[0].type.get_shape()) != 4:
+                    return
+                assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
+                if not isinstance(generic_op.body.block.first_op, QMacOp):
+                    return
+
+            # the layout should be as static as the memref is. no more, no less
+            # get b, ox, oy, fx, fy, c, k
+
+            shaped_operands: list[tuple[int, MemRefType]] = [
+                (index, op.type) for index, op in enumerate(op.operands) if isinstance(op.type, builtin.MemRefType)
+            ]
+
+            # do not alter existing set layouts
+            for _, memreftype in shaped_operands:
+                if isinstance(memreftype.layout, TiledStridedLayoutAttr):
+                    return
+
+            b = shaped_operands[0][1].get_shape()[0]
+            ix = shaped_operands[0][1].get_shape()[1]
+            iy = shaped_operands[0][1].get_shape()[2]
+            ox = shaped_operands[2][1].get_shape()[1]
+            oy = shaped_operands[2][1].get_shape()[2]
+            fx = shaped_operands[1][1].get_shape()[1]
+            fy = shaped_operands[1][1].get_shape()[2]
+            c = shaped_operands[0][1].get_shape()[3]
+            k = shaped_operands[2][1].get_shape()[3]
+
+            # lots of current limitations:
+            assert b == 1
+            assert ix > 0
+            assert iy > 0
+            assert ox > 0
+            assert oy > 0
+            assert fx > 0
+            assert fy > 0
+            assert c > 0
+            assert c % 8 == 0
+            assert k % 8 == 0
+            assert ox % 8 == 0
+
+            tsl_input_a = TiledStridedLayoutAttr(
+                TiledStridedLayout(
+                    [
+                        TiledStride([Stride(ix * iy * c, 1)]),  # b
+                        TiledStride([Stride(ix * 8, iy)]),  # iy
+                        TiledStride([Stride(8, ix)]),  # ix
+                        TiledStride([Stride(iy * ix * 8, c // 8), Stride(1, 8)]),  # c
+                    ]
+                )
+            )
+
+            tsl_input_b = TiledStridedLayoutAttr(
+                TiledStridedLayout(
+                    [
+                        TiledStride([Stride(8 * fy * fx * c, k // 8), Stride(8, 8)]),  # k
+                        TiledStride([Stride(64 * fy, fx)]),  # fy
+                        TiledStride([Stride(64, fy)]),  # fx
+                        TiledStride([Stride(64 * fy * fx, c // 8), Stride(1, 8)]),  # c
+                    ]
+                )
+            )
+
+            tsl_output = TiledStridedLayoutAttr(
+                TiledStridedLayout(
+                    [
+                        TiledStride([Stride(ox * oy * k, 1)]),  # b
+                        TiledStride([Stride(8, oy)]),  # oy
+                        TiledStride([Stride(oy * 8, ox)]),  # ox
+                        TiledStride([Stride(ox * oy * 8, k // 8), Stride(1, 8)]),  # k
+                    ]
+                )
+            )
+
+            # insert layout_cast ops
+            new_input_a = LayoutCast.from_type_and_target_layout(op.inputs[0], tsl_input_a)
+
+            new_input_b = LayoutCast.from_type_and_target_layout(op.inputs[1], tsl_input_b)
+
+            new_output = LayoutCast.from_type_and_target_layout(op.outputs[0], tsl_output)
+
+            rewriter.insert_op((new_input_a, new_input_b, new_output), InsertPoint.before(op))
+
+            if has_add_c:
+                rewriter.insert_op(
+                    new_input_c := LayoutCast.from_type_and_target_layout(op.inputs[2], tsl_output),
+                    InsertPoint.before(op),
+                )
+                op.operands[shaped_operands[0][0]] = new_input_a.dest
+                op.operands[shaped_operands[1][0]] = new_input_b.dest
+                op.operands[shaped_operands[2][0]] = new_input_c.dest
+                op.operands[shaped_operands[3][0]] = new_output.dest
+            else:
+                op.operands[shaped_operands[0][0]] = new_input_a.dest
+                op.operands[shaped_operands[1][0]] = new_input_b.dest
+                op.operands[shaped_operands[2][0]] = new_output.dest
+
+
+@dataclass
+class AddCyclicMemoryLayout(RewritePattern):
+    layout_idx: int = 0
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: stream.ScheduleOp, rewriter: PatternRewriter):
+
+        # do not alter existing set layouts
+        for operand in op.operands:
+            if isinstance(operand.type, MemRefType):
+                if isinstance(operand.type.layout, TiledStridedLayoutAttr):
+                    return
+
+        # recreate schedule from op
+        schedule = Schedule(
+            SchedulePattern(bounds=[x.data for x in bounds.data], pattern=pattern.data)
+            for pattern, bounds in zip(op.patterns.data, op.bounds.data)
+        )
+
+        def generate_one_list(n: int, i: int):
+            return [1 if j == i else 0 for j in range(n)]
+
+        new_operands = []
+
+
+        for operand, schedule_pattern in zip(op.operands, schedule):
+            assert isinstance(optype := operand.type, MemRefType)
+
+            strides = [[] for i in range(optype.get_num_dims())]
+            current_stride = 1
+
+            for i in reversed(range(schedule_pattern.num_dims)):
+                result = schedule_pattern.pattern.eval(generate_one_list(schedule_pattern.num_dims, i), [])
+                result_1 = [1 if x else 0 for x in result]
+                if 1 in result_1:
+                    dim = result_1.index(1)
+                    existing_bound = prod(s.bound for s in strides[dim])
+                    dim_shape = -(optype.get_shape()[dim] // -existing_bound) # take ceildiv
+                    # can we apply further tiling?
+                    # FIXME: need better check, now relying on the fact that ix will never
+                    # be divisible and fx will always be odd
+                    if (
+                        # dim_shape % schedule_pattern.bounds[i] == 0 and
+                        schedule_pattern.bounds[i] % 2 == 0
+                        and self.layout_idx == 0
+                        and dim_shape != 1
+                    ):
+                        bound = schedule_pattern.bounds[i]
+                    else:
+                        bound = dim_shape
+                    strid_obj = Stride(current_stride, bound)
+
+                    # maybe some padding for next stride
+                    if bound < 8 and current_stride == 1:
+                        current_stride = current_stride * 8
+                        # check: maybe possible with transpose?
+                    elif bound < 8 and current_stride == 8:
+                        current_stride = current_stride * 8
+                    else:
+                        current_stride = current_stride * bound
+
+                    strides[result_1.index(1)].insert(0, strid_obj)
+
+            for stride in strides:
+                if not stride:
+                    stride.append(Stride(current_stride, 1))
+
+            layout = TiledStridedLayout([TiledStride(s) for s in strides])
+            layout = layout.simplify()
+            tsl = TiledStridedLayoutAttr(layout)
+
+            # insert layout_cast ops
+            new_operands.append(LayoutCast.from_type_and_target_layout(operand, tsl))
+
+
+        rewriter.insert_op(new_operands, InsertPoint.before(op))
+
+        for i, new_operand in enumerate(new_operands):
+            op.operands[i] = new_operand.dest
+
+
 @dataclass(frozen=True)
 class SetMemoryLayout(ModulePass):
     name = "set-memory-layout"
 
     gemm_layout: str = "cyclic"
+    layout_idx: int = 0
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(
-            AddMemoryLayoutSIMD(), apply_recursively=False
-        ).rewrite_module(op)
+        PatternRewriteWalker(AddMemoryLayoutSIMD(), apply_recursively=False).rewrite_module(op)
         PatternRewriteWalker(
             AddMemoryLayout(gemm_layout=GemmLayout(self.gemm_layout)),
             apply_recursively=False,
         ).rewrite_module(op)
+        PatternRewriteWalker(AddConvMemoryLayout()).rewrite_module(op)
+        PatternRewriteWalker(AddCyclicMemoryLayout(1)).rewrite_module(op)
