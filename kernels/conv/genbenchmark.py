@@ -192,6 +192,7 @@ def generate_resnet_benchmark():
         # bm.run()
         # bm.trace()
         bm.copy_binary("")
+        shutil.copy(src=bm.src_dir / "main.c", dst=bm.export_dir / "main.c")
         write_makefile(bm.export_dir / "Makefile")
         # bm.copy_logs('')
         bm.clean()
@@ -200,5 +201,5 @@ def generate_resnet_benchmark():
 if __name__ == "__main__":
     # generate_layout_benchmark_gemm()
     # generate_layout_benchmark_conv()
-    generate_temp_mapping_benchmark()
-    # generate_resnet_benchmark()
+# generate_temp_mapping_benchmark()
+    generate_resnet_benchmark()
