@@ -475,4 +475,4 @@ class SetMemoryLayout(ModulePass):
             apply_recursively=False,
         ).rewrite_module(op)
         PatternRewriteWalker(AddConvMemoryLayout()).rewrite_module(op)
-        PatternRewriteWalker(AddCyclicMemoryLayout(1)).rewrite_module(op)
+        PatternRewriteWalker(AddCyclicMemoryLayout(self.layout_idx)).rewrite_module(op)
