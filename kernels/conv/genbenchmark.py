@@ -206,6 +206,6 @@ def generate_resnet_benchmark():
 
 if __name__ == "__main__":
     generate_layout_benchmark_gemm()
-    # generate_layout_benchmark_conv()
+    generate_layout_benchmark_conv()
     # generate_temp_mapping_benchmark()
     # generate_resnet_benchmark()
