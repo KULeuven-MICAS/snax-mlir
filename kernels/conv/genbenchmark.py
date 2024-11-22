@@ -37,7 +37,7 @@ def generate_layout_benchmark_gemm():
     ]
 
     for layout in selected_layouts:
-        for i, spec in enumerate(specs):
+        for i, spec in enumerate(specs[1:0]):
             module = generate_conv_ir(spec, generate_constants=False)
 
             binary = "generated.x"
@@ -206,6 +206,6 @@ def generate_resnet_benchmark():
 
 if __name__ == "__main__":
     generate_layout_benchmark_gemm()
-    generate_layout_benchmark_conv()
+    # generate_layout_benchmark_conv()
     # generate_temp_mapping_benchmark()
     # generate_resnet_benchmark()
