@@ -37,7 +37,7 @@ def generate_layout_benchmark_gemm():
     ]
 
     for layout in selected_layouts:
-        for i, spec in enumerate(specs[1:0]):
+        for i, spec in enumerate(specs):
             module = generate_conv_ir(spec, generate_constants=False)
 
             binary = "generated.x"
