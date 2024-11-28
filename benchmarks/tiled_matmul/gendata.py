@@ -1,13 +1,57 @@
 # simple script to generate inputs and expected outputs for simple_matmult
 
 import argparse
+import os
 
 import numpy as np
+import numpy.typing as npt
 
-from util.gendata import create_data, create_header
+
+def create_header(
+    file_name: str, sizes: dict[str, int], variables: dict[str, npt.NDArray]
+) -> None:
+    if os.path.dirname(file_name):
+        os.makedirs(os.path.dirname(file_name), exist_ok=True)
+    with open(file_name, "w") as f:
+        includes = ["#include <stdint.h>", "#pragma once", ""]
+        includes = "\n".join(includes)
+        variables_string = [""]
+        for i, j in sizes.items():
+            variables_string.append(f"#define {i} {j}")
+        variables_string.append("")
+        for i, j in variables.items():
+            variables_string.append(f"extern const {j.dtype}_t {i}[{j.size}];")
+        variables_string = "\n".join(variables_string)
+        f.write(includes)
+        f.write(variables_string)
+        f.write("\n")
 
 
-def create_test_data(n, m, k, ones=False, random_shape=False):
+def create_data(file_name: str, variables: dict[str, npt.NDArray]):
+    includes = [f'#include "{file_name[:-2]}.h"', "", ""]
+    includes = "\n".join(includes)
+    variables = {i: np.reshape(j, j.size) for i, j in variables.items()}
+    if os.path.dirname(file_name):
+        os.makedirs(os.path.dirname(file_name), exist_ok=True)
+    with open(file_name, "w") as f:
+        f.write(includes)
+        for variable_name, variable_value in variables.items():
+            f.write(
+                f"const {variable_value.dtype}_t {variable_name}"
+                + f"[{variable_value.size}] = "
+                + "{\n"
+            )
+            variable_str = ["\t" + str(i) for i in variable_value]
+            f.write(",\n".join(variable_str))
+            f.write("\n};\n\n")
+
+
+def create_test_data(n, m, k):
+    n = int(n)
+    m = int(m)
+    k = int(k)
+    ones = False
+    random_shape = False
     print(
         f"Creating test data with n={n}, m={m}, k={k}, ones={ones}, random_shape={random_shape}"
     )
@@ -67,8 +111,8 @@ def create_test_data(n, m, k, ones=False, random_shape=False):
         "C": C,
     }
 
-    create_header("data.h", sizes, variables)
-    create_data("data.c", variables)
+    create_header(f"data_{m}_{n}_{k}.h", sizes, variables)
+    create_data(f"data_{m}_{n}_{k}.c", variables)
 
 
 if __name__ == "__main__":

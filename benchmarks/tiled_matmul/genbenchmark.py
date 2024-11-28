@@ -10,7 +10,11 @@ from xdsl.printer import Printer
 from util.snax_benchmark import SNAXBenchmark
 
 
-def create_tiled_matrix_multiply(k, m, n, tiling_factors):
+def create_tiled_matrix_multiply(k, m, n):
+    tiling_factors = [8, 8]
+    k = int(k)
+    m = int(m)
+    n = int(n)
     """
     Generate IR in the form of:
     ```
