@@ -1,63 +1,24 @@
-# Paths
-SNITCH_LLVM_PATH = "/usr/bin"
-SNITCH_SW_PATH = "/opt/snax-kul-cluster-mixed-narrow-wide"
+from util.snake.flags import (
+    get_cc_flags,
+    get_ld_flags,
+    get_mlir_postproc_flags,
+    get_mlir_preproc_flags,
+)
+from util.snake.paths import get_default_paths
 
+# Paths
+SNITCH_SW_PATH = "/opt/snax-kul-cluster-mixed-narrow-wide"
+SNITCH_LLVM_PATH = "/usr/bin"
 
 # Binaries
 VLTSIM = "/opt/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster.vlt"
-CC = f"{SNITCH_LLVM_PATH}/clang"
-LD = CC
-MLIROPT = "mlir-opt"
-MLIRTRANSLATE = "mlir-translate"
-SNAXOPT = "snax-opt"
+CC, LD, MLIROPT, MLIRTRANSLATE, SNAXOPT = get_default_paths(SNITCH_SW_PATH)
 
-# Flags
-CFLAGS = [
-    "-Wno-unused-command-line-argument",
-    f"-I{SNITCH_SW_PATH}/target/snitch_cluster/sw/runtime/rtl-generic/src",
-    f"-I{SNITCH_SW_PATH}/target/snitch_cluster/sw/runtime/common",
-    f"-I{SNITCH_SW_PATH}/sw/snRuntime/api",
-    f"-I{SNITCH_SW_PATH}/sw/snRuntime/src",
-    f"-I{SNITCH_SW_PATH}/sw/snRuntime/src/omp/",
-    f"-I{SNITCH_SW_PATH}/sw/snRuntime/api/omp/",
-    f"-I{SNITCH_SW_PATH}/sw/math/arch/riscv64/bits/",
-    f"-I{SNITCH_SW_PATH}/sw/math/arch/generic",
-    f"-I{SNITCH_SW_PATH}/sw/math/src/include",
-    f"-I{SNITCH_SW_PATH}/sw/math/src/internal",
-    f"-I{SNITCH_SW_PATH}/sw/math/include/bits",
-    f"-I{SNITCH_SW_PATH}/sw/math/include",
-    f"-I../../runtime/include",
-    "-D__DEFINED_uint64_t",
-    "--target=riscv32-unknown-elf",
-    "-mcpu=generic-rv32",
-    "-march=rv32imafdzfh",
-    "-mabi=ilp32d",
-    "-mcmodel=medany",
-    "-ftls-model=local-exec",
-    "-ffast-math",
-    "-fno-builtin-printf",
-    "-fno-common",
-    "-O3",
-]
+CFLAGS = get_cc_flags(SNITCH_SW_PATH)
 CFLAGS.extend(["-std=gnu11", "-Wall", "-Wextra"])
-
 CFLAGS.append(f"-I{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/include")
 
-
-LDFLAGS = [
-    f"-fuse-ld={SNITCH_LLVM_PATH}/ld.lld",
-    "--target=riscv32-unknown-elf",
-    "-mcpu=generic-rv32",
-    "-march=rv32imafdzfh",
-    "-mabi=ilp32d",
-    "-mcmodel=medany",
-    f"-T{SNITCH_SW_PATH}/sw/snRuntime/base.ld",
-    f"-L{SNITCH_SW_PATH}/target/snitch_cluster/sw/runtime/rtl-generic",
-    f"-L{SNITCH_SW_PATH}/target/snitch_cluster/sw/runtime/rtl-generic/build",
-    "-nostdlib",
-    "-lsnRuntime",
-]
-
+LDFLAGS = get_ld_flags(SNITCH_LLVM_PATH, SNITCH_SW_PATH)
 
 MLIRPREPROCFLAGS = [
     "--linalg-generalize-named-ops",
@@ -65,24 +26,7 @@ MLIRPREPROCFLAGS = [
     "--mlir-print-local-scope",
 ]
 
-MLIROPTFLAGS = [
-    "--convert-linalg-to-loops",
-    "--convert-scf-to-cf",
-    "--lower-affine",
-    "--canonicalize",
-    "--cse",
-    "--convert-math-to-llvm",
-    "--llvm-request-c-wrappers",
-    "--expand-strided-metadata",
-    "--lower-affine",
-    "--convert-index-to-llvm=index-bitwidth=32",
-    "--convert-cf-to-llvm=index-bitwidth=32",
-    "--convert-arith-to-llvm=index-bitwidth=32",
-    "--convert-func-to-llvm='index-bitwidth=32'",
-    "--finalize-memref-to-llvm='use-generic-functions index-bitwidth=32'",
-    "--canonicalize",
-    "--reconcile-unrealized-casts",
-]
+MLIROPTFLAGS = get_mlir_postproc_flags()
 
 
 def get_snax_flags(layout, remove_copy):
@@ -116,149 +60,8 @@ def get_snax_flags(layout, remove_copy):
 
 
 # Rules
-
-from gendata import create_test_data
-
-
-rule generate_data:
-    output:
-        "data_{m}_{n}_{k}_{add_c}.c",
-        "data_{m}_{n}_{k}_{add_c}.h",
-    params:
-        m=lambda wildcards: int(wildcards.m),
-        n=lambda wildcards: int(wildcards.n),
-        k=lambda wildcards: int(wildcards.k),
-        add_c=lambda wildcards: True if wildcards.add_c == "gemm" else False,
-    run:
-        create_test_data(
-            params.n,
-            params.m,
-            params.k,
-            f"data_{wildcards.m}_{wildcards.n}_{wildcards.k}_{wildcards.add_c}",
-            params.add_c,
-        )
-
-
-rule postprocess_llvm_module:
-    input:
-        "{file}.ll",
-    output:
-        temp("{file}.ll12"),
-    shell:
-        "../../runtime/tollvm12.py < {input} > {output} "
-
-
-rule compile_llvm_module:
-    input:
-        "{file}.ll12",
-    output:
-        temp("{file}.o"),
-    shell:
-        "{CC} {CFLAGS} -x ir -c {input} -o {output}"
-
-
-rule render_main:
-    input:
-        "main.c",
-    output:
-        temp("main_{m}_{n}_{k}_{add_c}.rendered.c"),
-    shell:
-        'echo "#include \\"data_{wildcards.m}_{wildcards.n}_{wildcards.k}_{wildcards.add_c}.h\\"" | cat - {input} > {output}'
-
-
-rule compile_main:
-    input:
-        "data_{m}_{n}_{k}_{add_c}.o",
-        "main_{m}_{n}_{k}_{add_c}.rendered.c",
-    output:
-        temp("main_{m}_{n}_{k}_{add_c}.o"),
-    shell:
-        "{CC} {CFLAGS} {input[0]} -c {input[1]} -o {output}"
-
-
-rule compile_snax_binary:
-    input:
-        "generated_{m}_{n}_{k}_{add_c}_{layout}.o",
-        "main_{m}_{n}_{k}_{add_c}.o",
-        "data_{m}_{n}_{k}_{add_c}.o",
-    output:
-        "generated_{m}_{n}_{k}_{add_c}_{layout}.x",
-    shell:
-        "{LD} {LDFLAGS} {input} -o {output}"
-
-
-rule compile_c:
-    input:
-        "{file}.c",
-    output:
-        temp("{file}.o"),
-    shell:
-        "{CC} {CFLAGS} -c {input} -o {output}"
-
-
-rule clean:
-    shell:
-        "rm -rf *.ll12 *.x *.o *.logs/ logs/ data.h data.c"
-
-
-rule preprocess_mlir:
-    input:
-        "{file}.generated.mlir",
-    output:
-        temp("{file}.preprocfinal.mlir"),
-    run:
-        shell(
-            "{MLIROPT} {MLIRPREPROCFLAGS} -o {wildcards.file}.preprocfinal.mlir {input}"
-        )
-
-
-rule snax_opt_mlir:
-    input:
-        "generated_{m}_{n}_{k}_{add_c}.preprocfinal.mlir",
-    output:
-        temp("generated_{m}_{n}_{k}_{add_c}_{layout}.snax-opt.mlir"),
-    params:
-        snax_flags=lambda wildcards: get_snax_flags(wildcards.layout, True),
-    shell:
-        "{SNAXOPT} -p {params.snax_flags} -o {output} {input}"
-
-
-rule translate_mlir:
-    input:
-        "{file}.ll.mlir",
-    output:
-        temp("{file}.ll"),
-    shell:
-        "{MLIRTRANSLATE} --mlir-to-llvmir -o {output} {input}"
-
-
-rule postprocess_mlir:
-    input:
-        "{file}.snax-opt.mlir",
-    output:
-        temp("{file}.ll.mlir"),
-    shell:
-        "{MLIROPT} {MLIROPTFLAGS} -o {output} {input}"
-
-
 from genbenchmark import create_matrix_multiply, write_module_to_file
-
-
-rule generate_mlir:
-    output:
-        "generated_{m}_{n}_{k}_{algo}.generated.mlir",
-    params:
-        m=lambda wildcards: int(wildcards.m),
-        n=lambda wildcards: int(wildcards.n),
-        k=lambda wildcards: int(wildcards.k),
-        add_c=lambda wildcards: True if wildcards.algo == "gemm" else False,
-    run:
-        write_module_to_file(
-            create_matrix_multiply(params.k, params.m, params.n, params.add_c),
-            output[0],
-        )
-
-
+from gendata import create_test_data
 import itertools
 
 
@@ -326,7 +129,7 @@ def get_sizes():
 
 
 sizes = get_sizes()
-add_c = "gemm"
+add_c = ("gemm", "matmul")
 layout = ("banked", "cyclic")
 
 
@@ -338,3 +141,139 @@ rule run_benchmarks:
             algo=add_c,
             layout=layout,
         ),
+
+
+rule generate_mlir:
+    output:
+        "generated_{m}_{n}_{k}_{algo}.generated.mlir",
+    params:
+        m=lambda wildcards: int(wildcards.m),
+        n=lambda wildcards: int(wildcards.n),
+        k=lambda wildcards: int(wildcards.k),
+        add_c=lambda wildcards: True if wildcards.algo == "gemm" else False,
+    run:
+        write_module_to_file(
+            create_matrix_multiply(params.k, params.m, params.n, params.add_c),
+            output[0],
+        )
+
+
+rule preprocess_mlir:
+    input:
+        "{file}.generated.mlir",
+    output:
+        temp("{file}.preprocfinal.mlir"),
+    run:
+        shell(
+            "{MLIROPT} {MLIRPREPROCFLAGS} -o {wildcards.file}.preprocfinal.mlir {input}"
+        )
+
+
+rule snax_opt_mlir:
+    input:
+        "generated_{m}_{n}_{k}_{add_c}.preprocfinal.mlir",
+    output:
+        temp("generated_{m}_{n}_{k}_{add_c}_{layout}.snax-opt.mlir"),
+    params:
+        snax_flags=lambda wildcards: get_snax_flags(wildcards.layout, True),
+    shell:
+        "{SNAXOPT} -p {params.snax_flags} -o {output} {input}"
+
+
+rule translate_mlir:
+    input:
+        "{file}.ll.mlir",
+    output:
+        temp("{file}.ll"),
+    shell:
+        "{MLIRTRANSLATE} --mlir-to-llvmir -o {output} {input}"
+
+
+rule postprocess_mlir:
+    input:
+        "{file}.snax-opt.mlir",
+    output:
+        temp("{file}.ll.mlir"),
+    shell:
+        "{MLIROPT} {MLIROPTFLAGS} -o {output} {input}"
+
+
+rule postprocess_llvm_module:
+    input:
+        "{file}.ll",
+    output:
+        temp("{file}.ll12"),
+    shell:
+        "../../runtime/tollvm12.py < {input} > {output} "
+
+
+rule compile_llvm_module:
+    input:
+        "{file}.ll12",
+    output:
+        temp("{file}.o"),
+    shell:
+        "{CC} {CFLAGS} -x ir -c {input} -o {output}"
+
+
+rule generate_data:
+    output:
+        "data_{m}_{n}_{k}_{add_c}.c",
+        "data_{m}_{n}_{k}_{add_c}.h",
+    params:
+        m=lambda wildcards: int(wildcards.m),
+        n=lambda wildcards: int(wildcards.n),
+        k=lambda wildcards: int(wildcards.k),
+        add_c=lambda wildcards: True if wildcards.add_c == "gemm" else False,
+    run:
+        create_test_data(
+            params.n,
+            params.m,
+            params.k,
+            f"data_{wildcards.m}_{wildcards.n}_{wildcards.k}_{wildcards.add_c}",
+            params.add_c,
+        )
+
+
+rule render_main:
+    input:
+        "main.c",
+    output:
+        temp("main_{m}_{n}_{k}_{add_c}.rendered.c"),
+    shell:
+        'echo "#include \\"data_{wildcards.m}_{wildcards.n}_{wildcards.k}_{wildcards.add_c}.h\\"" | cat - {input} > {output}'
+
+
+rule compile_main:
+    input:
+        "data_{m}_{n}_{k}_{add_c}.o",
+        "main_{m}_{n}_{k}_{add_c}.rendered.c",
+    output:
+        temp("main_{m}_{n}_{k}_{add_c}.o"),
+    shell:
+        "{CC} {CFLAGS} {input[0]} -c {input[1]} -o {output}"
+
+
+rule compile_snax_binary:
+    input:
+        "generated_{m}_{n}_{k}_{add_c}_{layout}.o",
+        "main_{m}_{n}_{k}_{add_c}.o",
+        "data_{m}_{n}_{k}_{add_c}.o",
+    output:
+        "generated_{m}_{n}_{k}_{add_c}_{layout}.x",
+    shell:
+        "{LD} {LDFLAGS} {input} -o {output}"
+
+
+rule compile_c:
+    input:
+        "{file}.c",
+    output:
+        temp("{file}.o"),
+    shell:
+        "{CC} {CFLAGS} -c {input} -o {output}"
+
+
+rule clean:
+    shell:
+        "rm -rf *.ll12 *.x *.o *.logs/ logs/ data.h data.c"
