@@ -36,7 +36,7 @@ CFLAGS = [
     "-ffast-math",
     "-fno-builtin-printf",
     "-fno-common",
-    "-O3"
+    "-O3",
 ]
 CFLAGS.extend(["-std=gnu11", "-Wall", "-Wextra"])
 
@@ -52,19 +52,19 @@ LDFLAGS = [
     f"-L{SNITCH_SW_PATH}/target/snitch_cluster/sw/runtime/rtl-generic",
     f"-L{SNITCH_SW_PATH}/target/snitch_cluster/sw/runtime/rtl-generic/build",
     "-nostdlib",
-    "-lsnRuntime"
+    "-lsnRuntime",
 ]
 
 
 MLIRPREPROCFLAGS = [
     "--pass-pipeline='builtin.module(func.func(tosa-to-linalg-named, tosa-to-tensor, tosa-to-scf, tosa-to-linalg))'",
     "--mlir-print-op-generic",
-    "--mlir-print-local-scope"
+    "--mlir-print-local-scope",
 ]
 
 MLIRPREPROC2FLAGS = [
     "--tosa-to-arith='include-apply-rescale'",
-    "--empty-tensor-to-alloc-tensor"
+    "--empty-tensor-to-alloc-tensor",
 ]
 
 MLIRPREPROC3FLAGS = [
@@ -72,7 +72,7 @@ MLIRPREPROC3FLAGS = [
     "--linalg-generalize-named-ops",
     "--empty-tensor-to-alloc-tensor --one-shot-bufferize='bufferize-function-boundaries allow-return-allocs-from-loops function-boundary-type-conversion=identity-layout-map'",
     "--mlir-print-op-generic",
-    "--mlir-print-local-scope"
+    "--mlir-print-local-scope",
 ]
 
 MLIROPTFLAGS = [
@@ -96,124 +96,139 @@ MLIROPTFLAGS = [
 
 
 SNAXOPTFLAGS = [
-                "dispatch-kernels",
-                "set-memory-space",
-                "set-memory-layout",
-                "realize-memref-casts",
-                "reuse-memref-allocs",
-                "insert-sync-barrier",
-                "dispatch-regions",
-                "linalg-to-library-call",
-                "snax-copy-to-dma",
-                "memref-to-snax",
-                "snax-to-func",
-                "clear-memory-space"
-                ]
-SNAXOPTFLAGS = ','.join(SNAXOPTFLAGS)
+    "dispatch-kernels",
+    "set-memory-space",
+    "set-memory-layout",
+    "realize-memref-casts",
+    "reuse-memref-allocs",
+    "insert-sync-barrier",
+    "dispatch-regions",
+    "linalg-to-library-call",
+    "snax-copy-to-dma",
+    "memref-to-snax",
+    "snax-to-func",
+    "clear-memory-space",
+]
+SNAXOPTFLAGS = ",".join(SNAXOPTFLAGS)
 
 # Rules
 
+
 rule all:
     input:
-        "simple_copy.x"
+        "simple_copy.x",
+
 
 rule generate_data:
     output:
         "data.c",
-        "data.h"
+        "data.h",
     script:
         "gendata.py"
 
+
 rule postprocess_llvm_module:
     input:
-        "{file}.ll"
+        "{file}.ll",
     output:
-        temp("{file}.ll12")
+        temp("{file}.ll12"),
     shell:
         "../../runtime/tollvm12.py < {input} > {output} "
 
+
 rule compile_llvm_module:
     input:
-        "{file}.ll12"
+        "{file}.ll12",
     output:
-        temp("{file}.o")
+        temp("{file}.o"),
     shell:
-	    "{CC} {CFLAGS} -x ir -c {input} -o {output}"
+        "{CC} {CFLAGS} -x ir -c {input} -o {output}"
+
 
 rule compile_main:
     input:
         "data.o",
-        "main.c"
+        "main.c",
     output:
-        temp("main.o")
+        temp("main.o"),
     shell:
         "{CC} {CFLAGS} -c {input} -o {output}"
 
-    
+
 rule compile_snax_binary:
     input:
         "main.o",
         "data.o",
-        "simple_copy.o"
+        "simple_copy.o",
     output:
-        "simple_copy.x"
+        "simple_copy.x",
     shell:
         "{LD} {LDFLAGS} {input} -o {output}"
 
+
 rule compile_c:
     input:
-        "{file}.c"
+        "{file}.c",
     output:
-        temp("{file}.o")
+        temp("{file}.o"),
     shell:
         "{CC} {CFLAGS} -c {input} -o {output}"
 
+
 rule rtl_simulation:
     input:
-        "simple_copy.x"
+        "simple_copy.x",
     output:
         "logs/trace_chip_00_hart_00000.dasm",
-        "logs/trace_chip_00_hart_00001.dasm"
+        "logs/trace_chip_00_hart_00001.dasm",
     shell:
         "{VLTSIM} {input}"
+
 
 rule clean:
     shell:
         "rm -rf *.ll12 *.x *.o *.logs/ logs/ data.h data.c"
-    
+
+
 rule preprocess_mlir:
     input:
-        "{file}.mlir"
+        "{file}.mlir",
     output:
         temp("{file}.preproc1.mlir"),
         temp("{file}.preproc2.mlir"),
-        temp("{file}.preprocfinal.mlir")
+        temp("{file}.preprocfinal.mlir"),
     run:
         shell("{MLIROPT} {MLIRPREPROCFLAGS} -o {wildcards.file}.preproc1.mlir {input}")
-        shell("{MLIROPT} {MLIRPREPROC2FLAGS} -o {wildcards.file}.preproc2.mlir {wildcards.file}.preproc1.mlir")
-        shell("{MLIROPT} {MLIRPREPROC3FLAGS} -o {output[2]} {wildcards.file}.preproc2.mlir")
+        shell(
+            "{MLIROPT} {MLIRPREPROC2FLAGS} -o {wildcards.file}.preproc2.mlir {wildcards.file}.preproc1.mlir"
+        )
+        shell(
+            "{MLIROPT} {MLIRPREPROC3FLAGS} -o {output[2]} {wildcards.file}.preproc2.mlir"
+        )
+
 
 rule snax_opt_mlir:
     input:
-        "{file}.preprocfinal.mlir"
+        "{file}.preprocfinal.mlir",
     output:
-        temp("{file}.snax-opt.mlir")
+        temp("{file}.snax-opt.mlir"),
     shell:
         "{SNAXOPT} -p {SNAXOPTFLAGS} -o {output} {input}"
 
+
 rule translate_mlir:
     input:
-        "{file}.ll.mlir"
+        "{file}.ll.mlir",
     output:
-        temp("{file}.ll")
+        temp("{file}.ll"),
     shell:
         "{MLIRTRANSLATE} --mlir-to-llvmir -o {output} {input}"
 
+
 rule postprocess_mlir:
     input:
-        "{file}.snax-opt.mlir"
+        "{file}.snax-opt.mlir",
     output:
-        temp("{file}.ll.mlir")
+        temp("{file}.ll.mlir"),
     shell:
         "{MLIROPT} {MLIROPTFLAGS} -o {output} {input}"
-

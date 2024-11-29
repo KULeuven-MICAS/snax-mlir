@@ -1,5 +1,11 @@
-from util.snake.flags import get_cc_flags, get_ld_flags, get_mlir_postproc_flags, get_mlir_preproc_flags
+from util.snake.flags import (
+    get_cc_flags,
+    get_ld_flags,
+    get_mlir_postproc_flags,
+    get_mlir_preproc_flags,
+)
 from util.snake.paths import get_default_paths
+
 # Paths
 SNITCH_SW_PATH = "/opt/snax-streamer-gemm"
 SNITCH_LLVM_PATH = "/usr/bin"
@@ -14,44 +20,54 @@ CFLAGS.extend(["-std=gnu11", "-Wall", "-Wextra"])
 CFLAGS.append(f"-I{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/include")
 
 LDFLAGS = get_ld_flags(SNITCH_LLVM_PATH, SNITCH_SW_PATH)
-LDFLAGS.append(f"{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/build/snax-streamer-gemm-lib.o")
+LDFLAGS.append(
+    f"{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/build/snax-streamer-gemm-lib.o"
+)
 
 SNAXOPTFLAGS = [
-                "insert-accfg-op{accelerator=snax_gemm}",
-                "convert-linalg-to-kernel",
-                "dispatch-kernels",
-                "set-memory-space",
-                "set-memory-layout",
-                "realize-memref-casts",
-                "test-remove-memref-copy",
-                "insert-sync-barrier",
-                "reuse-memref-allocs",
-                "test-add-mcycle-around-loop",
-                "snax-lower-mcycle",
-                "dispatch-regions",
-                "convert-linalg-to-stream",
-                "convert-stream-to-snax-stream",
-                "convert-linalg-to-accfg",
-                "snax-copy-to-dma",
-                "memref-to-snax",
-                "snax-to-func",
-                "clear-memory-space",
-                "function-constant-pinning",
-                "mlir-opt{" + "\ ".join([
-                    "executable=mlir-opt",
-                    "generic=true",
-                    "arguments='" + ",".join([
-                        "-cse",
-                        "-canonicalize",
-                        "-allow-unregistered-dialect",
-                        "-mlir-print-op-generic"
-                    ])]) + "'}",
-                "accfg-dedup",
-                "accfg-config-overlap",
-                "convert-accfg-to-csr"
+    "insert-accfg-op{accelerator=snax_gemm}",
+    "convert-linalg-to-kernel",
+    "dispatch-kernels",
+    "set-memory-space",
+    "set-memory-layout",
+    "realize-memref-casts",
+    "test-remove-memref-copy",
+    "insert-sync-barrier",
+    "reuse-memref-allocs",
+    "test-add-mcycle-around-loop",
+    "snax-lower-mcycle",
+    "dispatch-regions",
+    "convert-linalg-to-stream",
+    "convert-stream-to-snax-stream",
+    "convert-linalg-to-accfg",
+    "snax-copy-to-dma",
+    "memref-to-snax",
+    "snax-to-func",
+    "clear-memory-space",
+    "function-constant-pinning",
+    "mlir-opt{"
+    + "\ ".join(
+        [
+            "executable=mlir-opt",
+            "generic=true",
+            "arguments='"
+            + ",".join(
+                [
+                    "-cse",
+                    "-canonicalize",
+                    "-allow-unregistered-dialect",
+                    "-mlir-print-op-generic",
+                ]
+            ),
+        ]
+    )
+    + "'}",
+    "accfg-dedup",
+    "accfg-config-overlap",
+    "convert-accfg-to-csr",
 ]
-SNAXOPTFLAGS = ','.join(SNAXOPTFLAGS)
-MLIRPREPROCFLAGS, MLIRPREPROC2FLAGS, MLIRPREPROC3FLAGS =  get_mlir_preproc_flags()
+SNAXOPTFLAGS = ",".join(SNAXOPTFLAGS)
+MLIRPREPROCFLAGS, MLIRPREPROC2FLAGS, MLIRPREPROC3FLAGS = get_mlir_preproc_flags()
 MLIROPTFLAGS = get_mlir_postproc_flags()
 
 sizes = [
@@ -68,109 +84,130 @@ from gendata import create_test_data
 
 # Rules
 
+
 rule run_benchmarks:
     input:
-        expand("generated_{size[0]}_{size[1]}_{size[2]}.generated.x", size=sizes)
+        expand("generated_{size[0]}_{size[1]}_{size[2]}.generated.x", size=sizes),
+
 
 rule generate_mlir:
     output:
-        "generated_{m}_{n}_{k}.generated.mlir"
+        "generated_{m}_{n}_{k}.generated.mlir",
     run:
-        write_module_to_file(create_tiled_matrix_multiply(wildcards.k, wildcards.m, wildcards.n), output[0])
+        write_module_to_file(
+            create_tiled_matrix_multiply(wildcards.k, wildcards.m, wildcards.n),
+            output[0],
+        )
+
 
 rule preprocess_mlir:
     input:
-        "{file}.mlir"
+        "{file}.mlir",
     output:
         temp("{file}.preproc1.mlir"),
         temp("{file}.preproc2.mlir"),
-        temp("{file}.preprocfinal.mlir")
+        temp("{file}.preprocfinal.mlir"),
     run:
         shell("{MLIROPT} {MLIRPREPROCFLAGS} -o {wildcards.file}.preproc1.mlir {input}")
-        shell("{MLIROPT} {MLIRPREPROC2FLAGS} -o {wildcards.file}.preproc2.mlir {wildcards.file}.preproc1.mlir")
-        shell("{MLIROPT} {MLIRPREPROC3FLAGS} -o {output[2]} {wildcards.file}.preproc2.mlir")
+        shell(
+            "{MLIROPT} {MLIRPREPROC2FLAGS} -o {wildcards.file}.preproc2.mlir {wildcards.file}.preproc1.mlir"
+        )
+        shell(
+            "{MLIROPT} {MLIRPREPROC3FLAGS} -o {output[2]} {wildcards.file}.preproc2.mlir"
+        )
+
 
 rule snax_opt_mlir:
     input:
-        "{file}.preprocfinal.mlir"
+        "{file}.preprocfinal.mlir",
     output:
-        temp("{file}.snax-opt.mlir")
+        temp("{file}.snax-opt.mlir"),
     shell:
         "{SNAXOPT} -p {SNAXOPTFLAGS} -o {output} {input}"
 
+
 rule postprocess_mlir:
     input:
-        "{file}.snax-opt.mlir"
+        "{file}.snax-opt.mlir",
     output:
-        temp("{file}.ll.mlir")
+        temp("{file}.ll.mlir"),
     shell:
         "{MLIROPT} {MLIROPTFLAGS} -o {output} {input}"
 
+
 rule translate_mlir:
     input:
-        "{file}.ll.mlir"
+        "{file}.ll.mlir",
     output:
-        temp("{file}.ll")
+        temp("{file}.ll"),
     shell:
         "{MLIRTRANSLATE} --mlir-to-llvmir -o {output} {input}"
 
+
 rule postprocess_llvm_module:
     input:
-        "{file}.ll"
+        "{file}.ll",
     output:
-        temp("{file}.ll12")
+        temp("{file}.ll12"),
     shell:
         "../../runtime/tollvm12.py < {input} > {output} "
 
+
 rule compile_llvm_module:
     input:
-        "{file}.ll12"
+        "{file}.ll12",
     output:
-        temp("{file}.o")
+        temp("{file}.o"),
     shell:
-	    "{CC} {CFLAGS} -x ir -c {input} -o {output}"
+        "{CC} {CFLAGS} -x ir -c {input} -o {output}"
+
 
 rule generate_data:
     output:
         "data_{m}_{n}_{k}.c",
-        "data_{m}_{n}_{k}.h"
+        "data_{m}_{n}_{k}.h",
     run:
         create_test_data(wildcards.n, wildcards.m, wildcards.k)
+
 
 rule compile_main:
     input:
         "data_{m}_{n}_{k}.o",
-        "main.c"
+        "main.c",
     output:
-        temp("main_{m}_{n}_{k}.o")
+        temp("main_{m}_{n}_{k}.o"),
     shell:
         "{CC} {CFLAGS} -c {input} -o {output}"
+
 
 rule compile_snax_binary:
     input:
         "generated_{m}_{n}_{k}.generated.o",
         "main_{m}_{n}_{k}.o",
-        "data_{m}_{n}_{k}.o"
+        "data_{m}_{n}_{k}.o",
     output:
-        "generated_{m}_{n}_{k}.generated.x"
+        "generated_{m}_{n}_{k}.generated.x",
     shell:
         "{LD} {LDFLAGS} {input} -o {output}"
 
+
 rule compile_c:
     input:
-        "{file}.c"
+        "{file}.c",
     output:
-        temp("{file}.o")
+        temp("{file}.o"),
     shell:
         "{CC} {CFLAGS} -c {input} -o {output}"
 
+
 rule rtl_simulation:
     input:
-        "{file}.x"
+        "{file}.x",
     output:
         "logs/trace_chip_{numchips}_hart_{hartid}.dasm",
     shell:
         "{VLTSIM} {input}"
+
 
 rule clean:
     shell:

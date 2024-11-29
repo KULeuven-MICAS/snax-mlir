@@ -37,7 +37,7 @@ CFLAGS = [
     "-ffast-math",
     "-fno-builtin-printf",
     "-fno-common",
-    "-O3"
+    "-O3",
 ]
 CFLAGS.extend(["-std=gnu11", "-Wall", "-Wextra"])
 
@@ -55,14 +55,14 @@ LDFLAGS = [
     f"-L{SNITCH_SW_PATH}/target/snitch_cluster/sw/runtime/rtl-generic",
     f"-L{SNITCH_SW_PATH}/target/snitch_cluster/sw/runtime/rtl-generic/build",
     "-nostdlib",
-    "-lsnRuntime"
+    "-lsnRuntime",
 ]
 
 
 MLIRPREPROCFLAGS = [
     "--linalg-generalize-named-ops",
     "--mlir-print-op-generic",
-    "--mlir-print-local-scope"
+    "--mlir-print-local-scope",
 ]
 
 MLIROPTFLAGS = [
@@ -84,79 +84,94 @@ MLIROPTFLAGS = [
     "--reconcile-unrealized-casts",
 ]
 
+
 def get_snax_flags(layout, remove_copy):
-    return  ','.join([
-        "convert-linalg-to-kernel",
-        "insert-accfg-op{accelerator=snax_gemmx}",
-        "dispatch-kernels",
-        "convert-linalg-to-stream",
-        "fuse-streaming-regions",
-        "stream-bufferize",
-        "snax-bufferize",
-        "alloc-to-global",
-        "set-memory-space",
-        f"set-memory-layout{{gemm_layout={layout}}}",
-        "realize-memref-casts",
-        "test-remove-memref-copy",
-        "insert-sync-barrier",
-        "dispatch-regions{nb_cores=3}",
-        "convert-stream-to-snax-stream",
-        "convert-linalg-to-accfg",
-        "test-add-mcycle-around-launch",
-        "convert-accfg-to-csr",
-        "snax-copy-to-dma",
-        "memref-to-snax",
-        "snax-to-func",
-        "snax-lower-mcycle",
-        "clear-memory-space"])
+    return ",".join(
+        [
+            "convert-linalg-to-kernel",
+            "insert-accfg-op{accelerator=snax_gemmx}",
+            "dispatch-kernels",
+            "convert-linalg-to-stream",
+            "fuse-streaming-regions",
+            "stream-bufferize",
+            "snax-bufferize",
+            "alloc-to-global",
+            "set-memory-space",
+            f"set-memory-layout{{gemm_layout={layout}}}",
+            "realize-memref-casts",
+            "test-remove-memref-copy",
+            "insert-sync-barrier",
+            "dispatch-regions{nb_cores=3}",
+            "convert-stream-to-snax-stream",
+            "convert-linalg-to-accfg",
+            "test-add-mcycle-around-launch",
+            "convert-accfg-to-csr",
+            "snax-copy-to-dma",
+            "memref-to-snax",
+            "snax-to-func",
+            "snax-lower-mcycle",
+            "clear-memory-space",
+        ]
+    )
+
 
 # Rules
 
 from gendata import create_test_data
 
+
 rule generate_data:
     output:
         "data_{m}_{n}_{k}_{add_c}.c",
-        "data_{m}_{n}_{k}_{add_c}.h"
+        "data_{m}_{n}_{k}_{add_c}.h",
     params:
-        m = lambda wildcards : int(wildcards.m),
-        n = lambda wildcards : int(wildcards.n),
-        k = lambda wildcards : int(wildcards.k),
-        add_c = lambda wildcards : True if wildcards.add_c == "gemm" else False,
+        m=lambda wildcards: int(wildcards.m),
+        n=lambda wildcards: int(wildcards.n),
+        k=lambda wildcards: int(wildcards.k),
+        add_c=lambda wildcards: True if wildcards.add_c == "gemm" else False,
     run:
-        create_test_data(params.n, params.m, params.k, f"data_{wildcards.m}_{wildcards.n}_{wildcards.k}_{wildcards.add_c}", params.add_c)
+        create_test_data(
+            params.n,
+            params.m,
+            params.k,
+            f"data_{wildcards.m}_{wildcards.n}_{wildcards.k}_{wildcards.add_c}",
+            params.add_c,
+        )
 
 
 rule postprocess_llvm_module:
     input:
-        "{file}.ll"
+        "{file}.ll",
     output:
-        temp("{file}.ll12")
+        temp("{file}.ll12"),
     shell:
         "../../runtime/tollvm12.py < {input} > {output} "
 
+
 rule compile_llvm_module:
     input:
-        "{file}.ll12"
+        "{file}.ll12",
     output:
-        temp("{file}.o")
+        temp("{file}.o"),
     shell:
-	    "{CC} {CFLAGS} -x ir -c {input} -o {output}"
+        "{CC} {CFLAGS} -x ir -c {input} -o {output}"
+
 
 rule render_main:
     input:
-        "main.c"
+        "main.c",
     output:
-        temp("main_{m}_{n}_{k}_{add_c}.rendered.c")
+        temp("main_{m}_{n}_{k}_{add_c}.rendered.c"),
     shell:
-        'echo \"#include \\"data_{wildcards.m}_{wildcards.n}_{wildcards.k}_{wildcards.add_c}.h\\"" | cat - {input} > {output}'
+        'echo "#include \\"data_{wildcards.m}_{wildcards.n}_{wildcards.k}_{wildcards.add_c}.h\\"" | cat - {input} > {output}'
+
 
 rule compile_main:
     input:
         "data_{m}_{n}_{k}_{add_c}.o",
-        "main_{m}_{n}_{k}_{add_c}.rendered.c"
+        "main_{m}_{n}_{k}_{add_c}.rendered.c",
     output:
-        temp("main_{m}_{n}_{k}_{add_c}.o")
+        temp("main_{m}_{n}_{k}_{add_c}.o"),
     shell:
         "{CC} {CFLAGS} {input[0]} -c {input[1]} -o {output}"
 
@@ -165,17 +180,18 @@ rule compile_snax_binary:
     input:
         "generated_{m}_{n}_{k}_{add_c}_{layout}.o",
         "main_{m}_{n}_{k}_{add_c}.o",
-        "data_{m}_{n}_{k}_{add_c}.o"
+        "data_{m}_{n}_{k}_{add_c}.o",
     output:
-        "generated_{m}_{n}_{k}_{add_c}_{layout}.x"
+        "generated_{m}_{n}_{k}_{add_c}_{layout}.x",
     shell:
         "{LD} {LDFLAGS} {input} -o {output}"
 
+
 rule compile_c:
     input:
-        "{file}.c"
+        "{file}.c",
     output:
-        temp("{file}.o")
+        temp("{file}.o"),
     shell:
         "{CC} {CFLAGS} -c {input} -o {output}"
 
@@ -184,54 +200,67 @@ rule clean:
     shell:
         "rm -rf *.ll12 *.x *.o *.logs/ logs/ data.h data.c"
 
+
 rule preprocess_mlir:
     input:
-        "{file}.generated.mlir"
+        "{file}.generated.mlir",
     output:
-        temp("{file}.preprocfinal.mlir")
+        temp("{file}.preprocfinal.mlir"),
     run:
-        shell("{MLIROPT} {MLIRPREPROCFLAGS} -o {wildcards.file}.preprocfinal.mlir {input}")
+        shell(
+            "{MLIROPT} {MLIRPREPROCFLAGS} -o {wildcards.file}.preprocfinal.mlir {input}"
+        )
+
 
 rule snax_opt_mlir:
     input:
-        "generated_{m}_{n}_{k}_{add_c}.preprocfinal.mlir"
+        "generated_{m}_{n}_{k}_{add_c}.preprocfinal.mlir",
     output:
-        temp("generated_{m}_{n}_{k}_{add_c}_{layout}.snax-opt.mlir")
+        temp("generated_{m}_{n}_{k}_{add_c}_{layout}.snax-opt.mlir"),
     params:
-        snax_flags = lambda wildcards : get_snax_flags(wildcards.layout, True)
+        snax_flags=lambda wildcards: get_snax_flags(wildcards.layout, True),
     shell:
         "{SNAXOPT} -p {params.snax_flags} -o {output} {input}"
 
+
 rule translate_mlir:
     input:
-        "{file}.ll.mlir"
+        "{file}.ll.mlir",
     output:
-        temp("{file}.ll")
+        temp("{file}.ll"),
     shell:
         "{MLIRTRANSLATE} --mlir-to-llvmir -o {output} {input}"
 
+
 rule postprocess_mlir:
     input:
-        "{file}.snax-opt.mlir"
+        "{file}.snax-opt.mlir",
     output:
-        temp("{file}.ll.mlir")
+        temp("{file}.ll.mlir"),
     shell:
         "{MLIROPT} {MLIROPTFLAGS} -o {output} {input}"
 
+
 from genbenchmark import create_matrix_multiply, write_module_to_file
+
 
 rule generate_mlir:
     output:
-        "generated_{m}_{n}_{k}_{algo}.generated.mlir"
+        "generated_{m}_{n}_{k}_{algo}.generated.mlir",
     params:
-        m = lambda wildcards: int(wildcards.m),
-        n = lambda wildcards: int(wildcards.n),
-        k = lambda wildcards: int(wildcards.k),
-        add_c = lambda wildcards: True if wildcards.algo == "gemm" else False
+        m=lambda wildcards: int(wildcards.m),
+        n=lambda wildcards: int(wildcards.n),
+        k=lambda wildcards: int(wildcards.k),
+        add_c=lambda wildcards: True if wildcards.algo == "gemm" else False,
     run:
-        write_module_to_file(create_matrix_multiply(params.k, params.m, params.n, params.add_c), output[0])
+        write_module_to_file(
+            create_matrix_multiply(params.k, params.m, params.n, params.add_c),
+            output[0],
+        )
+
 
 import itertools
+
 
 def get_sizes():
     selected_dims = [32, 48, 64]
@@ -295,10 +324,17 @@ def get_sizes():
     ]
     return sizes + nn_size
 
+
 sizes = get_sizes()
-add_c = ("gemm")
-layout = ("banked","cyclic")
+add_c = "gemm"
+layout = ("banked", "cyclic")
+
 
 rule run_benchmarks:
     input:
-        expand("generated_{size[0]}_{size[1]}_{size[2]}_{algo}_{layout}.x", size=sizes, algo=add_c, layout=layout)
+        expand(
+            "generated_{size[0]}_{size[1]}_{size[2]}_{algo}_{layout}.x",
+            size=sizes,
+            algo=add_c,
+            layout=layout,
+        ),
