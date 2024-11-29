@@ -75,3 +75,6 @@ cover/
 # direnv
 .direnv
 .envrc
+
+# Snakemake
+.snakemake
