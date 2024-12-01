@@ -17,6 +17,15 @@ rule preprocess_mlir:
         )
 
 
+rule snax_opt_mlir:
+    input:
+        "{file}.preprocfinal.mlir",
+    output:
+        temp("{file}.snax-opt.mlir"),
+    shell:
+        "{config[snax-opt]} -p {config[snaxoptflags]} -o {output} {input}"
+
+
 rule postprocess_mlir:
     input:
         "{file}.snax-opt.mlir",

@@ -98,7 +98,7 @@ module default_rules:
         config
 
 
-use rule * from default_rules as default_*
+use rule * from default_rules exclude snax_opt_mlir as default_*
 
 
 # Rules
