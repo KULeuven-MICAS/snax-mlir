@@ -41,3 +41,8 @@ rule postprocess_llvm_module:
         temp("{file}.ll12"),
     shell:
         "../../runtime/tollvm12.py < {input} > {output} "
+
+
+rule clean:
+    shell:
+        "rm -rf *.ll12 *.x *.o *.logs/ logs/ data*"

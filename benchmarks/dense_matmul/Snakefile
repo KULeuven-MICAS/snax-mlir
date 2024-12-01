@@ -245,8 +245,3 @@ rule compile_snax_binary:
         "generated_{m}_{n}_{k}_{add_c}_{layout}.x",
     shell:
         "{config[ld]} {config[ldflags]} {input} -o {output}"
-
-
-rule clean:
-    shell:
-        "rm -rf *.ll12 *.x *.o *.logs/ logs/ data.h data.c"

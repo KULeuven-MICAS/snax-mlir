@@ -9,23 +9,34 @@ from util.snake.paths import get_default_paths
 # Paths
 SNITCH_SW_PATH = "/opt/snax-streamer-gemm"
 SNITCH_LLVM_PATH = "/usr/bin"
-
-# Binaries
 VLTSIM = "/opt/snax-streamer-gemm-rtl/bin/snitch_cluster.vlt"
-CC, LD, MLIROPT, MLIRTRANSLATE, SNAXOPT = get_default_paths(SNITCH_SW_PATH)
+
+(
+    config["cc"],
+    config["ld"],
+    config["mlir-opt"],
+    config["mlir-translate"],
+    config["snax-opt"],
+) = get_default_paths(SNITCH_LLVM_PATH)
 
 # Flags
-CFLAGS = get_cc_flags(SNITCH_SW_PATH)
-CFLAGS.extend(["-std=gnu11", "-Wall", "-Wextra"])
-CFLAGS.append(f"-I{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/include")
+config["cflags"] = [
+    *get_cc_flags(SNITCH_SW_PATH),
+    "-std=gnu11",
+    "-Wall",
+    "-Wextra",
+    f"-I{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/include",
+]
 
-LDFLAGS = get_ld_flags(SNITCH_LLVM_PATH, SNITCH_SW_PATH)
-LDFLAGS.append(
-    f"{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/build/snax-streamer-gemm-lib.o"
+config["ldflags"] = [
+    *get_ld_flags(SNITCH_LLVM_PATH, SNITCH_SW_PATH),
+    f"{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/build/snax-streamer-gemm-lib.o",
+]
+
+config["mlirpreprocflags"], config["mlirpreproc2flags"], config["mlirpreproc3flags"] = (
+    get_mlir_preproc_flags()
 )
-
-MLIRPREPROCFLAGS, MLIRPREPROC2FLAGS, MLIRPREPROC3FLAGS = get_mlir_preproc_flags()
-MLIROPTFLAGS = get_mlir_postproc_flags()
+config["mlirpostprocflags"] = get_mlir_postproc_flags()
 
 
 def get_snax_opt_flags(options):
@@ -104,6 +115,16 @@ from genbenchmark import create_tiled_matrix_multiply, write_module_to_file
 from gendata import create_test_data
 
 
+module default_rules:
+    snakefile:
+        "../../util/snake/default_rules.smk"
+    config:
+        config
+
+
+use rule * from default_rules as default_*
+
+
 # Rules
 rule run_benchmarks:
     input:
@@ -140,12 +161,14 @@ rule preprocess_mlir:
         temp("{file}.preproc2.mlir"),
         temp("{file}.preprocfinal.mlir"),
     run:
-        shell("{MLIROPT} {MLIRPREPROCFLAGS} -o {wildcards.file}.preproc1.mlir {input}")
         shell(
-            "{MLIROPT} {MLIRPREPROC2FLAGS} -o {wildcards.file}.preproc2.mlir {wildcards.file}.preproc1.mlir"
+            "{config[mlir-opt]} {config[mlirpreprocflags]} -o {wildcards.file}.preproc1.mlir {input}"
         )
         shell(
-            "{MLIROPT} {MLIRPREPROC3FLAGS} -o {output[2]} {wildcards.file}.preproc2.mlir"
+            "{config[mlir-opt]} {config[mlirpreproc2flags]} -o {wildcards.file}.preproc2.mlir {wildcards.file}.preproc1.mlir"
+        )
+        shell(
+            "{config[mlir-opt]} {config[mlirpreproc3flags]} -o {output[2]} {wildcards.file}.preproc2.mlir"
         )
 
 
@@ -158,42 +181,6 @@ rule snax_opt_mlir:
         snax_flags=lambda wildcards: get_snax_opt_flags(wildcards.options),
     shell:
         "{SNAXOPT} -p {params.snax_flags} -o {output} {input}"
-
-
-rule postprocess_mlir:
-    input:
-        "{file}.snax-opt.mlir",
-    output:
-        temp("{file}.ll.mlir"),
-    shell:
-        "{MLIROPT} {MLIROPTFLAGS} -o {output} {input}"
-
-
-rule translate_mlir:
-    input:
-        "{file}.ll.mlir",
-    output:
-        temp("{file}.ll"),
-    shell:
-        "{MLIRTRANSLATE} --mlir-to-llvmir -o {output} {input}"
-
-
-rule postprocess_llvm_module:
-    input:
-        "{file}.ll",
-    output:
-        temp("{file}.ll12"),
-    shell:
-        "../../runtime/tollvm12.py < {input} > {output} "
-
-
-rule compile_llvm_module:
-    input:
-        "{file}.ll12",
-    output:
-        temp("{file}.o"),
-    shell:
-        "{CC} {CFLAGS} -x ir -c {input} -o {output}"
 
 
 rule generate_data:
@@ -211,7 +198,7 @@ rule compile_main:
     output:
         temp("main_{m}_{n}_{k}.o"),
     shell:
-        "{CC} {CFLAGS} -c {input} -o {output}"
+        "{config[cc]} {config[cflags]} -c {input} -o {output}"
 
 
 rule compile_snax_binary:
@@ -222,16 +209,7 @@ rule compile_snax_binary:
     output:
         "generated_{m}_{n}_{k}_{options}.x",
     shell:
-        "{LD} {LDFLAGS} {input} -o {output}"
-
-
-rule compile_c:
-    input:
-        "{file}.c",
-    output:
-        temp("{file}.o"),
-    shell:
-        "{CC} {CFLAGS} -c {input} -o {output}"
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
 
 
 rule rtl_simulation:
