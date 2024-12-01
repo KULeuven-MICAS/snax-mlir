@@ -1,3 +1,22 @@
+rule preprocess_mlir:
+    input:
+        "{file}.generated.mlir",
+    output:
+        temp("{file}.preproc1.mlir"),
+        temp("{file}.preproc2.mlir"),
+        temp("{file}.preprocfinal.mlir"),
+    run:
+        shell(
+            "{config[mlir-opt]} {config[mlirpreprocflags][0]} -o {wildcards.file}.preproc1.mlir {input}"
+        )
+        shell(
+            "{config[mlir-opt]} {config[mlirpreprocflags][1]} -o {wildcards.file}.preproc2.mlir {wildcards.file}.preproc1.mlir"
+        )
+        shell(
+            "{config[mlir-opt]} {config[mlirpreprocflags][2]} -o {output[2]} {wildcards.file}.preproc2.mlir"
+        )
+
+
 rule postprocess_mlir:
     input:
         "{file}.snax-opt.mlir",
@@ -43,6 +62,15 @@ rule postprocess_llvm_module:
         "../../runtime/tollvm12.py < {input} > {output} "
 
 
+rule rtl_simulation:
+    input:
+        "{file}.x",
+    output:
+        "logs/trace_chip_{numchips}_hart_{hartid}.dasm",
+    shell:
+        "{config[vltsim]} {input} --trace-prefix {file}"
+
+
 rule clean:
     shell:
-        "rm -rf *.ll12 *.x *.o *.logs/ logs/ data*"
+        "rm -rf *.ll12 *.x *.o *.logs/ logs/ data* *.dasm"

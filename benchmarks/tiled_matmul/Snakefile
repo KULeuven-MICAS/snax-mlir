@@ -1,42 +1,18 @@
-from util.snake.flags import (
-    get_cc_flags,
-    get_ld_flags,
-    get_mlir_postproc_flags,
-    get_mlir_preproc_flags,
-)
+from util.snake.flags import get_default_flags
 from util.snake.paths import get_default_paths
 
 # Paths
 SNITCH_SW_PATH = "/opt/snax-streamer-gemm"
-SNITCH_LLVM_PATH = "/usr/bin"
-VLTSIM = "/opt/snax-streamer-gemm-rtl/bin/snitch_cluster.vlt"
 
-(
-    config["cc"],
-    config["ld"],
-    config["mlir-opt"],
-    config["mlir-translate"],
-    config["snax-opt"],
-) = get_default_paths(SNITCH_LLVM_PATH)
-
-# Flags
-config["cflags"] = [
-    *get_cc_flags(SNITCH_SW_PATH),
-    "-std=gnu11",
-    "-Wall",
-    "-Wextra",
-    f"-I{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/include",
-]
-
-config["ldflags"] = [
-    *get_ld_flags(SNITCH_LLVM_PATH, SNITCH_SW_PATH),
-    f"{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/build/snax-streamer-gemm-lib.o",
-]
-
-config["mlirpreprocflags"], config["mlirpreproc2flags"], config["mlirpreproc3flags"] = (
-    get_mlir_preproc_flags()
+config.update(get_default_paths())
+config.update(get_default_flags(SNITCH_SW_PATH))
+config["vltsim"] = "/opt/snax-streamer-gemm-rtl/bin/snitch_cluster.vlt"
+config["cflags"].append(
+    f"-I{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/include"
 )
-config["mlirpostprocflags"] = get_mlir_postproc_flags()
+config["ldflags"].append(
+    f"{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/build/snax-streamer-gemm-lib.o"
+)
 
 
 def get_snax_opt_flags(options):
@@ -153,25 +129,6 @@ rule generate_mlir:
         )
 
 
-rule preprocess_mlir:
-    input:
-        "{file}.generated.mlir",
-    output:
-        temp("{file}.preproc1.mlir"),
-        temp("{file}.preproc2.mlir"),
-        temp("{file}.preprocfinal.mlir"),
-    run:
-        shell(
-            "{config[mlir-opt]} {config[mlirpreprocflags]} -o {wildcards.file}.preproc1.mlir {input}"
-        )
-        shell(
-            "{config[mlir-opt]} {config[mlirpreproc2flags]} -o {wildcards.file}.preproc2.mlir {wildcards.file}.preproc1.mlir"
-        )
-        shell(
-            "{config[mlir-opt]} {config[mlirpreproc3flags]} -o {output[2]} {wildcards.file}.preproc2.mlir"
-        )
-
-
 rule snax_opt_mlir:
     input:
         "generated_{m}_{n}_{k}.preprocfinal.mlir",
@@ -210,17 +167,3 @@ rule compile_snax_binary:
         "generated_{m}_{n}_{k}_{options}.x",
     shell:
         "{config[ld]} {config[ldflags]} {input} -o {output}"
-
-
-rule rtl_simulation:
-    input:
-        "{file}.x",
-    output:
-        "logs/trace_chip_{numchips}_hart_{hartid}.dasm",
-    shell:
-        "{VLTSIM} {input}"
-
-
-rule clean:
-    shell:
-        "rm -rf *.ll12 *.x *.o *.logs/ logs/ data*"

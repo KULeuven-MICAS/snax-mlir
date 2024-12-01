@@ -1,40 +1,21 @@
-from util.snake.flags import (
-    get_cc_flags,
-    get_ld_flags,
-    get_mlir_postproc_flags,
-    get_mlir_preproc_flags,
-)
+from util.snake.flags import get_default_flags
 from util.snake.paths import get_default_paths
-
-# Paths
 
 # Set configuration
 SNITCH_SW_PATH = "/opt/snax-kul-cluster-mixed-narrow-wide"
-SNITCH_LLVM_PATH = "/usr/bin"
-VLTSIM = "/opt/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster.vlt"
 
-(
-    config["cc"],
-    config["ld"],
-    config["mlir-opt"],
-    config["mlir-translate"],
-    config["snax-opt"],
-) = get_default_paths(SNITCH_LLVM_PATH)
-config["cflags"] = [
-    *get_cc_flags(SNITCH_SW_PATH),
-    "-std=gnu11",
-    "-Wall",
-    "-Wextra",
-    f"-I{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/include",
-]
-config["ldflags"] = get_ld_flags(SNITCH_LLVM_PATH, SNITCH_SW_PATH)
+config.update(get_default_paths())
+config.update(get_default_flags(SNITCH_SW_PATH))
+config["vltsim"] = "/opt/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster.vlt"
+# Overwrite/append to default rules
+config["cflags"].append(
+    f"-I{SNITCH_SW_PATH}/target/snitch_cluster/sw/snax/streamer-gemm/include"
+)
 config["mlirpreprocflags"] = [
     "--linalg-generalize-named-ops",
     "--mlir-print-op-generic",
     "--mlir-print-local-scope",
 ]
-
-config["mlirpostprocflags"] = get_mlir_postproc_flags()
 
 
 def get_snax_flags(layout, remove_copy):
@@ -80,7 +61,7 @@ module default_rules:
         config
 
 
-use rule * from default_rules as default_*
+use rule * from default_rules exclude preprocess_mlir as default_*
 
 
 def get_sizes():

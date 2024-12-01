@@ -82,10 +82,13 @@ def get_cc_flags(snitch_sw_path):
         "-fno-builtin-printf",
         "-fno-common",
         "-O3",
+        "-std=gnu11",
+        "-Wall",
+        "-Wextra",
     ]
 
 
-def get_ld_flags(snitch_llvm_path, snitch_sw_path):
+def get_ld_flags(snitch_sw_path, snitch_llvm_path="/usr/bin"):
     return [
         f"-fuse-ld={snitch_llvm_path}/ld.lld",
         "--target=riscv32-unknown-elf",
@@ -99,3 +102,12 @@ def get_ld_flags(snitch_llvm_path, snitch_sw_path):
         "-nostdlib",
         "-lsnRuntime",
     ]
+
+
+def get_default_flags(snitch_sw_path, snitch_llvm_path="/usr/bin", index_bitwidth=32):
+    return {
+        "cflags": get_cc_flags(snitch_sw_path),
+        "ldflags": get_ld_flags(snitch_sw_path, snitch_llvm_path),
+        "mlirpreprocflags": get_mlir_preproc_flags(),
+        "mlirpostprocflags": get_mlir_postproc_flags(index_bitwidth),
+    }
