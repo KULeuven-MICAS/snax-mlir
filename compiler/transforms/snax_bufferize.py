@@ -15,8 +15,9 @@ class SnaxBufferize(ModulePass):
 
     mlir_bufferization_pass = MLIROptPass(
         arguments=(
-            "--one-shot-bufferize=bufferize-function-boundaries allow-return-allocs-from-loops"
+            "--one-shot-bufferize=bufferize-function-boundaries allow-return-allocs-from-loops allow-unknown-ops"
             + " function-boundary-type-conversion=identity-layout-map",
+            "--buffer-deallocation-pipeline",
             "--mlir-print-op-generic",
             "--mlir-print-local-scope",
             "--allow-unregistered-dialect",

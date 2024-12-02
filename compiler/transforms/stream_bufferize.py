@@ -4,6 +4,8 @@ from xdsl.context import MLContext
 from xdsl.dialects import bufferization
 from xdsl.dialects.builtin import MemRefType, ModuleOp, TensorType
 from xdsl.ir import Operation, SSAValue
+from xdsl.ir.core import OpResult
+from xdsl.parser import UnitAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -30,19 +32,17 @@ class BufferizeStreamingRegion(RewritePattern):
         if not operands_to_buffer:
             return
 
-        # for every unique input, create a bufferization.to_memref op
-        tensor_to_memrefs: dict[SSAValue, Operation] = {}
+        # for every unique input, make sure the tensor is the result
+        # of a to_tensor operation and store the original memref
+        tensor_to_memrefs: dict[SSAValue, SSAValue] = {}
 
         for operand in set(operands_to_buffer):
-            assert isinstance(tensor_type := operand.type, TensorType)
-            tensor_to_memrefs[operand] = bufferization.ToMemrefOp(
-                operands=[operand],
-                result_types=(
-                    MemRefType(tensor_type.get_element_type(), tensor_type.get_shape()),
-                ),
-            )
+            if not isinstance(operand, OpResult):
+                return
+            if not isinstance(to_tensor_op := operand.op, bufferization.ToTensorOp):
+                return
+            tensor_to_memrefs[operand] = to_tensor_op.memref
 
-        # create new streaming region op that operates on the buffers
         new_op = stream.StreamingRegionOp(
             inputs=[tensor_to_memrefs[input] for input in op.inputs],
             outputs=[tensor_to_memrefs[output] for output in op.outputs],
@@ -62,8 +62,7 @@ class BufferizeStreamingRegion(RewritePattern):
 
         # replace the old operation
         rewriter.replace_matched_op(
-            tuple(tensor_to_memrefs.values())
-            + (new_op,)
+            (new_op,)
             + tuple(memref_to_tensors.values()),
             new_results,
         )
