@@ -1,6 +1,6 @@
 rule preprocess_mlir:
     input:
-        "{file}.generated.mlir",
+        "{file}.mlir",
     output:
         temp("{file}.preproc1.mlir"),
         temp("{file}.preproc2.mlir"),
@@ -69,6 +69,24 @@ rule postprocess_llvm_module:
         temp("{file}.ll12"),
     shell:
         "../../runtime/tollvm12.py < {input} > {output} "
+
+
+rule generate_simple_data:
+    output:
+        "data.c",
+        "data.h",
+    script:
+        "gendata.py"
+
+
+rule compile_simple_main:
+    input:
+        "main.c",
+        "data.o",
+    output:
+        temp("main.o"),
+    shell:
+        "{config[cc]} {config[cflags]} -c {input} -o {output}"
 
 
 rule rtl_simulation:

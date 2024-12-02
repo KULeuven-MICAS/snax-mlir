@@ -61,7 +61,7 @@ module default_rules:
         config
 
 
-use rule * from default_rules exclude preprocess_mlir, snax_opt_mlir as default_*
+use rule * from default_rules exclude preprocess_mlir, snax_opt_mlir, generate_simple_data, compile_simple_main as default_*
 
 
 def get_sizes():

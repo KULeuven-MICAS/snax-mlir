@@ -33,11 +33,16 @@ use rule * from default_rules as default_*
 rule all:
     input:
         "simple_copy.x",
+    shell:
+        "{config[vltsim]} {input[0]}"
 
 
-rule generate_data:
+rule compile_snax_binary:
+    input:
+        "simple_copy.o",
+        "main.o",
+        "data.o",
     output:
-        "data.c",
-        "data.h",
-    script:
-        "gendata.py"
+        "simple_copy.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
