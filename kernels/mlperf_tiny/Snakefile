@@ -1,0 +1,54 @@
+from util.get_model import get_model
+from util.snake.configs import get_mlperf_tiny_config
+
+config = get_mlperf_tiny_config()
+
+
+module default_rules:
+    snakefile:
+        "../../util/snake/default_rules.smk"
+    config:
+        config
+
+
+use rule * from default_rules exclude compile_llvm_module as default_*
+
+
+nets = ["pretrainedResnet_quant", "kws_ref_model", "vww_96_int8", "ad01_int8"]
+extensions = [".o", ".no-snax-opt.o"]
+
+
+rule all:
+    input:
+        expand("{network}{extension}", network=nets, extension=extensions),
+
+
+rule get_mlperf_tiny_model:
+    output:
+        "{network}.tflite",
+    # We need to constrain this wildcard to inform snakemake of the limited
+    # possibilties this function can make
+    wildcard_constraints:
+        network="|".join(nets),
+    run:
+        get_model(wildcards.network, output[0])
+
+
+# Override default rule, to not have temporary output
+rule compile_llvm_module:
+    input:
+        "{file}.ll12",
+    output:
+        "{file}.o",
+    shell:
+        "{config[cc]} {config[clangflags]} -x ir -c {input} -o {output}"
+
+
+# Special preprocessing for anomaly detection
+rule preprocess_anomaly_detection:
+    input:
+        "ad01_int8.mlir",
+    output:
+        "ad01_int8.preprocfinal.mlir",
+    shell:
+        "{config[snax-opt]} -p preprocess-mlperftiny --print-op-generic --allow-unregistered-dialect -o {output} {input}"
