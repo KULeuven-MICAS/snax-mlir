@@ -1,3 +1,21 @@
+rule convert_tflite_to_tosa:
+    input:
+        "{file}.tflite",
+    output:
+        temp("{file}.mlir.bc"),
+    shell:
+        "../../runtime/tflite_to_tosa.py -c {input} -o {output} "
+
+
+rule convert_mlir_bytecode_to_text:
+    input:
+        "{file}.mlir.bc",
+    output:
+        temp("{file}.mlir"),
+    shell:
+        "{config[mlir-opt]} --mlir-print-op-generic --mlir-print-local-scope -o {output} {input}"
+
+
 rule preprocess_mlir:
     input:
         "{file}.mlir",
@@ -35,6 +53,15 @@ rule postprocess_mlir:
         "{config[mlir-opt]} {config[mlirpostprocflags]} -o {output} {input}"
 
 
+rule postprocess_no_snax_mlir:
+    input:
+        "{file}.preprocfinal.mlir",
+    output:
+        temp("{file}.no-snax-opt.ll.mlir"),
+    shell:
+        "{config[mlir-opt]} {config[mlirpostprocflags]} -o {output} {input}"
+
+
 rule translate_mlir:
     input:
         "{file}.ll.mlir",
@@ -59,7 +86,7 @@ rule compile_llvm_module:
     output:
         temp("{file}.o"),
     shell:
-        "{config[cc]} {config[cflags]} -x ir -c {input} -o {output}"
+        "{config[cc]} {config[clangflags]} -x ir -c {input} -o {output}"
 
 
 rule postprocess_llvm_module:

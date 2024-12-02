@@ -137,7 +137,7 @@ rule snax_opt_mlir:
     params:
         snax_flags=lambda wildcards: get_snax_opt_flags(wildcards.options),
     shell:
-        "{SNAXOPT} -p {params.snax_flags} -o {output} {input}"
+        "{config[snax-opt]} -p {params.snax_flags} -o {output} {input}"
 
 
 rule generate_data:
