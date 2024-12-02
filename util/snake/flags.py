@@ -55,17 +55,26 @@ def get_mlir_postproc_flags(index_bitwidth=32):
     ]
 
 
-def get_clang_flags():
+def get_target_flags():
     """
-    Function that returns clang flags, related to RISC-V backend settings
+    Function that returns llvm target flags, related to RISC-V backend settings
     """
     return [
-        "-Wno-unused-command-line-argument",
         "--target=riscv32-unknown-elf",
         "-mcpu=generic-rv32",
         "-march=rv32imafdzfh",
         "-mabi=ilp32d",
         "-mcmodel=medany",
+    ]
+
+
+def get_clang_flags():
+    """
+    Function that returns clang-specific flags, related to RISC-V backend settings
+    """
+    return [
+        "-Wno-unused-command-line-argument",
+        *get_target_flags(),
         "-ftls-model=local-exec",
         "-ffast-math",
         "-fno-builtin-printf",
@@ -106,11 +115,7 @@ def get_ld_flags(snitch_sw_path, snitch_llvm_path="/usr/bin"):
     """
     return [
         f"-fuse-ld={snitch_llvm_path}/ld.lld",
-        "--target=riscv32-unknown-elf",
-        "-mcpu=generic-rv32",
-        "-march=rv32imafdzfh",
-        "-mabi=ilp32d",
-        "-mcmodel=medany",
+        *get_target_flags(),
         f"-T{snitch_sw_path}/sw/snRuntime/base.ld",
         f"-L{snitch_sw_path}/target/snitch_cluster/sw/runtime/rtl-generic",
         f"-L{snitch_sw_path}/target/snitch_cluster/sw/runtime/rtl-generic/build",
