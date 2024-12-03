@@ -120,14 +120,23 @@ class InsertFunctionDeclaration(RewritePattern):
     """Insert external function declarations of snax_cluster_core_idx if they are used in the module"""
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, module_op: builtin.ModuleOp, rewriter: PatternRewriter):
-        for op in module_op.walk():
-            if isinstance(op, func.CallOp):
-                if op.callee.string_value() == "snax_cluster_core_idx":
-                    func_op_compute = func.FuncOp.external(
-                        "snax_cluster_core_idx", [], [builtin.i32]
-                    )
-                    SymbolTable.insert_or_update(module_op, func_op_compute)
+    def match_and_rewrite(self, op: func.CallOp, rewriter: PatternRewriter):
+
+        # Check for snax cluster core idx
+        if op.callee.string_value() != "snax_cluster_core_idx":
+            return
+
+        # Create Func Op
+        func_op = func.FuncOp.external("snax_cluster_core_idx", [], [builtin.i32])
+
+        # Search for ModuleOp
+        module_op = op.parent
+        while not isinstance(module_op, builtin.ModuleOp):
+            assert module_op
+            module_op = module_op.parent
+
+        # Insert FuncOp
+        SymbolTable.insert_or_update(module_op, func_op)
 
 
 @dataclass(frozen=True)

@@ -3,38 +3,9 @@ from dataclasses import dataclass
 from xdsl.context import MLContext
 from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import (
-    PatternRewriter,
-    PatternRewriteWalker,
-    RewritePattern,
-    op_type_rewrite_pattern,
-)
 from xdsl.traits import SymbolTable
 
 from compiler.accelerators.registry import AcceleratorRegistry
-from compiler.dialects import accfg
-
-
-@dataclass
-class InsertAcceleratorOpPattern(RewritePattern):
-    acc_op: accfg.AcceleratorOp
-    """
-    Pattern that attaches the AcceleratorOp specified by acc_op to
-    the module symbol table if the symbol wasn't there already.
-    Raises a RuntimeError if the symbol is already present.
-    """
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: builtin.ModuleOp, rewriter: PatternRewriter):
-        # Get module symbol table and attach accelerator op to it
-        t = op.get_trait(SymbolTable)
-        assert t is not None
-        acc_string = self.acc_op.name_prop.string_value()
-        if t.lookup_symbol(op, acc_string) is not None:
-            raise RuntimeError(
-                f"Cannot insert op: @{acc_string}, already present in symbol table."
-            )
-        t.insert_or_update(op, self.acc_op)
 
 
 @dataclass(frozen=True)
@@ -59,5 +30,12 @@ class InsertAccOp(ModulePass):
         acc_info = AcceleratorRegistry().get_acc_info(self.accelerator)
         # With the interface, generate an appropriate acc op
         acc_op = acc_info().generate_acc_op()
-        # Use the get
-        PatternRewriteWalker(InsertAcceleratorOpPattern(acc_op)).rewrite_module(op)
+
+        t = op.get_trait(SymbolTable)
+        assert t is not None
+        acc_string = acc_op.name_prop.string_value()
+        if t.lookup_symbol(op, acc_string) is not None:
+            raise RuntimeError(
+                f"Cannot insert op: @{acc_string}, already present in symbol table."
+            )
+        t.insert_or_update(op, acc_op)

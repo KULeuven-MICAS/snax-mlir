@@ -460,7 +460,7 @@ class TransformDMA(RewritePattern):
             )
 
             # if this is innermost for loop, also insert dma function call
-            if isinstance(next_for_op, scf.Yield):
+            if isinstance(next_for_op, scf.YieldOp):
                 func_call = func.CallOp(
                     "snax_dma_2d_transfer",
                     [

@@ -17,7 +17,7 @@ def dispatch_to_compute(op):
     for now, this is only linalg generic operations
     and streaming regions
     """
-    if isinstance(op, linalg.Generic):
+    if isinstance(op, linalg.GenericOp):
         return True
     if isinstance(op, stream.StreamingRegionOp):
         return True

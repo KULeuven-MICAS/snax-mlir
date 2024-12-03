@@ -22,14 +22,6 @@ class InsertFunctionCall(RewritePattern):
         rewriter.replace_matched_op(func_call)
 
 
-class InsertFunctionDeclaration(RewritePattern):
-    """Insert external function declarations of snax_cluster_hw_barrier"""
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, module_op: builtin.ModuleOp, rewriter: PatternRewriter):
-        func_op = func.FuncOp.external("snax_cluster_hw_barrier", [], [])
-        SymbolTable.insert_or_update(module_op, func_op)
-
 
 class ClearL1ToFunc(RewritePattern):
     """Insert function call to clear l1"""
@@ -69,7 +61,7 @@ class AllocToFunc(RewritePattern):
             return
 
         def dense_array(pos):
-            return builtin.DenseArrayBase.create_dense_int_or_index(builtin.i64, pos)
+            return builtin.DenseArrayBase.create_dense_int(builtin.i64, pos)
 
         ops_to_insert = []
 
@@ -166,7 +158,8 @@ class SNAXToFunc(ModulePass):
 
         if contains_sync:
             PatternRewriteWalker(InsertFunctionCall()).rewrite_module(op)
-            PatternRewriteWalker(InsertFunctionDeclaration()).rewrite_module(op)
+            func_op = func.FuncOp.external("snax_cluster_hw_barrier", [], [])
+            SymbolTable.insert_or_update(op, func_op)
 
         PatternRewriteWalker(
             GreedyRewritePatternApplier([AllocToFunc(), ClearL1ToFunc()])

@@ -39,7 +39,7 @@
 //CHECK-NEXT:     "scf.if"(%5) ({
 //CHECK-NEXT:       "linalg.generic"(%0, %1, %2) <{"indexing_maps" = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], "iterator_types" = [#linalg.iterator_type<parallel>], "operandSegmentSizes" = array<i32: 2, 1>}> ({
 //CHECK-NEXT:       ^1(%arg0 : i32, %arg1 : i32, %arg2 : i32):
-//CHECK-NEXT:         %6 = "arith.muli"(%arg0, %arg1) : (i32, i32) -> i32
+//CHECK-NEXT:         %6 = "arith.muli"(%arg0, %arg1) <{"overflowFlags" = #arith.overflow<none>}> : (i32, i32) -> i32
 //CHECK-NEXT:         "linalg.yield"(%6) : (i32) -> ()
 //CHECK-NEXT:       }) : (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> ()
 //CHECK-NEXT:       "scf.yield"() : () -> ()
@@ -113,7 +113,7 @@
 //CHECK-NEXT:     "scf.if"(%5) ({
 //CHECK-NEXT:       "linalg.generic"(%0, %1, %2) <{"indexing_maps" = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], "iterator_types" = [#linalg.iterator_type<parallel>], "operandSegmentSizes" = array<i32: 2, 1>}> ({
 //CHECK-NEXT:       ^1(%arg0 : i32, %arg1 : i32, %arg2 : i32):
-//CHECK-NEXT:         %8 = "arith.muli"(%arg0, %arg1) : (i32, i32) -> i32
+//CHECK-NEXT:         %8 = "arith.muli"(%arg0, %arg1) <{"overflowFlags" = #arith.overflow<none>}> : (i32, i32) -> i32
 //CHECK-NEXT:         "linalg.yield"(%8) : (i32) -> ()
 //CHECK-NEXT:       }) : (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> ()
 //CHECK-NEXT:       "scf.yield"() : () -> ()
@@ -166,7 +166,7 @@
 //CHECK-NEXT:           "scf.if"(%5) ({
 //CHECK-NEXT:             "linalg.generic"(%0, %1, %2) <{"indexing_maps" = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], "iterator_types" = [#linalg.iterator_type<parallel>], "operandSegmentSizes" = array<i32: 2, 1>}> ({
 //CHECK-NEXT:             ^1(%arg0 : i32, %arg1 : i32, %arg2 : i32):
-//CHECK-NEXT:               %7 = "arith.muli"(%arg0, %arg1) : (i32, i32) -> i32
+//CHECK-NEXT:               %7 = "arith.muli"(%arg0, %arg1) <{"overflowFlags" = #arith.overflow<none>}> : (i32, i32) -> i32
 //CHECK-NEXT:               "linalg.yield"(%7) : (i32) -> ()
 //CHECK-NEXT:             }) : (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> ()
 //CHECK-NEXT:             "scf.yield"() : () -> ()
