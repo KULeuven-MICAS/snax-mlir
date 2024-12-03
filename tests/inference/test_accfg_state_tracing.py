@@ -19,16 +19,16 @@ def test_simple_setup_tracing():
     assert infer_state_of(full_setup.out_state) == {"A": a, "B": b, "C": c}
 
     # construct if block that sets state
-    if_block = scf.If(
+    if_block = scf.IfOp(
         a,
         [accfg.StateType("acc1")],
         [
             s1 := accfg.SetupOp([b], ["A"], ACC, full_setup),
-            scf.Yield(s1),
+            scf.YieldOp(s1),
         ],
         [
             s2 := accfg.SetupOp([c], ["B"], ACC, full_setup),
-            scf.Yield(s2),
+            scf.YieldOp(s2),
         ],
     )
 

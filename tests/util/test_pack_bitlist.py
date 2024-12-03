@@ -40,7 +40,7 @@ def test_pack_bitlist_mixed_vals():
     out = StringIO()
     p = Printer(stream=out)
     input_vals = [
-        arith.Constant.from_int_and_width(v, builtin.i32) for v in [1, 128, 16]
+        arith.ConstantOp.from_int_and_width(v, builtin.i32) for v in [1, 128, 16]
     ]
     for op in input_vals:
         p.print(op)
