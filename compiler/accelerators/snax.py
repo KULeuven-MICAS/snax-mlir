@@ -171,7 +171,7 @@ class SNAXStreamer(ABC):
 
             # address remap:
             if StreamerOpts.HasAddressRemap in streamer.opts:
-                c0 = arith.Constant.from_int_and_width(0, i32)
+                c0 = arith.ConstantOp.from_int_and_width(0, i32)
                 result.append(([c0], c0.result))
 
             # channel mask option
@@ -196,7 +196,7 @@ class SNAXStreamer(ABC):
 
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             if StreamerOpts.HasBroadcast in streamer.opts:
-                c0 = arith.Constant.from_int_and_width(0, i32)
+                c0 = arith.ConstantOp.from_int_and_width(0, i32)
                 result.append(([c0], c0.result))
 
         return result
