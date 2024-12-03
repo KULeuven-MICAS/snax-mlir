@@ -23,7 +23,6 @@ class StreamerOpts(StrEnum):
     HasBroadcast = "b"
 
 
-
 class StreamerFlag(StrEnum):
     """
     Enum that specifies special flags for a streamer dimension.

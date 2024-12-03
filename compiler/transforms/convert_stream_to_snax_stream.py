@@ -244,12 +244,12 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 )
 
         # make last spatial stride patterns 2d
-        snax_stride_patterns[-2] =  snax_stream.StridePattern(
+        snax_stride_patterns[-2] = snax_stream.StridePattern(
             upper_bounds=snax_stride_patterns[-2].upper_bounds,
             temporal_strides=snax_stride_patterns[-2].temporal_strides,
             spatial_strides=[8, 64],
         )
-        snax_stride_patterns[-1] =  snax_stream.StridePattern(
+        snax_stride_patterns[-1] = snax_stream.StridePattern(
             upper_bounds=snax_stride_patterns[-1].upper_bounds,
             temporal_strides=snax_stride_patterns[-1].temporal_strides,
             spatial_strides=[8, 64],
