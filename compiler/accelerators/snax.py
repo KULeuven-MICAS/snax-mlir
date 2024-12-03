@@ -196,8 +196,8 @@ class SNAXStreamer(ABC):
 
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             if StreamerOpts.HasBroadcast in streamer.opts:
-                c0 = arith.ConstantOp.from_int_and_width(0, i32)
-                result.append(([c0], c0.result))
+                c1 = arith.ConstantOp.from_int_and_width(1, i32)
+                result.append(([c1], c1.result))
 
         return result
 
