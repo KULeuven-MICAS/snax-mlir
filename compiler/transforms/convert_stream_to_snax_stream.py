@@ -243,7 +243,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
                 )
 
-        if accelerator_str == 'snax_gemmx':
+        if accelerator_str == "snax_gemmx":
             # make last spatial stride patterns 2d
             snax_stride_patterns[-2] = snax_stream.StridePattern(
                 upper_bounds=snax_stride_patterns[-2].upper_bounds,
