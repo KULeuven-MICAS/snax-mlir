@@ -26,7 +26,7 @@ viz = [
 
 # Dependencies for neural network compilation
 nn = [
-    "tensorflow-cpu==2.15.0",
+    "tensorflow-cpu==2.16.2",
 ]
 
 [project.scripts]
