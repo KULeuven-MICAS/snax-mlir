@@ -55,7 +55,7 @@ class MulOp(KernelOp, BinaryOp, Parsable):
             )
         )
         def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
-            mul = arith.Muli(args[0], args[1])
+            mul = arith.MuliOp(args[0], args[1])
             linalg.YieldOp(mul)
 
         return equivalent_region
@@ -78,7 +78,7 @@ class AddOp(KernelOp, BinaryOp, Parsable):
             )
         )
         def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
-            add = arith.Addi(args[0], args[1])
+            add = arith.AddiOp(args[0], args[1])
             linalg.YieldOp(add)
 
         return equivalent_region
@@ -101,8 +101,8 @@ class MacOp(KernelOp, BinaryOp, Parsable):
             )
         )
         def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
-            mul = arith.Muli(args[0], args[1])
-            mac = arith.Addi(args[2], mul)
+            mul = arith.MuliOp(args[0], args[1])
+            mac = arith.AddiOp(args[2], mul)
             linalg.YieldOp(mac)
 
         return equivalent_region
@@ -130,12 +130,12 @@ class QMacOp(KernelOp, QuantizedBinaryOp, Parsable):
         def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
             assert isinstance(zp_lhs_type := args[2].type, IntegerType)
             extsi_lhs = arith.ExtSIOp(args[0], zp_lhs_type)
-            subi_lhs = arith.Subi(extsi_lhs, args[2])
+            subi_lhs = arith.SubiOp(extsi_lhs, args[2])
             assert isinstance(zp_rhs_type := args[3].type, IntegerType)
             extsi_rhs = arith.ExtSIOp(args[1], zp_rhs_type)
-            subi_rhs = arith.Subi(extsi_rhs, args[3])
-            mul = arith.Muli(subi_lhs, subi_rhs)
-            mac = arith.Addi(args[4], mul)
+            subi_rhs = arith.SubiOp(extsi_rhs, args[3])
+            mul = arith.MuliOp(subi_lhs, subi_rhs)
+            mac = arith.AddiOp(args[4], mul)
             linalg.YieldOp(mac)
 
         return equivalent_region

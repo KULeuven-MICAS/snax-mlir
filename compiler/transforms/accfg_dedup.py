@@ -108,7 +108,7 @@ class PullSetupOpsOutOfLoops(RewritePattern):
     def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
         # don't apply to setups not inside for loops
         loop_op = op.parent_op()
-        if not isinstance(loop_op, scf.For):
+        if not isinstance(loop_op, scf.ForOp):
             return
 
         # only do this for the first setup op in the loop
@@ -184,7 +184,7 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
         # do not apply if our in_state is not an scf.if
-        if op.in_state is None or not isinstance(op.in_state.owner, scf.If):
+        if op.in_state is None or not isinstance(op.in_state.owner, scf.IfOp):
             return
         # grab some helper vars
         old_in_state = op.in_state
@@ -221,7 +221,7 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
         for region in op.in_state.owner.regions:
             # grab the yield op:
             yield_op = region.block.last_op
-            assert isinstance(yield_op, scf.Yield)
+            assert isinstance(yield_op, scf.YieldOp)
             new_in_state = yield_op.operands[old_in_state.index]
 
             # insert a copy of the setup op but replace the

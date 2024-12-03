@@ -56,7 +56,7 @@ class RoCCAccelerator(Accelerator, ABC):
             # op with a new one that uses the defaults
             if to_add_as_defaults:
                 optional_default_value.append(
-                    default_val := arith.Constant.from_int_and_width(0, i64)
+                    default_val := arith.ConstantOp.from_int_and_width(0, i64)
                 )
                 new_params = list(field_dict.keys()) + to_add_as_defaults
                 new_values = list(field_dict.values()) + [default_val] * len(

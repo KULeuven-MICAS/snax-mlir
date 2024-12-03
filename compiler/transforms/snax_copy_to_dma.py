@@ -1,6 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, scf
-from xdsl.dialects.arith import Addi, Constant, Muli
+from xdsl.dialects.arith import AddiOp, ConstantOp, MuliOp
 from xdsl.dialects.builtin import (
     FixedBitwidthType,
     IndexType,
@@ -12,7 +12,7 @@ from xdsl.dialects.builtin import (
 )
 from xdsl.dialects.memref import (
     CopyOp,
-    Dim,
+    DimOp,
     ExtractAlignedPointerAsIndexOp,
     ExtractStridedMetaDataOp,
 )
@@ -38,14 +38,14 @@ def get_total_size_op(source: SSAValue):
     ops_to_insert = []
     total_size_op = None
     for dim in range(source.type.get_num_dims()):
-        const_op = Constant.from_int_and_width(dim, IndexType())
+        const_op = ConstantOp.from_int_and_width(dim, IndexType())
         ops_to_insert.append(const_op)
-        dim_op = Dim.from_source_and_index(source, const_op.result)
+        dim_op = DimOp.from_source_and_index(source, const_op.result)
         ops_to_insert.append(dim_op)
         if total_size_op is None:
             total_size_op = dim_op
         else:
-            total_size_op = Muli(total_size_op.result, dim_op.result, IndexType())
+            total_size_op = MuliOp(total_size_op.result, dim_op.result, IndexType())
             ops_to_insert.append(total_size_op)
 
     # step 2: calculate element size to get total size in bytes
@@ -53,8 +53,8 @@ def get_total_size_op(source: SSAValue):
     # total size in bytes
     element_type: IntegerType = source.type.get_element_type()
     assert isinstance(element_type, FixedBitwidthType)
-    element_size_op = Constant.from_int_and_width(element_type.size, IndexType())
-    total_size_op = Muli(
+    element_size_op = ConstantOp.from_int_and_width(element_type.size, IndexType())
+    total_size_op = MuliOp(
         total_size_op.result,
         element_size_op.result,
         IndexType(),
@@ -99,7 +99,7 @@ class MatchSimpleCopy(RewritePattern):
         ops_to_insert.append(dest_ptr_op)
 
         # create function call
-        func_call = func.Call(
+        func_call = func.CallOp(
             "snax_dma_1d_transfer",
             [
                 source_ptr_op.aligned_pointer,
@@ -243,7 +243,7 @@ class TransformDMA(RewritePattern):
             # Calculate number of bytes in type
             assert isinstance(op.source.type.element_type, FixedBitwidthType)
             el_bytes = op.source.type.element_type.size
-            el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
+            el_bytes_op = ConstantOp.from_int_and_width(el_bytes, IndexType())
             # Dynamic offset
             if tsl_source.data.offset is None:
                 # dynamic offsets for tsl is TODO
@@ -251,32 +251,32 @@ class TransformDMA(RewritePattern):
                 offset_op = ExtractStridedMetaDataOp(op.source)
                 offset = offset_op.offset
             else:
-                offset_op = Constant.from_int_and_width(
+                offset_op = ConstantOp.from_int_and_width(
                     tsl_source.data.offset, IndexType()
                 )
                 offset = offset_op.result
 
-            calc_offset_op = Muli(el_bytes_op, offset, IndexType())
-            pointer_src = Addi(pointer_src, calc_offset_op, IndexType())
+            calc_offset_op = MuliOp(el_bytes_op, offset, IndexType())
+            pointer_src = AddiOp(pointer_src, calc_offset_op, IndexType())
             ops_to_insert.extend([offset_op, el_bytes_op, calc_offset_op, pointer_src])
 
         if tsl_dest.data.offset != 0:
             # Dynamic offset
             assert isinstance(op.destination.type.element_type, FixedBitwidthType)
             el_bytes = op.destination.type.element_type.size
-            el_bytes_op = Constant.from_int_and_width(el_bytes, IndexType())
+            el_bytes_op = ConstantOp.from_int_and_width(el_bytes, IndexType())
             if tsl_dest.data.offset is None:
                 assert isinstance(op.destination.type.layout, StridedLayoutAttr)
                 offset_op = ExtractStridedMetaDataOp(op.destination)
                 offset = offset_op.offset
             else:
                 # Multiplication with el_bytes already happens statically with extract_offset()
-                offset_op = Constant.from_int_and_width(
+                offset_op = ConstantOp.from_int_and_width(
                     tsl_dest.data.offset, IndexType()
                 )
                 offset = offset_op.result
-            calc_offset_op = Muli(el_bytes_op, offset, IndexType())
-            pointer_dst = Addi(pointer_dst, calc_offset_op, IndexType())
+            calc_offset_op = MuliOp(el_bytes_op, offset, IndexType())
+            pointer_dst = AddiOp(pointer_dst, calc_offset_op, IndexType())
             ops_to_insert.extend([offset_op, el_bytes_op, calc_offset_op, pointer_dst])
 
         # step 2: find largest common contiguous block, to be used for dma transfers
@@ -350,7 +350,7 @@ class TransformDMA(RewritePattern):
             ops_to_insert.extend(ops_to_add)
 
             # create function call
-            func_call = func.Call(
+            func_call = func.CallOp(
                 "snax_dma_1d_transfer", [pointer_src, pointer_dst, total_size_op], []
             )
 
@@ -368,7 +368,7 @@ class TransformDMA(RewritePattern):
 
         assert isinstance(op.source.type.element_type, FixedBitwidthType)
         el_bytes = op.source.type.element_type.size
-        dma_size = Constant.from_int_and_width(
+        dma_size = ConstantOp.from_int_and_width(
             lcb[-1].bound * lcb[-1].step * el_bytes, IndexType()
         )
         dma_stride_src = dma_loop["step_src_op"]
@@ -378,7 +378,7 @@ class TransformDMA(RewritePattern):
 
         # step 5: if there are no remaining strides, insert simple 2D dma transfer
         if len(remaining_strides) == 0:
-            func_call = func.Call(
+            func_call = func.CallOp(
                 "snax_dma_2d_transfer",
                 [
                     pointer_src,
@@ -412,21 +412,21 @@ class TransformDMA(RewritePattern):
         """
 
         # step 6.1: create the list of loop bounds
-        lower = arith.Constant.from_int_and_width(0, builtin.IndexType())
-        step = arith.Constant.from_int_and_width(1, builtin.IndexType())
+        lower = arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
+        step = arith.ConstantOp.from_int_and_width(1, builtin.IndexType())
         upper = [stride["bound_op"] for stride in remaining_strides]
 
         ops_to_insert.extend([lower, step])
 
         # step 6.2: create nested for loop (looping from inner to outer)
         # innermost for loop has empty region
-        empty_region = Region(Block([scf.Yield()], arg_types=(IndexType(),)))
-        for_loop = scf.For(lower, upper[-1], step, [], empty_region)
+        empty_region = Region(Block([scf.YieldOp()], arg_types=(IndexType(),)))
+        for_loop = scf.ForOp(lower, upper[-1], step, [], empty_region)
 
         for i in range(len(remaining_strides) - 1):
             # other for loops have a region with the previous for loop as body
-            region = Region(Block([for_loop, scf.Yield()], arg_types=(IndexType(),)))
-            for_loop = scf.For(
+            region = Region(Block([for_loop, scf.YieldOp()], arg_types=(IndexType(),)))
+            for_loop = scf.ForOp(
                 lower, upper[len(remaining_strides) - 2 - i], step, [], region
             )
 
@@ -444,14 +444,14 @@ class TransformDMA(RewritePattern):
 
             # source indexing operations:
             stride_src = remaining_strides[i]["step_src_op"]
-            increment_src = Muli(for_loop.body.block.args[0], stride_src, IndexType())
-            pointer_src = Addi(pointer_src, increment_src, IndexType())
+            increment_src = MuliOp(for_loop.body.block.args[0], stride_src, IndexType())
+            pointer_src = AddiOp(pointer_src, increment_src, IndexType())
             ops_to_insert_for_loop.extend([increment_src, pointer_src])
 
             # destination indexing operations:
             stride_dst = remaining_strides[i]["step_dst_op"]
-            increment_dst = Muli(for_loop.body.block.args[0], stride_dst, IndexType())
-            pointer_dst = Addi(pointer_dst, increment_dst, IndexType())
+            increment_dst = MuliOp(for_loop.body.block.args[0], stride_dst, IndexType())
+            pointer_dst = AddiOp(pointer_dst, increment_dst, IndexType())
             ops_to_insert_for_loop.extend([increment_dst, pointer_dst])
 
             # insert the ops in the for loop body
@@ -461,7 +461,7 @@ class TransformDMA(RewritePattern):
 
             # if this is innermost for loop, also insert dma function call
             if isinstance(next_for_op, scf.Yield):
-                func_call = func.Call(
+                func_call = func.CallOp(
                     "snax_dma_2d_transfer",
                     [
                         pointer_src,
@@ -497,7 +497,7 @@ class SNAXCopyToDMA(ModulePass):
         PatternRewriteWalker(TransformDMA()).rewrite_module(op)
 
         if any(
-            isinstance(op_in_module, func.Call)
+            isinstance(op_in_module, func.CallOp)
             and op_in_module.callee.root_reference.data == "snax_dma_1d_transfer"
             for op_in_module in op.walk()
         ):
@@ -507,7 +507,7 @@ class SNAXCopyToDMA(ModulePass):
             SymbolTable.insert_or_update(op, func_decl)
 
         if any(
-            isinstance(op_in_module, func.Call)
+            isinstance(op_in_module, func.CallOp)
             and op_in_module.callee.root_reference.data == "snax_dma_2d_transfer"
             for op_in_module in op.walk()
         ):

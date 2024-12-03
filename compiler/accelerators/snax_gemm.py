@@ -106,7 +106,7 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         return [
             *ops_to_insert,
             setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
-            launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
+            launch_val := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(1, 5)),
             token := accfg.LaunchOp(
                 [launch_val, launch_val], self.launch_fields, setup
             ),
@@ -124,9 +124,9 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         - a reference to the SSAValue containing the calculated field value
         """
 
-        c0 = arith.Constant.from_int_and_width(0, 32)
+        c0 = arith.ConstantOp.from_int_and_width(0, 32)
         knm = [
-            (((cst := arith.Constant.from_int_and_width(val.data, 32)),), cst.result)
+            (((cst := arith.ConstantOp.from_int_and_width(val.data, 32)),), cst.result)
             for val in op.stride_patterns.data[0].upper_bounds
         ]
 
@@ -134,11 +134,11 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
 
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
-        c0 = arith.Constant.from_int_and_width(0, 32)
+        c0 = arith.ConstantOp.from_int_and_width(0, 32)
         addr_acc = acc_op.launch_fields.data["launch_gemm"].value.data
-        addr_acc = arith.Constant.from_int_and_width(addr_acc, 32)
+        addr_acc = arith.ConstantOp.from_int_and_width(addr_acc, 32)
         addr_str = acc_op.launch_fields.data["launch_streamer"].value.data
-        addr_str = arith.Constant.from_int_and_width(addr_str, 32)
+        addr_str = arith.ConstantOp.from_int_and_width(addr_str, 32)
         return [
             c0,
             addr_acc,

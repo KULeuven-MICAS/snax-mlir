@@ -40,9 +40,9 @@ class InsertStaticFunctionCall(RewritePattern):
         @Builder.implicit_region((static_input,))
         def func_region(args: tuple[BlockArgument, ...]):
             cast = tensor.CastOp(args[0], dynamic_input)
-            func_result = func.Call("main", [cast], [dynamic_output])
+            func_result = func.CallOp("main", [cast], [dynamic_output])
             cast2 = tensor.CastOp(func_result, static_output)
-            func.Return(cast2)
+            func.ReturnOp(cast2)
 
         main_func = func.FuncOp(
             "run_network",
@@ -79,7 +79,7 @@ class RemoveZeroInits(RewritePattern):
             return
         if not isinstance((const_input := op.inputs[0]), OpResult):
             return
-        if not isinstance((const_op := const_input.op), arith.Constant):
+        if not isinstance((const_op := const_input.op), arith.ConstantOp):
             return
         if not isinstance((intattr := const_op.value), builtin.IntegerAttr):
             return
@@ -105,7 +105,7 @@ class RemoveTransposeConstants(RewritePattern):
         return transposed_tuple
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: linalg.GenericOp, rewriter: PatternRewriter):
         # find transpose generics on constants and just do it directly
 
         # transpose op has only yield
@@ -127,7 +127,7 @@ class RemoveTransposeConstants(RewritePattern):
         # is input constant?
         if not isinstance(op.inputs[0], OpResult):
             return
-        if not isinstance((const_op := op.inputs[0].op), arith.Constant):
+        if not isinstance((const_op := op.inputs[0].op), arith.ConstantOp):
             return
         if not isinstance((const_type := op.inputs[0].type), builtin.TensorType):
             return
@@ -145,7 +145,7 @@ class RemoveTransposeConstants(RewritePattern):
         )
 
         # create new const_op
-        new_const_op = arith.Constant(transposed_dense_attr, op.outputs[0].type)
+        new_const_op = arith.ConstantOp(transposed_dense_attr, op.outputs[0].type)
 
         # insert new const operation
         rewriter.insert_op(new_const_op, InsertPoint.before(const_op))
@@ -167,7 +167,7 @@ class InsertMemoryClears(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: linalg.GenericOp, rewriter: PatternRewriter):
         dump = snax.ClearL1()
         rewriter.insert_op(dump, InsertPoint.before(op))
 
@@ -180,7 +180,7 @@ class OrganizeGetGlobals(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, getglobal: memref.GetGlobal, rewriter: PatternRewriter):
+    def match_and_rewrite(self, getglobal: memref.GetGlobalOp, rewriter: PatternRewriter):
         assert getglobal.parent
         for firstuser in getglobal.parent.walk():
             if firstuser in {x.operation for x in getglobal.memref.uses} and isinstance(

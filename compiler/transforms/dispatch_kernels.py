@@ -30,7 +30,7 @@ class DispatchTemplatePattern(RewritePattern):
         self.accelerators = accelerators
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
+    def match_and_rewrite(self, linalg_op: linalg.GenericOp, rewriter: PatternRewriter):
         # check if already dispatched
         if linalg_op.library_call:
             return

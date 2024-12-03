@@ -20,7 +20,7 @@ class InsertMcycleForLoop(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: func.FuncOp, rewriter: PatternRewriter):
         for opy in op.body.block.ops:
-            if isinstance(opy, scf.For):
+            if isinstance(opy, scf.ForOp):
                 rewriter.insert_op(snax.MCycleOp(), InsertPoint.before(opy))
                 rewriter.insert_op(snax.MCycleOp(), InsertPoint.after(opy))
 

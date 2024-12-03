@@ -71,7 +71,7 @@ class InsertResetsForDanglingStatesPattern(RewritePattern):
         # abort if any use is a reset or another setup op (or returned from control flow)
         # if it's returned from control flow, we should instead worry about the return value.
         if any(
-            isinstance(use.operation, accfg.ResetOp | accfg.SetupOp | scf.Yield)
+            isinstance(use.operation, accfg.ResetOp | accfg.SetupOp | scf.YieldOp)
             for use in uses
         ):
             return

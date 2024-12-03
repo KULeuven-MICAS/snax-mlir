@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from math import prod
 
-from xdsl.dialects.arith import Constant, DivUI, Muli
+from xdsl.dialects.arith import ConstantOp, DivUIOp, MuliOp
 from xdsl.dialects.builtin import (
     FixedBitwidthType,
     IndexType,
@@ -10,7 +10,7 @@ from xdsl.dialects.builtin import (
     MemRefType,
     StridedLayoutAttr,
 )
-from xdsl.dialects.memref import Dim, ExtractStridedMetaDataOp
+from xdsl.dialects.memref import DimOp, ExtractStridedMetaDataOp
 from xdsl.ir import Data, Dialect, Operation, SSAValue
 from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineMap
 from xdsl.irdl import (
@@ -96,8 +96,8 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             memref = memref_op_or_shapes
             shapes = []
             for dim in range(tsl.dimension()):
-                dim_index_op = Constant.from_int_and_width(dim, IndexType())
-                dim_op = Dim.from_source_and_index(memref, dim_index_op)
+                dim_index_op = ConstantOp.from_int_and_width(dim, IndexType())
+                dim_op = DimOp.from_source_and_index(memref, dim_index_op)
                 result.extend([dim_index_op, dim_op])
                 shapes.append(dim_op)
         else:
@@ -111,7 +111,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             # static case
             stride = tsl.get_stride(dim, depth)
             if stride.bound is not None:
-                bound_op = Constant.from_int_and_width(stride.bound, IndexType())
+                bound_op = ConstantOp.from_int_and_width(stride.bound, IndexType())
                 result.append(bound_op)
                 result_mapping[(dim, depth)] = bound_op
 
@@ -122,10 +122,10 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
                 product_tilebounds = prod(
                     [stride.bound for _, stride in tsl.tstrides[dim] if stride.bound]
                 )
-                div_op = Constant.from_int_and_width(product_tilebounds, IndexType())
+                div_op = ConstantOp.from_int_and_width(product_tilebounds, IndexType())
 
                 # divide the size of the memref by the product of all lower tiles
-                bound_op = DivUI(dim_op, div_op, IndexType())
+                bound_op = DivUIOp(dim_op, div_op, IndexType())
 
                 # add the ops to result
                 result.extend([div_op, bound_op])
@@ -134,7 +134,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             # inner tile depths are all static by definition of TSL
             for depth in range(1, tsl.tstrides[dim].depth()):
                 stride = tsl.get_stride(dim, depth)
-                bound_op = Constant.from_int_and_width(stride.bound, IndexType())
+                bound_op = ConstantOp.from_int_and_width(stride.bound, IndexType())
                 result.append(bound_op)
                 result_mapping[(dim, depth)] = bound_op
 
@@ -180,7 +180,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             and isinstance(memref_op.type.layout, StridedLayoutAttr)
         ):
             metadata_op = ExtractStridedMetaDataOp(memref_op)
-            element_size_op = Constant.from_int_and_width(
+            element_size_op = ConstantOp.from_int_and_width(
                 memref_op.type.element_type.width.data // 8, IndexType()
             )
             result.extend([metadata_op, element_size_op])
@@ -188,7 +188,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
                 depth = tsl.tstrides[dim].depth() - 1  # get last depth
                 if tsl.get_stride(dim, depth).step is None:
                     # dynamic stride, assign to result of metadata op
-                    stride = Muli(metadata_op.strides[dim], element_size_op)
+                    stride = MuliOp(metadata_op.strides[dim], element_size_op)
                     result_mapping[(dim, depth)] = stride
 
         # optional bytes correction
@@ -216,8 +216,8 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         # generate ops for the maximum
         # the max static stride multiplied by the bound of that Stride
         # can be used as a starting value for the dynamic strides
-        max_stride_op = Constant.from_int_and_width(max_value, IndexType())
-        dynamic_step = Muli(
+        max_stride_op = ConstantOp.from_int_and_width(max_value, IndexType())
+        dynamic_step = MuliOp(
             bound_ops[max_key],
             max_stride_op,
             IndexType(),
@@ -232,7 +232,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
 
                 # static case
                 if stride.step is not None:
-                    step_op = Constant.from_int_and_width(
+                    step_op = ConstantOp.from_int_and_width(
                         stride.step * el_bytes, IndexType()
                     )
                     result.append(step_op)
@@ -246,7 +246,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
                     else:
                         # else, follow contiguity assumption
                         step_op = dynamic_step
-                    dynamic_step = Muli(step_op, bound_ops[(dim, depth)], IndexType())
+                    dynamic_step = MuliOp(step_op, bound_ops[(dim, depth)], IndexType())
                     result.append(step_op)
                     result_mapping[(dim, depth)] = step_op
         return result, result_mapping

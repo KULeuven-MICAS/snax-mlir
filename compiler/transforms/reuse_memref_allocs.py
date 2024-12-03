@@ -15,7 +15,7 @@ from xdsl.rewriter import InsertPoint
 from xdsl.traits import Pure
 
 
-def find_parent_for_loop(op: Operation) -> scf.For | None:
+def find_parent_for_loop(op: Operation) -> scf.ForOp | None:
     """
     Find the parent for-loop of the operation.
     If no for-loop is found, return None.
@@ -23,7 +23,7 @@ def find_parent_for_loop(op: Operation) -> scf.For | None:
     op = op.parent_op()
     if op is None:
         return None
-    while not isinstance(op, scf.For):
+    while not isinstance(op, scf.ForOp):
         if op.parent_op() is None:
             return None
         op = op.parent_op()
@@ -86,7 +86,7 @@ class LoopHoistPureOperations(RewritePattern):
                     is_in_loop(op),
                     defined_outside_loop(op),
                     Pure() in op.traits or is_whitelisted(main_op),
-                    not isinstance(op, scf.Yield),
+                    not isinstance(op, scf.YieldOp),
                 ]
             ):
                 return True
@@ -110,7 +110,7 @@ class MoveMemrefDims(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, dim_op: memref.Dim, rewriter: PatternRewriter):
+    def match_and_rewrite(self, dim_op: memref.DimOp, rewriter: PatternRewriter):
         def before_loop(op: Operation) -> bool:
             """
             Check if the operation is defined before the loop.
@@ -133,7 +133,7 @@ class MoveMemrefDims(RewritePattern):
                 return True
             return False
 
-        def dimension_outside_loop(dim_op: memref.Dim) -> bool:
+        def dimension_outside_loop(dim_op: memref.DimOp) -> bool:
             """
             Check if the dimension can be derived outside of this for-loop.
             """
@@ -143,14 +143,14 @@ class MoveMemrefDims(RewritePattern):
             index = int(dim_op.index.owner.value.value.data)
             return memref_op_outside_loop(memref_op, index)
 
-        def get_subview_dim(subview: memref.Subview, index: int) -> int | SSAValue:
+        def get_subview_dim(subview: memref.SubviewOp, index: int) -> int | SSAValue:
             """
             Returns the size of the subview at the given index,
             if the size is dynamic, the value is returned as an SSAValue
             """
             static_sizes = subview.static_sizes.data.data
             target = static_sizes[index].data
-            if not target == memref.Subview.DYNAMIC_INDEX:
+            if not target == memref.SubviewOp.DYNAMIC_INDEX:
                 assert isinstance(target, int)
                 return target
             else:
@@ -158,7 +158,7 @@ class MoveMemrefDims(RewritePattern):
                 # indexed w.r.t. the total number of dynamic sizes.
                 magic_numbers = 0
                 for i in range(index):
-                    if static_sizes[i].data == memref.Subview.DYNAMIC_INDEX:
+                    if static_sizes[i].data == memref.SubviewOp.DYNAMIC_INDEX:
                         magic_numbers += 1
                 return subview.sizes[magic_numbers]
 
@@ -166,33 +166,33 @@ class MoveMemrefDims(RewritePattern):
             if isinstance(memref_op, Block):
                 # This happens when the dim is called on an input argument
                 return True
-            if isinstance(memref_op, memref.Subview):
+            if isinstance(memref_op, memref.SubviewOp):
                 subview_size = get_subview_dim(memref_op, index)
                 if isinstance(subview_size, int):
                     return True
                 new_op = subview_size.owner
-                if isinstance(new_op, arith.Constant) or isinstance(
+                if isinstance(new_op, arith.ConstantOp) or isinstance(
                     new_op, affine.MinOp
                 ):
                     return True
-                elif isinstance(new_op, memref.Dim):
+                elif isinstance(new_op, memref.DimOp):
                     return dimension_outside_loop(new_op)
                 else:
                     return False
             return False
 
-        def used_by_neither_alloc_nor_subview(dim_op: memref.Dim) -> bool:
+        def used_by_neither_alloc_nor_subview(dim_op: memref.DimOp) -> bool:
             """
             Check if the Dim operation is used by an operation that is not an Alloc or Subview operation.
             """
             for use in dim_op.results[0].uses:
-                if not isinstance(use.operation, memref.Alloc) and not isinstance(
-                    use.operation, memref.Subview
+                if not isinstance(use.operation, memref.AllocOp) and not isinstance(
+                    use.operation, memref.SubviewOp
                 ):
                     return True
             return False
 
-        def can_move_dim(dim_op: memref.Dim) -> bool:
+        def can_move_dim(dim_op: memref.DimOp) -> bool:
             """
             Dims can be moved if they comply with the following conditions:
             1.  The operation is a Dim operation.
@@ -204,25 +204,25 @@ class MoveMemrefDims(RewritePattern):
             """
             if all(
                 [
-                    isinstance(dim_op, memref.Dim),
+                    isinstance(dim_op, memref.DimOp),
                     is_in_loop(dim_op),
-                    isinstance(dim_op.index.owner, arith.Constant),
+                    isinstance(dim_op.index.owner, arith.ConstantOp),
                     not used_by_neither_alloc_nor_subview(dim_op),
                 ]
             ):
                 return dimension_outside_loop(dim_op)
             return False
 
-        def get_constant_value_from_other_constant(expr) -> arith.Constant:
+        def get_constant_value_from_other_constant(expr) -> arith.ConstantOp:
             """
             Returns the constant value of the expression.
             """
             if isinstance(expr, int):
-                return arith.Constant.from_int_and_width(expr, IndexType())
-            if isinstance(expr, arith.Constant):
+                return arith.ConstantOp.from_int_and_width(expr, IndexType())
+            if isinstance(expr, arith.ConstantOp):
                 return expr
 
-        def get_constant_value_from_affine_min(expr: affine.MinOp) -> arith.Constant:
+        def get_constant_value_from_affine_min(expr: affine.MinOp) -> arith.ConstantOp:
             """
             Returns the constant value of the expression.
             """
@@ -238,8 +238,8 @@ class MoveMemrefDims(RewritePattern):
                 )
 
         def get_new_dim_op(
-            dim_op: memref.Dim,
-        ) -> memref.Dim | arith.Constant | affine.MinOp:
+            dim_op: memref.DimOp,
+        ) -> memref.DimOp | arith.ConstantOp | affine.MinOp:
             """
             Returns the operation out of which the size can be determined outside the loop
             """
@@ -250,19 +250,19 @@ class MoveMemrefDims(RewritePattern):
             return get_new_memref_op(memref_ssa, index_constant)
 
         def get_new_memref_op(
-            memref_ssa: SSAValue, index_constant: arith.Constant
-        ) -> memref.Dim | arith.Constant | affine.MinOp:
+            memref_ssa: SSAValue, index_constant: arith.ConstantOp
+        ) -> memref.DimOp | arith.ConstantOp | affine.MinOp:
             memref_op = memref_ssa.owner
             index = index_constant.value.value.data
             if isinstance(memref_op, Block):
                 # This happens when the dim is called on an input argument
-                return memref.Dim.from_source_and_index(memref_ssa, index_constant)
-            if isinstance(memref_op, memref.Subview):
+                return memref.DimOp.from_source_and_index(memref_ssa, index_constant)
+            if isinstance(memref_op, memref.SubviewOp):
                 subview_size = get_subview_dim(memref_op, index)
                 if isinstance(subview_size, int):
-                    return arith.Constant.from_int_and_width(subview_size, IndexType())
+                    return arith.ConstantOp.from_int_and_width(subview_size, IndexType())
                 new_op = subview_size.owner
-                if isinstance(new_op, arith.Constant) or isinstance(
+                if isinstance(new_op, arith.ConstantOp) or isinstance(
                     new_op, affine.MinOp
                 ):
                     return new_op
@@ -308,7 +308,7 @@ class ReuseMemrefAllocs(ModulePass):
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
                 [
-                    LoopHoistPureOperations([memref.Alloc]),
+                    LoopHoistPureOperations([memref.AllocOp]),
                     MoveMemrefDims(),
                 ]
             ),

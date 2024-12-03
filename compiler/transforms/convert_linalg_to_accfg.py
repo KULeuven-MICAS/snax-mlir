@@ -36,7 +36,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
     module: builtin.ModuleOp
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter, /):
+    def match_and_rewrite(self, op: linalg.GenericOp, rewriter: PatternRewriter, /):
         if op.library_call is None:
             return
 
@@ -137,7 +137,7 @@ def _weave_states_in_region(
                         op = new_op
                     state[accel] = op.out_state
                 # special case for scf.if ops
-                elif isinstance(op, scf.If):
+                elif isinstance(op, scf.IfOp):
                     # grab the computed state for both sides:
                     if_state = _weave_states_in_region(
                         op.true_region, state.copy(), rewriter
@@ -161,20 +161,20 @@ def _weave_states_in_region(
                     for branch, added_vals in zip(op.regions, new_vals):
                         assert isinstance(branch, Region)
                         if not branch.blocks:
-                            branch.add_block(Block([scf.Yield(*added_vals)]))
+                            branch.add_block(Block([scf.YieldOp(*added_vals)]))
                         else:
                             assert (
                                 branch.block.last_op is not None
                             )  # we know there is a yield op
                             rewriter.replace_op(
                                 branch.block.last_op,
-                                scf.Yield(*branch.block.last_op.operands, *added_vals),
+                                scf.YieldOp(*branch.block.last_op.operands, *added_vals),
                             )
                     # then, insert a new if with additional return values:
                     num_scf_results = len(op.results)
                     rewriter.replace_op(
                         op,
-                        new_if := scf.If(
+                        new_if := scf.IfOp(
                             op.cond,
                             [val.type for val in (*op.results, *new_vals[0])],
                             op.detach_region(op.regions[0]),
@@ -189,7 +189,7 @@ def _weave_states_in_region(
                         state[res.type.accelerator.data] = res
                 # a for loop necessitates us to introduce a loop-carried variable
                 # that carries the state through the loop
-                elif isinstance(op, scf.For):
+                elif isinstance(op, scf.ForOp):
                     # go through the for loop body find all accelerators that are touched
                     # the order of this tuple is important
                     updated_accelerators = tuple(
@@ -244,7 +244,7 @@ def _weave_states_in_region(
 
                     # add changed states as yield ops in the loop
                     yield_op = op.body.block.last_op
-                    assert isinstance(yield_op, scf.Yield)
+                    assert isinstance(yield_op, scf.YieldOp)
 
                     # make sure we modify the for loop to add the new loop carried variables
                     for arg in created_block_args:

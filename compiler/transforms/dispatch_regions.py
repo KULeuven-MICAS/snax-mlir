@@ -49,9 +49,9 @@ class DispatchRegionsRewriter(RewritePattern):
                     for dispatch_op in ops_to_dispatch:
                         dispatch_op.detach()
                     # add scf terminator
-                    ops_to_dispatch.append(scf.Yield())
+                    ops_to_dispatch.append(scf.YieldOp())
                     # create and insert scf.if op
-                    if_op = scf.If(core_cond, [], ops_to_dispatch)
+                    if_op = scf.IfOp(core_cond, [], ops_to_dispatch)
                     rewriter.insert_op(if_op, InsertPoint.before(op))
 
                     # reset dispatchable ops list
@@ -67,7 +67,7 @@ class DispatchRegionsRewriter(RewritePattern):
 
         # FIXME: currently assuming that DM core is nb_cores - 1 and compute @ index 0
 
-        func_call = func.Call("snax_cluster_core_idx", [], [builtin.i32])
+        func_call = func.CallOp("snax_cluster_core_idx", [], [builtin.i32])
 
         # Add pin to constants attribute for function-constant-pinning pass
         constants_to_pin = builtin.ArrayAttr(
@@ -80,8 +80,8 @@ class DispatchRegionsRewriter(RewritePattern):
 
         call_and_condition_dm = [
             func_call,
-            cst_1 := arith.Constant.from_int_and_width(self.nb_cores - 1, builtin.i32),
-            comparison_dm := arith.Cmpi(func_call, cst_1, "eq"),
+            cst_1 := arith.ConstantOp.from_int_and_width(self.nb_cores - 1, builtin.i32),
+            comparison_dm := arith.CmpiOp(func_call, cst_1, "eq"),
         ]
         # Make sure function call is only inserted once
         inserted_function_call = False
@@ -97,8 +97,8 @@ class DispatchRegionsRewriter(RewritePattern):
         ## dispatch compute core ops, insert function call
         # in dominator block if changes made
         condition_compute = [
-            cst_0 := arith.Constant.from_int_and_width(0, builtin.i32),
-            comparison_compute := arith.Cmpi(func_call, cst_0, "eq"),
+            cst_0 := arith.ConstantOp.from_int_and_width(0, builtin.i32),
+            comparison_compute := arith.CmpiOp(func_call, cst_0, "eq"),
         ]
         if any(
             dispatcher(block, comparison_compute.result, dispatch_to_compute)
@@ -122,7 +122,7 @@ class InsertFunctionDeclaration(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, module_op: builtin.ModuleOp, rewriter: PatternRewriter):
         for op in module_op.walk():
-            if isinstance(op, func.Call):
+            if isinstance(op, func.CallOp):
                 if op.callee.string_value() == "snax_cluster_core_idx":
                     func_op_compute = func.FuncOp.external(
                         "snax_cluster_core_idx", [], [builtin.i32]

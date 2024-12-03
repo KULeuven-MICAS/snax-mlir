@@ -84,13 +84,13 @@ class RescaleClampPattern(RewritePattern):
         nb_dims = inp_type.get_num_dims()
 
         # destination type:
-        dim_idx_ops: list[arith.Constant] = []
+        dim_idx_ops: list[arith.ConstantOp] = []
         dim_ops: list[tensor.DimOp] = []
         for dim_idx, shape in enumerate(out_type.get_shape()):
             if shape == -1:
                 # create dim op
                 dim_idx_ops.append(
-                    dim_idx := arith.Constant.from_int_and_width(
+                    dim_idx := arith.ConstantOp.from_int_and_width(
                         dim_idx, builtin.IndexType()
                     )
                 )
@@ -99,7 +99,7 @@ class RescaleClampPattern(RewritePattern):
         dim_op_values = [dim_op.result for dim_op in dim_ops]
         output_tensor = tensor.EmptyOp(dim_op_values, out_type)
 
-        new_op = linalg.Generic(
+        new_op = linalg.GenericOp(
             inputs=[rescale_op.input],
             outputs=[output_tensor.tensor],
             body=linalg_body,

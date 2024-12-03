@@ -19,7 +19,7 @@ from compiler.dialects import stream
 @dataclass
 class StreamifyGenericOpPattern(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter) -> None:
+    def match_and_rewrite(self, op: linalg.GenericOp, rewriter: PatternRewriter) -> None:
         # place guard for library calls ending in _stream
         if not op.library_call:
             return
