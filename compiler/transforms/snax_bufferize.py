@@ -4,7 +4,12 @@ from xdsl.context import MLContext
 from xdsl.dialects import bufferization, builtin
 from xdsl.ir import Operation, OpResult, SSAValue
 from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
+from xdsl.pattern_rewriter import (
+    PatternRewriter,
+    PatternRewriteWalker,
+    RewritePattern,
+    op_type_rewrite_pattern,
+)
 from xdsl.transforms.mlir_opt import MLIROptPass
 
 from compiler.dialects import stream
@@ -18,7 +23,9 @@ class BufferizeStreamingRegion(RewritePattern):
     ) -> None:
         # check if for operands that need to be bufferized:
         operands_to_buffer = tuple(
-            operand for operand in op.operands if isinstance(operand.type, builtin.TensorType)
+            operand
+            for operand in op.operands
+            if isinstance(operand.type, builtin.TensorType)
         )
 
         # if not tensor operands, return
@@ -55,10 +62,10 @@ class BufferizeStreamingRegion(RewritePattern):
 
         # replace the old operation
         rewriter.replace_matched_op(
-            (new_op,)
-            + tuple(memref_to_tensors.values()),
+            (new_op,) + tuple(memref_to_tensors.values()),
             new_results,
         )
+
 
 @dataclass(frozen=True)
 class SnaxBufferize(ModulePass):
