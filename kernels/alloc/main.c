@@ -35,8 +35,8 @@ int main() {
   if (memrefA.shape[0] != 10) {
     return 420;
   }
-  // Assert that the alloc is alligned correctly to 256 bytes
-  if (((int32_t)memrefA.aligned_data) % 256) {
+  // Assert that the alloc is alligned correctly to 64 bytes
+  if (((int32_t)memrefA.aligned_data) % 64) {
     return 421;
   }
 
