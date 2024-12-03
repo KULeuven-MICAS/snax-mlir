@@ -168,7 +168,9 @@ def _weave_states_in_region(
                             )  # we know there is a yield op
                             rewriter.replace_op(
                                 branch.block.last_op,
-                                scf.YieldOp(*branch.block.last_op.operands, *added_vals),
+                                scf.YieldOp(
+                                    *branch.block.last_op.operands, *added_vals
+                                ),
                             )
                     # then, insert a new if with additional return values:
                     num_scf_results = len(op.results)

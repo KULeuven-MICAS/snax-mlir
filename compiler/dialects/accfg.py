@@ -16,7 +16,6 @@ from xdsl.ir import (
     Data,
     Dialect,
     Operation,
-    OpTrait,
     ParametrizedAttribute,
     SSAValue,
     TypeAttribute,

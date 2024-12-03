@@ -106,7 +106,9 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         return [
             *ops_to_insert,
             setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
-            launch_val := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(1, 5)),
+            launch_val := arith.ConstantOp(
+                builtin.IntegerAttr.from_int_and_width(1, 5)
+            ),
             token := accfg.LaunchOp(
                 [launch_val, launch_val], self.launch_fields, setup
             ),

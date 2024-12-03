@@ -80,7 +80,9 @@ class DispatchRegionsRewriter(RewritePattern):
 
         call_and_condition_dm = [
             func_call,
-            cst_1 := arith.ConstantOp.from_int_and_width(self.nb_cores - 1, builtin.i32),
+            cst_1 := arith.ConstantOp.from_int_and_width(
+                self.nb_cores - 1, builtin.i32
+            ),
             comparison_dm := arith.CmpiOp(func_call, cst_1, "eq"),
         ]
         # Make sure function call is only inserted once
@@ -121,7 +123,6 @@ class InsertFunctionDeclaration(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: func.CallOp, rewriter: PatternRewriter):
-
         # Check for snax cluster core idx
         if op.callee.string_value() != "snax_cluster_core_idx":
             return

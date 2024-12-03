@@ -18,7 +18,6 @@ class InsertSyncBarrier(ModulePass):
     name = "insert-sync-barrier"
 
     def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
-
         rewriter = PatternRewriter(module)
 
         ops_to_sync = []

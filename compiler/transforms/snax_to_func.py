@@ -22,7 +22,6 @@ class InsertFunctionCall(RewritePattern):
         rewriter.replace_matched_op(func_call)
 
 
-
 class ClearL1ToFunc(RewritePattern):
     """Insert function call to clear l1"""
 

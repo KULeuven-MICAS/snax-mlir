@@ -180,7 +180,9 @@ class OrganizeGetGlobals(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, getglobal: memref.GetGlobalOp, rewriter: PatternRewriter):
+    def match_and_rewrite(
+        self, getglobal: memref.GetGlobalOp, rewriter: PatternRewriter
+    ):
         assert getglobal.parent
         for firstuser in getglobal.parent.walk():
             if firstuser in {x.operation for x in getglobal.memref.uses} and isinstance(

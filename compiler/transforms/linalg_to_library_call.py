@@ -18,7 +18,6 @@ class LinalgToLibraryCall(ModulePass):
     name = "linalg-to-library-call"
 
     def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
-
         rewriter = PatternRewriter(module)
 
         for op in module.walk():

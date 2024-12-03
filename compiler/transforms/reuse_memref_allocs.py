@@ -260,7 +260,9 @@ class MoveMemrefDims(RewritePattern):
             if isinstance(memref_op, memref.SubviewOp):
                 subview_size = get_subview_dim(memref_op, index)
                 if isinstance(subview_size, int):
-                    return arith.ConstantOp.from_int_and_width(subview_size, IndexType())
+                    return arith.ConstantOp.from_int_and_width(
+                        subview_size, IndexType()
+                    )
                 new_op = subview_size.owner
                 if isinstance(new_op, arith.ConstantOp) or isinstance(
                     new_op, affine.MinOp
