@@ -1,89 +1,57 @@
-#include "stdint.h"
-
-#include "data.h"
 #include "memref.h"
 #include "snax_rt.h"
-
-/*
- * These libraries are included from github.com/KULeuven-MICAS/snitch_cluster
- * Interested users, might want to look at:
- *
- * /sw/snRuntime/api
- * /target/snitch_cluster/sw/runtime/rtl/src
- * /target/snitch_cluster/sw/runtime/common
- * */
+#include "stdint.h"
 #include <snrt.h>
 
-// Kernel provided via external definition
-void _mlir_ciface_streamer_matmul(TwoDMemrefI8_t *a, TwoDMemrefI8_t *b,
-                                  TwoDMemrefI32_t *c);
+void _mlir_ciface_snax_main(int32_t *results);
 
 int main() {
-  {
 
-    // Create memref objects for data stored in L3
-    TwoDMemrefI8_t memrefA;
-    memrefA.data = &A;
-    memrefA.aligned_data = memrefA.data;
-    // Shape and Stride need to be defined for dynamic case
-    memrefA.shape[0] = N_size;
-    memrefA.shape[1] = K_size;
-    memrefA.stride[0] = K_size;
-    memrefA.stride[1] = 1;
-    memrefA.offset = 0;
+  TwoDMemrefI32_t results[2];
 
-    TwoDMemrefI8_t memrefB;
-    memrefB.data = &B;
-    memrefB.aligned_data = memrefB.data;
-    // Shape and Stride need to be defined for dynamic case
-    memrefB.shape[0] = K_size;
-    memrefB.shape[1] = M_size;
-    memrefB.stride[0] = 1;
-    memrefB.stride[1] = K_size;
-    memrefB.offset = 0;
+  TwoDMemrefI32_t *golden, *computed;
 
-    TwoDMemrefI32_t memrefC;
-    memrefC.data = &C;
-    memrefC.aligned_data = memrefC.data;
-    // Shape and Stride need to be defined for dynamic case
-    memrefC.shape[0] = N_size;
-    memrefC.shape[1] = M_size;
-    memrefC.stride[0] = M_size;
-    memrefC.stride[1] = 1;
-    memrefC.offset = 0;
+  golden = &results[0];
+  computed = &results[1];
 
-    // allocate zero row in tcdm
-    snrt_l1alloc(256);
+  // allocate zero row in tcdm
+  snrt_l1alloc(256);
 
-    (void)snrt_mcycle();
+  (void)snrt_mcycle();
+  snrt_cluster_hw_barrier();
 
-    _mlir_ciface_streamer_matmul(&memrefA, &memrefB, &memrefC);
+  _mlir_ciface_snax_main(results);
 
-    snrt_cluster_hw_barrier();
+  snrt_cluster_hw_barrier();
+  (void)snrt_mcycle();
 
-    (void)snrt_mcycle();
+  // Correctness check
+  // from this point on only core 0 is required to be alive.
+  int thiscore = snrt_cluster_core_idx();
+  if (thiscore != 0)
+    return 0;
 
-    // Correctness check -
-    // from this point on only core 0 is required to be alive.
-    int thiscore = snrt_cluster_core_idx();
-    if (thiscore != 0)
-      return 0;
+  int total_results = 1;
+  for (int i = 0; i < 2; i++)
+    total_results *= computed->shape[i];
 
-    int nerr = 0;
-    for (int i = 0; i < M_size * N_size; i++) {
-      {
-        int32_t error = memrefC.aligned_data[i] - C_golden[i];
-        // printf("%d) %d -> %d\n", i, (int32_t)memrefC.aligned_data[i],
-        //        (int32_t)C_golden[i]);
-        if (error != 0)
-          nerr += 1;
-      }
+  printf("Checking %d results...\n", total_results);
+
+  int nerr = 0;
+
+  for (int i = 0; i < total_results; i++) {
+
+    if (golden->aligned_data[i] != computed->aligned_data[i]) {
+      // printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
+      // computed->aligned_data[i]);
+      nerr++;
     }
-
-    // insert mcycle to show fault in trace
-    if (nerr != 0)
-      snrt_mcycle();
-
-    return nerr != 0;
   }
+
+  printf("Finished, nb errors: %d\n", nerr);
+
+  if (nerr > 0)
+    return 1;
+  else
+    return 0;
 }

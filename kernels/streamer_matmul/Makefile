@@ -6,19 +6,17 @@ include ../../runtime/snax-gemmx.rules
 include ../../runtime/Makefile.rules
 
 TESTS =
-TESTS += matmul.x
-#TESTS += transform_matmul.x
-#TODO: make transform functional again
+TESTS += quantized_matmul.x
 
-SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=2},convert-linalg-to-stream,convert-stream-to-snax-stream,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
+SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,snax-bufferize,alloc-to-global,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=2},convert-stream-to-snax-stream,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
 
-data.c data.h:
-	$(PYTHON) gendata.py
+%.mlir: %.py
+	$(PYTHON) $< > $@
 
-%.x: %.o main.o data.o
+%.x: %.o main.o
 	$(LD) $(LDFLAGS) $^ -o $@
 
 sim_%: %
@@ -34,4 +32,4 @@ all: $(TESTS)
 allrun: $(RUN)
 
 clean:
-	rm -fr *.ll12 *.x *.o *.logs/ logs/ data.h data.c
+	rm -fr *.mlir *.ll12 *.x *.o *.logs/ logs/ data.h data.c
