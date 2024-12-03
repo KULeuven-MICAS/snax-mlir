@@ -45,13 +45,17 @@ default_streamer = StreamerConfiguration(
         Streamer(  # C
             StreamerType.Reader,
             temporal_dims=("r", "n", "n"),
-            spatial_dims=("n",),
-            opts=(StreamerOpts.HasChannelMask, StreamerOpts.HasAddressRemap, StreamerOpts.HasBroadcast),
+            spatial_dims=("n", "n"),
+            opts=(
+                StreamerOpts.HasChannelMask,
+                StreamerOpts.HasAddressRemap,
+                StreamerOpts.HasBroadcast,
+            ),
         ),
         Streamer(  # D32
             StreamerType.Writer,
             temporal_dims=("r", "n", "n"),
-            spatial_dims=("n",),
+            spatial_dims=("n", "n"),
             opts=(StreamerOpts.HasAddressRemap,),
         ),
     ],
