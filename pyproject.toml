@@ -4,7 +4,7 @@ description = "Driving SNAX with MLIR"
 version = "0.2.2"
 
 dependencies = [
-    "xdsl @ git+https://github.com/xdslproject/xdsl.git@0d7eae3a1c9ee128986d6729ffc1d49786f7819d"
+    "xdsl @ git+https://github.com/xdslproject/xdsl.git@d72f46d92ec4b03ae05b91e70d75f93735e94393"
 ]
 
 [project.optional-dependencies]
