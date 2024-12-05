@@ -153,7 +153,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
                 )
                 rewriter.insert_op_before_matched_op(cast_op)
 
-            return cast_op
+            return cast_op.dest
 
         # insert memory cast for every value
         memory_cast_ops: dict[SSAValue, memref.MemorySpaceCast] = {}
