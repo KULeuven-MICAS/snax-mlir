@@ -1,4 +1,4 @@
-// RUN: snax-opt %s -p snax-bufferize --allow-unregistered-dialect | filecheck %s
+// RUN: snax-opt %s -p snax-bufferize | filecheck %s
 // TODO: add bufferization.clone to xDSL
 
 "func.func"() <{"sym_name" = "test", "function_type" = (tensor<16x16xi8>) -> tensor<16x16xi32>}> ({
