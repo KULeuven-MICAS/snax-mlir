@@ -44,7 +44,7 @@ def create_matrix_multiply(m, n, k, add_c: bool = False):
 
     @Builder.implicit_region(arg_types)
     def func_body(args: tuple[BlockArgument, ...]) -> None:
-        c0 = arith.Constant.from_int_and_width(0, 32)
+        c0 = arith.ConstantOp.from_int_and_width(0, 32)
         empty_tensor = tensor.EmptyOp([], (arg_types[-1]))
         result = linalg.QuantizedMatmulOp(
             [args[0], args[1], c0.result, c0.result], [empty_tensor.tensor]
@@ -54,9 +54,9 @@ def create_matrix_multiply(m, n, k, add_c: bool = False):
             newresult = linalg.AddOp(
                 [args[2], result.results[0]], [empty_tensor_2.tensor]
             )
-            func.Return(newresult)
+            func.ReturnOp(newresult)
         else:
-            func.Return(result)
+            func.ReturnOp(result)
 
     function = func.FuncOp.from_region(
         "streamer_matmul", arg_types, res_types, func_body
