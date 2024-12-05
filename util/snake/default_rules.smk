@@ -98,14 +98,6 @@ rule postprocess_llvm_module:
         "../../runtime/tollvm12.py < {input} > {output} "
 
 
-rule generate_simple_data:
-    output:
-        "data.c",
-        "data.h",
-    script:
-        "gendata.py"
-
-
 rule compile_simple_main:
     input:
         "main.c",
