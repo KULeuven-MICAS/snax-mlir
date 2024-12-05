@@ -22,7 +22,7 @@ class InsertDebugStatements(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.Generic, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: linalg.GenericOp, rewriter: PatternRewriter):
         kernel_type = op.body.block.first_op
         assert kernel_type
         kernel_name = kernel_type.name

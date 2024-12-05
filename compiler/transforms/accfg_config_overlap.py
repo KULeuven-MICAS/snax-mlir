@@ -133,7 +133,7 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
             return
         # only apply if setup is inside a for loop
         for_op = op.parent_op()
-        if not isinstance(for_op, scf.For):
+        if not isinstance(for_op, scf.ForOp):
             return
 
         # only apply if there is a launch op in the same block:
@@ -151,7 +151,7 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
 
         # also grab the yield op, will be needed later
         yield_op = for_op.body.block.last_op
-        assert isinstance(yield_op, scf.Yield)
+        assert isinstance(yield_op, scf.YieldOp)
 
         # if the setup ops input is not the loop-carried state var, don't apply optimization
         if (
@@ -192,7 +192,7 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
         # 3. We insert a copy of the setup af the end of the loop, replacing dependencies with the next iterations
         #    variables (which we get from the yield / by adding %step to %i)
         rewriter.insert_op(
-            next_i := arith.Addi(for_op.body.block.args[0], for_op.step),
+            next_i := arith.AddiOp(for_op.body.block.args[0], for_op.step),
             InsertPoint.before(yield_op),
         )
         setup_at_end = inputs.copy_with_new_dependent_vals(

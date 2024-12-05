@@ -4,7 +4,7 @@ from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, llvm
 from xdsl.dialects.builtin import IntAttr, i32
-from xdsl.dialects.scf import Condition, While, Yield
+from xdsl.dialects.scf import ConditionOp, WhileOp, YieldOp
 from xdsl.ir import Operation, OpResult, SSAValue
 
 from compiler.accelerators.accelerator import Accelerator
@@ -42,7 +42,7 @@ class SNAXAccelerator(Accelerator, ABC):
 
             ops.extend(
                 [
-                    addr_val := arith.Constant(launch_address),
+                    addr_val := arith.ConstantOp(launch_address),
                     llvm.InlineAsmOp(
                         "csrw $0, $1",
                         # I = any 12 bit immediate, K = any 5 bit immediate
@@ -71,7 +71,7 @@ class SNAXAccelerator(Accelerator, ABC):
             addr = field_to_csr[field]
             ops.extend(
                 [
-                    addr_val := arith.Constant(addr),
+                    addr_val := arith.ConstantOp(addr),
                     llvm.InlineAsmOp(
                         "csrw $0, $1",
                         "I, rK",
@@ -121,24 +121,24 @@ class SNAXStreamer(ABC):
             is_zero_pattern = False
             if isinstance(opresult := op.operands[operand], OpResult):
                 is_zero_pattern = (
-                    isinstance(opresult.op, arith.Constant)
+                    isinstance(opresult.op, arith.ConstantOp)
                     and opresult.op.value == c0_attr
                 )
 
             # base pointers (low, high)
             if is_zero_pattern:
-                czero = arith.Constant.from_int_and_width(self.zero_address, i32)
+                czero = arith.ConstantOp.from_int_and_width(self.zero_address, i32)
                 result.append(([czero], czero.result))
             else:
                 result.append(([], op.operands[operand]))
             result.append(
-                ([c0 := arith.Constant.from_int_and_width(0, i32)], c0.result)
+                ([c0 := arith.ConstantOp.from_int_and_width(0, i32)], c0.result)
             )
 
             # spatial strides
             for dim, flag in enumerate(streamer.spatial_dims):
                 stride = op.stride_patterns.data[operand].spatial_strides.data[dim].data
-                cst = arith.Constant.from_int_and_width(stride, i32)
+                cst = arith.ConstantOp.from_int_and_width(stride, i32)
                 result.append(([cst], cst.result))
 
             # loop bounds
@@ -152,7 +152,7 @@ class SNAXStreamer(ABC):
                 if flag == StreamerFlag.Reuse and bound > 1:
                     # if internal reuse, bound can be set to 1
                     bound = 1
-                cst = arith.Constant.from_int_and_width(bound, i32)
+                cst = arith.ConstantOp.from_int_and_width(bound, i32)
                 result.append(([cst], cst.result))
 
             # temporal strides
@@ -166,18 +166,23 @@ class SNAXStreamer(ABC):
                 if flag == StreamerFlag.Irrelevant:
                     # Irrelevant temporal strides should be zero
                     assert stride == 0
-                cst = arith.Constant.from_int_and_width(stride.data, i32)
+                cst = arith.ConstantOp.from_int_and_width(stride.data, i32)
                 result.append(([cst], cst.result))
+
+            # address remap:
+            if StreamerOpts.HasAddressRemap in streamer.opts:
+                c0 = arith.ConstantOp.from_int_and_width(0, i32)
+                result.append(([c0], c0.result))
 
             # channel mask option
             if StreamerOpts.HasChannelMask in streamer.opts:
                 if is_zero_pattern:
                     # mask all channels such that they generate zeros
-                    c0 = arith.Constant.from_int_and_width(0, i32)
+                    c0 = arith.ConstantOp.from_int_and_width(0, i32)
                     result.append(([c0], c0.result))
                 else:
                     # else, set to 32b111...111 (=-1) (all enabled)
-                    n1 = arith.Constant.from_int_and_width(-1, i32)
+                    n1 = arith.ConstantOp.from_int_and_width(-1, i32)
                     result.append(([n1], n1.result))
 
         # transpose specifications
@@ -186,7 +191,12 @@ class SNAXStreamer(ABC):
                 # if we want to disable transpose, we need
                 # a 1 to the transpose field, as it is an
                 # extension bypass signal
-                c1 = arith.Constant.from_int_and_width(1, i32)
+                c1 = arith.ConstantOp.from_int_and_width(1, i32)
+                result.append(([c1], c1.result))
+
+        for operand, streamer in enumerate(self.streamer_config.data.streamers):
+            if StreamerOpts.HasBroadcast in streamer.opts:
+                c1 = arith.ConstantOp.from_int_and_width(1, i32)
                 result.append(([c1], c1.result))
 
         return result
@@ -206,6 +216,8 @@ class SNAXStreamer(ABC):
             # temporal strides
             result.extend([f"{name}_tstride_{i}" for i in range(streamer.temporal_dim)])
             # options
+            if StreamerOpts.HasAddressRemap in streamer.opts:
+                result.append(f"{name}_address_remap")
             if StreamerOpts.HasChannelMask in streamer.opts:
                 result.append(f"{name}_channel_mask")
 
@@ -215,6 +227,12 @@ class SNAXStreamer(ABC):
         ):
             if StreamerOpts.HasTranspose in streamer.opts:
                 result.append(f"{name}_transpose")
+
+        for streamer, name in zip(
+            self.streamer_config.data.streamers, self.streamer_names
+        ):
+            if StreamerOpts.HasBroadcast in streamer.opts:
+                result.append(f"{name}_broadcast")
 
         return result
 
@@ -303,12 +321,12 @@ class SNAXPollingBarrier(Accelerator, ABC):
             llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True) for _ in range(4)
         ]
         return [
-            While(
+            WhileOp(
                 [],
                 [],
                 [
-                    barrier := arith.Constant(acc_op.barrier),
-                    zero := arith.Constant(
+                    barrier := arith.ConstantOp(acc_op.barrier),
+                    zero := arith.ConstantOp(
                         builtin.IntegerAttr.from_int_and_width(0, 32)
                     ),
                     status := llvm.InlineAsmOp(
@@ -322,15 +340,15 @@ class SNAXPollingBarrier(Accelerator, ABC):
                         has_side_effects=True,
                     ),
                     # check if not equal to zero
-                    comparison := arith.Cmpi(status, zero, "ne"),
-                    Condition(comparison.results[0]),
+                    comparison := arith.CmpiOp(status, zero, "ne"),
+                    ConditionOp(comparison.results[0]),
                 ],
                 [
-                    Yield(),
+                    YieldOp(),
                 ],
             ),
-            addr_val := arith.Constant(builtin.IntegerAttr(965, 12)),  # 0x3c5 = 965
-            zero := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
+            addr_val := arith.ConstantOp(builtin.IntegerAttr(965, 12)),  # 0x3c5 = 965
+            zero := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(0, 5)),
             llvm.InlineAsmOp(
                 "csrw $0, $1",
                 "I, K",
@@ -364,12 +382,12 @@ class SNAXPollingBarrier2(Accelerator, ABC):
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         return [
-            While(
+            WhileOp(
                 [],
                 [],
                 [
-                    barrier := arith.Constant(acc_op.barrier),
-                    one := arith.Constant(
+                    barrier := arith.ConstantOp(acc_op.barrier),
+                    one := arith.ConstantOp(
                         builtin.IntegerAttr.from_int_and_width(1, 32)
                     ),
                     status := llvm.InlineAsmOp(
@@ -382,13 +400,13 @@ class SNAXPollingBarrier2(Accelerator, ABC):
                         [i32],
                         has_side_effects=True,
                     ),
-                    shifted_status := arith.ShRUI(status, one),
+                    shifted_status := arith.ShRUIOp(status, one),
                     # check if not equal to one
-                    comparison := arith.Cmpi(shifted_status, one, "ne"),
-                    Condition(comparison.results[0]),
+                    comparison := arith.CmpiOp(shifted_status, one, "ne"),
+                    ConditionOp(comparison.results[0]),
                 ],
                 [
-                    Yield(),
+                    YieldOp(),
                 ],
             ),
         ]
@@ -407,12 +425,12 @@ class SNAXPollingBarrier3(Accelerator, ABC):
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         return [
-            While(
+            WhileOp(
                 [],
                 [],
                 [
-                    barrier := arith.Constant(acc_op.barrier),
-                    zero := arith.Constant(
+                    barrier := arith.ConstantOp(acc_op.barrier),
+                    zero := arith.ConstantOp(
                         builtin.IntegerAttr.from_int_and_width(0, 32)
                     ),
                     status := llvm.InlineAsmOp(
@@ -426,11 +444,11 @@ class SNAXPollingBarrier3(Accelerator, ABC):
                         has_side_effects=True,
                     ),
                     # check if not equal to zero
-                    comparison := arith.Cmpi(status, zero, "ne"),
-                    Condition(comparison.results[0]),
+                    comparison := arith.CmpiOp(status, zero, "ne"),
+                    ConditionOp(comparison.results[0]),
                 ],
                 [
-                    Yield(),
+                    YieldOp(),
                 ],
             ),
         ]
@@ -449,11 +467,11 @@ class SNAXPollingBarrier4(Accelerator, ABC):
 
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
-        c0 = arith.Constant.from_int_and_width(0, 32)
+        c0 = arith.ConstantOp.from_int_and_width(0, 32)
         result: list[Operation] = [c0]
 
         for _, launch_addr in acc_op.launch_field_items():
-            addr_op = arith.Constant.from_int_and_width(launch_addr.value.data, 32)
+            addr_op = arith.ConstantOp.from_int_and_width(launch_addr.value.data, 32)
             write_op_1 = llvm.InlineAsmOp(
                 "csrw $0, $1",
                 "I, K",

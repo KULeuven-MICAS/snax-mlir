@@ -18,7 +18,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
     fields = ("A", "B", "O", "vector_length", "nr_iters", "mode")
     launch_fields = ("launch",)
 
-    def convert_to_acc_ops(self, op: linalg.Generic) -> Sequence[Operation]:
+    def convert_to_acc_ops(self, op: linalg.GenericOp) -> Sequence[Operation]:
         """
         Lowers the operation op to a sequence of acc_ops.
         acc_ops are:
@@ -39,13 +39,15 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
         return [
             *ops_to_insert,
             setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
-            launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(0, 5)),
+            launch_val := arith.ConstantOp(
+                builtin.IntegerAttr.from_int_and_width(0, 5)
+            ),
             token := accfg.LaunchOp([launch_val], self.launch_fields, setup),
             accfg.AwaitOp(token),
         ]
 
     def _generate_setup_vals(
-        self, op: linalg.Generic
+        self, op: linalg.GenericOp
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         """
         Produce a `Sequence[Operation], SSAValue` tuple
@@ -58,10 +60,10 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
         for operand in op.operands:
             assert isa(operand.type, builtin.MemRefType[Attribute])
 
-        zero = arith.Constant.from_int_and_width(0, builtin.IndexType())
-        iters_one = arith.Constant.from_int_and_width(1, 32)
-        mode_one = arith.Constant.from_int_and_width(1, 32)
-        dim = memref.Dim.from_source_and_index(a, zero)
+        zero = arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
+        iters_one = arith.ConstantOp.from_int_and_width(1, 32)
+        mode_one = arith.ConstantOp.from_int_and_width(1, 32)
+        dim = memref.DimOp.from_source_and_index(a, zero)
         dim_i32 = arith.IndexCastOp(dim, builtin.i32)
         vector_length = [zero, dim, dim_i32], dim_i32.result
 
@@ -73,11 +75,11 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
                 [
                     ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref),
                     metadata := memref.ExtractStridedMetaDataOp(ref),
-                    el_bytes := arith.Constant.from_int_and_width(
+                    el_bytes := arith.ConstantOp.from_int_and_width(
                         ref.type.element_type.size, builtin.IndexType()
                     ),
-                    byte_offset := arith.Muli(metadata.offset, el_bytes),
-                    ptr_plus_byte_offset := arith.Addi(
+                    byte_offset := arith.MuliOp(metadata.offset, el_bytes),
+                    ptr_plus_byte_offset := arith.AddiOp(
                         ptr, byte_offset, builtin.IndexType()
                     ),
                     ptr_i32 := arith.IndexCastOp(ptr_plus_byte_offset, builtin.i32),

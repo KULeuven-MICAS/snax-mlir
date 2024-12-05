@@ -24,7 +24,7 @@ def has_accfg_effects(op: Operation) -> bool:
 
     # ops that may affect state are function calls
     # all function calls that *don't* effect must be marked
-    if isinstance(op, func.Call | llvm.CallOp):
+    if isinstance(op, func.CallOp | llvm.CallOp):
         return True
 
     # Recurse into children to check them according to the same rules
@@ -39,7 +39,7 @@ def has_accfg_effects(op: Operation) -> bool:
     return False
 
 
-def get_initial_value_for_scf_for_lcv(loop: scf.For, var: SSAValue) -> SSAValue:
+def get_initial_value_for_scf_for_lcv(loop: scf.ForOp, var: SSAValue) -> SSAValue:
     """
     Given a loop-carried variable inside an scf for loop as the block argument,
     return the SSA value that is passed as the initial value to it.

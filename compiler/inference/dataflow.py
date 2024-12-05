@@ -38,7 +38,7 @@ def uses_through_controlflow(val: SSAValue) -> Generator[Use, None, None]:
         # return each use
         yield use
         # if it's an scf.for, recurse on block arg
-        if isinstance(use.operation, scf.For):
+        if isinstance(use.operation, scf.ForOp):
             for_op = use.operation
             # if val is an iter_arg, continue tracing in the loop
             if val in for_op.iter_args:
@@ -46,7 +46,7 @@ def uses_through_controlflow(val: SSAValue) -> Generator[Use, None, None]:
                     for_op.body.block.args[for_op.iter_args.index(val) + 1]
                 )
         # if it's a yield, recurse on parent op result
-        elif isinstance(use.operation, scf.Yield):
+        elif isinstance(use.operation, scf.YieldOp):
             # assume yield argument order is the same as the parent ops results
             # haven't checked this yet, but seems reasonable to me.
             yield from uses_through_controlflow(

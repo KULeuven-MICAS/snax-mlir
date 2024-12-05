@@ -28,29 +28,35 @@ default_streamer = StreamerConfiguration(
             StreamerType.Reader,
             temporal_dims=("n", "n", "n", "n", "n", "n"),
             spatial_dims=("n",),
-            opts=(StreamerOpts.HasTranspose,),
+            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
         ),
         Streamer(  # B
             StreamerType.Reader,
             temporal_dims=("n", "n", "n"),
             spatial_dims=("n",),
-            opts=(StreamerOpts.HasTranspose,),
+            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
         ),
         Streamer(  # D8
             StreamerType.Writer,
             temporal_dims=("r", "n", "n"),
             spatial_dims=("n",),
+            opts=(StreamerOpts.HasAddressRemap,),
         ),
         Streamer(  # C
             StreamerType.Reader,
             temporal_dims=("r", "n", "n"),
-            spatial_dims=("n",),
-            opts=(StreamerOpts.HasChannelMask,),
+            spatial_dims=("n", "n"),
+            opts=(
+                StreamerOpts.HasChannelMask,
+                StreamerOpts.HasAddressRemap,
+                StreamerOpts.HasBroadcast,
+            ),
         ),
         Streamer(  # D32
             StreamerType.Writer,
             temporal_dims=("r", "n", "n"),
-            spatial_dims=("n",),
+            spatial_dims=("n", "n"),
+            opts=(StreamerOpts.HasAddressRemap,),
         ),
     ],
 )
@@ -142,7 +148,9 @@ class SNAXGEMMXAccelerator(
         return [
             *ops_to_insert,
             setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
-            launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
+            launch_val := arith.ConstantOp(
+                builtin.IntegerAttr.from_int_and_width(1, 5)
+            ),
             token := accfg.LaunchOp(
                 [launch_val, launch_val], self.launch_fields, setup
             ),
@@ -160,10 +168,10 @@ class SNAXGEMMXAccelerator(
         - a reference to the SSAValue containing the calculated field value
         """
 
-        c0 = arith.Constant.from_int_and_width(0, 32)
-        c1 = arith.Constant.from_int_and_width(1, 32)
+        c0 = arith.ConstantOp.from_int_and_width(0, 32)
+        c1 = arith.ConstantOp.from_int_and_width(1, 32)
         knm: list = [
-            (((cst := arith.Constant.from_int_and_width(val.data, 32)),), cst.result)
+            (((cst := arith.ConstantOp.from_int_and_width(val.data, 32)),), cst.result)
             for val in op.stride_patterns.data[0].upper_bounds
         ]
 
@@ -191,9 +199,9 @@ class SNAXGEMMXAccelerator(
 
             # bitwise and with 8b'11111111 to avoid the sign bits extending the 8-bit field
             # when bitlist packing
-            ops_to_add.append(cst255 := arith.Constant.from_int_and_width(255, 32))
-            ops_to_add.append(zp_a := arith.AndI(zp_a, cst255))
-            ops_to_add.append(zp_b := arith.AndI(zp_b, cst255))
+            ops_to_add.append(cst255 := arith.ConstantOp.from_int_and_width(255, 32))
+            ops_to_add.append(zp_a := arith.AndIOp(zp_a, cst255))
+            ops_to_add.append(zp_b := arith.AndIOp(zp_b, cst255))
 
             bitlist = list(pack_bitlist((zp_a, zp_b), [0, 8]))
             ops_to_add.extend(bitlist)
@@ -203,31 +211,31 @@ class SNAXGEMMXAccelerator(
             # extract and compute correct value for csr's based on kernel rescale op
             # set k to 1
             knm.insert(
-                0, ((cst := arith.Constant.from_int_and_width(1, 32),), cst.result)
+                0, ((cst := arith.ConstantOp.from_int_and_width(1, 32),), cst.result)
             )
             # simd
             bypassSIMD = c0.result
             subtractions = c0.result
 
-            max_int = arith.Constant.from_int_and_width(rescale.max_int.value, i32)
-            min_int = arith.Constant.from_int_and_width(rescale.min_int.value, i32)
-            double_round = arith.Constant.from_int_and_width(
+            max_int = arith.ConstantOp.from_int_and_width(rescale.max_int.value, i32)
+            min_int = arith.ConstantOp.from_int_and_width(rescale.min_int.value, i32)
+            double_round = arith.ConstantOp.from_int_and_width(
                 rescale.double_round.value, i32
             )
-            shift = arith.Constant.from_int_and_width(rescale.shift.value, i32)
-            mult = arith.Constant.from_int_and_width(rescale.multiplier.value, i32)
-            zp_in = arith.Constant.from_int_and_width(rescale.input_zp.value, i32)
-            zp_out = arith.Constant.from_int_and_width(rescale.output_zp.value, i32)
+            shift = arith.ConstantOp.from_int_and_width(rescale.shift.value, i32)
+            mult = arith.ConstantOp.from_int_and_width(rescale.multiplier.value, i32)
+            zp_in = arith.ConstantOp.from_int_and_width(rescale.input_zp.value, i32)
+            zp_out = arith.ConstantOp.from_int_and_width(rescale.output_zp.value, i32)
             ops_to_add.extend(
                 [max_int, min_int, double_round, shift, mult, zp_in, zp_out]
             )
 
             # force values that can be negative to 8 bits
-            cst255 = arith.Constant.from_int_and_width(255, 32)
-            max_int = arith.AndI(max_int, cst255)
-            min_int = arith.AndI(min_int, cst255)
-            zp_in = arith.AndI(zp_in, cst255)
-            zp_out = arith.AndI(zp_out, cst255)
+            cst255 = arith.ConstantOp.from_int_and_width(255, 32)
+            max_int = arith.AndIOp(max_int, cst255)
+            min_int = arith.AndIOp(min_int, cst255)
+            zp_in = arith.AndIOp(zp_in, cst255)
+            zp_out = arith.AndIOp(zp_out, cst255)
             ops_to_add.extend([cst255, max_int, min_int, zp_in, zp_out])
 
             # bitpacking
@@ -244,7 +252,7 @@ class SNAXGEMMXAccelerator(
             mult_vals = (mult.result for _ in range(8))
 
             loop_bound = prod(x.data for x in op.stride_patterns.data[0].upper_bounds)
-            loop_bound = arith.Constant.from_int_and_width(loop_bound, i32)
+            loop_bound = arith.ConstantOp.from_int_and_width(loop_bound, i32)
             ops_to_add.append(loop_bound)
 
         else:

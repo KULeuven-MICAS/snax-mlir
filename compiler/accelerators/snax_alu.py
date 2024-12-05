@@ -58,7 +58,7 @@ class SNAXAluAccelerator(
 
         # linalg.generic lowering is stil hardcoded, but kept until
         # lowering from linalg -> snax_stream is complete
-        if isinstance(op, linalg.Generic):
+        if isinstance(op, linalg.GenericOp):
             args = self._generate_setup_vals(op)
         elif isinstance(op, snax_stream.StreamingRegionOp):
             args = self._generate_stream_setup_vals(op)
@@ -72,7 +72,9 @@ class SNAXAluAccelerator(
         return [
             *ops_to_insert,
             setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
-            launch_val := arith.Constant(builtin.IntegerAttr.from_int_and_width(1, 5)),
+            launch_val := arith.ConstantOp(
+                builtin.IntegerAttr.from_int_and_width(1, 5)
+            ),
             token := accfg.LaunchOp(
                 [launch_val, launch_val], self.launch_fields, setup
             ),
@@ -80,31 +82,31 @@ class SNAXAluAccelerator(
         ]
 
     def _generate_setup_vals(
-        self, op: linalg.Generic
+        self, op: linalg.GenericOp
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         a, b, o = op.operands
 
-        c0_index = arith.Constant.from_int_and_width(0, builtin.IndexType())
-        dim_0 = memref.Dim.from_source_and_index(a, c0_index)
-        design_time_parallelism = arith.Constant.from_int_and_width(
+        c0_index = arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
+        dim_0 = memref.DimOp.from_source_and_index(a, c0_index)
+        design_time_parallelism = arith.ConstantOp.from_int_and_width(
             4, builtin.IndexType()
         )
-        loop_bound = arith.DivUI(dim_0, design_time_parallelism)
+        loop_bound = arith.DivUIOp(dim_0, design_time_parallelism)
         loop_bound_i32 = arith.IndexCastOp(loop_bound, builtin.i32)
-        c0 = arith.Constant.from_int_and_width(0, 32)
-        c8 = arith.Constant.from_int_and_width(8, 32)
-        c32 = arith.Constant.from_int_and_width(32, 32)
+        c0 = arith.ConstantOp.from_int_and_width(0, 32)
+        c8 = arith.ConstantOp.from_int_and_width(8, 32)
+        c32 = arith.ConstantOp.from_int_and_width(32, 32)
 
         ptrs = [
             (
                 [
                     ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref),
                     metadata := memref.ExtractStridedMetaDataOp(ref),
-                    el_bytes := arith.Constant.from_int_and_width(
+                    el_bytes := arith.ConstantOp.from_int_and_width(
                         ref.type.element_type.size, builtin.IndexType()
                     ),
-                    byte_offset := arith.Muli(metadata.offset, el_bytes),
-                    ptr_plus_byte_offset := arith.Addi(
+                    byte_offset := arith.MuliOp(metadata.offset, el_bytes),
+                    ptr_plus_byte_offset := arith.AddiOp(
                         ptr, byte_offset, builtin.IndexType()
                     ),
                     ptr_i32 := arith.IndexCastOp(ptr_plus_byte_offset, builtin.i32),
@@ -155,8 +157,8 @@ class SNAXAluAccelerator(
     def _generate_stream_setup_vals(
         self, op: snax_stream.StreamingRegionOp
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
-        c0 = arith.Constant.from_int_and_width(0, 32)
-        loop_bound = arith.Constant.from_int_and_width(
+        c0 = arith.ConstantOp.from_int_and_width(0, 32)
+        loop_bound = arith.ConstantOp.from_int_and_width(
             op.stride_patterns.data[0].upper_bounds.data[0], 32
         )
 

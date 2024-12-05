@@ -31,6 +31,7 @@ from xdsl.irdl import (
     opt_operand_def,
     prop_def,
     result_def,
+    traits_def,
     var_operand_def,
 )
 from xdsl.parser import AttrParser, Parser
@@ -366,8 +367,6 @@ class AcceleratorOp(IRDLOperation):
 
     name = "accfg.accelerator"
 
-    traits = frozenset([AcceleratorSymbolOpTrait()])
-
     name_prop = prop_def(SymbolRefAttr, prop_name="name")
 
     fields = prop_def(DictionaryAttr)
@@ -375,6 +374,8 @@ class AcceleratorOp(IRDLOperation):
     launch_fields = prop_def(DictionaryAttr)
 
     barrier = prop_def(IntegerAttr)  # TODO: this will be reworked in a later version
+
+    traits = traits_def(AcceleratorSymbolOpTrait())
 
     def __init__(
         self,

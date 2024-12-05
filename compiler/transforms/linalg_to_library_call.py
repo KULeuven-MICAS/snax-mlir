@@ -1,27 +1,28 @@
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, func, linalg
-from xdsl.dialects.memref import Cast, MemRefType
+from xdsl.dialects.builtin import MemRefType
+from xdsl.dialects.memref import CastOp
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
-    PatternRewriteWalker,
-    RewritePattern,
-    op_type_rewrite_pattern,
 )
 from xdsl.traits import SymbolTable
 
 
-class AddExternalFunc(RewritePattern):
+class LinalgToLibraryCall(ModulePass):
     """
-    Looks for hwpe function calls and adds an external
-    func call to it for LLVM to link in
+    This pass detects linalg operations with an external library call, and
+    replaces them with a function call and definition.
     """
 
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, module: builtin.ModuleOp, rewriter: PatternRewriter):
+    name = "linalg-to-library-call"
+
+    def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
+        rewriter = PatternRewriter(module)
+
         for op in module.walk():
             # Op must be linalg generic
-            if not isinstance(op, linalg.Generic):
+            if not isinstance(op, linalg.GenericOp):
                 continue
 
             if op.library_call is None:
@@ -40,13 +41,13 @@ class AddExternalFunc(RewritePattern):
                         operand.type.layout,
                         operand.type.memory_space,
                     )
-                    cast = Cast.get(operand, new_type)
+                    cast = CastOp.get(operand, new_type)
                     cast_ops_to_insert.append(cast)
                     operands.append(cast)
                 else:
                     operands.append(operand)
 
-            func_call = func.Call(op.library_call.data, operands, [])
+            func_call = func.CallOp(op.library_call.data, operands, [])
 
             # Replace op with function call
             rewriter.replace_op(op, [*cast_ops_to_insert, func_call])
@@ -84,17 +85,3 @@ class AddExternalFunc(RewritePattern):
             )
 
             SymbolTable.insert_or_update(module, func_op)
-
-
-class LinalgToLibraryCall(ModulePass):
-    """
-    This pass detects linalg operations with an external library call, and
-    replaces them with a function call and definition.
-    """
-
-    name = "linalg-to-library-call"
-
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(AddExternalFunc(), apply_recursively=False).rewrite_module(
-            op
-        )

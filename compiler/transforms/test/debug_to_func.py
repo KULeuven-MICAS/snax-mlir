@@ -42,10 +42,10 @@ class DebugToFunc(RewritePattern):
             case _:
                 whenparam = 5
 
-        when = arith.Constant.from_int_and_width(whenparam, 32)
+        when = arith.ConstantOp.from_int_and_width(whenparam, 32)
         ops_to_insert.append(when)
 
-        func_call = func.Call(
+        func_call = func.CallOp(
             f"debug_{op.debug_type.data}", [ptr_a, ptr_b, ptr_c, when], []
         )
         ops_to_insert.append(func_call)

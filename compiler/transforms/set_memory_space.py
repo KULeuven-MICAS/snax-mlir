@@ -70,7 +70,7 @@ class InitFuncMemorySpace(RewritePattern):
 
 class InitMemRefGlobalMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: memref.GetGlobal, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: memref.GetGlobalOp, rewriter: PatternRewriter):
         # global variables should go in memory space L3
         memspace = op.memref.type.memory_space
 
@@ -87,7 +87,7 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
         )
 
         # create new get_global op
-        new_op = memref.GetGlobal(op.name_.root_reference.data, new_memref_type)
+        new_op = memref.GetGlobalOp(op.name_.root_reference.data, new_memref_type)
 
         # replace op
         rewriter.replace_matched_op(new_op)
@@ -95,7 +95,7 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
 
 class InitMemRefAllocMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: memref.Alloc, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: memref.AllocOp, rewriter: PatternRewriter):
         # allocs should go in memory space L1
         memspace = op.memref.type.memory_space
 
@@ -104,7 +104,7 @@ class InitMemRefAllocMemorySpace(RewritePattern):
             return
 
         # create new alloc op
-        new_op = memref.Alloc.get(
+        new_op = memref.AllocOp.get(
             op.memref.type.element_type,
             op.alignment,
             op.memref.type.get_shape(),
@@ -124,7 +124,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: linalg.Generic | stream.StreamingRegionOp, rewriter: PatternRewriter
+        self, op: linalg.GenericOp | stream.StreamingRegionOp, rewriter: PatternRewriter
     ):
         operands_to_memory_cast = tuple(
             x
@@ -135,12 +135,12 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
         if not operands_to_memory_cast:
             return
 
-        def get_cast_op(operand) -> memref.MemorySpaceCast:
+        def get_cast_op(operand) -> memref.MemorySpaceCastOp:
             # cast required: find previous cast or create new one
             cast_op = None
             for use in operand.uses:
                 if (
-                    isinstance(use.operation, memref.MemorySpaceCast)
+                    isinstance(use.operation, memref.MemorySpaceCastOp)
                     and isinstance(use.operation.dest.type, builtin.MemRefType)
                     and use.operation.dest.type.memory_space == L1
                 ):
@@ -148,7 +148,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
                     break
             # If cast op not found, create and insert new one
             if cast_op is None:
-                cast_op = memref.MemorySpaceCast.from_type_and_target_space(
+                cast_op = memref.MemorySpaceCastOp.from_type_and_target_space(
                     operand, operand.type, L1
                 )
                 rewriter.insert_op_before_matched_op(cast_op)
@@ -156,7 +156,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
             return cast_op
 
         # insert memory cast for every value
-        memory_cast_ops: dict[SSAValue, memref.MemorySpaceCast] = {}
+        memory_cast_ops: dict[SSAValue, memref.MemorySpaceCastOp] = {}
         for operand in operands_to_memory_cast:
             memory_cast_ops[operand] = get_cast_op(operand)
 
@@ -172,7 +172,7 @@ class HandleFuncReturns(RewritePattern):
     in the function handle"""
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: func.Return, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: func.ReturnOp, rewriter: PatternRewriter):
         # get function op
         func_op: func.FuncOp = op.parent_op()
 
@@ -195,7 +195,7 @@ class HandleFuncReturns(RewritePattern):
 
             if func_op_output.memory_space != func_return_output.type.memory_space:
                 # create cast op
-                cast_op = memref.MemorySpaceCast.from_type_and_target_space(
+                cast_op = memref.MemorySpaceCastOp.from_type_and_target_space(
                     func_return_output,
                     func_return_output.type,
                     func_op_output.memory_space,
@@ -210,7 +210,7 @@ class HandleFuncReturns(RewritePattern):
             return
 
         # create new return op
-        new_op = func.Return(*new_arguments)
+        new_op = func.ReturnOp(*new_arguments)
 
         # replace op
         rewriter.replace_matched_op(new_op)

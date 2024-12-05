@@ -3,7 +3,6 @@ from typing import Generic, TypeVar
 
 from xdsl.dialects.builtin import (
     AffineMapAttr,
-    AnyShapedType,
     ArrayAttr,
     ContainerType,
     ShapedType,
@@ -30,6 +29,7 @@ from xdsl.irdl import (
     opt_prop_def,
     prop_def,
     region_def,
+    traits_def,
     var_operand_def,
     var_result_def,
 )
@@ -82,8 +82,8 @@ class StreamingRegionOp(IRDLOperation):
 
     name = "stream.streaming_region"
 
-    inputs = var_operand_def(AnyShapedType())
-    outputs = var_operand_def(AnyShapedType())
+    inputs = var_operand_def()
+    outputs = var_operand_def()
     result_tensors = var_result_def()
     patterns = prop_def(ArrayAttr[AffineMapAttr])
 
@@ -152,7 +152,7 @@ class StreamingRegionOp(IRDLOperation):
 class YieldOp(AbstractYieldOperation[Attribute]):
     name = "stream.yield"
 
-    traits = frozenset([IsTerminator()])
+    traits = traits_def(IsTerminator())
 
 
 @irdl_op_definition

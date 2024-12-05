@@ -22,7 +22,7 @@ from compiler.ir.tsl import Stride, TiledStride, TiledStridedLayout
 
 class AddMemoryLayoutSIMD(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, linalg_op: linalg.Generic, rewriter: PatternRewriter):
+    def match_and_rewrite(self, linalg_op: linalg.GenericOp, rewriter: PatternRewriter):
         # check if operation is dispatched via library call, as set by e.g.
         # the dispatch-kernels pass
         if linalg_op.library_call is None:
@@ -90,7 +90,7 @@ class AddMemoryLayoutSIMD(RewritePattern):
                 linalg_op.outputs[0], tsl_output
             )
 
-            new_linalg_op = linalg.Generic(
+            new_linalg_op = linalg.GenericOp(
                 inputs=[new_input_a.dest],
                 outputs=[new_output.dest],
                 body=rewriter.move_region_contents_to_new_regions(linalg_op.regions[0]),
@@ -127,12 +127,12 @@ class AddMemoryLayout(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: linalg.Generic | stream.StreamingRegionOp, rewriter: PatternRewriter
+        self, op: linalg.GenericOp | stream.StreamingRegionOp, rewriter: PatternRewriter
     ):
         # check if operation is dispatched via library call, as set by e.g.
         # the dispatch-kernels pass
 
-        if isinstance(op, linalg.Generic):
+        if isinstance(op, linalg.GenericOp):
             if op.library_call is None:
                 return
             else:
@@ -148,7 +148,7 @@ class AddMemoryLayout(RewritePattern):
         # check for library call
         if library_call == "snax_gemmx" or library_call == "snax_gemmx_stream":
             # only do so for qmac kernels
-            if isinstance(op, linalg.Generic):
+            if isinstance(op, linalg.GenericOp):
                 if not isinstance(op.body.block.first_op, QMacOp):
                     return
             elif isinstance(op, stream.StreamingRegionOp):

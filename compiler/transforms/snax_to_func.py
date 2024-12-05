@@ -18,17 +18,8 @@ class InsertFunctionCall(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: snax.ClusterSyncOp, rewriter: PatternRewriter):
         """Swap cluster sync op with function call"""
-        func_call = func.Call("snax_cluster_hw_barrier", [], [])
+        func_call = func.CallOp("snax_cluster_hw_barrier", [], [])
         rewriter.replace_matched_op(func_call)
-
-
-class InsertFunctionDeclaration(RewritePattern):
-    """Insert external function declarations of snax_cluster_hw_barrier"""
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, module_op: builtin.ModuleOp, rewriter: PatternRewriter):
-        func_op = func.FuncOp.external("snax_cluster_hw_barrier", [], [])
-        SymbolTable.insert_or_update(module_op, func_op)
 
 
 class ClearL1ToFunc(RewritePattern):
@@ -36,7 +27,7 @@ class ClearL1ToFunc(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, clear: snax.ClearL1, rewriter: PatternRewriter):
-        func_call = func.Call("snax_clear_l1", [], [])
+        func_call = func.CallOp("snax_clear_l1", [], [])
         func_decl = func.FuncOp.external("snax_clear_l1", [], [])
 
         # find module_op and insert func call
@@ -69,18 +60,18 @@ class AllocToFunc(RewritePattern):
             return
 
         def dense_array(pos):
-            return builtin.DenseArrayBase.create_dense_int_or_index(builtin.i64, pos)
+            return builtin.DenseArrayBase.create_dense_int(builtin.i64, pos)
 
         ops_to_insert = []
 
         # create constant alignment op to pass on to the allocation function
-        alignment_op = arith.Constant.from_int_and_width(
+        alignment_op = arith.ConstantOp.from_int_and_width(
             alloc_op.alignment.value.data, builtin.IndexType()
         )
         ops_to_insert.append(alignment_op)
 
         # call allocation function with size and alignment operations
-        func_call = func.Call(
+        func_call = func.CallOp(
             "snax_alloc_l1",
             [alloc_op.size, alignment_op],
             [llvm.LLVMPointerType.opaque()],
@@ -126,7 +117,7 @@ class AllocToFunc(RewritePattern):
         ops_to_insert.append(llvm_struct)
 
         # insert offset
-        cst_zero = arith.Constant.from_int_and_width(0, builtin.i32)
+        cst_zero = arith.ConstantOp.from_int_and_width(0, builtin.i32)
         llvm_struct = llvm.InsertValueOp(dense_array([2]), llvm_struct.res, cst_zero)
         ops_to_insert.extend([cst_zero, llvm_struct])
 
@@ -166,7 +157,8 @@ class SNAXToFunc(ModulePass):
 
         if contains_sync:
             PatternRewriteWalker(InsertFunctionCall()).rewrite_module(op)
-            PatternRewriteWalker(InsertFunctionDeclaration()).rewrite_module(op)
+            func_op = func.FuncOp.external("snax_cluster_hw_barrier", [], [])
+            SymbolTable.insert_or_update(op, func_op)
 
         PatternRewriteWalker(
             GreedyRewritePatternApplier([AllocToFunc(), ClearL1ToFunc()])

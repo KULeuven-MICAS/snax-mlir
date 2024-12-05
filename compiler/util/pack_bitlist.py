@@ -31,18 +31,18 @@ def pack_bitlist(
     shifted_vals: list[SSAValue] = []
     for int_val, int_off in zip(values, offsets, strict=True):
         if isinstance(int_off, int):
-            yield (offset := arith.Constant.from_int_and_width(int_off, dtype))
+            yield (offset := arith.ConstantOp.from_int_and_width(int_off, dtype))
         else:
             offset = SSAValue.get(int_off)
         if isinstance(int_val, int):
-            yield (value := arith.Constant.from_int_and_width(int_val, dtype))
+            yield (value := arith.ConstantOp.from_int_and_width(int_val, dtype))
         else:
             value = SSAValue.get(int_val)
-        yield (shift := arith.ShLI(value, offset))
+        yield (shift := arith.ShLIOp(value, offset))
         shifted_vals.append(shift.result)
 
     # create a tree of or-operations with depth log(n)
     while len(shifted_vals) > 1:
         a, b, *rest = shifted_vals
-        yield (ored_val := arith.OrI(a, b))
+        yield (ored_val := arith.OrIOp(a, b))
         shifted_vals = [*rest, ored_val.result]

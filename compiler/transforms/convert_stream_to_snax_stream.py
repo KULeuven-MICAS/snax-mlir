@@ -190,7 +190,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 # point C to c0
                 new_inputs.append(
                     # zero pointer will generate 0 values
-                    arith.Constant.from_int_and_width(0, builtin.IndexType())
+                    arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
                 )
             elif len(snax_stride_patterns) == 4:
                 # gemm
@@ -223,13 +223,13 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 new_inputs.insert(
                     0,
                     # zero pointer will generate 0 values
-                    arith.Constant.from_int_and_width(0, builtin.IndexType()),
+                    arith.ConstantOp.from_int_and_width(0, builtin.IndexType()),
                 )
                 snax_stride_patterns.insert(1, zero_pattern)
                 new_inputs.insert(
                     1,
                     # zero pointer will generate 0 values
-                    arith.Constant.from_int_and_width(0, builtin.IndexType()),
+                    arith.ConstantOp.from_int_and_width(0, builtin.IndexType()),
                 )
 
                 # flip D8 and C such that they are in the right order
@@ -242,6 +242,19 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                 new_inputs.append(
                     memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
                 )
+
+        if accelerator_str == "snax_gemmx":
+            # make last spatial stride patterns 2d
+            snax_stride_patterns[-2] = snax_stream.StridePattern(
+                upper_bounds=snax_stride_patterns[-2].upper_bounds,
+                temporal_strides=snax_stride_patterns[-2].temporal_strides,
+                spatial_strides=[8, 64],
+            )
+            snax_stride_patterns[-1] = snax_stream.StridePattern(
+                upper_bounds=snax_stride_patterns[-1].upper_bounds,
+                temporal_strides=snax_stride_patterns[-1].temporal_strides,
+                spatial_strides=[8, 64],
+            )
 
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(

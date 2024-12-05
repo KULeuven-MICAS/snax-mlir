@@ -38,18 +38,18 @@ def infer_state_of(state_var: SSAValue) -> State:
             in_state = infer_state_of(st)
             in_state.update(dict(setup_op.iter_params()))
             return in_state
-        case scf.If() as if_op:
+        case scf.IfOp() as if_op:
             return state_intersection(*infer_states_for_if(if_op, state_var))
-        case scf.For() as for_op:
+        case scf.ForOp() as for_op:
             yield_op = for_op.body.block.last_op
-            assert isinstance(yield_op, scf.Yield)
+            assert isinstance(yield_op, scf.YieldOp)
             assert (
                 state_var in for_op.results
             )  # this must be true because state_var.owner == for_op
             return infer_state_of(yield_op.operands[for_op.results.index(state_var)])
         case Block() as block:
             match block.parent_op():
-                case scf.For() as for_op:
+                case scf.ForOp() as for_op:
                     assert isinstance(
                         state_var, BlockArgument
                     )  # must be a block argument for owner to be a block!
@@ -60,7 +60,7 @@ def infer_state_of(state_var: SSAValue) -> State:
             raise ValueError(f"Cannot infer state for op {owner.name}")
 
 
-def infer_states_for_if(op: scf.If, state: SSAValue) -> tuple[State, State]:
+def infer_states_for_if(op: scf.IfOp, state: SSAValue) -> tuple[State, State]:
     """
     Walk both sides of the if/else block and return the computed
     states for the given state SSA value (`state`)
@@ -72,7 +72,7 @@ def infer_states_for_if(op: scf.If, state: SSAValue) -> tuple[State, State]:
     for region in op.regions:
         # we know the last op must be the yield
         yield_op = region.block.last_op
-        assert isinstance(yield_op, scf.Yield)
+        assert isinstance(yield_op, scf.YieldOp)
         # we know the yield op has the same number of operands as the
         # scf.if has results, so [idx] must be defined
         states.append(infer_state_of(yield_op.operands[idx]))

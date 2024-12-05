@@ -24,7 +24,7 @@ class AllocToGlobal(RewritePattern):
     index: int = 0
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: memref.Alloc, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: memref.AllocOp, rewriter: PatternRewriter):
         # get module op
         module_op = op
         while not isinstance(module_op, builtin.ModuleOp):
@@ -42,7 +42,7 @@ class AllocToGlobal(RewritePattern):
         assert SymbolTable.lookup_symbol(module_op, global_sym_name) is None
 
         # create global
-        memref_global = memref.Global.get(
+        memref_global = memref.GlobalOp.get(
             builtin.StringAttr(global_sym_name),
             op.results[0].type,
             initial_value=builtin.UnitAttr(),
@@ -53,13 +53,13 @@ class AllocToGlobal(RewritePattern):
         deallocs = [
             user_op.operation
             for user_op in op.results[0].uses
-            if isinstance(user_op.operation, memref.Dealloc)
+            if isinstance(user_op.operation, memref.DeallocOp)
         ]
         for dealloc in deallocs:
             rewriter.erase_op(dealloc)
 
         # replace op by get global
-        memref_get = memref.GetGlobal(global_sym_name, op.results[0].type)
+        memref_get = memref.GetGlobalOp(global_sym_name, op.results[0].type)
 
         rewriter.replace_matched_op(memref_get)
 

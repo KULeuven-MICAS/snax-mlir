@@ -1,6 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, linalg, memref
-from xdsl.dialects.memref import MemorySpaceCast
+from xdsl.dialects.memref import MemorySpaceCastOp
 from xdsl.ir import Operation, OpResult
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -15,7 +15,7 @@ from compiler.dialects.snax import LayoutCast
 
 
 def is_cast_op(op: Operation) -> bool:
-    return isinstance(op, MemorySpaceCast) or isinstance(op, LayoutCast)
+    return isinstance(op, MemorySpaceCastOp) or isinstance(op, LayoutCast)
 
 
 class RealizeMemrefCasts(RewritePattern):
@@ -28,7 +28,7 @@ class RealizeMemrefCasts(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: MemorySpaceCast | LayoutCast, rewriter: PatternRewriter
+        self, op: MemorySpaceCastOp | LayoutCast, rewriter: PatternRewriter
     ):
         # if the casting is not used anymore (perhaps made useless by previous
         # cast realizations), we do not need to do anything. dce will remove it later
@@ -47,15 +47,15 @@ class RealizeMemrefCasts(RewritePattern):
         # combine them all together
         source_op = op
         while isinstance(source_op.source, OpResult) and isinstance(
-            source_op.source.op, MemorySpaceCast | LayoutCast
+            source_op.source.op, MemorySpaceCastOp | LayoutCast
         ):
             source_op = source_op.source.op
 
         # now perform casting by inserting memref copies and allocs
         source_type = source_op.source.type
-        assert isinstance(source_type, memref.MemRefType)
+        assert isinstance(source_type, builtin.MemRefType)
         dest_type = op.dest.type
-        assert isinstance(dest_type, memref.MemRefType)
+        assert isinstance(dest_type, builtin.MemRefType)
 
         # create allocation
 
@@ -66,15 +66,15 @@ class RealizeMemrefCasts(RewritePattern):
             # Dynamic shapes are represented as -1
             if shapes[i] == -1:
                 ## create dim op
-                index = arith.Constant.from_int_and_width(i, builtin.IndexType())
-                dim_op = memref.Dim.from_source_and_index(
+                index = arith.ConstantOp.from_int_and_width(i, builtin.IndexType())
+                dim_op = memref.DimOp.from_source_and_index(
                     source_op.source, index.result
                 )
                 ops_to_add.extend([index, dim_op])
                 dyn_operands.append(dim_op)
 
         # create alloc op
-        alloc_op = memref.Alloc.get(
+        alloc_op = memref.AllocOp.get(
             dest_type.get_element_type(),
             64,  # default 64 alignment
             dest_type.get_shape(),
@@ -95,7 +95,7 @@ class RealizeMemrefCasts(RewritePattern):
                 continue
             # check if input
             is_input = False
-            if isinstance(use_op, linalg.Generic):
+            if isinstance(use_op, linalg.GenericOp):
                 # don't know if input or output, default to yes
                 is_input = op.results[0] in use_op.inputs
             elif isinstance(use_op, stream.StreamingRegionOp):
@@ -115,11 +115,11 @@ class RealizeMemrefCasts(RewritePattern):
                 continue
             # check if input
             is_output = False
-            if isinstance(use_op, linalg.Generic):
+            if isinstance(use_op, linalg.GenericOp):
                 is_output = op.results[0] in use_op.outputs
             elif isinstance(use_op, stream.StreamingRegionOp):
                 is_output = op.results[0] in use_op.outputs
-            elif isinstance(use_op, func.Return):
+            elif isinstance(use_op, func.ReturnOp):
                 is_output = False
             else:
                 # don't know if input or output, default to yes

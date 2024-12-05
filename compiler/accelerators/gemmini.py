@@ -125,7 +125,7 @@ class GemminiAccelerator(RoCCAccelerator):
             accfg.AwaitOp(token),
         ]
 
-    def convert_to_acc_ops(self, op: linalg.Generic) -> Sequence[Operation]:
+    def convert_to_acc_ops(self, op: linalg.GenericOp) -> Sequence[Operation]:
         a, b, _, _, c = op.operands  # Don't use zero point adjustments
         ops_to_insert = []
         pointer_values = []
@@ -135,7 +135,7 @@ class GemminiAccelerator(RoCCAccelerator):
                 [
                     metadata := memref.ExtractStridedMetaDataOp(operand),
                     pointer := memref.ExtractAlignedPointerAsIndexOp.get(operand),
-                    offset_ptr := arith.Addi(pointer, metadata.offset),
+                    offset_ptr := arith.AddiOp(pointer, metadata.offset),
                     offset_ptr_i64 := arith.IndexCastOp(offset_ptr, i64),
                     # Only add stride at index 0 for our experiments
                     stride_i64 := arith.IndexCastOp(metadata.strides[0], i64),
@@ -148,9 +148,9 @@ class GemminiAccelerator(RoCCAccelerator):
         for operand, i in zip([a, b, a], [0, 1, 1]):
             ops_to_insert.extend(
                 [
-                    cst_16 := arith.Constant.from_int_and_width(16, IndexType()),
+                    cst_16 := arith.ConstantOp.from_int_and_width(16, IndexType()),
                     metadata := memref.ExtractStridedMetaDataOp(operand),
-                    divided_size := arith.DivUI(metadata.sizes[i], cst_16),
+                    divided_size := arith.DivUIOp(metadata.sizes[i], cst_16),
                     size_i64 := arith.IndexCastOp(divided_size, i64),
                 ]
             )
@@ -158,7 +158,7 @@ class GemminiAccelerator(RoCCAccelerator):
 
         ops_to_insert.extend(
             [
-                cst_0 := arith.Constant.from_int_and_width(0, 64),
+                cst_0 := arith.ConstantOp.from_int_and_width(0, 64),
                 *self._gemmini_loop_ws(
                     cst_0,
                     cst_0,

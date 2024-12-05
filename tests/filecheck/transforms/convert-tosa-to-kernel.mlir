@@ -11,7 +11,7 @@
 // CHECK-NEXT:   %3 = tensor.empty(%2) : tensor<?x8xi8>
 // CHECK-NEXT:   %4 = linalg.generic {indexing_maps = [affine_map<(d0, d1) -> (d0, d1)>, affine_map<(d0, d1) -> (d0, d1)>], iterator_types = ["parallel", "parallel"]} ins(%0 : tensor<?x8xi32>) outs(%3 : tensor<?x8xi8>) {
 // CHECK-NEXT:   ^0(%5 : i32, %6 : i8):
-// CHECK-NEXT:     %7 = kernel.rescale %5 zero_points(0, -128) rescale(1085889731 >> 37) clamp(-128, 127) double_round = 1 : i32 -> i8
+// CHECK-NEXT:     %7 = kernel.rescale %5 zero_points(0, -128) rescale(1085889731 >> 37) clamp(-128, 127) double_round = true : i32 -> i8
 // CHECK-NEXT:     linalg.yield %7 : i8
 // CHECK-NEXT:   } -> tensor<?x8xi8>
 // CHECK-NEXT: }
