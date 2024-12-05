@@ -44,7 +44,7 @@ def create_matrix_multiply(m, n, k, add_c: bool = False):
 
     @Builder.implicit_region(arg_types)
     def func_body(args: tuple[BlockArgument, ...]) -> None:
-        c0 = arith.Constant.from_int_and_width(0, 32)
+        c0 = arith.ConstantOp.from_int_and_width(0, 32)
         empty_tensor = tensor.EmptyOp([], (arg_types[-1]))
         result = linalg.QuantizedMatmulOp(
             [args[0], args[1], c0.result, c0.result], [empty_tensor.tensor]
@@ -54,9 +54,9 @@ def create_matrix_multiply(m, n, k, add_c: bool = False):
             newresult = linalg.AddOp(
                 [args[2], result.results[0]], [empty_tensor_2.tensor]
             )
-            func.Return(newresult)
+            func.ReturnOp(newresult)
         else:
-            func.Return(result)
+            func.ReturnOp(result)
 
     function = func.FuncOp.from_region(
         "streamer_matmul", arg_types, res_types, func_body
@@ -146,64 +146,6 @@ if __name__ == "__main__":
     selected_dims = [32, 48, 64]
 
     sizes = list(itertools.product(selected_dims, repeat=3))
-
-    # some other relevant neural network sizes:
-    nn_size = [
-        # m, n, k
-        # tiled small matrix sizes from LSTM
-        [16, 32, 512],
-        # tiled small matrix sizes from MobileNetV2
-        [448, 32, 32],
-        [8, 192, 32],
-        [8, 16, 16],
-        [224, 16, 192],
-        [8, 96, 16],
-        [64, 24, 96],
-        [8, 48, 24],
-        [56, 48, 16],
-        [8, 32, 144],
-        [56, 32, 32],
-        [200, 48, 16],
-        [200, 32, 64],
-        [200, 96, 16],
-        [200, 8, 384],
-        [200, 8, 96],
-        [56, 576, 16],
-        [8, 160, 576],
-        [56, 48, 160],
-        [8, 960, 16],
-        [56, 64, 960],
-        [56, 64, 320],
-        [8, 40, 1280],
-        # tiled small matrix sizes from ResNet18
-        [8, 32, 152],
-        [8, 64, 576],
-        [8, 128, 576],
-        [112, 128, 128],
-        [56, 32, 64],
-        [40, 64, 1152],
-        [200, 64, 192],
-        [200, 32, 128],
-        [56, 8, 576],
-        [56, 8, 512],
-        [56, 128, 256],
-        [8, 200, 512],
-        # tiled small matrix sizes from Vision-Transformer
-        [40, 96, 768],
-        [40, 200, 64],
-        [200, 64, 200],
-        [40, 8, 768],
-        [8, 128, 192],
-        [8, 40, 768],
-        # tiled small matrix sizes from I-BERTBase
-        [32, 64, 768],
-        [8, 512, 64],
-        [32, 64, 512],
-        [128, 8, 768],
-        [128, 8, 792],
-        [128, 88, 192],
-    ]
-    sizes += nn_size
 
     output_report: dict[str, dict] = {}
 

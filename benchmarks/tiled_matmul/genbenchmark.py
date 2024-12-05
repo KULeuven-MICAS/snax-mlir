@@ -47,9 +47,9 @@ def create_tiled_matrix_multiply(k, m, n, tiling_factors):
     b = Block(arg_types=(input_types))
 
     with ImplicitBuilder(b) as (arg0, arg1, arg2):
-        c0 = arith.Constant.from_int_and_width(0, 32)
+        c0 = arith.ConstantOp.from_int_and_width(0, 32)
         linalg.QuantizedMatmulOp([arg0, arg1, c0.result, c0.result], [arg2])
-        func.Return()
+        func.ReturnOp()
 
     region = Region(b)
 
