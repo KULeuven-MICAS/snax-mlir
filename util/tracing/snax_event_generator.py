@@ -13,7 +13,7 @@ class _CurrentEvent:
 
 @dataclass
 class SettingUp(_CurrentEvent):
-    number_setups: int = field(default=1)
+    number_of_setups: int = field(default=1)
     number_of_launches: int = field(default=0)
     """
     Since we only end this region when we see the *second* write to launch, we need to keep track of the number
@@ -27,7 +27,7 @@ class Launched(_CurrentEvent):
     """
     How many zero writes to the launch address have happened
     """
-    number_setups: int = field(default=0)
+    number_of_setups: int = field(default=0)
 
 
 @dataclass
@@ -85,14 +85,14 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
         elif isinstance(self.state, SettingUp):
             # if it's a normal setup, count a setup ins
             if ins.csr in self.fields:
-                self.state.number_setups += 1
+                self.state.number_of_setups += 1
             # if it's a launch insn
             elif ins.csr in self.launch_fields:
                 # check that we haven't met the launch threshold yet
                 if self.state.number_of_launches < len(self.launch_fields):
                     self.state.number_of_launches += 1
                     # this launch counts as a setup
-                    # self.state.number_setups += 1
+                    # self.state.number_of_setups += 1
                 # otherwise, end this event, switch to launch event
                 else:
                     events.append(
@@ -101,7 +101,7 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
                             self.state.start,
                             state.clock_cycle - self.state.start,
                             ["snax"],
-                            {"setup_ins_count": self.state.number_setups},
+                            {"setup_ins_count": self.state.number_of_setups},
                         )
                     )
                     # change state to launched
@@ -110,7 +110,7 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
         elif isinstance(self.state, Launched):
             # if we see a setup ins, count it
             if ins.csr in self.fields:
-                self.state.number_setups += 1
+                self.state.number_of_setups += 1
             # if we see a write to a launch
             elif ins.csr in self.launch_fields:
                 self.state.number_of_zero_writes += 1
@@ -122,7 +122,7 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
                         self.state.start,
                         state.clock_cycle - self.state.start,
                         ["snax"],
-                        {"setup_ins_count": self.state.number_setups},
+                        {"setup_ins_count": self.state.number_of_setups},
                     )
                 )
                 self.state = Stalled(start=state.clock_cycle)
