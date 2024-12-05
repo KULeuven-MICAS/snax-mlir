@@ -7,14 +7,18 @@ include ../../runtime/Makefile.rules
 
 TESTS =
 TESTS += quantized_matmul.x
+TESTS += tiled_quantized_matmul.x
 
 SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,snax-bufferize,alloc-to-global,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=2},convert-stream-to-snax-stream,convert-linalg-to-accfg,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
 
-%.mlir: %.py
-	$(PYTHON) $< > $@
+quantized_matmul.mlir: quantized_matmul.py
+	$(PYTHON) quantized_matmul.py
+
+tiled_quantized_matmul.transform.mlir: tiled_quantized_matmul.py
+	$(PYTHON) tiled_quantized_matmul.py
 
 %.x: %.o main.o
 	$(LD) $(LDFLAGS) $^ -o $@
