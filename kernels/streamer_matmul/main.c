@@ -3,7 +3,7 @@
 #include "stdint.h"
 #include <snrt.h>
 
-void _mlir_ciface_snax_main(int32_t *results);
+void _mlir_ciface_snax_main(TwoDMemrefI32_t *results);
 
 int main() {
 
