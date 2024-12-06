@@ -42,7 +42,6 @@ from compiler.transforms.snax_bufferize import SnaxBufferize
 from compiler.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from compiler.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from compiler.transforms.snax_to_func import SNAXToFunc
-from compiler.transforms.stream_bufferize import StreamBufferize
 from compiler.transforms.test.debug_to_func import DebugToFuncPass
 from compiler.transforms.test.insert_debugs import InsertDebugPass
 from compiler.transforms.test.test_add_mcycle_around_launch import AddMcycleAroundLaunch
@@ -122,7 +121,6 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(PreprocessMLPerfTiny.name, lambda: PreprocessMLPerfTiny)
         super().register_pass(AddMcycleAroundLaunch.name, lambda: AddMcycleAroundLaunch)
         super().register_pass(ConvertLinalgToStream.name, lambda: ConvertLinalgToStream)
-        super().register_pass(StreamBufferize.name, lambda: StreamBufferize)
         super().register_pass(SnaxBufferize.name, lambda: SnaxBufferize)
         super().register_pass(FuseStreamingRegions.name, lambda: FuseStreamingRegions)
         super().register_pass(AllocToGlobalPass.name, lambda: AllocToGlobalPass)
