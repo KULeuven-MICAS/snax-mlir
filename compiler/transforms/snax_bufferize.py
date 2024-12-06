@@ -21,7 +21,7 @@ class BufferizeStreamingRegion(RewritePattern):
     def match_and_rewrite(
         self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
     ) -> None:
-        # check if for operands that need to be bufferized:
+        # check for operands that need to be bufferized:
         operands_to_buffer = tuple(
             operand
             for operand in op.operands
