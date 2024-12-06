@@ -28,6 +28,9 @@ module default_rules:
 use rule * from default_rules as default_*
 
 
+from gendata import create_files
+
+
 # Rules
 rule all:
     input:
@@ -42,14 +45,10 @@ rule all:
 
 rule generate_data:
     output:
-        "transform_copy/data.c",
-        "transform_copy/data.h",
-        "transform_from_none/data.c",
-        "transform_from_none/data.h",
-        "transform_from_strided/data.c",
-        "transform_from_strided/data.h",
-    script:
-        "gendata.py"
+        "{folder}/data.c",
+        "{folder}/data.h",
+    run:
+        create_files(f"{wildcards.folder}/data")
 
 
 rule compile_snax_binary:
