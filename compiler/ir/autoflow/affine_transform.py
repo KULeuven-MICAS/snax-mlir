@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import Self
 
 import numpy as np
+from typing_extensions import Self
 
 
 @dataclass(frozen=True)
