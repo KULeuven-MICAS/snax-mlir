@@ -17,6 +17,6 @@ def test_snax_benchmark_runner():
     bm.build(build_opts=["ARRAY_SIZE=128", "TILE_SIZE=16", "NO_CHECK=1"])
     bm.run()
     bm.trace()
-    bm.process_traces(folder)
+    bm.process_traces(folder, accelerator="snax_alu")
     bm.copy_binary(folder)
     bm.copy_logs(folder)

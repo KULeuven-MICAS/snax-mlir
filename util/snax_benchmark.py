@@ -59,7 +59,7 @@ class SNAXBenchmark:
         self.announce("Generating plots")
         subprocess.run(["make", "plots"], cwd=self.src_dir, check=True)
 
-    def process_traces(self, folder: str, file=None):
+    def process_traces(self, folder: str, accelerator: str | None = None, file=None):
         self.announce("Processing Traces")
         dst_folder = self.export_dir / pathlib.Path(folder)
         if file is None:
@@ -78,6 +78,7 @@ class SNAXBenchmark:
             inputs,
             trace_filenames,
             str(self.src_dir / self.binary),
+            accelerator=accelerator,
             addr2line="llvm-addr2line",
             output=output_events,
         )

@@ -46,6 +46,22 @@ class CSRInstruction(Instruction):
         return self.funct3 == 0b111
 
     @property
+    def is_reading(self):
+        return self.funct3 in (0b001, 0b101)
+
+    @property
+    def is_writing(self):
+        return self.funct3 in (0b010, 0b110)
+
+    @property
+    def is_clear(self):
+        return self.funct3 in (0b011, 0b111)
+
+    @property
+    def is_immediate_type(self):
+        return (self.funct3 >> 2) == 1
+
+    @property
     def csr(self):
         return self.raw_encoding >> 20
 

@@ -5,22 +5,33 @@ import json
 import typing
 from concurrent.futures import ProcessPoolExecutor
 
+from compiler.accelerators.registry import AcceleratorRegistry
+from compiler.accelerators.snax import SNAXAccelerator
 from util.tracing.annotation import (
     BarrierEventGenerator,
     DMAEventGenerator,
     StreamingEventGenerator,
     calculate_sections,
 )
+from util.tracing.snax_event_generator import SNAXAcceleratorEventGenerator
 from util.tracing.state import get_trace_state
 
 
-def worker(file: str):
+def worker(file: str, accelerator: str):
     events = []
     generators = [
         BarrierEventGenerator(),
         StreamingEventGenerator(),
         DMAEventGenerator(),
     ]
+    if accelerator is not None:
+        accelerator_op = (
+            AcceleratorRegistry()
+            .registered_accelerators[accelerator]()
+            .generate_acc_op()
+        )
+        generators.append(SNAXAcceleratorEventGenerator(accelerator_op))
+
     with open(file) as f:
         for index, l in enumerate(f):
             state = get_trace_state(l)
@@ -41,13 +52,35 @@ def parse_arguments():
         metavar="<inputs>",
         type=argparse.FileType("rb"),
         nargs="+",
-        help="Input performance metric dumps",
+        required=True,
+        help='Input performance metric dumps ("*.trace.json")',
     )
     parser.add_argument(
-        "--traces", metavar="<trace>", nargs="*", help="Simulation traces to process"
+        "--traces",
+        metavar="<trace>",
+        nargs="+",
+        required=True,
+        help='Simulation traces to process ("*.dasm")',
+    )
+    parser.add_argument(
+        "--addr2line",
+        default="llvm-addr2line",
+        help="llvm-addr2line from quidditch toolchain",
+    )
+
+    # Only allow SNAX accelerators for now
+    snax_accelerators = []
+    for accelerator, acc_class in AcceleratorRegistry().registered_accelerators.items():
+        if issubclass(acc_class, SNAXAccelerator):
+            snax_accelerators.append(accelerator)
+
+    parser.add_argument(
+        "--accelerator",
+        choices=snax_accelerators,
+        default=None,
+        help="SNAX accelerator for SNAX Event Annotator",
     )
     parser.add_argument("--elf", help="ELF from which the traces were generated")
-    parser.add_argument("--addr2line", help="llvm-addr2line from quidditch toolchain")
     parser.add_argument(
         "-o",
         "--output",
@@ -57,7 +90,24 @@ def parse_arguments():
         default="events.json",
         help="Output JSON file",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--annotate-kernels",
+        action="store_true",
+        help="Annotate sections between mcycle with llvm-addr2line, requires --elf and --addr2line",
+    )
+    parser.add_argument(
+        "--sequential",
+        action="store_true",
+        default=False,
+        help="Don't use ProcessPoolExecutor for parallelizing tracing, useful for debugging",
+    )
+
+    args = parser.parse_args()
+    # Custom validation: If `--annotate-trace` is set, then `--elf` and `--addr2line` are required
+    if args.annotate_kernels and (args.elf is None or args.addr2line is None):
+        parser.error("--elf and --addr2line are required when using --annotate-trace")
+
+    return args
 
 
 # Function that encapsulates the main logic
@@ -66,7 +116,10 @@ def process_traces(
     traces: list[str],
     elf: str,
     addr2line: str,
+    accelerator: str | None = None,
     output: typing.IO[str] | None = None,
+    annotate_kernels: bool = False,
+    sequential: bool = False,
 ):
     """
     Main processing function that calculates sections and processes traces.
@@ -85,16 +138,32 @@ def process_traces(
     executor = ProcessPoolExecutor()
     futures = []
 
-    # Submit trace processing tasks to the executor
-    for hartid, file in enumerate(traces):
-        futures.append(executor.submit(worker, file))
+    if not sequential:
+        # Submit trace processing tasks to the executor
+        for hartid, file in enumerate(traces):
+            futures.append(executor.submit(worker, file, accelerator))
+    else:
+        # Process traces sequentially for debuggin purposes
+        for hartid, file in enumerate(traces):
+            result = worker(file, accelerator)
+            futures.append(result)
 
     # Calculate events using provided inputs and arguments
-    events = calculate_sections(inputs, elf, addr2line, traces)
+    if annotate_kernels:
+        events = calculate_sections(inputs, elf, addr2line, traces)
+    else:
+        events = []
 
-    # Collect results from the executor and convert events to the desired format
-    for hartid, f in enumerate(futures):
-        events += map(lambda e: e.to_chrome_tracing(hartid), f.result())
+    if not sequential:
+        # Collect results from the executor and convert events to the desired format
+        for hartid, f in enumerate(futures):
+            events += map(lambda e: e.to_chrome_tracing(hartid), f.result())
+    else:
+        # Run sequentially for debugging purposes
+        for hartid, result in enumerate(
+            futures
+        ):  # `result` is already the output of `worker`
+            events += map(lambda e: e.to_chrome_tracing(hartid), result)
 
     # Create and write the TraceViewer JSON object
     json.dump({"traceEvents": events, "displayTimeUnit": "ns"}, output, indent=2)
@@ -107,4 +176,13 @@ def process_traces(
 # If the script is run directly, use command-line arguments
 if __name__ == "__main__":
     args = parse_arguments()
-    process_traces(args.inputs, args.traces, args.elf, args.addr2line, args.output)
+    process_traces(
+        args.inputs,
+        args.traces,
+        args.elf,
+        args.addr2line,
+        args.accelerator,
+        args.output,
+        args.annotate_kernels,
+        args.sequential,
+    )
