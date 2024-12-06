@@ -65,7 +65,7 @@ def matmul(m=16, n=16, k=16):
 
     function = FuncOp.from_region("snax_main", [], res_types, func_body)
 
-    # Manually Speficy Tiling Sequence
+    # Manually speficy tiling sequence
     transform_inputs = [
         transform.AnyOpType(),
         transform.OperationType("linalg.quantized_matmul"),
