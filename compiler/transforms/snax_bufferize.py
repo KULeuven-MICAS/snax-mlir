@@ -87,6 +87,8 @@ class SnaxBufferize(ModulePass):
     mlir_canonicalization_pass = MLIROptPass(
         arguments=(
             "--canonicalize",
+            "--cse",
+            "--canonicalize",
             "--mlir-print-op-generic",
             "--mlir-print-local-scope",
             "--allow-unregistered-dialect",
