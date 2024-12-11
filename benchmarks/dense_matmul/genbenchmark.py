@@ -1,5 +1,4 @@
 import itertools
-import json
 import pathlib
 from datetime import datetime
 from io import StringIO
@@ -75,7 +74,7 @@ def write_module_to_file(module, file):
         output_file.write(output.getvalue())
 
 
-def generate_dense_benchmark(m, n, k, add_c) -> SNAXBenchmark:
+def generate_dense_benchmark(m, n, k, add_c, layout) -> SNAXBenchmark:
     module = create_matrix_multiply(m, n, k, add_c)
     write_module_to_file(module, "generated.mlir")
     binary = "generated.x"
@@ -158,7 +157,7 @@ if __name__ == "__main__":
         # only plot if max(m,n,k) <= 48
         to_plot = max(m, n, k) <= 48
         folder = f"test_{'gemm' if add_c else 'matmul'}_{layout}_{k}x{m}x{m}"
-        bm = generate_dense_benchmark(m, n, k, add_c)
+        bm = generate_dense_benchmark(m, n, k, add_c, layout)
         bm.clean()
         bm.build(
             build_opts=[
