@@ -1,0 +1,138 @@
+from util.snake.configs import get_snax_alu_config
+
+config = get_snax_alu_config()
+
+# Untiled example needs preprocessing:
+# FIXME: Does it really need preprocessing though?
+for entry in config["mlirpreprocflags"]:
+    entry.append("--allow-unregistered-dialect")
+
+
+def get_snax_opt_flags(options):
+    flags = []
+    match options:
+        case "deduponly":
+            flags = ["accfg-dedup"]
+        case "overlaponly":
+            flags = ["accfg-config-overlap"]
+        case "accfgboth":
+            flags = ["accfg-dedup", "accfg-config-overlap"]
+    return ",".join(
+        [
+            "insert-accfg-op{accelerator=snax_alu}",
+            "convert-linalg-to-accfg",
+            "mlir-opt{"
+            + "\ ".join(
+                [
+                    "executable=mlir-opt",
+                    "generic=true",
+                    "arguments='"
+                    + ",".join(
+                        [
+                            "-cse",
+                            "-canonicalize",
+                            "-allow-unregistered-dialect",
+                            "-mlir-print-op-generic",
+                        ]
+                    ),
+                ]
+            )
+            + "'}",
+            *flags,
+            "convert-accfg-to-csr",
+            "snax-copy-to-dma",
+            "memref-to-snax",
+            "snax-to-func",
+            "clear-memory-space",
+            "snax-lower-mcycle",
+        ]
+    )
+
+
+module default_rules:
+    snakefile:
+        "../../util/snake/default_rules.smk"
+    config:
+        config
+
+
+use rule * from default_rules exclude snax_compile_mlir, compile_simple_main as default_*
+
+
+ARRAY_SIZES = ["256"]
+TILE_SIZES = ["16"]
+
+
+rule size_mlir:
+    input:
+        "{file}.preprocfinal.mlir",
+    output:
+        "{file}_{array_size}_{tile_size}.preprocfinal.sized.mlir",
+    params:
+        sed_script_array_size=lambda wildcards: f"'s/128/{wildcards.array_size}/gm;t'",
+        sed_script_tile_size=lambda wildcards: f"'s/%tile_size = arith.constant 16 : index/%tile_size = arith.constant {wildcards.tile_size} : index/gm;t'",
+    shell:
+        "cat {input} |"
+        "sed -E {params.sed_script_array_size} |"
+        "sed -E {params.sed_script_tile_size}"
+        "> {output} "
+
+
+rule snax_compile_mlir:
+    input:
+        "{file}.preprocfinal.sized.mlir",
+    output:
+        "{file}.snax-opt.mlir",
+    params:
+        # hardcoded to no accfg for now
+        snax_opt_flags=lambda _: get_snax_opt_flags("noaccfgopt"),
+    shell:
+        "{config[snax-opt]} -p {params.snax_opt_flags} -o {output} {input}"
+
+
+rule compile_main:
+    input:
+        "main_{array_size}.rendered.c",
+        "data_{array_size}.o",
+    output:
+        temp("main_{array_size}.o"),
+    shell:
+        "{config[cc]} {config[cflags]} -c {input} -o {output}"
+
+
+rule compile_snax_binary:
+    input:
+        "{file}_{array_size}_{tile_size}.o",
+        "main_{array_size}.o",
+        "data_{array_size}.o",
+    output:
+        "{file}_{array_size}_{tile_size}.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
+
+
+rule render_main:
+    input:
+        "main.c",
+    output:
+        temp("main_{array_size}.rendered.c"),
+    shell:
+        'echo "#include \\"data_{wildcards.array_size}.h\\"" | cat - {input} > {output}'
+
+
+rule all:
+    input:
+        "tiled_256_16.x",
+        "tiled_pipelined_256_16.x",
+        "untiled_256_16.x",
+
+
+from gendata import generate_data
+
+
+rule generate_data:
+    output:
+        "data_{array_size}.c",
+        "data_{array_size}.h",
+    run:
+        generate_data(int(wildcards.array_size))
