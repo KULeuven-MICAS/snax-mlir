@@ -46,3 +46,11 @@ rule compile_snax_binary:
         "simple_copy.x",
     shell:
         "{config[ld]} {config[ldflags]} {input} -o {output}"
+
+
+rule generate_data:
+    output:
+        "data.c",
+        "data.h",
+    script:
+        "gendata.py"

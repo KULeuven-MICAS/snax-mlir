@@ -59,6 +59,14 @@ rule all:
         "{config[vltsim]} {input[0]}"
 
 
+rule generate_data:
+    output:
+        "data.c",
+        "data.h",
+    script:
+        "gendata.py"
+
+
 rule compile_snax_binary:
     input:
         "gemm.o",
