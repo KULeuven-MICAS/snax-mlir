@@ -9,15 +9,15 @@ import requests
 def get_model(model: str, output_file: Path) -> None:
     base_url = "https://github.com/mlcommons/tiny/raw/v1.0/benchmark/training"
     match model:
-        case "anomaly_detection":
+        case "ad01_int8":
             model_url = "/anomaly_detection/trained_models/ad01_int8.tflite"
-        case "keyword_spotting":
+        case "kws_ref_model":
             model_url = "/keyword_spotting/trained_models/kws_ref_model.tflite"
-        case "image_classification":
+        case "pretrainedResnet_quant":
             model_url = (
                 "/image_classification/trained_models/" "pretrainedResnet_quant.tflite"
             )
-        case "visual_wake_words":
+        case "vww_96_int8":
             model_url = "/visual_wake_words/trained_models/vww_96_int8.tflite"
         case _:
             raise Exception("No valid model selected")
