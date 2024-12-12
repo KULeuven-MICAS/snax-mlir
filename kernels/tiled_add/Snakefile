@@ -125,6 +125,9 @@ rule all:
         "tiled_256_16.x",
         "tiled_pipelined_256_16.x",
         "untiled_256_16.x",
+    run:
+        for item in input:
+            shell("{config[vltsim]} {item}")
 
 
 from gendata import generate_data
