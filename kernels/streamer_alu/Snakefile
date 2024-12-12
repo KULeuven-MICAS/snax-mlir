@@ -1,10 +1,10 @@
-from util.snake.configs import get_snax_mac_config
+from util.snake.configs import get_snax_alu_config
 
 config = get_snax_alu_config()
 config["snaxoptflags"] = ",".join(
     [
-        "insert-accfg-op{accelerator=snax_alu}"
-        "convert-linalg-to-kernel"
+        "insert-accfg-op{accelerator=snax_alu}",
+        "convert-linalg-to-kernel",
         "dispatch-kernels",
         "test-insert-debugs",
         "set-memory-space",
@@ -42,6 +42,9 @@ rule all:
     input:
         "streamer_add.x",
         "streamer_add_stream.x",
+    run:
+        for item in input:
+            shell("{config[vltsim]} {item}")
 
 
 rule generate_data:
@@ -50,3 +53,14 @@ rule generate_data:
         "data.h",
     script:
         "gendata.py"
+
+
+rule compile_snax_binary:
+    input:
+        "{file}.o",
+        "data.o",
+        "main.o",
+    output:
+        "{file}.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
