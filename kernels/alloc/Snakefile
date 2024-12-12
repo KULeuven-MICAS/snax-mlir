@@ -2,6 +2,23 @@ from util.snake.configs import get_snax_mac_config
 
 config = get_snax_mac_config()
 
+config["snaxoptflags"] = ",".join(
+    [
+        "dispatch-kernels",
+        "set-memory-space",
+        "set-memory-layout",
+        "realize-memref-casts",
+        "reuse-memref-allocs",
+        "insert-sync-barrier",
+        "dispatch-regions",
+        "linalg-to-library-call",
+        "snax-copy-to-dma",
+        "memref-to-snax",
+        "snax-to-func",
+        "clear-memory-space",
+    ]
+)
+
 
 module default_rules:
     snakefile:
@@ -10,7 +27,7 @@ module default_rules:
         config
 
 
-use rule * from default_rules as default_*
+use rule * from default_rules exclude compile_simple_main as default_*
 
 
 rule all:
@@ -18,3 +35,13 @@ rule all:
         "func.x",
     shell:
         "{config[vltsim]} {input[0]}"
+
+
+rule compile_snax_binary:
+    input:
+        "func.o",
+        "main.o",
+    output:
+        "func.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
