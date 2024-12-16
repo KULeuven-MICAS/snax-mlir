@@ -2,6 +2,7 @@
 name = "snax-mlir"
 description = "Driving SNAX with MLIR"
 version = "0.2.2"
+requires-python = "== 3.10.*"
 
 dependencies = [
     "xdsl @ git+https://github.com/xdslproject/xdsl.git@d72f46d92ec4b03ae05b91e70d75f93735e94393"
@@ -75,9 +76,6 @@ platforms = ["linux-64"]
 snax-mlir = { path = ".", editable = true }
 
 [tool.pixi.environments]
-default = { solve-group = "default" }
-dev = { features = ["dev"], solve-group = "default" }
-nn = { features = ["nn"], solve-group = "default" }
-viz = { features = ["viz"], solve-group = "default" }
+default = { features = ["dev", "nn", "viz"] }
 
 [tool.pixi.tasks]
