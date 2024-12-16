@@ -79,3 +79,8 @@ snax-mlir = { path = ".", editable = true }
 default = { features = ["dev", "nn", "viz"] }
 
 [tool.pixi.tasks]
+
+[tool.pixi.dependencies]
+mlir = "==19.1.1"
+clang = "==19.1.1"
+lld = "==19.1.1"
