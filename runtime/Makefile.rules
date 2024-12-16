@@ -5,8 +5,8 @@ MAKEFILE_RULES_DIRNAME := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 # NOTE: we are using absolute paths from the Docker container
 SNITCH_LLVM_PATH = /usr/bin
 LLVM_VERSION_POSTFIX =
-CC            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
-LD            = $(SNITCH_LLVM_PATH)/clang$(LLVM_VERSION_POSTFIX)
+CC            = clang
+LD            = clang
 AR            = $(SNITCH_LLVM_PATH)/llvm-ar$(LLVM_VERSION_POSTFIX)
 RANLIB        = $(SNITCH_LLVM_PATH)/llvm-ranlib$(LLVM_VERSION_POSTFIX)
 OBJDUMP       = $(SNITCH_LLVM_PATH)/llvm-objdump$(LLVM_VERSION_POSTFIX)
@@ -47,7 +47,6 @@ CFLAGS += -fno-builtin-printf
 CFLAGS += -fno-common
 CFLAGS += -O3
 
-LDFLAGS += -fuse-ld=$(SNITCH_LLVM_PATH)/ld.lld$(LLVM_VERSION_POSTFIX)
 LDFLAGS += --target=riscv32-unknown-elf
 LDFLAGS += -mcpu=generic-rv32
 LDFLAGS += -march=rv32imafdzfh
