@@ -75,3 +75,7 @@ cover/
 # direnv
 .direnv
 .envrc
+
+# pixi environments
+.pixi
+*.egg-info
