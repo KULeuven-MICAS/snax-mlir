@@ -69,7 +69,7 @@ line-length = 120
 max-complexity = 10
 
 [tool.pixi.project]
-channels = ["conda-forge", "bioconda"]
+channels = ["conda-forge", "bioconda", "kuleuven-micas"]
 platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
@@ -81,6 +81,7 @@ default = { features = ["dev", "nn", "viz"] }
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
-mlir = "==19.1.1"
+mlir = { version = "==19.1.1.d401987fe349a87c53fe25829215b80b70c0c1a", channel = "kuleuven-micas" }
 clang = "==19.1.1"
 lld = "==19.1.1"
+snax-cluster = "==0.2.7"

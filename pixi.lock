@@ -4,6 +4,7 @@ environments:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
     - url: https://conda.anaconda.org/bioconda/
+    - url: https://conda.anaconda.org/kuleuven-micas/
     indexes:
     - https://pypi.org/simple
     packages:
@@ -26,7 +27,6 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libiconv-1.17-hd590300_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libllvm19-19.1.1-ha7bfdaf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/liblzma-5.6.3-hb9d3cd8_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/libmlir19-19.1.1-h84d6215_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libnsl-2.0.1-hd590300_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libsqlite-3.47.2-hee588c1_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libstdcxx-14.2.0-hc0a3c3a_1.conda
@@ -36,14 +36,12 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libxml2-2.13.5-h0d44e9d_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/libzlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/lld-19.1.1-ha85224e_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-19-19.1.1-h48f18f5_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-19.1.1-h84d6215_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/llvmdev-19.1.1-h48f18f5_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/mlir-19.1.1-h629725b_0.conda
+      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/mlir-19.1.1.d401987fe349a87c53fe25829215b80b70c0c1a-hb0f4dca_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-he02047a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.4.0-hb9d3cd8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/python-3.10.16-he725a3c_1_cpython.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/readline-8.2-h8228510_1.conda
+      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-0.2.7-hb0f4dca_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.17-h4a8ded7_18.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tk-8.6.13-noxft_h4845f30_101.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024b-hc8b5060_0.conda
@@ -532,19 +530,6 @@ packages:
   purls: []
   size: 111132
   timestamp: 1733407410083
-- conda: https://conda.anaconda.org/conda-forge/linux-64/libmlir19-19.1.1-h84d6215_0.conda
-  sha256: 152294009aa7abf123502d2f923868cd3a2266c8bc48cdaa2b7349a209652e7d
-  md5: b6eaf27c879e92d3a210682829d09c37
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  - libllvm19 >=19.1.1,<19.2.0a0
-  - libstdcxx >=13
-  license: Apache-2.0 WITH LLVM-exception
-  license_family: Apache
-  purls: []
-  size: 18338779
-  timestamp: 1727927039477
 - conda: https://conda.anaconda.org/conda-forge/linux-64/libnsl-2.0.1-hd590300_0.conda
   sha256: 26d77a3bb4dceeedc2a41bd688564fe71bf2d149fdcf117049970bc02ff1add6
   md5: 30fd6e37fe21f86f4bd26d6ee73eeec7
@@ -650,68 +635,11 @@ packages:
   - zstd >=1.5.6,<1.6.0a0
   constrains:
   - llvm ==19.1.1
-  arch: x86_64
-  platform: linux
   license: Apache-2.0 WITH LLVM-exception
   license_family: APACHE
   purls: []
   size: 7419742
   timestamp: 1727917032907
-- conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-19.1.1-h84d6215_0.conda
-  sha256: 51ac6694f0a6a0eaf0896a485afaab51572a89f4bed4b6e6a8745a22b07e2046
-  md5: 84512dafce624b55e18215934363bc53
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  - libllvm19 19.1.1 ha7bfdaf_0
-  - libstdcxx >=13
-  - llvm-tools-19 19.1.1 h48f18f5_0
-  constrains:
-  - llvm        19.1.1
-  - llvmdev     19.1.1
-  - clang       19.1.1
-  - clang-tools 19.1.1
-  license: Apache-2.0 WITH LLVM-exception
-  license_family: Apache
-  purls: []
-  size: 86959
-  timestamp: 1727867526092
-- conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-19-19.1.1-h48f18f5_0.conda
-  sha256: 68937ae98adb9df3f44b2212419587509328bbcdb55043e4dba4f9f125205395
-  md5: 959aa5e1727faff74e7ebeec30a1fe74
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  - libllvm19 19.1.1 ha7bfdaf_0
-  - libstdcxx >=13
-  - libzlib >=1.3.1,<2.0a0
-  - zstd >=1.5.6,<1.6.0a0
-  license: Apache-2.0 WITH LLVM-exception
-  license_family: Apache
-  purls: []
-  size: 23252991
-  timestamp: 1727867459063
-- conda: https://conda.anaconda.org/conda-forge/linux-64/llvmdev-19.1.1-h48f18f5_0.conda
-  sha256: 2c106048ce781157b4b75814eb59aab53b2270f1823822e0d6b85bae63af01f9
-  md5: 6eb477e504d3299cdc7118d8b63fa6b9
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  - libllvm19 19.1.1 ha7bfdaf_0
-  - libstdcxx >=13
-  - libzlib >=1.3.1,<2.0a0
-  - llvm-tools 19.1.1 h84d6215_0
-  - zstd >=1.5.6,<1.6.0a0
-  constrains:
-  - llvm        19.1.1
-  - clang       19.1.1
-  - llvm-tools  19.1.1
-  - clang-tools 19.1.1
-  license: Apache-2.0 WITH LLVM-exception
-  license_family: Apache
-  purls: []
-  size: 61624108
-  timestamp: 1727867548736
 - pypi: https://files.pythonhosted.org/packages/3f/08/83871f3c50fc983b88547c196d11cf8c3340e37c32d2e9d6152abe2c61f7/Markdown-3.7-py3-none-any.whl
   name: markdown
   version: '3.7'
@@ -803,21 +731,11 @@ packages:
   - pylint>=2.6.0 ; extra == 'dev'
   - pyink ; extra == 'dev'
   requires_python: '>=3.9'
-- conda: https://conda.anaconda.org/conda-forge/linux-64/mlir-19.1.1-h629725b_0.conda
-  sha256: 5d297717fe77b4e38e694bc725ffe66b8bc847a6388c6888a88d47c2817f980d
-  md5: afc0281f1b632dbb1b0d103c23611aaa
-  depends:
-  - __glibc >=2.17,<3.0.a0
-  - libgcc >=13
-  - libllvm19 >=19.1.1,<19.2.0a0
-  - libmlir19 19.1.1 h84d6215_0
-  - libstdcxx >=13
-  - llvmdev 19.1.1.*
-  license: Apache-2.0 WITH LLVM-exception
-  license_family: Apache
-  purls: []
-  size: 91014049
-  timestamp: 1727927311978
+- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/mlir-19.1.1.d401987fe349a87c53fe25829215b80b70c0c1a-hb0f4dca_0.conda
+  sha256: 7acf5a91f899a4615ecf2cea64ca3325df3df2c118b4f783a9b2aed7874a249b
+  md5: fa36d905863939968e31473f6fa8280b
+  size: 47090078
+  timestamp: 1734438399731
 - pypi: https://files.pythonhosted.org/packages/73/59/7854fbfb59f8ae35483ce93493708be5942ebb6328cd85b3a609df629736/namex-0.0.8-py3-none-any.whl
   name: namex
   version: 0.0.8
@@ -1255,10 +1173,15 @@ packages:
   version: 1.17.0
   sha256: 4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274
   requires_python: '>=2.7,!=3.0.*,!=3.1.*,!=3.2.*'
+- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-0.2.7-hb0f4dca_0.conda
+  sha256: 70cfdfbad97692a101c97739d13dc82aa8aac97f52ad0dec84729d25ac212352
+  md5: d6c30979917337e2ed89117a7a709efa
+  size: 23680051
+  timestamp: 1734366241426
 - pypi: .
   name: snax-mlir
   version: 0.2.2
-  sha256: 2dba377e1ec8fd4fbcc2918620a184a452b4a8cf776fae7e01931683eea7882a
+  sha256: 0f5da985f1021cd395f51aac6f8f1b32c9d2117fa8624dc5df47a059bfeb4eaf
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@d72f46d92ec4b03ae05b91e70d75f93735e94393
   - pre-commit ; extra == 'dev'

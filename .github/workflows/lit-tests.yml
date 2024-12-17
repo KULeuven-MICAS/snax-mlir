@@ -12,18 +12,16 @@ permissions:
 jobs:
   python-tests:
 
-    runs-on: ubuntu-latest
-    container: 
-      image: ghcr.io/kuleuven-micas/snax:v0.2.7
+    runs-on: ubuntu-24.04
 
     steps:
     - uses: actions/checkout@v3
-    - name: Install snax-mlir
-      shell: bash
-      run: |
-        python3 -m pip install '-e.[dev]'
+    - uses: prefix-dev/setup-pixi@v0.8.1
+      with:
+        cache: true
+        cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
     - name: Test with lit
       shell: bash
       run: |
-        lit tests/filecheck -v
+        pixi run lit tests/filecheck -v
 

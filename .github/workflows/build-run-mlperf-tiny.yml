@@ -9,9 +9,7 @@ on:
 
 jobs:
   build-and-run-networks:
-    runs-on: ubuntu-latest
-    container: 
-      image: ghcr.io/kuleuven-micas/snax:v0.2.7
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         model:
@@ -25,15 +23,16 @@ jobs:
             dir: kernels/mlperf_tiny_kws
     steps:
       - uses: actions/checkout@v3
-      - name: Install snax-mlir
-        run: |
-          python3 -m pip install '-e.[dev,nn]'
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
       - name: snax-opt network compilation
         run: |
-          make ${{ matrix.model.name }}.o
+          pixi run make ${{ matrix.model.name }}.o
         working-directory: ${{ matrix.model.dir }}
       - name: vanilla network compilation
         run: |
-          make ${{ matrix.model.name }}.no-snax-opt.o
+          pixi run make ${{ matrix.model.name }}.no-snax-opt.o
         working-directory: ${{ matrix.model.dir }}
  
