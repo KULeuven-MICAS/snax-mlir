@@ -2,7 +2,7 @@
 name = "snax-mlir"
 description = "Driving SNAX with MLIR"
 version = "0.2.2"
-requires-python = "== 3.10.*"
+requires-python = "== 3.12.*"
 
 dependencies = [
     "xdsl @ git+https://github.com/xdslproject/xdsl.git@d72f46d92ec4b03ae05b91e70d75f93735e94393"
@@ -15,7 +15,6 @@ dev = [
     "pre-commit",
     "filecheck==1.0.0",
     "lit",
-    "numpy<2.0.0",
     "pytest",
 ]
 
@@ -85,3 +84,4 @@ mlir = { version = "==19.1.1.d401987fe349a87c53fe25829215b80b70c0c1a", channel =
 clang = "==19.1.1"
 lld = "==19.1.1"
 snax-cluster = "==0.2.7"
+snakemake-minimal="*"
