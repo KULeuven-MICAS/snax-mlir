@@ -1,5 +1,5 @@
 # Specific settings for snax-mac RTL
-SNITCH_SW_PATH = /opt/snax-gemm
-VLTSIM        = /opt/snax-gemm-rtl/bin/snitch_cluster.vlt
+SNITCH_SW_PATH = ${CONDA_PREFIX}/snax-utils/snax-gemm
+VLTSIM        = ${CONDA_PREFIX}/snax-utils/snax-gemm-rtl/bin/snitch_cluster.vlt
 CFLAGS += -I$(SNITCH_SW_PATH)/target/snitch_cluster/sw/snax/gemm/include
 LDFLAGS += $(SNITCH_SW_PATH)/target/snitch_cluster/sw/snax/gemm/build/snax-gemm-lib.o

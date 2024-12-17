@@ -45,6 +45,9 @@ from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.test.debug_to_func import DebugToFuncPass
 from compiler.transforms.test.insert_debugs import InsertDebugPass
 from compiler.transforms.test.test_add_mcycle_around_launch import AddMcycleAroundLaunch
+from compiler.transforms.test.test_transform_dialect_erase_schedule import (
+    TestTransformDialectEraseSchedule,
+)
 from compiler.transforms.test_add_mcycle_around_loop import AddMcycleAroundLoopPass
 from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
 
@@ -124,6 +127,10 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(SnaxBufferize.name, lambda: SnaxBufferize)
         super().register_pass(FuseStreamingRegions.name, lambda: FuseStreamingRegions)
         super().register_pass(AllocToGlobalPass.name, lambda: AllocToGlobalPass)
+        super().register_pass(
+            TestTransformDialectEraseSchedule.name,
+            lambda: TestTransformDialectEraseSchedule,
+        )
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)

@@ -1,5 +1,5 @@
 # Specific settings for snax-mac RTL
-SNITCH_SW_PATH = /opt/snax-mac
-VLTSIM        = /opt/snax-mac-rtl/bin/snitch_cluster.vlt
+SNITCH_SW_PATH = ${CONDA_PREFIX}/snax-utils/snax-mac
+VLTSIM        = ${CONDA_PREFIX}/snax-utils/snax-mac-rtl/bin/snitch_cluster.vlt
 CFLAGS += -I$(SNITCH_SW_PATH)/target/snitch_cluster/sw/snax/mac/include
 LDFLAGS += $(SNITCH_SW_PATH)/target/snitch_cluster/sw/snax/mac/build/mac.o
