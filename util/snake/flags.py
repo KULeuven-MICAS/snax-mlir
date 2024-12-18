@@ -1,3 +1,6 @@
+import os
+
+
 def get_mlir_preproc_flags():
     return [
         [
@@ -109,10 +112,13 @@ def get_cc_flags(snitch_sw_path):
     ]
 
 
-def get_ld_flags(snitch_sw_path, snitch_llvm_path="/usr/bin"):
+def get_ld_flags(snitch_sw_path, snitch_llvm_path=None):
     """
     Function that returns default linker flags
     """
+    # Default path points to conda/pixi environment
+    if snitch_llvm_path is None:
+        snitch_llvm_path = os.environ["CONDA_PREFIX"] + "usr/bin"
     return [
         f"-fuse-ld={snitch_llvm_path}/ld.lld",
         *get_target_flags(),
