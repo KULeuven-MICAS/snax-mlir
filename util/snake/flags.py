@@ -118,7 +118,7 @@ def get_ld_flags(snitch_sw_path, snitch_llvm_path=None):
     """
     # Default path points to conda/pixi environment
     if snitch_llvm_path is None:
-        snitch_llvm_path = os.environ["CONDA_PREFIX"] + "usr/bin"
+        snitch_llvm_path = os.environ["CONDA_PREFIX"] + "/bin"
     return [
         f"-fuse-ld={snitch_llvm_path}/ld.lld",
         *get_target_flags(),
@@ -130,7 +130,9 @@ def get_ld_flags(snitch_sw_path, snitch_llvm_path=None):
     ]
 
 
-def get_default_flags(snitch_sw_path, snitch_llvm_path="/usr/bin", index_bitwidth=32):
+def get_default_flags(snitch_sw_path, snitch_llvm_path=None, index_bitwidth=32):
+    if snitch_llvm_path is None:
+        snitch_llvm_path = os.environ["CONDA_PREFIX"] + "/bin"
     return {
         "cflags": get_cc_flags(snitch_sw_path),
         "clangflags": get_clang_flags(),
