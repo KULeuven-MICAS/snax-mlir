@@ -1,9 +1,10 @@
 from xdsl.dialects import linalg, memref
+from xdsl.ir import Operation
 
 from compiler.dialects import stream
 
 
-def dispatch_to_dm(op):
+def dispatch_to_dm(op: Operation):
     """Rule to dispatch operations to the dm core:
     for now, this is only memref copy operations"""
     if isinstance(op, memref.CopyOp):
@@ -11,7 +12,7 @@ def dispatch_to_dm(op):
     return False
 
 
-def dispatch_to_compute(op):
+def dispatch_to_compute(op: Operation):
     """
     Rule to dispatch operations to the dm core:
     for now, this is only linalg generic operations
