@@ -67,6 +67,70 @@ line-length = 120
 [tool.ruff.mccabe]
 max-complexity = 10
 
+
+[tool.pyright]
+reportImportCycles = false
+reportMissingModuleSource = false
+enableTypeIgnoreComments = false
+enableExperimentalFeatures = true
+typeCheckingMode = "strict"
+"include" = [
+    "compiler", 
+    "tests",
+]
+"exclude" = [
+    "compiler/accelerators/gemmini.py",
+    "compiler/accelerators/rocc.py",
+    "compiler/accelerators/snax.py",
+    "compiler/accelerators/snax_alu.py",
+    "compiler/accelerators/snax_gemm.py",
+    "compiler/accelerators/snax_gemmx.py",
+    "compiler/accelerators/snax_hwpe_mult.py",
+    "compiler/dialects/accfg.py",
+    "compiler/dialects/snax.py",
+    "compiler/dialects/snax_stream.py",
+    "compiler/dialects/stream.py",
+    "compiler/dialects/tsl.py",
+    "compiler/inference/dataflow.py",
+    "compiler/inference/helpers.py",
+    "compiler/inference/scoped_setups.py",
+    "compiler/inference/trace_acc_state.py",
+    "compiler/ir/stream/access_pattern.py",
+    "compiler/ir/stream/scheduler.py",
+    "compiler/ir/tsl/tiled_strided_layout.py",
+    "compiler/parser/tsl_parser.py",
+    "compiler/transforms/accfg_dedup.py",
+    "compiler/transforms/clear_memory_space.py",
+    "compiler/transforms/convert_linalg_to_accfg.py",
+    "compiler/transforms/convert_tosa_to_kernel.py",
+    "compiler/transforms/dispatch_regions.py",
+    "compiler/transforms/frontend/preprocess_mlperf_tiny.py",
+    "compiler/transforms/fuse_streaming_regions.py",
+    "compiler/transforms/insert_sync_barrier.py",
+    "compiler/transforms/linalg_to_library_call.py",
+    "compiler/transforms/memref_to_snax.py",
+    "compiler/transforms/realize_memref_casts.py",
+    "compiler/transforms/reuse_memref_allocs.py",
+    "compiler/transforms/set_memory_layout.py",
+    "compiler/transforms/set_memory_space.py",
+    "compiler/transforms/snax_copy_to_dma.py",
+    "compiler/transforms/snax_lower_mcycle.py",
+    "compiler/transforms/snax_to_func.py",
+    "compiler/transforms/test_remove_memref_copy.py",
+    "compiler/util/dispatching_rules.py",
+    "compiler/util/memref_descriptor.py",
+    "tests/benchmark/test_snax_benchmark.py",
+    "tests/dialects/test_snax.py",
+    "tests/dialects/test_tsl.py",
+    "tests/inference/test_accfg_state_tracing.py",
+    "tests/ir/stream/test_access_pattern.py",
+    "tests/ir/tsl/test_stride.py",
+    "tests/ir/tsl/test_tiled_stride.py",
+    "tests/ir/tsl/test_tiled_strided_layout.py",
+    "tests/util/",
+]
+
+
 [tool.pixi.project]
 channels = ["conda-forge", "bioconda", "kuleuven-micas"]
 platforms = ["linux-64"]
@@ -85,3 +149,4 @@ clang = "==19.1.1"
 lld = "==19.1.1"
 snax-cluster = "==0.2.7"
 snakemake-minimal="*"
+pyright = ">=1.1.390,<2"
