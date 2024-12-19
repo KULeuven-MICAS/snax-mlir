@@ -1,0 +1,86 @@
+from util.snake.paths import get_default_paths
+from util.snake.flags import get_mlir_preproc_flags
+
+
+config.update(get_default_paths())
+config["snaxoptflags"] = ",".join(
+    [
+        "insert-accfg-op{accelerator=gemmini}",
+        "convert-linalg-to-accfg",
+        "convert-accfg-to-csr",
+    ]
+)
+
+# Rocket-specific RV flags
+config["cflags"] = [
+    "-c",
+    "-O3",
+    "-Wno-override-module",
+    "--target=riscv64-unknown-elf",
+    "-mcpu=generic-rv64",
+    "-march=rv64gc",
+]
+
+config["mliroptflags"] = [
+    "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.quantized_matmul}, test-transform-dialect-erase-schedule, linalg-generalize-named-ops)'"
+]
+config["mlirpreprocflags"] = get_mlir_preproc_flags()
+
+
+module default_rules:
+    snakefile:
+        "../../util/snake/default_rules.smk"
+    config:
+        config
+
+
+use rule preprocess_mlir from default_rules as default_preprocess_mlir
+
+
+use rule translate_mlir from default_rules as default_translate_mlir
+
+
+rule all:
+    input:
+        "tiled_matmul.o",
+
+
+sed_str = "'s/iterator_types =/library_call=\"gemmini\", iterator_types =/gm;t'"
+
+
+rule prepare_mlir:
+    input:
+        "tiled_matmul.transform.mlir",
+    output:
+        "tiled_matmul.mlir",
+    shell:
+        "{config[mlir-opt]} {config[mliroptflags]} {input} | "
+        "sed -E {sed_str} > {output}"
+
+
+rule snax_compile_mlir:
+    input:
+        "{file}.preprocfinal.mlir",
+    output:
+        "{file}.snax-opt.mlir",
+    shell:
+        "{config[snax-opt]} -p {config[snaxoptflags]} -o {output} {input}"
+
+
+# Use default pass to lower to Rocket (64-bit index type)
+rule postprocess_mlir:
+    input:
+        "{file}.snax-opt.mlir",
+    output:
+        "{file}.ll.mlir",
+    shell:
+        "{config[mlir-opt]} --test-lower-to-llvm -o {output} {input}"
+
+
+rule compile_llvm_module:
+    input:
+        "{file}.ll",
+    output:
+        "{file}.o",
+    shell:
+        "{config[cc]} -x ir {input} {config[cflags]} -o {output}"
