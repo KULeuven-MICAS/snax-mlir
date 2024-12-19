@@ -63,7 +63,7 @@ rule size_mlir:
     input:
         "{file}.preprocfinal.mlir",
     output:
-        "{file}_{array_size}_{tile_size}.preprocfinal.sized.mlir",
+        temp("{file}_{array_size}_{tile_size}.preprocfinal.sized.mlir"),
     params:
         sed_script_array_size=lambda wildcards: f"'s/128/{wildcards.array_size}/gm;t'",
         sed_script_tile_size=lambda wildcards: f"'s/%tile_size = arith.constant 16 : index/%tile_size = arith.constant {wildcards.tile_size} : index/gm;t'",
@@ -78,7 +78,7 @@ rule snax_compile_mlir:
     input:
         "{file}.preprocfinal.sized.mlir",
     output:
-        "{file}_{compiler_opt}.snax-opt.mlir",
+        temp("{file}_{compiler_opt}.snax-opt.mlir"),
     wildcard_constraints:
         compiler_opt="noaccfgopt|deduponly|overlaponly|accfgboth",
     params:
