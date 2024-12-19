@@ -20,3 +20,7 @@ repos:
   rev: 23.3.0
   hooks:
     - id: black
+- repo: https://github.com/snakemake/snakefmt
+  rev: v0.10.2 
+  hooks:
+    - id: snakefmt
