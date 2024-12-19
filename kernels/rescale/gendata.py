@@ -38,7 +38,7 @@ def postprocessing_simd_golden_model(
     return var
 
 
-if __name__ == "__main__":
+def create_data_files():
     low_bound = -80000
     high_bound = 80000
     data_len = 16
