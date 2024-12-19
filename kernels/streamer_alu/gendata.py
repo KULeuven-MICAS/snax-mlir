@@ -29,5 +29,5 @@ def create_data_files():
     sizes = {"MODE": 0, "DATA_LEN": array_size, "LOOP_ITER": loop_iter}
     variables = {"A": A, "B": B, "O": O, "G": G}
 
-    create_header("data.h", sizes, variables)
-    create_data("data.c", variables)
+    create_header("data", sizes, variables)
+    create_data("data", variables)
