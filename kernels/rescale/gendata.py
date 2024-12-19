@@ -69,5 +69,5 @@ if __name__ == "__main__":
     sizes = {"MODE": 0, "DATA_LEN": data_len}
     variables = {"A": A, "O": O, "G": G}
 
-    create_header("data.h", sizes, variables)
-    create_data("data.c", variables)
+    create_header("data", sizes, variables)
+    create_data("data", variables)
