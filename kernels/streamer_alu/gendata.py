@@ -2,7 +2,8 @@ import numpy as np
 
 from util.gendata import create_data, create_header
 
-if __name__ == "__main__":
+
+def create_data_files():
     # Reset random seed for reproducible behavior
     low_bound = 0
     high_bound = 100
@@ -28,5 +29,5 @@ if __name__ == "__main__":
     sizes = {"MODE": 0, "DATA_LEN": array_size, "LOOP_ITER": loop_iter}
     variables = {"A": A, "B": B, "O": O, "G": G}
 
-    create_header("data.h", sizes, variables)
-    create_data("data.c", variables)
+    create_header("data", sizes, variables)
+    create_data("data", variables)

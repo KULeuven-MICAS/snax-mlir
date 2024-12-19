@@ -7,9 +7,10 @@ from numpy import typing as npt
 def create_header(
     file_name: str, sizes: dict[str, int], variables: dict[str, npt.NDArray]
 ) -> None:
-    if os.path.dirname(file_name):
-        os.makedirs(os.path.dirname(file_name), exist_ok=True)
-    with open(file_name, "w") as f:
+    header_file = f"{file_name}.h"
+    if os.path.dirname(header_file):
+        os.makedirs(os.path.dirname(header_file), exist_ok=True)
+    with open(header_file, "w") as f:
         includes = ["#include <stdint.h>", "#pragma once", ""]
         includes = "\n".join(includes)
         variables_string = [""]
@@ -25,12 +26,13 @@ def create_header(
 
 
 def create_data(file_name: str, variables: dict[str, npt.NDArray]):
-    includes = ['#include "data.h"', "", ""]
+    includes = [f'#include "{file_name}.h"', "", ""]
     includes = "\n".join(includes)
+    c_file = f"{file_name}.c"
     variables = {i: np.reshape(j, j.size) for i, j in variables.items()}
-    if os.path.dirname(file_name):
-        os.makedirs(os.path.dirname(file_name), exist_ok=True)
-    with open(file_name, "w") as f:
+    if os.path.dirname(c_file):
+        os.makedirs(os.path.dirname(c_file), exist_ok=True)
+    with open(c_file, "w") as f:
         f.write(includes)
         for variable_name, variable_value in variables.items():
             f.write(
