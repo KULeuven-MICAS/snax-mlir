@@ -59,10 +59,6 @@ module default_rules:
 use rule * from default_rules exclude snax_compile_mlir as default_*
 
 
-ARRAY_SIZES = ["256"]
-TILE_SIZES = ["16"]
-
-
 rule size_mlir:
     input:
         "{file}.preprocfinal.mlir",
@@ -82,10 +78,12 @@ rule snax_compile_mlir:
     input:
         "{file}.preprocfinal.sized.mlir",
     output:
-        "{file}.snax-opt.mlir",
+        "{file}_{compiler_opt}.snax-opt.mlir",
+    wildcard_constraints:
+        compiler_opt="noaccfgopt|deduponly|overlaponly|accfgboth",
     params:
         # hardcoded to no accfg for now
-        snax_opt_flags=lambda _: get_snax_opt_flags("noaccfgopt"),
+        snax_opt_flags=lambda wildcards: get_snax_opt_flags(wildcards.compiler_opt),
     shell:
         "{config[snax-opt]} -p {params.snax_opt_flags} -o {output} {input}"
 
@@ -102,11 +100,11 @@ rule compile_main:
 
 rule compile_snax_binary:
     input:
-        "{file}_{array_size}_{tile_size}.o",
+        "{file}_{array_size}_{tile_size}_{compiler_opt}.o",
         "main_{array_size}.o",
         "data_{array_size}.o",
     output:
-        "{file}_{array_size}_{tile_size}.x",
+        "{file}_{array_size}_{tile_size}_{compiler_opt}.x",
     shell:
         "{config[ld]} {config[ldflags]} {input} -o {output}"
 
@@ -120,11 +118,21 @@ rule render_main:
         'echo "#include \\"data_{wildcards.array_size}.h\\"" | cat - {input} > {output}'
 
 
+ARRAY_SIZES = ["256"]
+TILE_SIZES = ["16"]
+FILES = ["tiled", "tiled_pipelined", "untiled"]
+COMPILER_OPTS = ["accfgboth", "noaccfgopt"]
+
+
 rule all:
     input:
-        "tiled_256_16.x",
-        "tiled_pipelined_256_16.x",
-        "untiled_256_16.x",
+        expand(
+            "{file}_{array_size}_{tile_size}_{compiler_opt}.x",
+            file=FILES,
+            array_size=ARRAY_SIZES,
+            tile_size=TILE_SIZES,
+            compiler_opt=COMPILER_OPTS,
+        ),
     run:
         for item in input:
             shell("{config[vltsim]} {item}")
