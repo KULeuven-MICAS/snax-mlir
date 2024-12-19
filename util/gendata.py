@@ -26,7 +26,7 @@ def create_header(
 
 
 def create_data(file_name: str, variables: dict[str, npt.NDArray]):
-    includes = [f'#include "{file_name}.h"', "", ""]
+    includes = [f'#include "{os.path.basename(file_name)}.h"', "", ""]
     includes = "\n".join(includes)
     c_file = f"{file_name}.c"
     variables = {i: np.reshape(j, j.size) for i, j in variables.items()}
