@@ -20,4 +20,4 @@ jobs:
         working-directory: kernels/${{ matrix.kernel }}
     strategy:
       matrix:
-        kernel: [alloc, transform_copy, gemm, rescale]
+        kernel: [alloc, transform_copy, gemm, rescale, streamer_matmul]
