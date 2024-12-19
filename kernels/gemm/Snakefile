@@ -1,0 +1,91 @@
+from util.snake.configs import get_snax_gemmx_config
+
+config = get_snax_gemmx_config()
+config["mlirpreprocflags"] = [
+    "--linalg-generalize-named-ops",
+    "--mlir-print-op-generic",
+    "--mlir-print-local-scope",
+]
+config["snaxoptflags"] = ",".join(
+    [
+        "convert-linalg-to-kernel",
+        "insert-accfg-op{accelerator=snax_gemmx}",
+        "dispatch-kernels",
+        "convert-linalg-to-stream",
+        "fuse-streaming-regions",
+        "snax-bufferize",
+        "alloc-to-global",
+        "set-memory-space",
+        "set-memory-layout",
+        "realize-memref-casts",
+        "insert-sync-barrier",
+        "dispatch-regions{nb_cores=2}",
+        "convert-stream-to-snax-stream",
+        "convert-linalg-to-accfg",
+        "convert-accfg-to-csr",
+        "snax-copy-to-dma",
+        "memref-to-snax",
+        "snax-to-func",
+        "clear-memory-space",
+    ]
+)
+
+
+module default_rules:
+    snakefile:
+        "../../util/snake/default_rules.smk"
+    config:
+        config
+
+
+use rule * from default_rules exclude mlir_preprocessing as default_*
+
+
+rule preprocess_mlir:
+    input:
+        "{file}.generated.mlir",
+    output:
+        temp("{file}.preprocfinal.mlir"),
+    run:
+        shell(
+            "{config[mlir-opt]} {config[mlirpreprocflags]} -o {wildcards.file}.preprocfinal.mlir {input}"
+        )
+
+
+rule compile_main:
+    input:
+        "main.c",
+        "data.h",
+    output:
+        "main.o",
+    shell:
+        "{config[cc]} {config[cflags]} -c {input[0]}"
+
+
+rule all:
+    input:
+        "gemm.x",
+    shell:
+        "{config[vltsim]} {input[0]}"
+
+
+from gendata import create_data_files
+
+
+rule generate_data:
+    output:
+        "data.c",
+        "data.h",
+    run:
+        create_data_files()
+
+
+rule link_snax_binary:
+    input:
+        "gemm.o",
+        "main.o",
+        "data.o",
+    output:
+        "gemm.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
