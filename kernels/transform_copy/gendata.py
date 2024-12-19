@@ -13,5 +13,5 @@ def create_files(filename: str):
     B = B.flatten()
     sizes = {"N": array_size, "N_sqrt": sqrt(array_size)}
     variables = {"A": A, "B": B}
-    create_header(f"{filename}.h", sizes, variables)
-    create_data(f"{filename}.c", variables)
+    create_header(filename, sizes, variables)
+    create_data(filename, variables)
