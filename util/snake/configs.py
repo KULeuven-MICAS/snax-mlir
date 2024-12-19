@@ -19,3 +19,17 @@ def get_snax_mac_config():
         f"-I{snitch_sw_path}/target/snitch_cluster/sw/snax/mac/build/mac.o"
     )
     return config
+
+
+def get_snax_gemmx_config():
+    # use CONDA_PREFIX to access pixi env
+    snax_utils_path = os.environ["CONDA_PREFIX"] + "/snax-utils"
+    snitch_sw_path = snax_utils_path + "/snax-kul-cluster-mixed-narrow-wide"
+    config = {}
+    config.update(get_default_paths())
+    config.update(get_default_flags(snitch_sw_path))
+    config["vltsim"] = (
+        snax_utils_path
+        + "/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster.vlt"
+    )
+    return config
