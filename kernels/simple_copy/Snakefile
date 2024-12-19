@@ -58,9 +58,12 @@ rule link_snax_binary:
         "{config[ld]} {config[ldflags]} {input} -o {output}"
 
 
+from gendata import create_data_files
+
+
 rule generate_data:
     output:
         "data.c",
         "data.h",
-    script:
-        "gendata.py"
+    run:
+        create_data_files()
