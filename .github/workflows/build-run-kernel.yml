@@ -20,4 +20,4 @@ jobs:
         working-directory: kernels/${{ matrix.kernel }}
     strategy:
       matrix:
-        kernel: [simple_copy, transform_copy, streamer_alu, tiled_add, streamer_matmul, gemmini, rescale, gemm]
+        kernel: [simple_copy, streamer_alu, tiled_add, streamer_matmul, gemmini, rescale, gemm]

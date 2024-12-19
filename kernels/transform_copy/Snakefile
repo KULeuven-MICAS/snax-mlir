@@ -1,0 +1,72 @@
+from util.snake.configs import get_snax_mac_config
+
+config = get_snax_mac_config()
+config["snaxoptflags"] = ",".join(
+    [
+        "dispatch-kernels",
+        "set-memory-space",
+        "set-memory-layout",
+        "realize-memref-casts",
+        "reuse-memref-allocs",
+        "insert-sync-barrier",
+        "linalg-to-library-call",
+        "snax-copy-to-dma",
+        "memref-to-snax",
+        "snax-to-func",
+        "clear-memory-space",
+    ]
+)
+
+
+module default_rules:
+    snakefile:
+        "../../util/snake/default_rules.smk"
+    config:
+        config
+
+
+use rule * from default_rules as default_*
+
+
+from gendata import create_files
+
+
+# Rules
+rule all:
+    input:
+        "transform_copy.x",
+        "transform_from_none.x",
+        "transform_from_strided.x",
+    run:
+        shell("{config[vltsim]} {input[0]} {input[0]}")
+        shell("{config[vltsim]} {input[1]} {input[1]}")
+        shell("{config[vltsim]} {input[2]} {input[2]}")
+
+
+rule generate_data:
+    output:
+        "{folder}/data.c",
+        "{folder}/data.h",
+    run:
+        create_files(f"{wildcards.folder}/data")
+
+
+rule compile_snax_binary:
+    input:
+        "{file}.o",
+        "main_{file}.o",
+        "{file}/data.o",
+    output:
+        "{file}.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
+
+
+rule compile_main:
+    input:
+        "{file}/data.h",
+        "main.c",
+    output:
+        temp("main_{file}.o"),
+    shell:
+        "{config[cc]} {config[cflags]} -I./{wildcards.file} -c {input[1]} -o {output}"
