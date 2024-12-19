@@ -9,5 +9,5 @@ if __name__ == "__main__":
     A = np.linspace(1, array_size, array_size, dtype=np.int32)
     sizes = {"N": array_size}
     variables = {"A": A}
-    create_header("data.h", sizes, variables)
-    create_data("data.c", variables)
+    create_header("data", sizes, variables)
+    create_data("data", variables)

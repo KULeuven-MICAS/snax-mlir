@@ -41,5 +41,5 @@ if __name__ == "__main__":
         "D_golden": D_golden,
     }
 
-    create_header("data.h", sizes, variables)
-    create_data("data.c", variables)
+    create_header("data", sizes, variables)
+    create_data("data", variables)

@@ -1,21 +1,11 @@
-import argparse
-
 import numpy as np
 
 from util.gendata import create_data, create_header
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Generate data for snax-alu operations."
-    )
-    parser.add_argument(
-        "--array_size", type=int, default=1024, help="Size of the arrays to generate"
-    )
-    args = parser.parse_args()
 
+def generate_data(array_size):
     low_bound = -128
     high_bound = 127
-    array_size = args.array_size
 
     # snax-alu design-time spatial parallelism
     spatial_par = 4
@@ -37,5 +27,5 @@ if __name__ == "__main__":
     sizes = {"MODE": 0, "DATA_LEN": array_size, "LOOP_ITER": loop_iter}
     variables = {"A": A, "B": B, "O": O, "G": G}
 
-    create_header("data.h", sizes, variables)
-    create_data("data.c", variables)
+    create_header(f"data_{array_size}", sizes, variables)
+    create_data(f"data_{array_size}", variables)
