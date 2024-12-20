@@ -16,7 +16,7 @@ jobs:
           cache: true
           cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
       - name: Build and run kernels
-        run: pixi run snakemake -k -j `nproc` all
+        run: pixi run snakemake -k -p -j `nproc` all
         working-directory: kernels/${{ matrix.kernel }}
     strategy:
       matrix:
