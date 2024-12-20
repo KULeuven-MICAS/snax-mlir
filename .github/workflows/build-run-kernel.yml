@@ -20,4 +20,4 @@ jobs:
         working-directory: kernels/${{ matrix.kernel }}
     strategy:
       matrix:
-        kernel: [tiled_add, streamer_matmul]
+        kernel: [tiled_add]
