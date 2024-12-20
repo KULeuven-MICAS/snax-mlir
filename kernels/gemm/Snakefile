@@ -38,7 +38,7 @@ module default_rules:
         config
 
 
-use rule * from default_rules exclude mlir_preprocessing as default_*
+use rule * from default_rules exclude preprocess_mlir as default_*
 
 
 rule preprocess_mlir:
