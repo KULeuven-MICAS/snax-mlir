@@ -1,10 +1,9 @@
-# simple script to generate inputs and expected outputs for simple_matmult
-
 import numpy as np
 
 from util.gendata import create_data, create_header
 
-if __name__ == "__main__":
+
+def create_data_files():
     # Reset random seed for reproducible behavior
 
     np.random.seed(0)
@@ -15,7 +14,6 @@ if __name__ == "__main__":
 
     A_size = [m, k]
     B_size = [k, n]
-    O_size = [m, n]
 
     # D = A.B + C
     low_bound = -128
