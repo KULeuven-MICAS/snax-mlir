@@ -67,8 +67,8 @@ def create_test_data(n, m, k, ones=False, random_shape=False):
         "C": C,
     }
 
-    create_header("data.h", sizes, variables)
-    create_data("data.c", variables)
+    create_header("data", sizes, variables)
+    create_data("data", variables)
 
 
 if __name__ == "__main__":
