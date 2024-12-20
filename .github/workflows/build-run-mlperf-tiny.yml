@@ -10,29 +10,12 @@ on:
 jobs:
   build-and-run-networks:
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        model:
-          - name: ad01_int8
-            dir: kernels/mlperf_tiny_ad01
-          - name: pretrainedResnet_quant
-            dir: kernels/mlperf_tiny_ic
-          - name: vww_96_int8
-            dir: kernels/mlperf_tiny_vww
-          - name: kws_ref_model
-            dir: kernels/mlperf_tiny_kws
     steps:
       - uses: actions/checkout@v3
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
           cache: true
           cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
-      - name: snax-opt network compilation
-        run: |
-          pixi run make ${{ matrix.model.name }}.o
-        working-directory: ${{ matrix.model.dir }}
-      - name: vanilla network compilation
-        run: |
-          pixi run make ${{ matrix.model.name }}.no-snax-opt.o
-        working-directory: ${{ matrix.model.dir }}
- 
+      - name: Build and run kernels
+        run: pixi run snakemake -k -p -j `nproc` all
+        working-directory: kernels/mlperf_tiny
