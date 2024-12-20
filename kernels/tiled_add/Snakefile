@@ -1,0 +1,148 @@
+from util.snake.configs import get_snax_alu_config
+
+config = get_snax_alu_config()
+
+# Untiled example needs preprocessing:
+for entry in config["mlirpreprocflags"]:
+    entry.append("--allow-unregistered-dialect")
+
+
+def get_snax_opt_flags(options):
+    flags = []
+    match options:
+        case "deduponly":
+            flags = ["accfg-dedup"]
+        case "overlaponly":
+            flags = ["accfg-config-overlap"]
+        case "accfgboth":
+            flags = ["accfg-dedup", "accfg-config-overlap"]
+    return ",".join(
+        [
+            "insert-accfg-op{accelerator=snax_alu}",
+            "convert-linalg-to-accfg",
+            "mlir-opt{"
+            + "\ ".join(
+                [
+                    "executable=mlir-opt",
+                    "generic=true",
+                    "arguments='"
+                    + ",".join(
+                        [
+                            "-cse",
+                            "-canonicalize",
+                            "-allow-unregistered-dialect",
+                            "-mlir-print-op-generic",
+                        ]
+                    ),
+                ]
+            )
+            + "'}",
+            *flags,
+            "convert-accfg-to-csr",
+            "snax-copy-to-dma",
+            "memref-to-snax",
+            "snax-to-func",
+            "clear-memory-space",
+            "snax-lower-mcycle",
+        ]
+    )
+
+
+module default_rules:
+    snakefile:
+        "../../util/snake/default_rules.smk"
+    config:
+        config
+
+
+use rule * from default_rules as default_*
+
+
+rule size_mlir:
+    input:
+        "{file}.preprocfinal.mlir",
+    output:
+        temp("{file}_{array_size}_{tile_size}.preprocfinal.sized.mlir"),
+    params:
+        sed_script_array_size=lambda wildcards: f"'s/128/{wildcards.array_size}/gm;t'",
+        sed_script_tile_size=lambda wildcards: f"'s/%tile_size = arith.constant 16 : index/%tile_size = arith.constant {wildcards.tile_size} : index/gm;t'",
+    shell:
+        "cat {input} |"
+        "sed -E {params.sed_script_array_size} |"
+        "sed -E {params.sed_script_tile_size}"
+        "> {output} "
+
+
+rule snax_compile_mlir:
+    input:
+        "{file}.preprocfinal.sized.mlir",
+    output:
+        temp("{file}_{compiler_opt}.snax-opt.mlir"),
+    wildcard_constraints:
+        compiler_opt="noaccfgopt|deduponly|overlaponly|accfgboth",
+    params:
+        # hardcoded to no accfg for now
+        snax_opt_flags=lambda wildcards: get_snax_opt_flags(wildcards.compiler_opt),
+    shell:
+        "{config[snax-opt]} -p {params.snax_opt_flags} -o {output} {input}"
+
+
+rule compile_main:
+    input:
+        "main_{array_size}.rendered.c",
+        "data_{array_size}.o",
+    output:
+        temp("main_{array_size}.o"),
+    shell:
+        "{config[cc]} {config[cflags]} -c {input} -o {output}"
+
+
+rule compile_snax_binary:
+    input:
+        "{file}_{array_size}_{tile_size}_{compiler_opt}.o",
+        "main_{array_size}.o",
+        "data_{array_size}.o",
+    output:
+        "{file}_{array_size}_{tile_size}_{compiler_opt}.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
+
+
+rule render_main:
+    input:
+        "main.c",
+    output:
+        temp("main_{array_size}.rendered.c"),
+    shell:
+        'echo "#include \\"data_{wildcards.array_size}.h\\"" | cat - {input} > {output}'
+
+
+ARRAY_SIZES = ["256"]
+TILE_SIZES = ["16"]
+FILES = ["tiled", "tiled_pipelined", "untiled"]
+COMPILER_OPTS = ["accfgboth", "noaccfgopt"]
+
+
+rule all:
+    input:
+        expand(
+            "{file}_{array_size}_{tile_size}_{compiler_opt}.x",
+            file=FILES,
+            array_size=ARRAY_SIZES,
+            tile_size=TILE_SIZES,
+            compiler_opt=COMPILER_OPTS,
+        ),
+    run:
+        for item in input:
+            shell("{config[vltsim]} {item}")
+
+
+from gendata import generate_data
+
+
+rule generate_data:
+    output:
+        "data_{array_size}.c",
+        "data_{array_size}.h",
+    run:
+        generate_data(int(wildcards.array_size))
