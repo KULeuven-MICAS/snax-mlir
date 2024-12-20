@@ -3,7 +3,6 @@ from util.snake.configs import get_snax_alu_config
 config = get_snax_alu_config()
 
 # Untiled example needs preprocessing:
-# FIXME: Does it really need preprocessing though?
 for entry in config["mlirpreprocflags"]:
     entry.append("--allow-unregistered-dialect")
 
@@ -56,7 +55,7 @@ module default_rules:
         config
 
 
-use rule * from default_rules exclude snax_compile_mlir as default_*
+use rule * from default_rules as default_*
 
 
 rule size_mlir:
