@@ -38,18 +38,7 @@ module default_rules:
         config
 
 
-use rule * from default_rules exclude preprocess_mlir as default_*
-
-
-rule preprocess_mlir:
-    input:
-        "{file}.generated.mlir",
-    output:
-        temp("{file}.preprocfinal.mlir"),
-    run:
-        shell(
-            "{config[mlir-opt]} {config[mlirpreprocflags]} -o {wildcards.file}.preprocfinal.mlir {input}"
-        )
+use rule * from default_rules as default_*
 
 
 rule compile_main:
