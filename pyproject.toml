@@ -148,3 +148,4 @@ lld = "==19.1.1"
 snax-cluster = "==0.2.7"
 snakemake-minimal="*"
 pyright = ">=1.1.390,<2"
+vcd-to-csv = { version = ">=0.1.0,<0.2", channel = "kuleuven-micas" }

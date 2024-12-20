@@ -123,6 +123,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing_extensions-4.12.2-pyha770c72_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024b-hc8b5060_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/urllib3-2.2.3-pyhd8ed1ab_1.conda
+      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/vcd-to-csv-0.1.0-0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/wrapt-1.17.0-py312h66e93f0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/yaml-0.2.5-h7f98852_2.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/yte-1.5.5-pyha770c72_0.conda
@@ -2094,7 +2095,7 @@ packages:
 - pypi: .
   name: snax-mlir
   version: 0.2.2
-  sha256: ff114a3de9aa7ce66238682fbb349cdae145a92ce768f28393e9428b61befb72
+  sha256: b64a95ec3e6fdb0ab5bf829635416cc7f5f0bc777af6d390604563af5dcb582d
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@d72f46d92ec4b03ae05b91e70d75f93735e94393
   - pre-commit ; extra == 'dev'
@@ -2269,6 +2270,16 @@ packages:
   - pkg:pypi/urllib3?source=hash-mapping
   size: 98077
   timestamp: 1733206968917
+- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/vcd-to-csv-0.1.0-0.tar.bz2
+  sha256: 1cc2fd399262c6506505f11e74168ed2ccac7982dc54230f04681d3231132732
+  md5: de140bea27bee02132d82366e2bd663a
+  depends:
+  - libgcc-ng
+  constrains:
+  - __glibc >=2.17
+  license: MIT
+  size: 244945
+  timestamp: 1734355229092
 - pypi: https://files.pythonhosted.org/packages/10/f9/0919cf6f1432a8c4baa62511f8f8da8225432d22e83e3476f5be1a1edc6e/virtualenv-20.28.0-py3-none-any.whl
   name: virtualenv
   version: 20.28.0
