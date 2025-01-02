@@ -119,7 +119,6 @@ typeCheckingMode = "strict"
     "tests/dialects/test_snax.py",
     "tests/dialects/test_tsl.py",
     "tests/inference/test_accfg_state_tracing.py",
-    "tests/ir/stream/test_access_pattern.py",
     "tests/ir/tsl/test_stride.py",
     "tests/ir/tsl/test_tiled_stride.py",
     "tests/ir/tsl/test_tiled_strided_layout.py",

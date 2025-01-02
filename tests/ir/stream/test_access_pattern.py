@@ -59,7 +59,7 @@ def test_access_pattern_disable_dims():
 
     # test 4: disable 3 dims (all)
     disabled_pattern = access_pattern.disable_dims(3)
-    expected_bounds = tuple()
+    expected_bounds: tuple[int, ...] = tuple()
     expected_results = (
         AffineConstantExpr(0),
         AffineConstantExpr(0),
