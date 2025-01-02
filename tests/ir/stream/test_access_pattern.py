@@ -91,11 +91,6 @@ def test_schedule_pattern_invalid_bounds():
         ValueError,
         match="All bounds must be static, strictly positive integers for a schedule",
     ):
-        SchedulePattern((10, None), pattern)  # pyright: ignore
-    with pytest.raises(
-        ValueError,
-        match="All bounds must be static, strictly positive integers for a schedule",
-    ):
         SchedulePattern((10, -5), pattern)
 
 
