@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 from typing_extensions import Self
+from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineExpr, AffineMap
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,38 @@ class AffineTransform:
             raise ValueError("Vector b must be 1-dimensional.")
         if self.A.shape[0] != self.b.shape[0]:
             raise ValueError("Matrix A and vector b must have compatible dimensions.")
+
+    @classmethod
+    def from_affine_map(cls, map: AffineMap) -> Self:
+        """
+        Return the affine transform representation of the given affine map.
+        """
+
+        def generate_one_list(n: int, d: int):
+            return [1 if x == d else 0 for x in range(n)]
+
+        b = np.array(map.eval(generate_one_list(map.num_dims, -1), []))
+        a = np.zeros((len(map.results), map.num_dims), dtype=np.int_)
+        for dim in range(map.num_dims):
+            temp = np.array(map.eval(generate_one_list(map.num_dims, dim), []))
+            a[:, dim] = temp - b
+
+        return cls(a, b)
+
+    def to_affine_map(self) -> AffineMap:
+        """
+        Return the xDSL AffineMap representation of this AffineTransform
+        """
+        results: list[AffineExpr] = []
+        for result in range(self.num_results):
+            expr = AffineConstantExpr(int(self.b[result]))
+            for dim in range(self.num_dims):
+                if self.A[result, dim] != 0:
+                    expr += AffineConstantExpr(
+                        int(self.A[result, dim])
+                    ) * AffineDimExpr(dim)
+            results.append(expr)
+        return AffineMap(self.num_dims, 0, tuple(results))
 
     @property
     def num_dims(self) -> int:
