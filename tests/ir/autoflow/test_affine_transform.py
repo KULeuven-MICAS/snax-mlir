@@ -79,14 +79,14 @@ def test_affine_transform_compose_invalid_dimensions():
     transform1 = AffineTransform(A1, b1)
 
     A2 = np.array([[1, 0, 0], [0, 1, 0]])
-    b2 = np.array([7, 8, 9])  # Incompatible with A1
+    b2 = np.array([7, 8])
     transform2 = AffineTransform(A2, b2)
 
     with pytest.raises(
         ValueError,
         match="Matrix dimensions of the transformations do not align for composition.",
     ):
-        transform1.compose(transform2)
+        transform2.compose(transform1)
 
 
 def test_affine_transform_str():
