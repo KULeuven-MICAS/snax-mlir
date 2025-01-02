@@ -1,18 +1,18 @@
 import numpy as np
 import pytest
+from xdsl.ir.affine import AffineMap
 
 from compiler.ir.autoflow import AffineTransform
 
 
 def test_affine_transform_initialization_valid():
-    A = np.array([[1, 2], [3, 4]])
-    b = np.array([5, 6])
+    A = np.array([[1, 2, 3], [4, 5, 6]])
+    b = np.array([7, 8])
     transform = AffineTransform(A, b)
     assert np.array_equal(transform.A, A)
     assert np.array_equal(transform.b, b)
     assert transform.num_dims == 2
     assert transform.num_results == 2
-
 
 def test_affine_transform_initialization_invalid_dimensions():
     A = np.array([[1, 2], [3, 4]])

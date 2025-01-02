@@ -27,11 +27,11 @@ class AffineTransform:
 
     @property
     def num_dims(self) -> int:
-        return self.A.shape[0]
+        return self.A.shape[1]
 
     @property
     def num_results(self) -> int:
-        return self.A.shape[1]
+        return self.A.shape[0]
 
     def eval(self, x: npt.NDArray[np.int_]) -> npt.NDArray[np.int_]:
         """
