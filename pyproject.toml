@@ -94,8 +94,6 @@ typeCheckingMode = "strict"
     "compiler/inference/helpers.py",
     "compiler/inference/scoped_setups.py",
     "compiler/inference/trace_acc_state.py",
-    "compiler/ir/stream/access_pattern.py",
-    "compiler/ir/stream/scheduler.py",
     "compiler/ir/tsl/tiled_strided_layout.py",
     "compiler/parser/tsl_parser.py",
     "compiler/transforms/accfg_dedup.py",

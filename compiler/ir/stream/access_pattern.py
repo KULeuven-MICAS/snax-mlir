@@ -1,10 +1,10 @@
 from abc import ABC
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
-from typing import Generic
+from typing import Generic, cast
 
-from typing_extensions import Self, TypeVar, deprecated, overload
-from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineMap
+from typing_extensions import Self, TypeVar, overload
+from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineExpr, AffineMap
 
 from compiler.util.canonicalize_affine import canonicalize_map
 
@@ -76,7 +76,7 @@ class SchedulePattern(AccessPattern):
     bounds: tuple[int, ...]
 
     def __init__(self, bounds: Sequence[int], pattern: AffineMap):
-        if any(bound is None or bound <= 0 for bound in bounds):
+        if any(bound <= 0 for bound in bounds):
             raise ValueError(
                 "All bounds must be static, strictly positive integers for a schedule"
             )
@@ -220,10 +220,10 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PatternCollection):
             return False
+        other = cast(PatternCollection[P], other)
         return self._patterns == other._patterns
 
     @property
-    @deprecated("only valid in trivial cases")
     def num_dims(self) -> int:
         return self[0].num_dims
 
@@ -244,7 +244,7 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
         else:
             pattern_bounds = bounds
         unused_dims = tuple(i for i, bound in enumerate(pattern_bounds) if bound == 1)
-        dim_substitutions = []
+        dim_substitutions: list[AffineExpr] = []
         unused_counter = 0
         for dim in range(self.num_dims):
             if dim not in unused_dims:
