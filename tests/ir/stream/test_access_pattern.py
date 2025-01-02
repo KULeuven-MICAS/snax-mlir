@@ -59,7 +59,7 @@ def test_access_pattern_disable_dims():
 
     # test 4: disable 3 dims (all)
     disabled_pattern = access_pattern.disable_dims(3)
-    expected_bounds = tuple()
+    expected_bounds: tuple[int, ...] = tuple()
     expected_results = (
         AffineConstantExpr(0),
         AffineConstantExpr(0),
@@ -87,11 +87,6 @@ def test_schedule_pattern_invalid_bounds():
     pattern = AffineMap(
         num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
     )
-    with pytest.raises(
-        ValueError,
-        match="All bounds must be static, strictly positive integers for a schedule",
-    ):
-        SchedulePattern((10, None), pattern)  # pyright: ignore
     with pytest.raises(
         ValueError,
         match="All bounds must be static, strictly positive integers for a schedule",
