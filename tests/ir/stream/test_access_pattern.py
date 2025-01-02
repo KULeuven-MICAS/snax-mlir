@@ -1,6 +1,8 @@
+import numpy as np
 import pytest
-from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineMap
+from xdsl.ir.affine import AffineDimExpr, AffineMap
 
+from compiler.ir.autoflow import AffineTransform
 from compiler.ir.stream import (
     AccessPattern,
     Schedule,
@@ -20,60 +22,53 @@ def test_access_pattern_creation():
     bounds = (10, 20, 30)
     access_pattern = AccessPattern(bounds, pattern)
     assert access_pattern.bounds == bounds
-    assert access_pattern.pattern == pattern
+    assert access_pattern.pattern == AffineTransform.from_affine_map(pattern)
     assert access_pattern.num_dims == 3
 
 
 def test_access_pattern_disable_dims():
-    pattern = AffineMap(
-        num_dims=3,
-        num_symbols=0,
-        results=(AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(2)),
+    pattern = AffineTransform(
+        np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), b=np.array([1, 2, 3])
     )
     bounds = (10, 20, 30)
     access_pattern = AccessPattern(bounds, pattern)
 
     # test 1: disable 0 dims (none)
     disabled_pattern = access_pattern.disable_dims(0)
-    expected_bounds = (10, 20, 30)
-    expected_results = (AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(2))
-    assert disabled_pattern.bounds == expected_bounds
-    assert disabled_pattern.pattern.results == expected_results
+    assert disabled_pattern.bounds == bounds
+    assert disabled_pattern.pattern == pattern
     assert isinstance(disabled_pattern, AccessPattern)
 
     # test 2: disable 1 dims
     disabled_pattern = access_pattern.disable_dims(1)
     expected_bounds = (20, 30)
-    expected_results = (AffineConstantExpr(0), AffineDimExpr(0), AffineDimExpr(1))
+    expected_results = np.array([[0, 0], [1, 0], [0, 1]])
     assert disabled_pattern.bounds == expected_bounds
-    assert disabled_pattern.pattern.results == expected_results
+    assert (disabled_pattern.pattern.A == expected_results).all()
+    assert (disabled_pattern.pattern.b == pattern.b).all()
     assert isinstance(disabled_pattern, AccessPattern)
 
     # test 3: disable 2 dims
     disabled_pattern = access_pattern.disable_dims(2)
     expected_bounds = (30,)
-    expected_results = (AffineConstantExpr(0), AffineConstantExpr(0), AffineDimExpr(0))
+    expected_results = np.array([[0], [0], [1]])
     assert disabled_pattern.bounds == expected_bounds
-    assert disabled_pattern.pattern.results == expected_results
+    assert (disabled_pattern.pattern.A == expected_results).all()
+    assert (disabled_pattern.pattern.b == pattern.b).all()
     assert isinstance(disabled_pattern, AccessPattern)
 
     # test 4: disable 3 dims (all)
     disabled_pattern = access_pattern.disable_dims(3)
     expected_bounds: tuple[int, ...] = tuple()
-    expected_results = (
-        AffineConstantExpr(0),
-        AffineConstantExpr(0),
-        AffineConstantExpr(0),
-    )
+    expected_results = np.array([[], [], []])
     assert disabled_pattern.bounds == expected_bounds
-    assert disabled_pattern.pattern.results == expected_results
+    assert (disabled_pattern.pattern.A == expected_results).all()
+    assert (disabled_pattern.pattern.b == pattern.b).all()
     assert isinstance(disabled_pattern, AccessPattern)
 
 
 def test_schedule_pattern_creation():
-    pattern = AffineMap(
-        num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
-    )
+    pattern = AffineTransform(np.array([[1, 0], [0, 1]]), np.array([0, 0]))
     bounds = (15, 25)
     schedule_pattern = SchedulePattern(bounds, pattern)
     assert schedule_pattern.bounds == bounds
@@ -84,9 +79,7 @@ def test_schedule_pattern_creation():
 
 
 def test_schedule_pattern_invalid_bounds():
-    pattern = AffineMap(
-        num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
-    )
+    pattern = AffineTransform(np.array([[1, 0], [0, 1]]), np.array([0, 0]))
     with pytest.raises(
         ValueError,
         match="All bounds must be static, strictly positive integers for a schedule",
@@ -95,10 +88,8 @@ def test_schedule_pattern_invalid_bounds():
 
 
 def test_schedule_pattern_rotate():
-    pattern = AffineMap(
-        num_dims=3,
-        num_symbols=0,
-        results=(AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(2)),
+    pattern = AffineTransform(
+        np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), np.array([0, 0, 0])
     )
     bounds = (10, 20, 30)
     access_pattern = SchedulePattern(bounds, pattern)
@@ -106,37 +97,33 @@ def test_schedule_pattern_rotate():
     # test 1: 3 dims, rotate 2
     rotated_pattern = access_pattern.rotate(2)
     expected_bounds = (20, 10, 30)
-    expected_results = (AffineDimExpr(1), AffineDimExpr(0), AffineDimExpr(2))
+    expected_results = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
     assert rotated_pattern.bounds == expected_bounds
-    assert rotated_pattern.pattern.results == expected_results
+    assert (rotated_pattern.pattern.A == expected_results).all()
+    assert (rotated_pattern.pattern.b == pattern.b).all()
     assert isinstance(rotated_pattern, AccessPattern)
 
     # test 2: 3 dims, rotate 3
     rotated_pattern = access_pattern.rotate(3)
     expected_bounds = (20, 30, 10)
-    expected_results = (AffineDimExpr(2), AffineDimExpr(0), AffineDimExpr(1))
+    expected_results = np.array([[0, 0, 1], [1, 0, 0], [0, 1, 0]])
     assert rotated_pattern.bounds == expected_bounds
-    assert rotated_pattern.pattern.results == expected_results
+    assert (rotated_pattern.pattern.A == expected_results).all()
+    assert (rotated_pattern.pattern.b == pattern.b).all()
     assert isinstance(rotated_pattern, AccessPattern)
 
     # test 3: 3 dims, rotate 1
     rotated_pattern = access_pattern.rotate(1)
     expected_bounds = (10, 20, 30)
-    expected_results = (AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(2))
     assert rotated_pattern.bounds == expected_bounds
-    assert rotated_pattern.pattern.results == expected_results
+    assert (rotated_pattern.pattern.A == pattern.A).all()
+    assert (rotated_pattern.pattern.b == pattern.b).all()
     assert isinstance(rotated_pattern, AccessPattern)
 
     # test 4 dims
-    pattern = AffineMap(
-        num_dims=4,
-        num_symbols=0,
-        results=(
-            AffineDimExpr(0),
-            AffineDimExpr(1),
-            AffineDimExpr(2),
-            AffineDimExpr(3),
-        ),
+    pattern = AffineTransform(
+        np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]),
+        np.array([0, 0, 0, 0]),
     )
     bounds = (10, 20, 30, 40)
     access_pattern = SchedulePattern(bounds, pattern)
@@ -144,61 +131,45 @@ def test_schedule_pattern_rotate():
     # test 4: 4 dims, rotate 3
     rotated_pattern = access_pattern.rotate(3)
     expected_bounds = (20, 30, 10, 40)
-    expected_results = (
-        AffineDimExpr(2),
-        AffineDimExpr(0),
-        AffineDimExpr(1),
-        AffineDimExpr(3),
+    expected_results = np.array(
+        [[0, 0, 1, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]]
     )
     assert rotated_pattern.bounds == expected_bounds
-    assert rotated_pattern.pattern.results == expected_results
+    assert (rotated_pattern.pattern.A == expected_results).all()
+    assert (rotated_pattern.pattern.b == pattern.b).all()
     assert isinstance(rotated_pattern, AccessPattern)
 
 
 def test_schedule_pattern_add_dim():
-    pattern = AffineMap(
-        num_dims=3,
-        num_symbols=0,
-        results=(AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(2)),
+    pattern = AffineTransform(
+        np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), np.array([0, 0, 0])
     )
     bounds = (10, 20, 30)
     access_pattern = SchedulePattern(bounds, pattern)
     pattern_new_dim = access_pattern.add_dim()
     expected_bounds = (1, 10, 20, 30)
-    expected_results = (
-        AffineDimExpr(1),
-        AffineDimExpr(2),
-        AffineDimExpr(3),
-    )
+    expected_results = np.array([[0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
     assert pattern_new_dim.bounds == expected_bounds
-    assert pattern_new_dim.pattern.results == expected_results
+    assert (pattern_new_dim.pattern.A == expected_results).all()
     assert isinstance(pattern_new_dim, SchedulePattern)
 
 
 def test_schedule_pattern_tile_dim():
-    pattern = AffineMap(
-        num_dims=3,
-        num_symbols=0,
-        results=(AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(2)),
+    pattern = AffineTransform(
+        np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), np.array([0, 0, 0])
     )
     bounds = (10, 20, 30)
     access_pattern = SchedulePattern(bounds, pattern)
     tiled_pattern = access_pattern.tile_dim(1, 5)
     expected_bounds = (10, 4, 5, 30)
-    expected_results = (
-        AffineDimExpr(0),
-        AffineDimExpr(1) * 5 + AffineDimExpr(2),
-        AffineDimExpr(3),
-    )
+    expected_results = np.array([[1, 0, 0, 0], [0, 5, 1, 0], [0, 0, 0, 1]])
     assert tiled_pattern.bounds == expected_bounds
-    assert tiled_pattern.pattern.results == expected_results
+    assert (tiled_pattern.pattern.A == expected_results).all()
     assert isinstance(tiled_pattern, SchedulePattern)
 
 
 def test_template_pattern_creation():
-    pattern = AffineMap(
-        num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
-    )
+    pattern = AffineTransform(np.array([[1, 0], [0, 1], [0, 1]]), np.array([0, 0, 0]))
     bounds = (5, 10)
     template_pattern = TemplatePattern(bounds, pattern)
     assert template_pattern.bounds == bounds
@@ -270,19 +241,15 @@ def test_schedule_tile_dim():
 
 
 def test_schedule_clear_unused_dims():
-    pattern1 = AffineMap(
-        num_dims=3, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
-    )
+    pattern1 = AffineTransform(np.array([[1, 0, 0], [0, 1, 0]]), np.array([0, 0]))
     sp1 = SchedulePattern((1, 10, 1), pattern1)
     schedule = Schedule([sp1])
     cleared_schedule = schedule.clear_unused_dims()
     assert isinstance(cleared_schedule, Schedule)
 
     assert cleared_schedule[0].bounds == ((10,))
-    assert cleared_schedule[0].pattern.results == (
-        AffineConstantExpr(0),
-        AffineDimExpr(0),
-    )
+    expected_results = np.array([[0], [1]])
+    assert (cleared_schedule[0].pattern.A == expected_results).all()
 
 
 def test_template_disable_dims():
