@@ -8,16 +8,20 @@ def test_affine_transform_initialization_valid():
     A = np.array([[1, 2], [3, 4]])
     b = np.array([5, 6])
     transform = AffineTransform(A, b)
-    assert np.array_equal(transform._A, A)
-    assert np.array_equal(transform._b, b)
+    assert np.array_equal(transform.A, A)
+    assert np.array_equal(transform.b, b)
     assert transform.num_dims == 2
     assert transform.num_results == 2
+
 
 def test_affine_transform_initialization_invalid_dimensions():
     A = np.array([[1, 2], [3, 4]])
     b = np.array([5])  # Incompatible size
-    with pytest.raises(ValueError, match="Matrix A and vector b must have compatible dimensions."):
+    with pytest.raises(
+        ValueError, match="Matrix A and vector b must have compatible dimensions."
+    ):
         AffineTransform(A, b)
+
 
 def test_affine_transform_eval_single_vector():
     A = np.array([[1, 0], [0, 1]])
@@ -28,6 +32,7 @@ def test_affine_transform_eval_single_vector():
     expected = np.array([4, 6])
     assert np.array_equal(result, expected)
 
+
 def test_affine_transform_eval_batch_of_vectors():
     A = np.array([[1, 0], [0, 1]])
     b = np.array([1, 2])
@@ -37,13 +42,18 @@ def test_affine_transform_eval_batch_of_vectors():
     expected = np.array([[4, 6], [6, 8]])
     assert np.array_equal(result, expected)
 
+
 def test_affine_transform_eval_invalid_vector_dimension():
     A = np.array([[1, 0], [0, 1]])
     b = np.array([1, 2])
     transform = AffineTransform(A, b)
     x = np.array([3])  # Incompatible dimension
-    with pytest.raises(ValueError, match="Input vector x must have a dimension matching the number of columns in A."):
+    with pytest.raises(
+        ValueError,
+        match="Input vector x must have a dimension matching the number of columns in A.",
+    ):
         transform.eval(x)
+
 
 def test_affine_transform_compose():
     A1 = np.array([[1, 2], [3, 4]])
@@ -59,8 +69,9 @@ def test_affine_transform_compose():
     expected_A = A1 @ A2
     expected_b = A1 @ b2 + b1
 
-    assert np.array_equal(composed._A, expected_A)
-    assert np.array_equal(composed._b, expected_b)
+    assert np.array_equal(composed.A, expected_A)
+    assert np.array_equal(composed.b, expected_b)
+
 
 def test_affine_transform_compose_invalid_dimensions():
     A1 = np.array([[1, 2], [3, 4]])
@@ -71,8 +82,12 @@ def test_affine_transform_compose_invalid_dimensions():
     b2 = np.array([7, 8, 9])  # Incompatible with A1
     transform2 = AffineTransform(A2, b2)
 
-    with pytest.raises(ValueError, match="Matrix dimensions of the transformations do not align for composition."):
+    with pytest.raises(
+        ValueError,
+        match="Matrix dimensions of the transformations do not align for composition.",
+    ):
         transform1.compose(transform2)
+
 
 def test_affine_transform_str():
     A = np.array([[1, 0], [0, 1]])
