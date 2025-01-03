@@ -167,7 +167,6 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         result: list[Operation] = []
         result_mapping: dict[tuple[int, int], Operation] = {}
         tsl = self.data
-        el_bytes = 1
 
         # Handle the special case where a tsl is constructed from a stridedlayoutattr
         # In this case, if there are dynamic strides, we cannot perform
@@ -190,9 +189,14 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
                     stride = MuliOp(metadata_op.strides[dim], element_size_op)
                     result_mapping[(dim, depth)] = stride
 
-            # optional bytes correction
-            if in_bytes:
-                el_bytes = memref_type.element_type.size
+        # optional bytes correction
+        if in_bytes:
+            assert memref_op is not None
+            memref_type = cast(MemRefType[Attribute], memref_op.type)
+            assert isinstance(memref_type.element_type, FixedBitwidthType)
+            el_bytes = memref_type.element_type.size
+        else:
+            el_bytes = 1
 
         # to handle the dynamic case, we must first find the largest
         # statically defined step, and then use that to calculate the
