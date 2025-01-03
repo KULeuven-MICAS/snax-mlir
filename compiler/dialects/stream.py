@@ -1,10 +1,12 @@
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Generic, TypeVar
 
 from xdsl.dialects.builtin import (
     AffineMapAttr,
     ArrayAttr,
     ContainerType,
+    IndexType,
+    IntegerAttr,
     ShapedType,
     StringAttr,
 )
@@ -70,8 +72,7 @@ class StreamType(
         return self.element_type
 
 
-@irdl_op_definition
-class StreamingRegionOp(IRDLOperation):
+class StreamingRegionOpBase(IRDLOperation):
     """
     An operation that creates streams from tensors or memrefs, which are only available to
     read from within the body of the operation.
@@ -79,8 +80,6 @@ class StreamingRegionOp(IRDLOperation):
     Within the loop body, memrefs/tensors that are streamed must not be otherwise accessed
     via any other access means, including extraction (e.g.: memref.view).
     """
-
-    name = "stream.streaming_region"
 
     inputs = var_operand_def()
     outputs = var_operand_def()
@@ -101,6 +100,7 @@ class StreamingRegionOp(IRDLOperation):
         body: Region,
         accelerator: str | StringAttr | None = None,
         result_types: Sequence[Attribute] = (),
+        other_props: Mapping[str, Attribute | None] = {},
     ) -> None:
         if isinstance(accelerator, str):
             accelerator = StringAttr(accelerator)
@@ -110,6 +110,7 @@ class StreamingRegionOp(IRDLOperation):
             properties={
                 "patterns": patterns,
                 "accelerator": accelerator,
+                **other_props,
             },
             result_types=[result_types],
         )
@@ -146,6 +147,37 @@ class StreamingRegionOp(IRDLOperation):
         return self.get_shapes_to_pattern_bounds_map().eval(
             tuple(self.get_static_shapes()), []
         )
+
+
+@irdl_op_definition
+class StreamingRegionOp(StreamingRegionOpBase):
+    name = "stream.streaming_region"
+
+
+@irdl_op_definition
+class ScheduleOp(StreamingRegionOpBase):
+    name = "stream.schedule"
+
+    tiles = prop_def(ParameterDef[ArrayAttr[ArrayAttr[IntegerAttr[IndexType]]]])
+
+    def __init__(
+        self,
+        inputs: Sequence[SSAValue | Operation],
+        outputs: Sequence[SSAValue | Operation],
+        patterns: ArrayAttr[AffineMapAttr],
+        body: Region,
+        tiles: ArrayAttr[ArrayAttr[IntegerAttr[IndexType]]] | Sequence[Sequence[int]],
+        accelerator: str | StringAttr | None = None,
+        result_types: Sequence[Attribute] = (),
+    ) -> None:
+        if isinstance(tiles, Sequence):
+            tiles = ArrayAttr(
+                [
+                    ArrayAttr([IntegerAttr.from_index_int_value(val) for val in tile])
+                    for tile in tiles
+                ]
+            )
+        super().__init__(inputs, outputs, patterns, body, accelerator, result_types)
 
 
 @irdl_op_definition
@@ -197,6 +229,7 @@ Stream = Dialect(
     "stream",
     [
         StreamingRegionOp,
+        ScheduleOp,
         GenericOp,
         YieldOp,
     ],
