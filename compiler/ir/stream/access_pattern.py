@@ -4,8 +4,6 @@ from dataclasses import dataclass
 from typing import Generic, cast
 
 from typing_extensions import Self, TypeVar, overload
-from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineExpr, AffineMap
-from typing_extensions import Self, TypeVar, deprecated, overload
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 
 from compiler.ir.autoflow.affine_transform import AffineTransform
