@@ -30,12 +30,21 @@ class AffineTransform:
     def from_affine_map(cls, map: AffineMap) -> Self:
         """
         Return the affine transform representation of the given affine map.
+
+        This assumes the affine map is a pure linear transformation (i.e., no floordiv/ceildiv/modulo operations)
         """
 
+        # generate a list with n zeros and a 1 at index d:
+        # [0, 0, 0, 1]
         def generate_one_list(n: int, d: int):
             return [1 if x == d else 0 for x in range(n)]
 
+        # determine indices of the matrices a and b by getting the unit response of every dimension
+
+        # bias b is determined by setting all dimensions to zero
         b = np.array(map.eval(generate_one_list(map.num_dims, -1), []))
+
+        # columns of a are determined by toggling every dimension separately
         a = np.zeros((len(map.results), map.num_dims), dtype=np.int_)
         for dim in range(map.num_dims):
             temp = np.array(map.eval(generate_one_list(map.num_dims, dim), []))
