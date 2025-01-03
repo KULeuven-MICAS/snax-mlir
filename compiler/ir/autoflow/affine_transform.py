@@ -3,6 +3,14 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 from typing_extensions import Self
+from xdsl.ir.affine import (
+    AffineBinaryOpExpr,
+    AffineBinaryOpKind,
+    AffineConstantExpr,
+    AffineDimExpr,
+    AffineExpr,
+    AffineMap,
+)
 
 
 @dataclass(frozen=True)
@@ -24,6 +32,60 @@ class AffineTransform:
             raise ValueError("Vector b must be 1-dimensional.")
         if self.A.shape[0] != self.b.shape[0]:
             raise ValueError("Matrix A and vector b must have compatible dimensions.")
+
+    @classmethod
+    def from_affine_map(cls, map: AffineMap) -> Self:
+        """
+        Return the affine transform representation of the given affine map.
+
+        For this, the affine map must be a pure linear transformation (i.e., no floordiv/ceildiv/modulo operations)
+        """
+
+        # check for pure linear transformation
+        for result in map.results:
+            for expr in result.dfs():
+                if isinstance(expr, AffineBinaryOpExpr):
+                    if expr.kind in (
+                        AffineBinaryOpKind.FloorDiv,
+                        AffineBinaryOpKind.CeilDiv,
+                        AffineBinaryOpKind.Mod,
+                    ):
+                        raise ValueError(
+                            "Affine map is not a pure linear transformation"
+                        )
+
+        # generate a list with n zeros and a 1 at index d:
+        # [0, 0, 0, 1]
+        def generate_one_list(n: int, d: int):
+            return [1 if x == d else 0 for x in range(n)]
+
+        # determine indices of the matrices a and b by getting the unit response of every dimension
+
+        # bias b is determined by setting all dimensions to zero
+        b = np.array(map.eval(generate_one_list(map.num_dims, -1), []))
+
+        # columns of a are determined by toggling every dimension separately
+        a = np.zeros((len(map.results), map.num_dims), dtype=np.int_)
+        for dim in range(map.num_dims):
+            temp = np.array(map.eval(generate_one_list(map.num_dims, dim), []))
+            a[:, dim] = temp - b
+
+        return cls(a, b)
+
+    def to_affine_map(self) -> AffineMap:
+        """
+        Return the xDSL AffineMap representation of this AffineTransform
+        """
+        results: list[AffineExpr] = []
+        for result in range(self.num_results):
+            expr = AffineConstantExpr(int(self.b[result]))
+            for dim in range(self.num_dims):
+                if self.A[result, dim] != 0:
+                    expr += AffineConstantExpr(
+                        int(self.A[result, dim])
+                    ) * AffineDimExpr(dim)
+            results.append(expr)
+        return AffineMap(self.num_dims, 0, tuple(results))
 
     @property
     def num_dims(self) -> int:
