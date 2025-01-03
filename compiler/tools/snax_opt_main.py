@@ -32,7 +32,6 @@ from compiler.transforms.frontend.preprocess_mlperf_tiny import PreprocessMLPerf
 from compiler.transforms.fuse_streaming_regions import FuseStreamingRegions
 from compiler.transforms.insert_accfg_op import InsertAccOp
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
-from compiler.transforms.linalg_to_library_call import LinalgToLibraryCall
 from compiler.transforms.memref_to_snax import MemrefToSNAX
 from compiler.transforms.realize_memref_casts import RealizeMemrefCastsPass
 from compiler.transforms.reuse_memref_allocs import ReuseMemrefAllocs
@@ -79,7 +78,6 @@ class SNAXOptMain(xDSLOptMain):
         self.ctx.load_dialect(Debug)
         self.ctx.load_dialect(Stream)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
-        super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
         super().register_pass(SetMemoryLayout.name, lambda: SetMemoryLayout)
         super().register_pass(InsertAccOp.name, lambda: InsertAccOp)
