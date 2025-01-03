@@ -33,7 +33,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
     @classmethod
     def parse_parameter(cls, parser: AttrParser) -> TiledStridedLayout:
         with parser.in_angle_brackets():
-            tslparser = TSLParser(parser.pos)
+            tslparser = TSLParser(parser._parser_state)  # pyright: ignore
             return tslparser.parse()
 
     def print_parameter(self, printer: Printer) -> None:
