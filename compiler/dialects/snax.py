@@ -130,7 +130,7 @@ class Alloc(IRDLOperation):
         self,
         rank: int,
         size: SSAValue | Operation,
-        shapes: list[SSAValue | Operation],
+        shapes: Sequence[SSAValue | Operation],
         memory_space: Attribute = NoneAttr(),
         alignment: AnyIntegerAttr | None = None,
         integer_type: IntegerType = i32,

@@ -1,7 +1,9 @@
+from typing import cast
+
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, linalg, memref
 from xdsl.dialects.memref import MemorySpaceCastOp
-from xdsl.ir import Operation, OpResult
+from xdsl.ir import Attribute, Operation, OpResult
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -9,6 +11,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.rewriter import InsertPoint
 
 from compiler.dialects import stream
 from compiler.dialects.snax import LayoutCast
@@ -41,7 +44,7 @@ class RealizeMemrefCasts(RewritePattern):
         # so we can fuse all the casting operations together.
 
         # keep track of ops to add
-        ops_to_add = []
+        ops_to_add: list[Operation] = []
 
         # if the source of the memref cast is another layout_cast op,
         # combine them all together
@@ -54,14 +57,16 @@ class RealizeMemrefCasts(RewritePattern):
         # now perform casting by inserting memref copies and allocs
         source_type = source_op.source.type
         assert isinstance(source_type, builtin.MemRefType)
+        source_type = cast(builtin.MemRefType[Attribute], source_type)
         dest_type = op.dest.type
         assert isinstance(dest_type, builtin.MemRefType)
+        dest_type = cast(builtin.MemRefType[Attribute], dest_type)
 
         # create allocation
 
         # create memref.dim operations for dynamic dimensions
         shapes = [x.data for x in dest_type.shape.data]
-        dyn_operands = []
+        dyn_operands: list[Operation] = []
         for i in range(len(shapes)):
             # Dynamic shapes are represented as -1
             if shapes[i] == -1:
@@ -90,6 +95,7 @@ class RealizeMemrefCasts(RewritePattern):
 
         # insert "copy to" for first use as input
         # walk parent op in order to find first use as input
+        assert op.parent
         for use_op in op.parent.walk():
             if use_op not in uses:
                 continue
@@ -105,7 +111,7 @@ class RealizeMemrefCasts(RewritePattern):
             if is_input:
                 # insert copy op
                 copy_op = memref.CopyOp(source_op.source, op.dest)
-                rewriter.insert_op_before(copy_op, use_op)
+                rewriter.insert_op(copy_op, InsertPoint.before(use_op))
                 break
 
         # insert "copy from" for last use as output
@@ -127,7 +133,7 @@ class RealizeMemrefCasts(RewritePattern):
             if is_output:
                 # insert copy op
                 copy_op = memref.CopyOp(op.dest, source_op.source)
-                rewriter.insert_op_after(copy_op, use_op)
+                rewriter.insert_op(copy_op, InsertPoint.after(use_op))
                 break
 
         # insert all ops
