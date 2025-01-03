@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from math import prod
+from typing import cast
 
 from xdsl.dialects.arith import ConstantOp, DivUIOp, MuliOp
 from xdsl.dialects.builtin import (
@@ -11,7 +12,7 @@ from xdsl.dialects.builtin import (
     StridedLayoutAttr,
 )
 from xdsl.dialects.memref import DimOp, ExtractStridedMetaDataOp
-from xdsl.ir import Data, Dialect, Operation, SSAValue
+from xdsl.ir import Attribute, Data, Dialect, Operation, SSAValue
 from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineMap
 from xdsl.irdl import (
     irdl_attr_definition,
@@ -32,7 +33,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
     @classmethod
     def parse_parameter(cls, parser: AttrParser) -> TiledStridedLayout:
         with parser.in_angle_brackets():
-            tslparser = TSLParser(parser._parser_state)
+            tslparser = TSLParser(parser._parser_state)  # pyright: ignore
             return tslparser.parse()
 
     def print_parameter(self, printer: Printer) -> None:
@@ -41,10 +42,6 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
     def get_affine_map(self) -> AffineMap:
         if self.data.is_dynamic():
             raise NotImplementedError("Dynamic case is not implemented yet!")
-
-        # TODO: the affine map should result in element offset, not byte offset
-        # i will probably transition the tsl definition to element offset
-        # as well, to make everything more convenient
 
         result = AffineConstantExpr(0)
         for dim in range(self.data.dimension()):
@@ -86,7 +83,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         """
 
         result: list[Operation] = []
-        result_mapping: dict[(int, int), Operation] = {}
+        result_mapping: dict[tuple[int, int], Operation] = {}
 
         tsl = self.data
 
@@ -94,7 +91,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             # if the argument passed is a memref, generate shape operation
             # list by using the dim operation
             memref = memref_op_or_shapes
-            shapes = []
+            shapes: list[Operation] = []
             for dim in range(tsl.dimension()):
                 dim_index_op = ConstantOp.from_int_and_width(dim, IndexType())
                 dim_op = DimOp.from_source_and_index(memref, dim_index_op)
@@ -134,6 +131,7 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
             # inner tile depths are all static by definition of TSL
             for depth in range(1, tsl.tstrides[dim].depth()):
                 stride = tsl.get_stride(dim, depth)
+                assert stride.bound is not None
                 bound_op = ConstantOp.from_int_and_width(stride.bound, IndexType())
                 result.append(bound_op)
                 result_mapping[(dim, depth)] = bound_op
@@ -174,14 +172,14 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
         # In this case, if there are dynamic strides, we cannot perform
         # the TSL contiguity assumptions. Instead, dynamic strides are
         # fetched from the extract strided metadata operation.
-        if (
-            memref_op
-            and isinstance(memref_op.type, MemRefType)
-            and isinstance(memref_op.type.layout, StridedLayoutAttr)
+        if memref_op and isinstance(
+            (memref_type := cast(MemRefType[Attribute], memref_op.type)).layout,
+            StridedLayoutAttr,
         ):
             metadata_op = ExtractStridedMetaDataOp(memref_op)
+            assert isinstance(memref_type.element_type, FixedBitwidthType)
             element_size_op = ConstantOp.from_int_and_width(
-                memref_op.type.element_type.width.data // 8, IndexType()
+                memref_type.element_type.size, IndexType()
             )
             result.extend([metadata_op, element_size_op])
             for dim in range(tsl.dimension()):
@@ -193,12 +191,11 @@ class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
 
         # optional bytes correction
         if in_bytes:
-            assert memref_op
-            assert isinstance(memref_op.type, MemRefType)
-            assert isinstance(memref_op.type.element_type, FixedBitwidthType)
-            el_bytes = memref_op.type.element_type.size
+            assert memref_op is not None
+            memref_type = cast(MemRefType[Attribute], memref_op.type)
+            assert isinstance(memref_type.element_type, FixedBitwidthType)
+            el_bytes = memref_type.element_type.size
         else:
-            # else use 1 such that 1 element = 1 byte
             el_bytes = 1
 
         # to handle the dynamic case, we must first find the largest

@@ -8,6 +8,7 @@ from xdsl.dialects.builtin import (
     IndexType,
     IntegerAttr,
     IntegerType,
+    MemrefLayoutAttr,
     MemRefType,
     NoneAttr,
     UnrankedMemrefType,
@@ -64,8 +65,8 @@ class LayoutCast(IRDLOperation):
 
     name = "snax.layout_cast"
 
-    source = operand_def(MemRefType[Attribute] | UnrankedMemrefType[Attribute])
-    dest = result_def(MemRefType[Attribute] | UnrankedMemrefType[Attribute])
+    source = operand_def(MemRefType)
+    dest = result_def(MemRefType)
 
     def __init__(
         self,
@@ -77,14 +78,16 @@ class LayoutCast(IRDLOperation):
     @staticmethod
     def from_type_and_target_layout(
         source: SSAValue | Operation,
-        layout: Attribute,
+        layout: MemrefLayoutAttr,
     ) -> LayoutCast:
-        assert isinstance(source.type, MemRefType)
+        source = SSAValue.get(source)
+        assert isinstance(source.type, Attribute)
+        source_type = cast(MemRefType[Attribute], source.type)
         dest = MemRefType(
-            source.type.get_element_type(),
-            shape=source.type.get_shape(),
+            source_type.get_element_type(),
+            source_type.get_shape(),
             layout=layout,
-            memory_space=source.type.memory_space,
+            memory_space=source_type.memory_space,
         )
         return LayoutCast(source, dest)
 
@@ -117,8 +120,8 @@ class Alloc(IRDLOperation):
 
     name = "snax.alloc"
 
-    size: Operand = operand_def(IntegerType | IndexType)
-    shapes: VarOperand = var_operand_def(IntegerType | IndexType)
+    size: Operand = operand_def(IndexType)
+    shapes: VarOperand = var_operand_def(IndexType)
     result: OpResult = result_def(LLVMStructType)
     memory_space: Attribute | None = opt_prop_def(Attribute)
     alignment: AnyIntegerAttr | None = opt_prop_def(AnyIntegerAttr)
@@ -129,7 +132,7 @@ class Alloc(IRDLOperation):
         size: SSAValue | Operation,
         shapes: list[SSAValue | Operation],
         memory_space: Attribute = NoneAttr(),
-        alignment: AnyIntegerAttr = None,
+        alignment: AnyIntegerAttr | None = None,
         integer_type: IntegerType = i32,
     ):
         # output type is llvm struct memref descriptor
@@ -184,7 +187,7 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
                 parser.parse_punctuation("[")
 
                 # Determine streamer options
-                opts = []
+                opts: Sequence[StreamerOpts] = []
                 if parser.parse_optional_keyword("opts"):
                     parser.parse_punctuation("=")
                     while not parser.parse_optional_punctuation(","):
