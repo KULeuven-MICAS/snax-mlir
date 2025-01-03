@@ -1,3 +1,5 @@
+from typing import cast
+
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, memref
 from xdsl.dialects.arith import AddiOp, ConstantOp, MuliOp, SubiOp
@@ -8,6 +10,7 @@ from xdsl.dialects.builtin import (
     NoneAttr,
     UnrealizedConversionCastOp,
 )
+from xdsl.ir import Attribute, Operation, OpResult
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -28,7 +31,7 @@ class AllocOpRewrite(RewritePattern):
         NoneType layouts and TSL Layouts, and a memory space of L1"""
 
         # get the memref type
-        memref_type: MemRefType = alloc_op.memref.type
+        memref_type = cast(MemRefType[Attribute], alloc_op.memref.type)
 
         # get the element type
         element_type = memref_type.get_element_type()
@@ -49,14 +52,17 @@ class AllocOpRewrite(RewritePattern):
         # create an operation to get the # bytes that needs
         # to be allocated
         total_size_op = None
-        ops_to_add = []
+        ops_to_add: list[Operation] = []
 
         # generate the list of shape ops
         # either these are constant and must be created,
         # or they are already present in the memref.alloc
         # operation arguments
-        shape_ops = []
-        alloc_args = [x.op for x in alloc_op.dynamic_sizes]
+        shape_ops: list[Operation] = []
+        alloc_args: list[Operation] = []
+        for size in alloc_op.dynamic_sizes:
+            assert isinstance(size, OpResult)
+            alloc_args.append(size.op)
 
         for shape in memref_type.shape.data:
             if shape.data == -1:
@@ -68,7 +74,7 @@ class AllocOpRewrite(RewritePattern):
                 ops_to_add.append(shape_op)
                 shape_ops.append(shape_op)
 
-        shape_ops_arg = [x for x in shape_ops]
+        shape_ops_arg: list[Operation] = [x for x in shape_ops]
 
         if isinstance(layout, NoneAttr):
             # get size based on shape
@@ -130,6 +136,7 @@ class AllocOpRewrite(RewritePattern):
             ops_to_add.append(total_size_op)
 
             # add offset
+            assert layout.data.offset
             offset_op = ConstantOp.from_int_and_width(layout.data.offset, IndexType())
             offset_bytes_op = MuliOp(offset_op, element_size_op)
             total_size_op = AddiOp(total_size_op, offset_bytes_op)
@@ -146,7 +153,7 @@ class AllocOpRewrite(RewritePattern):
             memory_space,
             alloc_op.alignment,
         )
-        conversion_cast_op = UnrealizedConversionCastOp.get([snax_alloc], memref_type)
+        conversion_cast_op = UnrealizedConversionCastOp.get([snax_alloc], [memref_type])
         rewriter.replace_matched_op(
             [*ops_to_add, snax_alloc, conversion_cast_op],
             new_results=conversion_cast_op.outputs,
@@ -156,5 +163,5 @@ class AllocOpRewrite(RewritePattern):
 class MemrefToSNAX(ModulePass):
     name = "memref-to-snax"
 
-    def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(AllocOpRewrite()).rewrite_module(module)
+    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+        PatternRewriteWalker(AllocOpRewrite()).rewrite_module(op)
