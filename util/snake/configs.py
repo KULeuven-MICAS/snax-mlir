@@ -66,7 +66,6 @@ def get_mlperf_tiny_config():
                     "reuse-memref-allocs",
                     "insert-sync-barrier",
                     "dispatch-regions",
-                    "linalg-to-library-call",
                     "snax-copy-to-dma",
                     "memref-to-snax",
                     "snax-to-func",

@@ -9,7 +9,6 @@ config["snaxoptflags"] = ",".join(
         "realize-memref-casts",
         "reuse-memref-allocs",
         "insert-sync-barrier",
-        "linalg-to-library-call",
         "snax-copy-to-dma",
         "memref-to-snax",
         "snax-to-func",
