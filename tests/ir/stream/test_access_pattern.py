@@ -60,7 +60,7 @@ def test_access_pattern_disable_dims():
     # test 4: disable 3 dims (all)
     disabled_pattern = access_pattern.disable_dims(3)
     expected_bounds: tuple[int, ...] = tuple()
-    expected_results = np.array([[], [], []])
+    expected_results = []
     assert disabled_pattern.bounds == expected_bounds
     assert (disabled_pattern.pattern.A == expected_results).all()
     assert (disabled_pattern.pattern.b == pattern.b).all()
