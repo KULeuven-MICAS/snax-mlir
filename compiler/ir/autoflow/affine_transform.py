@@ -127,5 +127,10 @@ class AffineTransform:
         new_b = self.A @ other.b + self.b
         return type(self)(new_A, new_b)
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, AffineTransform):
+            return False
+        return (self.A == other.A).all() and (self.b == other.b).all()
+
     def __str__(self):
         return f"AffineTransform(A=\n{self.A},\nb={self.b})"
