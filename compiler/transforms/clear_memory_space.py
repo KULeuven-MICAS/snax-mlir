@@ -1,6 +1,8 @@
+from typing import cast
+
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, func
-from xdsl.ir import BlockArgument
+from xdsl.ir import Attribute, BlockArgument
 from xdsl.passes import ModulePass
 
 from compiler.dialects.tsl import TiledStridedLayoutAttr
@@ -12,20 +14,21 @@ class ClearMemorySpace(ModulePass):
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         # helper function to clear the memory space of a memref
         # also clears the layout information of the memref - not used anymore
-        def clear_memory_space(t):
+        def clear_memory_space(t: Attribute) -> Attribute:
             if isinstance(t, builtin.MemRefType):
-                if isinstance(t.layout, TiledStridedLayoutAttr):
+                memref_t = cast(builtin.MemRefType[Attribute], t)
+                if isinstance(memref_t.layout, TiledStridedLayoutAttr):
                     return builtin.MemRefType(
-                        t.element_type,
-                        t.get_shape(),
+                        memref_t.element_type,
+                        memref_t.get_shape(),
                         builtin.NoneAttr(),
                         builtin.NoneAttr(),
                     )
                 else:
                     return builtin.MemRefType(
-                        t.element_type,
-                        t.get_shape(),
-                        t.layout,
+                        memref_t.element_type,
+                        memref_t.get_shape(),
+                        memref_t.layout,
                         builtin.NoneAttr(),
                     )
             return t
@@ -42,15 +45,17 @@ class ClearMemorySpace(ModulePass):
                 # Define new function type with updated inputs and outputs
                 # mapped to a default memory space
                 new_function_type = builtin.FunctionType.from_lists(
-                    map(clear_memory_space, op_in_module.function_type.inputs),
-                    map(clear_memory_space, op_in_module.function_type.outputs),
+                    list(map(clear_memory_space, op_in_module.function_type.inputs)),
+                    list(map(clear_memory_space, op_in_module.function_type.outputs)),
                 )
 
                 op_in_module.function_type = new_function_type
 
                 # change block args ssa values
                 if op_in_module.body.blocks:
-                    old_args = [old_arg for old_arg in op_in_module.body.block._args]
+                    old_args = [
+                        old_arg for old_arg in op_in_module.body.block._args
+                    ]  # pyright: ignore
                     new_args = [
                         BlockArgument(
                             clear_memory_space(old_arg.type),
@@ -61,4 +66,4 @@ class ClearMemorySpace(ModulePass):
                     ]
                     for old_arg, new_arg in zip(old_args, new_args):
                         old_arg.replace_by(new_arg)
-                    op_in_module.body.block._args = tuple(new_args)
+                    op_in_module.body.block._args = tuple(new_args)  # pyright: ignore

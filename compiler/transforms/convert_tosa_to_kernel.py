@@ -1,8 +1,10 @@
+from typing import cast
+
 from xdsl.builder import Builder
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, linalg, tensor, tosa
 from xdsl.dialects.builtin import IntegerAttr, i1, i8, i32
-from xdsl.ir import BlockArgument
+from xdsl.ir import Attribute, BlockArgument
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -15,7 +17,8 @@ from xdsl.pattern_rewriter import (
 from compiler.dialects import kernel
 
 
-def assert_int8(val) -> int:
+def assert_int8(val: float | int) -> int:
+    assert isinstance(val, int)
     assert isinstance(val, int)
     assert -128 <= val
     assert val <= 127
@@ -45,6 +48,9 @@ class RescaleClampPattern(RewritePattern):
             return
         if not isinstance(out_type := clamp_op.output.type, builtin.TensorType):
             return
+
+        inp_type = cast(builtin.TensorType[Attribute], inp_type)
+        out_type = cast(builtin.TensorType[Attribute], out_type)
 
         # create linalg body with kernel op with the params of tosa ops
 
