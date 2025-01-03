@@ -2095,7 +2095,7 @@ packages:
 - pypi: .
   name: snax-mlir
   version: 0.2.2
-  sha256: c9f2e4ecf6e5ea4a7c7fbb6faf0f5ad68b1b7879c35b68a9df285fe2512052a2
+  sha256: f5d2084d3c5c46a36d9e8ef168f5620c6b73f31f8c932574fb08737bfa74abe8
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@d72f46d92ec4b03ae05b91e70d75f93735e94393
   - pre-commit ; extra == 'dev'

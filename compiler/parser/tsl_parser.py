@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from xdsl.parser.base_parser import BaseParser, ParserState
+from xdsl.parser.base_parser import BaseParser
 from xdsl.utils.exceptions import ParseError
-from xdsl.utils.lexer import Token
+from xdsl.utils.lexer import Position, Token
 
 from compiler.ir.tsl import Stride, TiledStride, TiledStridedLayout
 
 
 class TSLParser(BaseParser):
-    def __init__(self, state: ParserState) -> None:
+    def __init__(self, state: Position) -> None:
         self._resume_from(state)
 
     def _parse_int_or_question(self, context_msg: str = "") -> int | None:
