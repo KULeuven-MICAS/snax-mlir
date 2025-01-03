@@ -10,7 +10,7 @@ def example_strides():
 
 
 @pytest.fixture()
-def example_tiled_strides(example_strides):
+def example_tiled_strides(example_strides: tuple[Stride, ...]):
     stride1, stride2, stride3, dynamic_stride = example_strides
     tiledStride1 = TiledStride([stride2, stride1])
     tiledStride2 = TiledStride([stride3, stride2, stride1])
@@ -18,7 +18,9 @@ def example_tiled_strides(example_strides):
     return tiledStride1, tiledStride2, tiledStride3
 
 
-def test_tiled_stride_constructor(example_strides, example_tiled_strides):
+def test_tiled_stride_constructor(
+    example_strides: tuple[Stride, ...], example_tiled_strides: tuple[TiledStride, ...]
+):
     stride1, stride2, stride3, _ = example_strides
     tiledStride1, tiledStride2, _ = example_tiled_strides
     assert tiledStride1.strides[0] == stride2
@@ -38,21 +40,23 @@ def test_tiled_stride_from_stride():
     assert tiledStride2.strides[2] == Stride(24, 4)
 
 
-def test_tiled_stride_depth(example_tiled_strides):
+def test_tiled_stride_depth(example_tiled_strides: tuple[TiledStride, ...]):
     tiledStride1, tiledStride2, tiledStride3 = example_tiled_strides
     assert tiledStride1.depth() == 2
     assert tiledStride2.depth() == 3
     assert tiledStride3.depth() == 2
 
 
-def test_tiled_stride_str(example_tiled_strides):
+def test_tiled_stride_str(example_tiled_strides: tuple[TiledStride, ...]):
     tiledStride1, tiledStride2, tiledStride3 = example_tiled_strides
     assert str(tiledStride1) == "[6, 4] -> (4, 1)"
     assert str(tiledStride2) == "[2, 6, 4] -> (24, 4, 1)"
     assert str(tiledStride3) == "[?, 4] -> (?, 1)"
 
 
-def test_tiled_stride_iter(example_strides, example_tiled_strides):
+def test_tiled_stride_iter(
+    example_strides: tuple[Stride, ...], example_tiled_strides: tuple[TiledStride, ...]
+):
     stride1, stride2, stride3, _ = example_strides
     strides = [stride3, stride2, stride1]
 
@@ -64,7 +68,7 @@ def test_tiled_stride_iter(example_strides, example_tiled_strides):
         assert stride == strides[depth]
 
 
-def test_tiled_stride_tile_bounds(example_tiled_strides):
+def test_tiled_stride_tile_bounds(example_tiled_strides: tuple[TiledStride, ...]):
     tiledStride1, tiledStride2, tiledStride3 = example_tiled_strides
     assert tiledStride1.tile_bounds() == [6, 4]
     assert tiledStride2.tile_bounds() == [2, 6, 4]

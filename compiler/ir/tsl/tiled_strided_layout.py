@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 
 import numpy as np
+from numpy._typing import NDArray
 
 from compiler.ir.tsl.stride import Stride
 from compiler.ir.tsl.tiled_stride import TiledStride
@@ -76,14 +77,14 @@ class TiledStridedLayout:
         the Tiled Strided Layout"""
         return self.tstrides[dim].strides[depth]
 
-    def all_values(self) -> np.ndarray:
+    def all_values(self) -> NDArray[np.int_]:
         """
         Returns a numpy array containing all the elements in the iteration space.
         """
         result = np.array([0])
 
         for _, _, stride in self:
-            next_stride = np.array(stride.all_values())
+            next_stride = np.array(stride.all_values(), dtype=np.int_)
             # for every stride, add a dimension and broadcast sum
             result = np.squeeze(
                 np.expand_dims(result, -1) + np.expand_dims(next_stride, 0)

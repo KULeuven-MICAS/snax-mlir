@@ -19,23 +19,23 @@ class TSLParser(BaseParser):
             return v
         self.raise_error("Expected an integer literal or `?`" + context_msg)
 
-    def _parse_step(self) -> list[int]:
+    def _parse_step(self) -> list[int | None]:
         """
         steps ::== `(` steps (`,` steps)* `)`
         """
         self._parse_token(Token.Kind.L_PAREN, "Expected opening bracket")
-        steps: list[int] = []
+        steps: list[int | None] = []
         while not self._parse_optional_token(Token.Kind.R_PAREN):
             steps.append(self._parse_int_or_question())
             self._parse_optional_token(Token.Kind.COMMA)
         return steps
 
-    def _parse_bound(self) -> list[int]:
+    def _parse_bound(self) -> list[int | None]:
         """
         bounds ::== `[` bound (`,` bound)* `]`
         """
         self._parse_token(Token.Kind.L_SQUARE, "Expected opening bracket")
-        bounds: list[int] = []
+        bounds: list[int | None] = []
         while not self._parse_optional_token(Token.Kind.R_SQUARE):
             bounds.append(self._parse_int_or_question())
             self._parse_optional_token(Token.Kind.COMMA)
@@ -49,7 +49,9 @@ class TSLParser(BaseParser):
         self._parse_token(Token.Kind.ARROW, "Expected arrow")
         steps = self._parse_step()
         if len(steps) != len(bounds):
-            raise ParseError("Expected same number of steps and bounds")
+            raise ParseError(
+                self._current_token.span, "Expected same number of steps and bounds"
+            )
         # construct the tiledstrides
         return TiledStride([Stride(step, bound) for step, bound in zip(steps, bounds)])
 
@@ -57,7 +59,7 @@ class TSLParser(BaseParser):
         """
         tsl ::= tiled-stride (`,` tiled-stride)*` (, offset: ` offset)?
         """
-        tstrides = []
+        tstrides: list[TiledStride] = []
         offset = 0
         while True:
             if self._current_token.kind == Token.Kind.GREATER:

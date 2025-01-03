@@ -27,13 +27,13 @@ def example_tsl_attr():
     return tsl_attr
 
 
-def test_tsl_attr_constructor(example_tsl_attr):
+def test_tsl_attr_constructor(example_tsl_attr: TiledStridedLayoutAttr):
     tsl = example_tsl_attr
     assert isinstance(tsl, TiledStridedLayoutAttr)
     assert isinstance(tsl.data, TiledStridedLayout)
 
 
-def test_tsl_attr_get_affine(example_tsl_attr):
+def test_tsl_attr_get_affine(example_tsl_attr: TiledStridedLayoutAttr):
     tsl = example_tsl_attr
     map = canonicalize_map(tsl.get_affine_map())
     assert map == canonicalize_map(

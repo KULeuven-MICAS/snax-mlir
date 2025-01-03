@@ -91,8 +91,6 @@ typeCheckingMode = "strict"
     "compiler/inference/helpers.py",
     "compiler/inference/scoped_setups.py",
     "compiler/inference/trace_acc_state.py",
-    "compiler/ir/tsl/tiled_strided_layout.py",
-    "compiler/parser/tsl_parser.py",
     "compiler/transforms/accfg_dedup.py",
     "compiler/transforms/clear_memory_space.py",
     "compiler/transforms/convert_linalg_to_accfg.py",
@@ -114,11 +112,7 @@ typeCheckingMode = "strict"
     "compiler/util/memref_descriptor.py",
     "tests/benchmark/test_snax_benchmark.py",
     "tests/dialects/test_snax.py",
-    "tests/dialects/test_tsl.py",
     "tests/inference/test_accfg_state_tracing.py",
-    "tests/ir/tsl/test_stride.py",
-    "tests/ir/tsl/test_tiled_stride.py",
-    "tests/ir/tsl/test_tiled_strided_layout.py",
     "tests/util/",
 ]
 

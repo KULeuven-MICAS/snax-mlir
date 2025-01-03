@@ -30,7 +30,7 @@ def example_tsl():
     return tsl, tsl2
 
 
-def test_tsl_constructor(example_tsl):
+def test_tsl_constructor(example_tsl: tuple[TiledStridedLayout, ...]):
     tsl, _ = example_tsl
     assert isinstance(tsl.tstrides[0], TiledStride)
     assert isinstance(tsl.tstrides[1], TiledStride)
@@ -38,7 +38,7 @@ def test_tsl_constructor(example_tsl):
 
 def test_tsl_from_strides():
     strides = [None, 1]
-    tile_bounds = [[16, 4], [16, 4]]
+    tile_bounds: list[list[int | None]] = [[16, 4], [16, 4]]
     tsl_constructor = TiledStridedLayout(
         [
             TiledStride([Stride(None, 16), Stride(None, 4)]),
@@ -49,13 +49,13 @@ def test_tsl_from_strides():
     assert tsl_constructor == tsl_from_strides
 
 
-def test_tsl_str(example_tsl):
+def test_tsl_str(example_tsl: tuple[TiledStridedLayout, ...]):
     tsl, tsl2 = example_tsl
     assert str(tsl) == "[2, 4] -> (32, 4), [2, 4] -> (16, 1), offset: 5"
     assert str(tsl2) == "[2, 4] -> (32, 4), [?, 4] -> (?, 1), offset: 7"
 
 
-def test_tsl_iter(example_tsl):
+def test_tsl_iter(example_tsl: tuple[TiledStridedLayout, ...]):
     tsl, _ = example_tsl
     count = 0
     for dim, depth, stride in tsl:
@@ -67,19 +67,19 @@ def test_tsl_iter(example_tsl):
     assert count == tsl.dimension() * tsl.tstrides[0].depth()
 
 
-def test_tsl_all_values(example_tsl):
+def test_tsl_all_values(example_tsl: tuple[TiledStridedLayout, ...]):
     tsl, tsl2 = example_tsl
     assert set(tsl.all_values()) == set(range(64))
     with pytest.raises(ValueError):
         tsl2.all_values()
 
 
-def test_tsl_tile_bounds(example_tsl):
+def test_tsl_tile_bounds(example_tsl: tuple[TiledStridedLayout, ...]):
     tsl, _ = example_tsl
     assert tsl.tile_bounds() == [[2, 4], [2, 4]]
 
 
-def test_tsl_self_overlaps(example_tsl):
+def test_tsl_self_overlaps(example_tsl: tuple[TiledStridedLayout, ...]):
     tsl, _ = example_tsl
     assert not tsl.self_overlaps()
 
@@ -100,7 +100,7 @@ def test_tsl_self_overlaps(example_tsl):
     assert tsl2.self_overlaps()
 
 
-def test_tsl_is_dense(example_tsl):
+def test_tsl_is_dense(example_tsl: tuple[TiledStridedLayout, ...]):
     tsl, _ = example_tsl
     assert tsl.is_dense()
 
@@ -121,7 +121,7 @@ def test_tsl_is_dense(example_tsl):
     assert not tsl2.is_dense()
 
 
-def test_tsl_equal_tile_bounds(example_tsl):
+def test_tsl_equal_tile_bounds(example_tsl: tuple[TiledStridedLayout, ...]):
     tsl, tsl2 = example_tsl
     assert tsl.equal_tile_bounds(tsl)
     assert not tsl.equal_tile_bounds(tsl2)
