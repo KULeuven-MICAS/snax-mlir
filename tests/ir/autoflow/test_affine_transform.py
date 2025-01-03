@@ -115,3 +115,11 @@ def test_affine_map_interop():
 
     original_map = transform.to_affine_map()
     assert canonicalize_map(map) == canonicalize_map(original_map)
+
+    invalid_map = AffineMap.from_callable(lambda a: (a // 2,))
+
+    with pytest.raises(
+        ValueError,
+        match="Affine map is not a pure linear transformation",
+    ):
+        AffineTransform.from_affine_map(invalid_map)

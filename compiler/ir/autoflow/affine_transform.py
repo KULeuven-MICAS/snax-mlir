@@ -3,7 +3,14 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 from typing_extensions import Self
-from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineExpr, AffineMap
+from xdsl.ir.affine import (
+    AffineBinaryOpExpr,
+    AffineBinaryOpKind,
+    AffineConstantExpr,
+    AffineDimExpr,
+    AffineExpr,
+    AffineMap,
+)
 
 
 @dataclass(frozen=True)
@@ -31,8 +38,21 @@ class AffineTransform:
         """
         Return the affine transform representation of the given affine map.
 
-        This assumes the affine map is a pure linear transformation (i.e., no floordiv/ceildiv/modulo operations)
+        For this, the affine map must be a pure linear transformation (i.e., no floordiv/ceildiv/modulo operations)
         """
+
+        # check for pure linear transformation
+        for result in map.results:
+            for expr in result.dfs():
+                if isinstance(expr, AffineBinaryOpExpr):
+                    if expr.kind in (
+                        AffineBinaryOpKind.FloorDiv,
+                        AffineBinaryOpKind.CeilDiv,
+                        AffineBinaryOpKind.Mod,
+                    ):
+                        raise ValueError(
+                            "Affine map is not a pure linear transformation"
+                        )
 
         # generate a list with n zeros and a 1 at index d:
         # [0, 0, 0, 1]
