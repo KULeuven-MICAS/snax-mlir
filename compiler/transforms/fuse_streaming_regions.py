@@ -118,9 +118,9 @@ class FuseElementwisePattern(RewritePattern):
                     InsertPoint.at_end(streaming_region_op.body.block),
                 )
                 for old_result, new_result in zip(o.results, producer_generic.results):
-                    rewriter._replace_all_uses_with(
+                    rewriter._replace_all_uses_with(  # pyright: ignore
                         old_result, new_result
-                    )  # pyright: ignore
+                    )
             # do not use yield op from producer region
             elif isinstance(o, stream.YieldOp):
                 continue

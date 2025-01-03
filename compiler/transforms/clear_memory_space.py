@@ -54,8 +54,9 @@ class ClearMemorySpace(ModulePass):
                 # change block args ssa values
                 if op_in_module.body.blocks:
                     old_args = [
-                        old_arg for old_arg in op_in_module.body.block._args
-                    ]  # pyright: ignore
+                        old_arg
+                        for old_arg in op_in_module.body.block._args  # pyright: ignore
+                    ]
                     new_args = [
                         BlockArgument(
                             clear_memory_space(old_arg.type),
