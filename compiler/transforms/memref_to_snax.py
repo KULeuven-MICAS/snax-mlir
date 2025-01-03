@@ -136,7 +136,7 @@ class AllocOpRewrite(RewritePattern):
             ops_to_add.append(total_size_op)
 
             # add offset
-            assert layout.data.offset
+            assert layout.data.offset is not None
             offset_op = ConstantOp.from_int_and_width(layout.data.offset, IndexType())
             offset_bytes_op = MuliOp(offset_op, element_size_op)
             total_size_op = AddiOp(total_size_op, offset_bytes_op)
