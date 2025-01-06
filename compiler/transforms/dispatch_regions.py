@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, scf
-from xdsl.ir import Block, Operation
+from xdsl.ir import Block, Operation, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -23,7 +23,11 @@ class DispatchRegionsRewriter(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter):
-        def dispatcher(block: Block, core_cond: builtin.i1, dispatch_rule: Callable):
+        def dispatcher(
+            block: Block,
+            core_cond: SSAValue | Operation,
+            dispatch_rule: Callable[[Operation], bool],
+        ):
             """Helper function to create dispatches in a block. If an operation is
             dispatchable according to dispatch_rule, this function will enclose it in
             an scf.if block based on the condition core_cond"""
@@ -156,11 +160,11 @@ class DispatchRegions(ModulePass):
 
     nb_cores: int = 2  # amount of cores
 
-    def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
+    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             DispatchRegionsRewriter(self.nb_cores),
             apply_recursively=False,
-        ).rewrite_module(module)
+        ).rewrite_module(op)
         PatternRewriteWalker(
             InsertFunctionDeclaration(), apply_recursively=False
-        ).rewrite_module(module)
+        ).rewrite_module(op)
