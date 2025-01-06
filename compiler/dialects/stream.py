@@ -115,6 +115,11 @@ class StreamingRegionOpBase(IRDLOperation):
             result_types=[result_types],
         )
 
+
+@irdl_op_definition
+class StreamingRegionOp(StreamingRegionOpBase):
+    name = "stream.streaming_region"
+
     def get_pattern_bounds_to_shapes_map(self) -> AffineMap:
         """
         Returns mapping from pattern iteration bounds to operand shapes
@@ -150,14 +155,13 @@ class StreamingRegionOpBase(IRDLOperation):
 
 
 @irdl_op_definition
-class StreamingRegionOp(StreamingRegionOpBase):
-    name = "stream.streaming_region"
-
-
-@irdl_op_definition
 class ScheduleOp(StreamingRegionOpBase):
     name = "stream.schedule"
 
+    # The bounds of the iteration space of the schedule
+    bounds = prop_def(ParameterDef[ArrayAttr[IntegerAttr[IndexType]]])
+
+    # The tiling factors for the different dimensions of inputs and outputs
     tiles = prop_def(ParameterDef[ArrayAttr[ArrayAttr[IntegerAttr[IndexType]]]])
 
     def __init__(
@@ -166,6 +170,7 @@ class ScheduleOp(StreamingRegionOpBase):
         outputs: Sequence[SSAValue | Operation],
         patterns: ArrayAttr[AffineMapAttr],
         body: Region,
+        bounds: ArrayAttr[IntegerAttr[IndexType]] | Sequence[int],
         tiles: ArrayAttr[ArrayAttr[IntegerAttr[IndexType]]] | Sequence[Sequence[int]],
         accelerator: str | StringAttr | None = None,
         result_types: Sequence[Attribute] = (),
@@ -177,8 +182,18 @@ class ScheduleOp(StreamingRegionOpBase):
                     for tile in tiles
                 ]
             )
+        if isinstance(bounds, Sequence):
+            bounds = ArrayAttr(
+                [IntegerAttr.from_index_int_value(val) for val in bounds]
+            )
         super().__init__(
-            inputs, outputs, patterns, body, accelerator, result_types, {"tiles": tiles}
+            inputs,
+            outputs,
+            patterns,
+            body,
+            accelerator,
+            result_types,
+            {"tiles": tiles, "bounds": bounds},
         )
 
 
