@@ -94,7 +94,6 @@ typeCheckingMode = "strict"
     "compiler/transforms/accfg_dedup.py",
     "compiler/transforms/convert_linalg_to_accfg.py",
     "compiler/transforms/frontend/preprocess_mlperf_tiny.py",
-    "compiler/transforms/linalg_to_library_call.py",
     "compiler/transforms/reuse_memref_allocs.py",
     "compiler/transforms/set_memory_layout.py",
     "compiler/transforms/snax_copy_to_dma.py",
