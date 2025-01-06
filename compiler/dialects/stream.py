@@ -177,7 +177,9 @@ class ScheduleOp(StreamingRegionOpBase):
                     for tile in tiles
                 ]
             )
-        super().__init__(inputs, outputs, patterns, body, accelerator, result_types)
+        super().__init__(
+            inputs, outputs, patterns, body, accelerator, result_types, {"tiles": tiles}
+        )
 
 
 @irdl_op_definition
