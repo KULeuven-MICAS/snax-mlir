@@ -13,55 +13,23 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
-from compiler.accelerators import find_accelerator_op
-from compiler.accelerators.registry import AcceleratorRegistry
-from compiler.accelerators.snax import SNAXStreamer
 from compiler.dialects import snax_stream, stream
 from compiler.ir.stream import Schedule, SchedulePattern, scheduler
-from compiler.ir.stream.access_pattern import Template
-
-
-def get_accelerator_info(op: stream.StreamingRegionOpBase) -> Template:
-    assert op.accelerator is not None
-
-    # Go and fetch the accelerator op
-    accelerator_str = op.accelerator.data
-    acc_op = find_accelerator_op(op, accelerator_str)
-
-    if not acc_op:
-        raise RuntimeError("AcceleratorOp not found!")
-
-    # get template and template_bounds
-    accelerator_type = AcceleratorRegistry().get_acc_info(acc_op)
-    assert issubclass(accelerator_type, SNAXStreamer)
-
-    template = accelerator_type.get_template(op)
-
-    return template
 
 
 @dataclass
 class AutoflowScheduler(RewritePattern):
     """
-    A pass to convert streaming region operations to snax stream.
+    A pass to convert streaming region operations to schedules.
 
-    First, the operation is scheduled to an accelerator with the schedule_streams algorithm.
-
-    After this, this boils down to combining the data access patterns of a stream op (operation -> data),
-    with a certain data layout: an affine map from (data -> memory) into a mapping (operation -> memory).
-
-    This takes the form of a snax_stream access pattern, mapping (operation -> memory)
-    which, in hardware, is  realized by the Streamers.
-
-    Current restrictions:
-        We are only handling default memory layouts for now (NoneAttr)
+    Here, the operation is scheduled to an accelerator according to the accelerator template.
     """
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
         self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
     ):
-        template = get_accelerator_info(op)
+        template = op.get_accelerator_info()
 
         # Make sure the operands are memrefs
         for memref_operand in op.operands:
@@ -79,7 +47,7 @@ class AutoflowScheduler(RewritePattern):
         schedule_op = stream.ScheduleOp(
             op.inputs,
             op.outputs,
-            ArrayAttr([AffineMapAttr(s.pattern) for s in schedule]),
+            ArrayAttr([AffineMapAttr(s.pattern.to_affine_map()) for s in schedule]),
             rewriter.move_region_contents_to_new_regions(op.body),
             schedule[0].bounds,
             [[]],
@@ -94,7 +62,7 @@ class AutoflowScheduler(RewritePattern):
 class LayoutResolution(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: stream.ScheduleOp, rewriter: PatternRewriter):
-        template = get_accelerator_info(op)
+        template = op.get_accelerator_info()
 
         bounds = [x.value.data for x in op.bounds.data]
         schedule = Schedule(
