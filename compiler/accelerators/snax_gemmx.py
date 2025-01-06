@@ -271,7 +271,7 @@ class SNAXGEMMXAccelerator(
         ]
 
     @staticmethod
-    def get_template(op: stream.StreamingRegionOp) -> Template:
+    def get_template(op: stream.StreamingRegionOpBase) -> Template:
         assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
         if isinstance(generic_op.body.block.first_op, kernel.QMacOp):
             # matmul

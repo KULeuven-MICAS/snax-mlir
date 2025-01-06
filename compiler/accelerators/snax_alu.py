@@ -194,7 +194,7 @@ class SNAXAluAccelerator(
         return op
 
     @staticmethod
-    def get_template(op: stream.StreamingRegionOp):
+    def get_template(op: stream.StreamingRegionOpBase):
         template = [AffineMap.from_callable(lambda x, y: (4 * x + y,))] * 3
         template_bounds = (None, 4)
         return Template(TemplatePattern(template_bounds, tp) for tp in template)
