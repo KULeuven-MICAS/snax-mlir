@@ -1,5 +1,3 @@
-from typing import cast
-
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, linalg, memref
 from xdsl.dialects.memref import MemorySpaceCastOp
@@ -12,6 +10,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.rewriter import InsertPoint
+from xdsl.utils.hints import isa
 
 from compiler.dialects import stream
 from compiler.dialects.snax import LayoutCast
@@ -56,11 +55,9 @@ class RealizeMemrefCasts(RewritePattern):
 
         # now perform casting by inserting memref copies and allocs
         source_type = source_op.source.type
-        assert isinstance(source_type, builtin.MemRefType)
-        source_type = cast(builtin.MemRefType[Attribute], source_type)
+        assert isa(source_type, builtin.MemRefType[Attribute])
         dest_type = op.dest.type
-        assert isinstance(dest_type, builtin.MemRefType)
-        dest_type = cast(builtin.MemRefType[Attribute], dest_type)
+        assert isa(dest_type, builtin.MemRefType[Attribute])
 
         # create allocation
 

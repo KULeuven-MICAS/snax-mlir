@@ -10,6 +10,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.utils.hints import isa
 
 from compiler.dialects import stream
 from compiler.util.snax_memory import L1, L3
@@ -37,8 +38,7 @@ class InitFuncMemorySpace(RewritePattern):
 
         # Mapping function to assign default memory space "L3"
         def change_to_memory_space(t: Attribute) -> Attribute:
-            if isinstance(t, builtin.MemRefType):
-                t = cast(builtin.MemRefType[Attribute], t)
+            if isa(t, builtin.MemRefType[Attribute]):
                 if isinstance(t.memory_space, builtin.NoneAttr):
                     return builtin.MemRefType(
                         t.element_type,
@@ -155,10 +155,10 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
                     cast_op = use.operation
                     break
             # If cast op not found, create and insert new one
-            assert isinstance(optype := operand.type, builtin.MemRefType)
+            assert isa(optype := operand.type, builtin.MemRefType[Attribute])
             if cast_op is None:
                 cast_op = memref.MemorySpaceCastOp.from_type_and_target_space(
-                    operand, cast(builtin.MemRefType[Attribute], optype), L1
+                    operand, optype, L1
                 )
                 rewriter.insert_op_before_matched_op(cast_op)
 
@@ -195,18 +195,15 @@ class HandleFuncReturns(RewritePattern):
             func_op_output = outputs[i]
             func_return_output = op.arguments[i]
 
-            if not isinstance(func_op_output, builtin.MemRefType):
+            if not isa(func_op_output, builtin.MemRefType[Attribute]):
                 new_arguments.append(func_return_output)
                 continue
-            if not isinstance(
-                func_return_output_type := func_return_output.type, builtin.MemRefType
+            if not isa(
+                func_return_output_type := func_return_output.type,
+                builtin.MemRefType[Attribute],
             ):
                 new_arguments.append(func_return_output)
                 continue
-
-            func_return_output_type = cast(
-                builtin.MemRefType[Attribute], func_return_output_type
-            )
 
             if func_op_output.memory_space != func_return_output_type.memory_space:
                 # create cast op
