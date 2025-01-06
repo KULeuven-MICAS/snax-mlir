@@ -1,7 +1,9 @@
 import numpy as np
 import pytest
+from xdsl.ir.affine import AffineMap
 
 from compiler.ir.autoflow import AffineTransform
+from compiler.util.canonicalize_affine import canonicalize_map
 
 
 def test_affine_transform_initialization_valid():
@@ -95,3 +97,29 @@ def test_affine_transform_str():
     transform = AffineTransform(A, b)
     expected = "AffineTransform(A=\n[[1 0]\n [0 1]],\nb=[1 2])"
     assert str(transform) == expected
+
+
+def test_affine_map_interop():
+    map = AffineMap.from_callable(lambda a, b, c: (a + 2 * b, -b + c, 3 * a + c + 4))
+
+    # convert AffineMap to AffineTransform
+    transform = AffineTransform.from_affine_map(map)
+
+    expected_a = np.array([[1, 2, 0], [0, -1, 1], [3, 0, 1]])
+    expected_b = np.array([0, 0, 4])
+
+    assert (transform.A == expected_a).all()
+    assert (transform.b == expected_b).all()
+
+    # convert back to AffineMap
+
+    original_map = transform.to_affine_map()
+    assert canonicalize_map(map) == canonicalize_map(original_map)
+
+    invalid_map = AffineMap.from_callable(lambda a: (a // 2,))
+
+    with pytest.raises(
+        ValueError,
+        match="Affine map is not a pure linear transformation",
+    ):
+        AffineTransform.from_affine_map(invalid_map)
