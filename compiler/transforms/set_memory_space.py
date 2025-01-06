@@ -1,6 +1,8 @@
+from typing import cast
+
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, func, linalg, memref
-from xdsl.ir import SSAValue
+from xdsl.ir import Attribute, Operation, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -8,6 +10,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.utils.hints import isa
 
 from compiler.dialects import stream
 from compiler.util.snax_memory import L1, L3
@@ -34,8 +37,8 @@ class InitFuncMemorySpace(RewritePattern):
             return
 
         # Mapping function to assign default memory space "L3"
-        def change_to_memory_space(t):
-            if isinstance(t, builtin.MemRefType):
+        def change_to_memory_space(t: Attribute) -> Attribute:
+            if isa(t, builtin.MemRefType[Attribute]):
                 if isinstance(t.memory_space, builtin.NoneAttr):
                     return builtin.MemRefType(
                         t.element_type,
@@ -48,8 +51,8 @@ class InitFuncMemorySpace(RewritePattern):
         # Define new function type with updated inputs and outputs
         # mapped to a default memory space
         new_function_type = builtin.FunctionType.from_lists(
-            map(change_to_memory_space, op.function_type.inputs),
-            map(change_to_memory_space, op.function_type.outputs),
+            list(map(change_to_memory_space, op.function_type.inputs)),
+            list(map(change_to_memory_space, op.function_type.outputs)),
         )
 
         # Change region of function to use new argument types
@@ -72,7 +75,8 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.GetGlobalOp, rewriter: PatternRewriter):
         # global variables should go in memory space L3
-        memspace = op.memref.type.memory_space
+        memref_type = cast(builtin.MemRefType[Attribute], op.memref.type)
+        memspace = memref_type.memory_space
 
         # If memory space is already L3, don't do anything
         if memspace == L3:
@@ -80,9 +84,9 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
 
         # otherwise, create new memref type with correct memory space
         new_memref_type = builtin.MemRefType(
-            op.memref.type.element_type,
-            op.memref.type.get_shape(),
-            op.memref.type.layout,
+            memref_type.element_type,
+            memref_type.get_shape(),
+            memref_type.layout,
             L3,
         )
 
@@ -97,7 +101,8 @@ class InitMemRefAllocMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.AllocOp, rewriter: PatternRewriter):
         # allocs should go in memory space L1
-        memspace = op.memref.type.memory_space
+        memref_type = cast(builtin.MemRefType[Attribute], op.memref.type)
+        memspace = memref_type.memory_space
 
         if memspace == L1:
             # good, nothing left to do
@@ -105,11 +110,11 @@ class InitMemRefAllocMemorySpace(RewritePattern):
 
         # create new alloc op
         new_op = memref.AllocOp.get(
-            op.memref.type.element_type,
+            memref_type.element_type,
             op.alignment,
-            op.memref.type.get_shape(),
+            memref_type.get_shape(),
             dynamic_sizes=op.dynamic_sizes,
-            layout=op.memref.type.layout,
+            layout=memref_type.layout,
             memory_space=L1,
         )
 
@@ -129,27 +134,31 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
         operands_to_memory_cast = tuple(
             x
             for x in op.operands
-            if isinstance(x.type, builtin.MemRefType) and x.type.memory_space != L1
+            if isinstance(memref_type := x.type, builtin.MemRefType)
+            and memref_type.memory_space != L1
         )
 
         if not operands_to_memory_cast:
             return
 
-        def get_cast_op(operand) -> memref.MemorySpaceCastOp:
+        def get_cast_op(operand: SSAValue) -> memref.MemorySpaceCastOp:
             # cast required: find previous cast or create new one
             cast_op = None
             for use in operand.uses:
                 if (
                     isinstance(use.operation, memref.MemorySpaceCastOp)
-                    and isinstance(use.operation.dest.type, builtin.MemRefType)
-                    and use.operation.dest.type.memory_space == L1
+                    and isinstance(
+                        use_type := use.operation.dest.type, builtin.MemRefType
+                    )
+                    and use_type.memory_space == L1
                 ):
                     cast_op = use.operation
                     break
             # If cast op not found, create and insert new one
+            assert isa(optype := operand.type, builtin.MemRefType[Attribute])
             if cast_op is None:
                 cast_op = memref.MemorySpaceCastOp.from_type_and_target_space(
-                    operand, operand.type, L1
+                    operand, optype, L1
                 )
                 rewriter.insert_op_before_matched_op(cast_op)
 
@@ -174,11 +183,11 @@ class HandleFuncReturns(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: func.ReturnOp, rewriter: PatternRewriter):
         # get function op
-        func_op: func.FuncOp = op.parent_op()
+        assert isinstance(func_op := op.parent_op(), func.FuncOp)
 
         outputs = [*func_op.function_type.outputs]
 
-        new_arguments = []
+        new_arguments: list[SSAValue | Operation] = []
         changes_made = False
 
         # all outputs must be in the correct memory space
@@ -186,18 +195,21 @@ class HandleFuncReturns(RewritePattern):
             func_op_output = outputs[i]
             func_return_output = op.arguments[i]
 
-            if not isinstance(func_op_output, builtin.MemRefType):
+            if not isa(func_op_output, builtin.MemRefType[Attribute]):
                 new_arguments.append(func_return_output)
                 continue
-            if not isinstance(func_return_output.type, builtin.MemRefType):
+            if not isa(
+                func_return_output_type := func_return_output.type,
+                builtin.MemRefType[Attribute],
+            ):
                 new_arguments.append(func_return_output)
                 continue
 
-            if func_op_output.memory_space != func_return_output.type.memory_space:
+            if func_op_output.memory_space != func_return_output_type.memory_space:
                 # create cast op
                 cast_op = memref.MemorySpaceCastOp.from_type_and_target_space(
                     func_return_output,
-                    func_return_output.type,
+                    func_return_output_type,
                     func_op_output.memory_space,
                 )
                 rewriter.insert_op_before_matched_op(cast_op)
