@@ -1,9 +1,8 @@
-from typing import cast
-
 from xdsl.context import MLContext
 from xdsl.dialects import builtin, func
 from xdsl.ir import Attribute, BlockArgument
 from xdsl.passes import ModulePass
+from xdsl.utils.hints import isa
 
 from compiler.dialects.tsl import TiledStridedLayoutAttr
 
@@ -15,20 +14,19 @@ class ClearMemorySpace(ModulePass):
         # helper function to clear the memory space of a memref
         # also clears the layout information of the memref - not used anymore
         def clear_memory_space(t: Attribute) -> Attribute:
-            if isinstance(t, builtin.MemRefType):
-                memref_t = cast(builtin.MemRefType[Attribute], t)
-                if isinstance(memref_t.layout, TiledStridedLayoutAttr):
+            if isa(t, builtin.MemRefType[Attribute]):
+                if isinstance(t.layout, TiledStridedLayoutAttr):
                     return builtin.MemRefType(
-                        memref_t.element_type,
-                        memref_t.get_shape(),
+                        t.element_type,
+                        t.get_shape(),
                         builtin.NoneAttr(),
                         builtin.NoneAttr(),
                     )
                 else:
                     return builtin.MemRefType(
-                        memref_t.element_type,
-                        memref_t.get_shape(),
-                        memref_t.layout,
+                        t.element_type,
+                        t.get_shape(),
+                        t.layout,
                         builtin.NoneAttr(),
                     )
             return t
