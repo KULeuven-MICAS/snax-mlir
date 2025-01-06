@@ -10,8 +10,9 @@ from xdsl.ir import Operation, OpResult, SSAValue
 from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.streamers import StreamerConfiguration
 from compiler.accelerators.streamers.streamers import StreamerFlag, StreamerOpts
-from compiler.dialects import accfg, stream
+from compiler.dialects import accfg
 from compiler.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
+from compiler.dialects.stream import StreamingRegionOpBase
 from compiler.ir.stream import Template
 
 c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
@@ -279,7 +280,7 @@ class SNAXStreamer(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_template(op: stream.StreamingRegionOpBase) -> Template:
+    def get_template(op: StreamingRegionOpBase) -> Template:
         """
         Get the template for this acelerator to schedule a given
         stream.streaming_region operation.

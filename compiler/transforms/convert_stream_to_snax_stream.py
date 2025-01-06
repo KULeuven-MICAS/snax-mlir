@@ -13,8 +13,31 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
+from compiler.accelerators.registry import AcceleratorRegistry
+from compiler.accelerators.snax import SNAXStreamer
+from compiler.accelerators.util import find_accelerator_op
 from compiler.dialects import snax_stream, stream
 from compiler.ir.stream import Schedule, SchedulePattern, scheduler
+from compiler.ir.stream.access_pattern import Template
+
+
+def get_accelerator_info(op: stream.StreamingRegionOpBase) -> Template:
+    assert op.accelerator is not None
+
+    # Go and fetch the accelerator op
+    accelerator_str = op.accelerator.data
+    acc_op = find_accelerator_op(op, accelerator_str)
+
+    if not acc_op:
+        raise RuntimeError("AcceleratorOp not found!")
+
+    # get template and template_bounds
+    accelerator_type = AcceleratorRegistry().get_acc_info(acc_op)
+    assert issubclass(accelerator_type, SNAXStreamer)
+
+    template = accelerator_type.get_template(op)
+
+    return template
 
 
 @dataclass
@@ -29,7 +52,7 @@ class AutoflowScheduler(RewritePattern):
     def match_and_rewrite(
         self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
     ):
-        template = op.get_accelerator_info()
+        template = get_accelerator_info(op)
 
         # Make sure the operands are memrefs
         for memref_operand in op.operands:
@@ -62,7 +85,7 @@ class AutoflowScheduler(RewritePattern):
 class LayoutResolution(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: stream.ScheduleOp, rewriter: PatternRewriter):
-        template = op.get_accelerator_info()
+        template = get_accelerator_info(op)
 
         bounds = [x.value.data for x in op.bounds.data]
         schedule = Schedule(

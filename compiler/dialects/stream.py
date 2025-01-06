@@ -36,11 +36,6 @@ from xdsl.irdl import (
     var_result_def,
 )
 
-from compiler.accelerators.registry import AcceleratorRegistry
-from compiler.accelerators.snax import SNAXStreamer
-from compiler.accelerators.util import find_accelerator_op
-from compiler.ir.stream.access_pattern import Template
-
 """
 Custom `stream` dialect, to simplify things in a more principled approach, including:
 - inherent support for tensors
@@ -119,24 +114,6 @@ class StreamingRegionOpBase(IRDLOperation):
             },
             result_types=[result_types],
         )
-
-    def get_accelerator_info(self) -> Template:
-        assert self.accelerator is not None
-
-        # Go and fetch the accelerator op
-        accelerator_str = self.accelerator.data
-        acc_op = find_accelerator_op(self, accelerator_str)
-
-        if not acc_op:
-            raise RuntimeError("AcceleratorOp not found!")
-
-        # get template and template_bounds
-        accelerator_type = AcceleratorRegistry().get_acc_info(acc_op)
-        assert issubclass(accelerator_type, SNAXStreamer)
-
-        template = accelerator_type.get_template(self)
-
-        return template
 
 
 @irdl_op_definition
