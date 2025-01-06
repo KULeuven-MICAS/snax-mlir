@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, memref
-from xdsl.dialects.builtin import MemRefType
+from xdsl.dialects.builtin import AffineMapAttr, ArrayAttr, MemRefType
 from xdsl.ir import Operation
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
@@ -17,12 +17,31 @@ from compiler.accelerators import find_accelerator_op
 from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
 from compiler.dialects import snax_stream, stream
-from compiler.dialects.snax import StreamerConfigurationAttr
 from compiler.ir.stream import Schedule, SchedulePattern, scheduler
+from compiler.ir.stream.access_pattern import Template
+
+
+def get_accelerator_info(op: stream.StreamingRegionOpBase) -> Template:
+    assert op.accelerator is not None
+
+    # Go and fetch the accelerator op
+    accelerator_str = op.accelerator.data
+    acc_op = find_accelerator_op(op, accelerator_str)
+
+    if not acc_op:
+        raise RuntimeError("AcceleratorOp not found!")
+
+    # get template and template_bounds
+    accelerator_type = AcceleratorRegistry().get_acc_info(acc_op)
+    assert issubclass(accelerator_type, SNAXStreamer)
+
+    template = accelerator_type.get_template(op)
+
+    return template
 
 
 @dataclass
-class MemrefStreamToSnaxPattern(RewritePattern):
+class AutoflowScheduler(RewritePattern):
     """
     A pass to convert streaming region operations to snax stream.
 
@@ -42,27 +61,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
     def match_and_rewrite(
         self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
     ):
-        # Handle only stream ops dispatched to an accelerator:
-        if op.accelerator is None:
-            return
-
-        # Go and fetch the accelerator op
-        accelerator_str = op.accelerator.data
-        acc_op = find_accelerator_op(op, accelerator_str)
-
-        if not acc_op:
-            raise RuntimeError("AcceleratorOp not found!")
-
-        if "streamer_config" not in acc_op.attributes:
-            raise RuntimeError("Streamer interface not found for given accelerator op")
-        streamer_config = acc_op.attributes["streamer_config"]
-        assert isinstance(streamer_config, StreamerConfigurationAttr)
-
-        # get template and template_bounds
-        accelerator_type = AcceleratorRegistry().get_acc_info(acc_op)
-        assert issubclass(accelerator_type, SNAXStreamer)
-
-        template = accelerator_type.get_template(op)
+        template = get_accelerator_info(op)
 
         # Make sure the operands are memrefs
         for memref_operand in op.operands:
@@ -76,6 +75,31 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             for pattern in op.patterns.data
         )
         schedule = scheduler(template, schedule)
+
+        schedule_op = stream.ScheduleOp(
+            op.inputs,
+            op.outputs,
+            ArrayAttr([AffineMapAttr(s.pattern) for s in schedule]),
+            rewriter.move_region_contents_to_new_regions(op.body),
+            schedule[0].bounds,
+            [[]],
+            op.accelerator,
+            op.result_types,
+        )
+
+        rewriter.replace_matched_op(schedule_op)
+
+
+@dataclass
+class LayoutResolution(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: stream.ScheduleOp, rewriter: PatternRewriter):
+        template = get_accelerator_info(op)
+
+        bounds = [x.value.data for x in op.bounds.data]
+        schedule = Schedule(
+            SchedulePattern(bounds, pattern.data) for pattern in op.patterns
+        )
 
         # We are now ready to convert the stream access patterns into snax stride patterns
         # construct the strided patterns for SNAX Streamers
@@ -159,7 +183,8 @@ class MemrefStreamToSnaxPattern(RewritePattern):
         # TODO: what is still required is a better system for the unused operands
         # of snax_gemmx / other accelerators. this now fills in empty/zero patterns for the unused operands.
 
-        if acc_op.name_prop.root_reference.data == "snax_gemmx":
+        assert op.accelerator
+        if op.accelerator.data == "snax_gemmx":
             empty_pattern = snax_stream.StridePattern(
                 upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0]
             )
@@ -243,7 +268,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
                     memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
                 )
 
-        if accelerator_str == "snax_gemmx":
+        if op.accelerator.data == "snax_gemmx":
             # make last spatial stride patterns 2d
             snax_stride_patterns[-2] = snax_stream.StridePattern(
                 upper_bounds=snax_stride_patterns[-2].upper_bounds,
@@ -261,7 +286,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             inputs=new_inputs,
             outputs=new_outputs,
             stride_patterns=snax_stride_patterns,
-            accelerator=accelerator_str,
+            accelerator=op.accelerator.data,
             body=rewriter.move_region_contents_to_new_regions(op.body),
         )
 
@@ -273,4 +298,5 @@ class ConvertStreamToSnaxStream(ModulePass):
     name = "convert-stream-to-snax-stream"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(MemrefStreamToSnaxPattern()).rewrite_module(op)
+        PatternRewriteWalker(AutoflowScheduler()).rewrite_module(op)
+        PatternRewriteWalker(LayoutResolution()).rewrite_module(op)
