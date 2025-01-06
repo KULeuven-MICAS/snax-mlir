@@ -96,7 +96,7 @@ class MemrefStreamToSnaxPattern(RewritePattern):
             data_mem_map: AffineMap = memref_type.get_affine_map_in_bytes()
 
             # Mapping from access to data:
-            access_data_map: AffineMap = schedule[operand].pattern
+            access_data_map: AffineMap = schedule[operand].pattern.to_affine_map()
 
             # Mapping from access to memory:
             access_mem_map: AffineMap = data_mem_map.compose(access_data_map)
