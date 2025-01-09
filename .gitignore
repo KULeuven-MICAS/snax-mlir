@@ -8,6 +8,8 @@
 *.vcd
 *.csv
 
+.snakemake
+
 .env
 .venv
 .ruff_cache
