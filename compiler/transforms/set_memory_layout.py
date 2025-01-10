@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from xdsl.context import MLContext
-from xdsl.dialects import builtin, linalg
+from xdsl.dialects import builtin
 from xdsl.parser import MemRefType
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -22,23 +22,26 @@ from compiler.ir.tsl import Stride, TiledStride, TiledStridedLayout
 
 class AddMemoryLayoutSIMD(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, linalg_op: linalg.GenericOp, rewriter: PatternRewriter):
+    def match_and_rewrite(
+        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
+    ):
         # check if operation is dispatched via library call, as set by e.g.
         # the dispatch-kernels pass
-        if linalg_op.library_call is None:
+
+        if op.accelerator is None:
             return
         else:
-            library_call = linalg_op.library_call.data
+            library_call = op.accelerator.data
 
         # check for library call
-        if library_call == "snax_gemmx_stream":
-            if not isinstance(linalg_op.body.block.first_op, RescaleOp):
+        if library_call == "snax_gemmx":
+            if not isinstance(op.body.block.first_op.body.block.first_op, RescaleOp):
                 return
 
             shaped_operands: list[MemRefType] = [
-                op.type
-                for op in linalg_op.operands
-                if isinstance(op.type, builtin.MemRefType)
+                operand.type
+                for operand in op.operands
+                if isinstance(operand.type, builtin.MemRefType)
             ]
 
             m = shaped_operands[0].get_shape()[0]
@@ -83,27 +86,17 @@ class AddMemoryLayoutSIMD(RewritePattern):
 
             # insert layout_cast ops
             new_input_a = LayoutCast.from_type_and_target_layout(
-                linalg_op.inputs[0], tsl_input
+                op.inputs[0], tsl_input
             )
 
             new_output = LayoutCast.from_type_and_target_layout(
-                linalg_op.outputs[0], tsl_output
+                op.outputs[0], tsl_output
             )
 
-            new_linalg_op = linalg.GenericOp(
-                inputs=[new_input_a.dest],
-                outputs=[new_output.dest],
-                body=rewriter.move_region_contents_to_new_regions(linalg_op.regions[0]),
-                indexing_maps=linalg_op.indexing_maps,
-                iterator_types=linalg_op.iterator_types,
-                doc=linalg_op.doc,
-                library_call=linalg_op.library_call,
-            )
+            rewriter.insert_op([new_input_a, new_output], InsertPoint.before(op))
 
-            rewriter.insert_op_before_matched_op([new_input_a, new_output])
-            rewriter.replace_op(linalg_op, new_linalg_op)
-
-        pass
+            op.operands[0] = new_input_a.dest
+            op.operands[1] = new_output.dest
 
 
 class GemmLayout(StrEnum):
@@ -127,41 +120,30 @@ class AddMemoryLayout(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: linalg.GenericOp | stream.StreamingRegionOp, rewriter: PatternRewriter
+        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
     ):
         # check if operation is dispatched via library call, as set by e.g.
         # the dispatch-kernels pass
 
-        if isinstance(op, linalg.GenericOp):
-            if op.library_call is None:
-                return
-            else:
-                library_call = op.library_call.data
-        elif isinstance(op, stream.StreamingRegionOp):
-            if op.accelerator is None:
-                return
-            else:
-                library_call = op.accelerator.data
+        if op.accelerator is None:
+            return
+        else:
+            library_call = op.accelerator.data
 
         has_add_c = False
 
         # check for library call
         if library_call == "snax_gemmx" or library_call == "snax_gemmx_stream":
             # only do so for qmac kernels
-            if isinstance(op, linalg.GenericOp):
-                if not isinstance(op.body.block.first_op, QMacOp):
-                    return
-            elif isinstance(op, stream.StreamingRegionOp):
-                assert isinstance(
-                    generic_op := op.body.block.first_op, stream.GenericOp
-                )
-                if not isinstance(generic_op.body.block.first_op, QMacOp):
-                    return
+            generic_op = op.body.block.first_op
+            assert isinstance(generic_op, stream.GenericOp)
+            if not isinstance(generic_op.body.block.first_op, QMacOp):
+                return
 
-                if isinstance(generic_op.next_op, stream.GenericOp):
-                    if isinstance(generic_op.next_op.body.block.first_op, AddOp):
-                        # gemm
-                        has_add_c = True
+            if isinstance(generic_op.next_op, stream.GenericOp):
+                if isinstance(generic_op.next_op.body.block.first_op, AddOp):
+                    # gemm
+                    has_add_c = True
 
             # the layout should be as static as the memref is. no more, no less
             # get m, n, k
