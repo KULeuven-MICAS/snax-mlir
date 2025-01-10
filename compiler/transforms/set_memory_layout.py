@@ -135,7 +135,8 @@ class AddMemoryLayout(RewritePattern):
         # check for library call
         if library_call == "snax_gemmx" or library_call == "snax_gemmx_stream":
             # only do so for qmac kernels
-            assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
+            generic_op = op.body.block.first_op
+            assert isinstance(generic_op, stream.GenericOp)
             if not isinstance(generic_op.body.block.first_op, QMacOp):
                 return
 
