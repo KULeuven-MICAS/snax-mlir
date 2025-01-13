@@ -2,7 +2,7 @@
 
 .DEFAULT_GOAL := all
 
-include ../../runtime/snax-streamer-gemm.rules
+include ../../runtime/snax-gemmx.rules
 include ../../runtime/Makefile.rules
 
 TESTS += generated.x
@@ -26,13 +26,7 @@ ifdef ACCFG_BOTH
 ACCFGOPT=accfg-dedup,accfg-config-overlap,
 endif
 
-SNAXOPTFLAGS = -p insert-accfg-op{accelerator=snax_gemm},convert-linalg-to-kernel,dispatch-kernels,set-memory-space,set-memory-layout,realize-memref-casts,${REMOVE_MEMREF_COPY}insert-sync-barrier,reuse-memref-allocs,test-add-mcycle-around-loop,snax-lower-mcycle,dispatch-regions,convert-linalg-to-stream,convert-stream-to-snax-stream,convert-linalg-to-accfg,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,function-constant-pinning,mlir-opt{executable=mlir-opt\ generic=true\ arguments="-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic"},${ACCFGOPT}convert-accfg-to-csr,
-
-
-GEN_DATA_OPTS += --m=${SIZE_M}
-GEN_DATA_OPTS += --n=${SIZE_N}
-GEN_DATA_OPTS += --k=${SIZE_K}
-
+SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-stream,fuse-streaming-regions,snax-bufferize,alloc-to-global,set-memory-space,set-memory-layout,realize-memref-casts,insert-sync-barrier,dispatch-regions{nb_cores=2},convert-stream-to-snax-stream,convert-linalg-to-accfg,snax-copy-to-dma,memref-to-snax,snax-to-func,clear-memory-space,function-constant-pinning,mlir-opt{executable=mlir-opt\ generic=true\ arguments="-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic"},${ACCFGOPT}convert-accfg-to-csr,
 
 CFLAGS += -std=gnu11
 CFLAGS += -Wall -Wextra
@@ -42,10 +36,7 @@ ifdef NO_CHECK
 CFLAGS += -DNO_CHECK
 endif
 
-data.c data.h:
-	$(PYTHON) gendata.py ${GEN_DATA_OPTS}
-
-%.x: %.o main.o data.o
+%.x: %.o main.o
 	$(LD) $(LDFLAGS) $^ -o $@
 
 sim_%: %
