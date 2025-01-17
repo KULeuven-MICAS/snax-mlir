@@ -1,9 +1,11 @@
 import pytest
 from xdsl.dialects import builtin
-from xdsl.dialects.builtin import ArrayAttr, StridedLayoutAttr, i32, i64
+from xdsl.dialects.builtin import ArrayAttr, MemRefType, StridedLayoutAttr, i32, i64
 from xdsl.dialects.llvm import LLVMStructType
-from xdsl.dialects.memref import MemRefType
+from xdsl.ir import Attribute
+from xdsl.parser import StringAttr
 from xdsl.utils.exceptions import VerifyException
+from xdsl.utils.hints import isa
 from xdsl.utils.test_value import TestSSAValue
 
 from compiler.dialects.snax import Alloc, LayoutCast
@@ -62,7 +64,7 @@ def test_memref_memory_space_cast():
     memory_layout_cast = LayoutCast.from_type_and_target_layout(source_ssa, layout_2)
 
     assert memory_layout_cast.source is source_ssa
-    assert isinstance(memory_layout_cast.dest.type, MemRefType)
+    assert isa(memory_layout_cast.dest.type, MemRefType[Attribute])
     assert memory_layout_cast.dest.type.layout is layout_2
 
 
@@ -73,6 +75,7 @@ def test_snax_alloc():
     alloc_a = Alloc(dim, size, shape, memory_space=builtin.StringAttr("L1"))
 
     assert alloc_a.size is size
+    assert isinstance(alloc_a.memory_space, StringAttr)
     assert alloc_a.memory_space.data == "L1"
 
     assert isinstance(alloc_a.result.type, LLVMStructType)

@@ -1,6 +1,6 @@
-from xdsl.dialects.builtin import ArrayAttr, IntegerType
+from xdsl.dialects.builtin import IntegerType, MemRefType
 from xdsl.dialects.llvm import LLVMArrayType, LLVMPointerType, LLVMStructType
-from xdsl.dialects.memref import MemRefType
+from xdsl.ir import Attribute
 from xdsl.utils.exceptions import VerifyException
 
 # this file contains useful helper functions to work with
@@ -58,7 +58,7 @@ class LLVMMemrefDescriptor:
 
     @classmethod
     def from_memref_type(
-        cls, memref_type: MemRefType, integer_type: IntegerType
+        cls, memref_type: MemRefType[Attribute], integer_type: IntegerType
     ) -> "LLVMMemrefDescriptor":
         """
         Create an LLVMMemrefDescriptor from a MemRefType.
@@ -71,9 +71,10 @@ class LLVMMemrefDescriptor:
             LLVMMemrefDescriptor: The created descriptor.
         """
 
-        return cls.from_rank_and_integer_type(
-            memref_type.get_num_dims(), memref_type.get_element_type()
-        )
+        el_type = memref_type.get_element_type()
+        assert isinstance(el_type, IntegerType)
+
+        return cls.from_rank_and_integer_type(memref_type.get_num_dims(), el_type)
 
     def verify(self) -> None:
         """
@@ -83,38 +84,35 @@ class LLVMMemrefDescriptor:
             VerifyException: If the memref descriptor is invalid.
         """
 
-        def raise_exception(message: str) -> None:
-            raise VerifyException("Invalid Memref Descriptor: " + message)
-
-        if not isinstance(self.descriptor.types, ArrayAttr):
-            raise VerifyException("Expected result type to have an ArrayAttr")
+        def exception(message: str) -> VerifyException:
+            return VerifyException("Invalid Memref Descriptor: " + message)
 
         type_iter = iter(self.descriptor.types.data)
 
         if not isinstance(next(type_iter), LLVMPointerType):
-            raise_exception("Expected first element to be LLVMPointerType")
+            raise exception("Expected first element to be LLVMPointerType")
 
         if not isinstance(next(type_iter), LLVMPointerType):
-            raise_exception("Expected second element to be LLVMPointerType")
+            raise exception("Expected second element to be LLVMPointerType")
 
         if not isinstance(next(type_iter), IntegerType):
-            raise_exception("Expected third element to be IntegerType")
+            raise exception("Expected third element to be IntegerType")
 
         shape = next(type_iter)
         if not isinstance(shape, LLVMArrayType):
-            raise_exception("Expected fourth element to be LLVMArrayType")
+            raise exception("Expected fourth element to be LLVMArrayType")
 
         if not isinstance(shape.type, IntegerType):
-            raise_exception(
+            raise exception(
                 "Expected fourth element to be LLVMArrayType of IntegerType"
             )
 
         strides = next(type_iter)
         if not isinstance(strides, LLVMArrayType):
-            raise_exception("Expected fifth element to be LLVMArrayType")
+            raise exception("Expected fifth element to be LLVMArrayType")
 
         if not isinstance(strides.type, IntegerType):
-            raise_exception("Expected fifth element to be LLVMArrayType of IntegerType")
+            raise exception("Expected fifth element to be LLVMArrayType of IntegerType")
 
         if not strides.size.data == shape.size.data:
-            raise_exception("Expected shape and strides to have the same dimension")
+            raise exception("Expected shape and strides to have the same dimension")
