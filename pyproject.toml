@@ -100,9 +100,7 @@ typeCheckingMode = "strict"
     "compiler/transforms/snax_lower_mcycle.py",
     "compiler/transforms/snax_to_func.py",
     "compiler/transforms/test_remove_memref_copy.py",
-    "compiler/util/memref_descriptor.py",
     "tests/benchmark/test_snax_benchmark.py",
-    "tests/dialects/test_snax.py",
     "tests/inference/test_accfg_state_tracing.py",
     "tests/util/",
 ]
