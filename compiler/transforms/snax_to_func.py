@@ -1,5 +1,6 @@
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, func, llvm
+from xdsl.ir import Operation, Sequence, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     GreedyRewritePatternApplier,
@@ -59,12 +60,13 @@ class AllocToFunc(RewritePattern):
         if alloc_op.memory_space != L1:
             return
 
-        def dense_array(pos):
+        def dense_array(pos: Sequence[int] | Sequence[builtin.IntAttr]):
             return builtin.DenseArrayBase.create_dense_int(builtin.i64, pos)
 
-        ops_to_insert = []
+        ops_to_insert: list[Operation] = []
 
         # create constant alignment op to pass on to the allocation function
+        assert isinstance(alloc_op.alignment, builtin.IntegerAttr)
         alignment_op = arith.ConstantOp.from_int_and_width(
             alloc_op.alignment.value.data, builtin.IndexType()
         )
@@ -118,7 +120,9 @@ class AllocToFunc(RewritePattern):
 
         # insert offset
         cst_zero = arith.ConstantOp.from_int_and_width(0, builtin.i32)
-        llvm_struct = llvm.InsertValueOp(dense_array([2]), llvm_struct.res, cst_zero)
+        llvm_struct = llvm.InsertValueOp(
+            dense_array([2]), llvm_struct.res, SSAValue.get(cst_zero)
+        )
         ops_to_insert.extend([cst_zero, llvm_struct])
 
         # use shape operands to populate shape of memref descriptor
@@ -129,12 +133,16 @@ class AllocToFunc(RewritePattern):
                     [shape_op], [builtin.i32]
                 )
                 ops_to_insert.append(shape_op)
+            else:
+                assert isinstance(shape_op, Operation)
+
             llvm_struct = llvm.InsertValueOp(
                 dense_array([3, i]), llvm_struct.res, shape_op.results[0]
             )
             ops_to_insert.append(llvm_struct)
 
         module_op = alloc_op.get_toplevel_object()
+        assert isinstance(module_op, builtin.ModuleOp)
 
         rewriter.replace_matched_op(ops_to_insert)
 

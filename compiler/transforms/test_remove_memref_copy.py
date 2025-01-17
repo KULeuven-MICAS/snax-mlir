@@ -23,7 +23,7 @@ class RemoveMemrefCopyPass(ModulePass):
     Only to be used for testing purposes.
     """
 
-    def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
+    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             RemoveMemrefCopyPattern(), apply_recursively=False
-        ).rewrite_module(module)
+        ).rewrite_module(op)
