@@ -1,33 +1,10 @@
-rule preprocess_mlir:
-    """
-    Apply various preprocessing transformations to mlir files with upstream mlir. 
-    Options controlled by `mlirpreprocflags` defined in config.
-    """
-    input:
-        "{file}.mlir",
-    output:
-        temp("{file}.preproc1.mlir"),
-        temp("{file}.preproc2.mlir"),
-        temp("{file}.preprocfinal.mlir"),
-    run:
-        shell(
-            "{config[mlir-opt]} {config[mlirpreprocflags][0]} -o {wildcards.file}.preproc1.mlir {input}"
-        )
-        shell(
-            "{config[mlir-opt]} {config[mlirpreprocflags][1]} -o {wildcards.file}.preproc2.mlir {wildcards.file}.preproc1.mlir"
-        )
-        shell(
-            "{config[mlir-opt]} {config[mlirpreprocflags][2]} -o {output[2]} {wildcards.file}.preproc2.mlir"
-        )
-
-
 rule snax_opt_mlir:
     """
     Apply various transformations snax-opt on mlir files.
     Options controlled with `snaxoptflags` defined in config.
     """
     input:
-        "{file}.preprocfinal.mlir",
+        "{file}.mlir",
     output:
         temp("{file}.snax-opt.mlir"),
     shell:

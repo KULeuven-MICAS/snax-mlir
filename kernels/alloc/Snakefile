@@ -4,6 +4,7 @@ config = get_snax_mac_config()
 
 config["snaxoptflags"] = ",".join(
     [
+        "preprocess",
         "dispatch-kernels",
         "set-memory-space",
         "set-memory-layout",
