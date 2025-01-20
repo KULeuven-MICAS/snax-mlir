@@ -198,6 +198,38 @@ class ScheduleOp(StreamingRegionOpBase):
 
 
 @irdl_op_definition
+class AccessPatternOp(StreamingRegionOpBase):
+    name = "stream.access_pattern"
+
+    # The bounds of the iteration space of the schedule
+    bounds = prop_def(ParameterDef[ArrayAttr[IntegerAttr[IndexType]]])
+
+    def __init__(
+        self,
+        inputs: Sequence[SSAValue | Operation],
+        outputs: Sequence[SSAValue | Operation],
+        patterns: ArrayAttr[AffineMapAttr],
+        body: Region,
+        bounds: ArrayAttr[IntegerAttr[IndexType]] | Sequence[int],
+        accelerator: str | StringAttr | None = None,
+        result_types: Sequence[Attribute] = (),
+    ) -> None:
+        if isinstance(bounds, Sequence):
+            bounds = ArrayAttr(
+                [IntegerAttr.from_index_int_value(val) for val in bounds]
+            )
+        super().__init__(
+            inputs,
+            outputs,
+            patterns,
+            body,
+            accelerator,
+            result_types,
+            {"bounds": bounds},
+        )
+
+
+@irdl_op_definition
 class YieldOp(AbstractYieldOperation[Attribute]):
     name = "stream.yield"
 
@@ -247,6 +279,7 @@ Stream = Dialect(
     [
         StreamingRegionOp,
         ScheduleOp,
+        AccessPatternOp,
         GenericOp,
         YieldOp,
     ],

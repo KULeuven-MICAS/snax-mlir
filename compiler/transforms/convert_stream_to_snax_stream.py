@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 
+import numpy as np
 from xdsl.context import MLContext
 from xdsl.dialects import arith, builtin, memref
 from xdsl.dialects.builtin import AffineMapAttr, ArrayAttr, MemRefType
-from xdsl.ir import Operation
+from xdsl.ir import Operation, SSAValue
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -17,6 +18,7 @@ from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
 from compiler.accelerators.util import find_accelerator_op
 from compiler.dialects import snax_stream, stream
+from compiler.ir.autoflow.affine_transform import AffineTransform
 from compiler.ir.stream import Schedule, SchedulePattern, scheduler
 from compiler.ir.stream.access_pattern import Template
 
@@ -85,22 +87,17 @@ class AutoflowScheduler(RewritePattern):
 class LayoutResolution(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: stream.ScheduleOp, rewriter: PatternRewriter):
-        template = get_accelerator_info(op)
-
         bounds = [x.value.data for x in op.bounds.data]
         schedule = Schedule(
             SchedulePattern(bounds, pattern.data) for pattern in op.patterns
         )
 
-        # We are now ready to convert the stream access patterns into snax stride patterns
-        # construct the strided patterns for SNAX Streamers
-
-        snax_stride_patterns: list[snax_stream.StridePattern] = []
-
         # small function to generate a list of n zeros with the i-th element 1
         # for example n = 4, i = 1  -> [0, 1, 0, 0]
         def generate_one_list(n: int, i: int):
             return [1 if j == i else 0 for j in range(n)]
+
+        access_patterns: list[AffineMap] = []
 
         # Do this for every operand:
         for operand in range(len(op.operands)):
@@ -122,15 +119,58 @@ class LayoutResolution(RewritePattern):
                     "Access patterns with symbols are not supported yet."
                 )
 
-            # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)
-            access_iter = iter(
-                (
+            strides: list[int] = []
+
+            for i in range(access_mem_map.num_dims):
+                strides.append(
                     access_mem_map.eval(
                         generate_one_list(access_mem_map.num_dims, i), ()
-                    )[0],
-                    schedule[operand].bounds[i],
+                    )[0]
                 )
-                for i in reversed(range(access_mem_map.num_dims))
+
+            access_patterns.append(
+                AffineTransform(np.array([strides]), np.array([0])).to_affine_map()
+            )
+
+        new_inputs: list[Operation] = [
+            memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs
+        ]
+        new_outputs = [
+            memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs
+        ]
+
+        new_patterns = ArrayAttr([AffineMapAttr(map) for map in access_patterns])
+
+        access_pattern_op = stream.AccessPatternOp(
+            new_inputs,
+            new_outputs,
+            new_patterns,
+            rewriter.move_region_contents_to_new_regions(op.body),
+            op.bounds,
+            op.accelerator,
+            op.result_types,
+        )
+        rewriter.replace_matched_op(
+            [*new_inputs, *new_outputs, access_pattern_op], access_pattern_op.results
+        )
+
+
+@dataclass
+class ConvertStreamToSnaxStreamPattern(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: stream.AccessPatternOp, rewriter: PatternRewriter):
+        template = get_accelerator_info(op)
+
+        snax_stride_patterns: list[snax_stream.StridePattern] = []
+
+        for operand in range(len(op.operands)):
+            pattern = AffineTransform.from_affine_map(op.patterns.data[operand].data)
+
+            # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)
+            # in reverse, because we work outermost -> innermost and streamers the other way around
+            access_iter = iter(
+                (int(pattern.A[0, i]), op.bounds.data[i].value.data)
+                for i in reversed(range(pattern.num_dims))
             )
 
             # Fetch the first stride
@@ -161,18 +201,12 @@ class LayoutResolution(RewritePattern):
             )
             snax_stride_patterns.append(snax_stride_pattern)
 
-        # get base addresses of the streaming region ops
-        # TODO: generalize and fix for offsets
-
-        new_inputs: list[Operation] = [
-            memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs
-        ]
-        new_outputs = [
-            memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs
-        ]
-
         # TODO: what is still required is a better system for the unused operands
         # of snax_gemmx / other accelerators. this now fills in empty/zero patterns for the unused operands.
+
+        new_inputs: list[SSAValue] = list(op.inputs)
+        new_outputs: list[SSAValue] = list(op.outputs)
+        ops_to_add: list[Operation] = []
 
         assert op.accelerator
         if op.accelerator.data == "snax_gemmx":
@@ -187,9 +221,10 @@ class LayoutResolution(RewritePattern):
 
                 # insert empty patterns for D8 and zero pattern for C
                 snax_stride_patterns.insert(2, empty_pattern)
-                new_inputs.append(
-                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                )
+                # ops_to_add.append(
+                #         ptr := memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
+                # )
+                new_inputs.append(op.inputs[-1])
 
                 # insert zero pattern for C, using the same pattern as D32 but pointing to zero
                 # this way, the bias used by the gemm is just a bunch of zeros
@@ -204,19 +239,21 @@ class LayoutResolution(RewritePattern):
                 )
 
                 # point C to c0
-                new_inputs.append(
+                ops_to_add.append(
                     # zero pointer will generate 0 values
-                    arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
+                    ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
                 )
+                new_inputs.append(ptr.result)
             elif len(snax_stride_patterns) == 4:
                 # gemm
                 #
                 # for a gemm, the 8bit-output port D8 are unused, so we create
                 # empty patterns for them here
                 snax_stride_patterns.insert(2, empty_pattern)
-                new_inputs.insert(
-                    2, memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                )
+                # ops_to_add.insert(
+                #         2, ptr := memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
+                # )
+                new_inputs.insert(2, op.inputs[-1])
 
             else:
                 # simd
@@ -236,17 +273,15 @@ class LayoutResolution(RewritePattern):
                 # read zeros from tcdm (must make sure there are zeros at these addresses)
                 # in the new streamer this can be fixed with byte masking
                 snax_stride_patterns.insert(0, zero_pattern)
-                new_inputs.insert(
-                    0,
-                    # zero pointer will generate 0 values
-                    arith.ConstantOp.from_int_and_width(0, builtin.IndexType()),
+                ops_to_add.append(
+                    ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
                 )
+                new_inputs.insert(0, ptr.result)
                 snax_stride_patterns.insert(1, zero_pattern)
-                new_inputs.insert(
-                    1,
-                    # zero pointer will generate 0 values
-                    arith.ConstantOp.from_int_and_width(0, builtin.IndexType()),
+                ops_to_add.append(
+                    ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
                 )
+                new_inputs.insert(1, ptr.result)
 
                 # flip D8 and C such that they are in the right order
                 snax_stride_patterns.append(snax_stride_patterns.pop(2))
@@ -255,9 +290,7 @@ class LayoutResolution(RewritePattern):
                 # empty pattern for D32
                 snax_stride_patterns.append(empty_pattern)
                 # dummy base pointer for D32
-                new_inputs.append(
-                    memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                )
+                new_inputs.append(op.inputs[-1])
 
         if op.accelerator.data == "snax_gemmx":
             # make last spatial stride patterns 2d
@@ -281,7 +314,7 @@ class LayoutResolution(RewritePattern):
             body=rewriter.move_region_contents_to_new_regions(op.body),
         )
 
-        rewriter.replace_matched_op([*new_inputs, *new_outputs, new_op], new_op.results)
+        rewriter.replace_matched_op([*ops_to_add, new_op], new_op.results)
 
 
 @dataclass(frozen=True)
@@ -291,3 +324,4 @@ class ConvertStreamToSnaxStream(ModulePass):
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(AutoflowScheduler()).rewrite_module(op)
         PatternRewriteWalker(LayoutResolution()).rewrite_module(op)
+        PatternRewriteWalker(ConvertStreamToSnaxStreamPattern()).rewrite_module(op)
