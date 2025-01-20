@@ -100,8 +100,6 @@ This will compile `main.c` two different `kernel`s:
 
 The exact invocations of all the compilers can be seen in the terminal
 
-* `tollvm12.py` inserts extra metadata required for clang to compile the binary.
-
 ### Inspect traces for snax kernels
 
 Tracing tracks individual instructions as they are executed by the RISC-V cores in the snax-cluster.
