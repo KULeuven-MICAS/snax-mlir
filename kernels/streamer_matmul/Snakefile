@@ -71,7 +71,7 @@ rule apply_transforms_mlir:
     output:
         "{file}.mlir",
     shell:
-        "{config[mlir-opt]} {config[mlirtransformflags]} -o {output} {input}"
+        "{config[mlir-opt]} {config[mlirtransformflags]} --mlir-print-op-generic --mlir-print-local-scope -o {output} {input}"
 
 
 rule link_snax_binary:
