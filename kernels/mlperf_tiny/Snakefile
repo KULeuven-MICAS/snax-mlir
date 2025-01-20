@@ -25,7 +25,7 @@ use rule * from tf_rules as tf_*
 
 
 nets = ["pretrainedResnet_quant", "kws_ref_model", "vww_96_int8", "ad01_int8"]
-extensions = [".o", ".no-snax-opt.o"]
+extensions = [".o"]
 
 
 rule all:
@@ -49,11 +49,11 @@ rule snax_opt_mlir:
     Similar to snax_opt_mlir, but with print-op-generic
     """
     input:
-        "{file}.preprocfinal.mlir",
+        "{file}.mlir",
     output:
         temp("{file}.snax-opt.mlir"),
     shell:
-        "{config[snax-opt]} -p {config[snaxoptflags]} --print-op-generic -o {output} {input}"
+        "{config[snax-opt]} -p {config[snaxoptflags]} --allow-unregistered-dialect --print-op-generic -o {output} {input}"
 
 
 # Override default rule, for output not to be temporary
@@ -64,13 +64,3 @@ rule compile_llvm_module:
         "{file}.o",
     shell:
         "{config[cc]} {config[clangflags]} -x ir -c {input} -o {output}"
-
-
-# Special preprocessing for anomaly detection
-rule preprocess_anomaly_detection:
-    input:
-        "ad01_int8.mlir",
-    output:
-        "ad01_int8.preprocfinal.mlir",
-    shell:
-        "{config[snax-opt]} -p preprocess-mlperftiny --print-op-generic --allow-unregistered-dialect -o {output} {input}"

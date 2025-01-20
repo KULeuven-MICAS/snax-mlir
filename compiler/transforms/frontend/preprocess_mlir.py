@@ -42,4 +42,4 @@ class PreprocessPass(ModulePass):
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         for flags in MLIR_PREPOC_FLAGS:
-            MLIROptPass(generic=False, arguments=flags).apply(ctx, op)
+            MLIROptPass(generic=True, arguments=flags).apply(ctx, op)

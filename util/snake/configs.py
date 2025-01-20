@@ -59,6 +59,8 @@ def get_mlperf_tiny_config():
         {
             "snaxoptflags": ",".join(
                 [
+                    "preprocess",
+                    "snax-bufferize",
                     "dispatch-kernels",
                     "set-memory-space",
                     "set-memory-layout",

@@ -25,20 +25,6 @@ rule postprocess_mlir:
         "{config[mlir-opt]} {config[mlirpostprocflags]} -o {output} {input}"
 
 
-rule postprocess_no_snax_mlir:
-    """
-    Bypass snax-opt, and apply various postprocessing transformations to mlir files with upstream mlir.
-    Goal is to lower everything to LLVM dialect after this step.
-    Options controlled with `mlirpostprocflags` defined in config.
-    """
-    input:
-        "{file}.preprocfinal.mlir",
-    output:
-        temp("{file}.no-snax-opt.ll.mlir"),
-    shell:
-        "{config[mlir-opt]} {config[mlirpostprocflags]} -o {output} {input}"
-
-
 rule translate_mlir:
     """
     Translate MLIR LLVM dialect to actual LLVM.
