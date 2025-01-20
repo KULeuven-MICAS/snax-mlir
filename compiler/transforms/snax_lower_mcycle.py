@@ -33,5 +33,5 @@ class ConvertMCycleToLLVM(RewritePattern):
 class SNAXLowerMCycle(ModulePass):
     name = "snax-lower-mcycle"
 
-    def apply(self, ctx: MLContext, module: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(ConvertMCycleToLLVM()).rewrite_module(module)
+    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+        PatternRewriteWalker(ConvertMCycleToLLVM()).rewrite_module(op)
