@@ -1,7 +1,11 @@
 import argparse
+import sys
+import types
 from collections.abc import Sequence
+from typing import IO
 
 from xdsl.context import MLContext
+from xdsl.dialects.builtin import ModuleOp
 from xdsl.xdsl_opt_main import xDSLOptMain
 
 from compiler.dialects.accfg import ACCFG
@@ -48,13 +52,27 @@ from compiler.transforms.test_add_mcycle_around_loop import AddMcycleAroundLoopP
 from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
 
 
+def python_frontend(io: IO[str]) -> ModuleOp:
+    input_module = types.ModuleType("input_module")
+    exec(io.read(), input_module.__dict__)
+    sys.modules["input_module"] = input_module
+
+    if not hasattr(input_module, "get_module_op"):
+        raise RuntimeError("Input file did not specify method get_module_op")
+
+    module_op = input_module.get_module_op()
+    if not isinstance(module_op, ModuleOp):
+        raise RuntimeError("get_module_op did not return a ModuleOp")
+    return module_op
+
+
 class SNAXOptMain(xDSLOptMain):
     def __init__(
         self,
         description: str = "SNAX modular optimizer driver",
         args: Sequence[str] | None = None,
     ):
-        self.available_frontends = {}
+        self.available_frontends = {"py": python_frontend}
         self.available_passes = {}
         self.available_targets = {}
 

@@ -20,7 +20,7 @@ from xdsl.parser import DenseArrayBase, IntegerType
 from xdsl.printer import Printer
 
 
-def matmul(m=16, n=16, k=16):
+def get_module_op(m=16, n=16, k=16):
     # Define Variables For Program:
 
     a_type = TensorType(i8, (m, k))
@@ -100,6 +100,6 @@ if __name__ == "__main__":
     # Generate IR and write it to the specified MLIR file
     output = StringIO()
     printer = Printer(stream=output)
-    printer.print(matmul())
+    printer.print(get_module_op())
     with open(mlir_filename, "w") as output_file:
         output_file.write(output.getvalue())
