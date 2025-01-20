@@ -3,7 +3,6 @@ from util.snake.configs import get_snax_gemmx_config
 config = get_snax_gemmx_config()
 config["snaxoptflags"] = ",".join(
     [
-        "preprocess",
         "insert-accfg-op{accelerator=snax_gemmx}",
         "dispatch-kernels",
         "set-memory-space",
