@@ -22,22 +22,12 @@ MLIR_PREPOC_FLAGS: tuple[tuple[str, ...], ...] = (
     ),
     (
         "--tosa-to-arith=include-apply-rescale",
-        "--empty-tensor-to-alloc-tensor",
         "--mlir-print-op-generic",
         "--mlir-print-local-scope",
     ),
     (
         "--test-linalg-transform-patterns=test-generalize-pad-tensor",
         "--linalg-generalize-named-ops",
-        "--empty-tensor-to-alloc-tensor",
-        "--one-shot-bufferize="
-        + " ".join(
-            [
-                "bufferize-function-boundaries",
-                "allow-return-allocs-from-loops",
-                "function-boundary-type-conversion=identity-layout-map",
-            ]
-        ),
         "--mlir-print-op-generic",
         "--mlir-print-local-scope",
     ),

@@ -1,13 +1,10 @@
 from util.snake.configs import get_snax_gemmx_config
 
 config = get_snax_gemmx_config()
-config["mlirpreprocflags"] = [
-    "--linalg-generalize-named-ops",
-    "--mlir-print-op-generic",
-    "--mlir-print-local-scope",
-]
+
 config["snaxoptflags"] = ",".join(
     [
+        "preprocess",
         "convert-linalg-to-kernel",
         "insert-accfg-op{accelerator=snax_gemmx}",
         "dispatch-kernels",
