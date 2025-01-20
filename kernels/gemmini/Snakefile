@@ -5,6 +5,7 @@ from util.snake.flags import get_mlir_preproc_flags
 config.update(get_default_paths())
 config["snaxoptflags"] = ",".join(
     [
+        "preprocess",
         "insert-accfg-op{accelerator=gemmini}",
         "convert-linalg-to-accfg",
         "convert-accfg-to-csr",
@@ -22,7 +23,7 @@ config["cflags"] = [
 ]
 
 config["mliroptflags"] = [
-    "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.quantized_matmul}, test-transform-dialect-erase-schedule, linalg-generalize-named-ops)'"
+    "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.quantized_matmul}, test-transform-dialect-erase-schedule, linalg-generalize-named-ops)' --mlir-print-local-scope --mlir-print-op-generic"
 ]
 config["mlirpreprocflags"] = get_mlir_preproc_flags()
 
@@ -60,7 +61,7 @@ rule prepare_mlir:
 
 rule snax_compile_mlir:
     input:
-        "{file}.preprocfinal.mlir",
+        "{file}.mlir",
     output:
         "{file}.snax-opt.mlir",
     shell:
