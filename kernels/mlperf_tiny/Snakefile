@@ -59,7 +59,7 @@ rule snax_opt_mlir:
 # Override default rule, for output not to be temporary
 rule compile_llvm_module:
     input:
-        "{file}.ll12",
+        "{file}.ll",
     output:
         "{file}.o",
     shell:

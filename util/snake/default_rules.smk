@@ -86,25 +86,13 @@ rule compile_c:
         "{config[cc]} {config[cflags]} -c {input} -o {output}"
 
 
-rule postprocess_llvm_module:
-    """
-    Add extra metadata to LLVM module required for snitch-based systems
-    """
-    input:
-        "{file}.ll",
-    output:
-        temp("{file}.ll12"),
-    shell:
-        "../../runtime/tollvm12.py < {input} > {output} "
-
-
 rule compile_llvm_module:
     """
     Use clang to compile LLVM module to object file.
     Uses target-specific options, but not C-specific options.
     """
     input:
-        "{file}.ll12",
+        "{file}.ll",
     output:
         temp("{file}.o"),
     shell:
