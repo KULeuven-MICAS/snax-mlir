@@ -64,10 +64,7 @@ LDFLAGS += -lsnRuntime
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-%.ll12: %.ll
-	$(MAKEFILE_RULES_DIRNAME)/tollvm12.py < $< > $@
-
-%.o: %.ll12
+%.o: %.ll
 	$(CC) $(CFLAGS) -x ir -c $< -o $@
 
 %.o: %.S
