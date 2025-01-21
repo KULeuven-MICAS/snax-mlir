@@ -63,25 +63,25 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
 // CHECK-NEXT:     %3 = "memref.extract_aligned_pointer_as_index"(%arg2) : (memref<?xi32>) -> index
 // CHECK-NEXT:     %4 = "memref.dim"(%arg0, %0) : (memref<?xi32>, index) -> index
 // CHECK-NEXT:     %5 = accfg.setup "snax_hwpe_mult" to ("A" = %1 : index, "B" = %2 : index, "O" = %3 : index, "size" = %4 : index) : !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:     %6 = "accfg.launch"(%cst, %5) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:     %6 = "accfg.launch"(%cst, %5) <{param_names = ["launch"], accelerator = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%6) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:     %7 = "test.op"() : () -> i1
 // CHECK-NEXT:   %8, %9 = scf.if %7 -> (i32, !accfg.state<"snax_hwpe_mult">) {
 // CHECK-NEXT:     %10 = accfg.setup "snax_hwpe_mult" from %5 to ("B" = %3 : index) : !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:     %11 = "accfg.launch"(%cst, %10) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:     %11 = "accfg.launch"(%cst, %10) <{param_names = ["launch"], accelerator = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%11) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:     %12 = "test.op"() : () -> i32
 // CHECK-NEXT:     %13 = accfg.setup "snax_hwpe_mult" from %10 to ("O" = %2 : index) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:     scf.yield %12, %13 : i32, !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:   } else {
 // CHECK-NEXT:     %14 = "test.op"() : () -> i32
-// CHECK-NEXT:     %15 = "accfg.launch"(%cst, %5) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:     %15 = "accfg.launch"(%cst, %5) <{param_names = ["launch"], accelerator = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%15) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:     %16 = accfg.setup "snax_hwpe_mult" from %5 to ("B" = %3 : index, "O" = %2 : index) : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:     scf.yield %14, %16 : i32, !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:   }
 // CHECK-NEXT:     "test.op"(%8) : (i32) -> ()
-// CHECK-NEXT:     %17 = "accfg.launch"(%cst, %9) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:     %17 = "accfg.launch"(%cst, %9) <{param_names = ["launch"], accelerator = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%17) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:     %lb = arith.constant 0 : index
 // CHECK-NEXT:     %ub = arith.constant 100 : index
@@ -91,7 +91,7 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
 // CHECK-NEXT:     %res = scf.for %iv = %lb to %ub step %step iter_args(%inner_state = %18) -> (!accfg.state<"snax_hwpe_mult">) {
 // CHECK-NEXT:        %s_new = accfg.setup "snax_hwpe_mult" from %inner_state to ("size" = %iv : index) : !accfg.state<"snax_hwpe_mult">
 //                                                      only loop-dependent vars remaining ^^^
-// CHECK-NEXT:       %19 = "accfg.launch"(%cst, %s_new) <{"param_names" = ["launch"], "accelerator" = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:       %19 = "accfg.launch"(%cst, %s_new) <{param_names = ["launch"], accelerator = "snax_hwpe_mult"}> : (i5, !accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:       "accfg.await"(%19) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:       scf.yield %s_new : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:     }
@@ -142,7 +142,7 @@ func.func @scf_for_test(%A: i32, %B: i32) {
 // CHECK-NEXT:     %c32 = arith.constant 32 : i32
 // CHECK-NEXT:     %init = accfg.setup "snax_hwpe_mult" to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "size" = %c32 : i32) : !accfg.state<"snax_hwpe_mult">
 //                 ^^^ first setup should be untouched ^^^
-// CHECK-NEXT:     %token = "accfg.launch"(%init) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:     %token = "accfg.launch"(%init) <{param_names = [], accelerator = "snax_hwpe_mult"}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%token) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:     %lb = arith.constant 0 : index
 // CHECK-NEXT:     %ub = arith.constant 100 : index
@@ -155,13 +155,13 @@ func.func @scf_for_test(%A: i32, %B: i32) {
 // CHECK-NEXT:       %O_shift = arith.addi %O, %c32 : i32
 // CHECK-NEXT:       %s_new = accfg.setup "snax_hwpe_mult" from %inner_state to ("B" = %B_shift : i32, "O" = %O_shift : i32) : !accfg.state<"snax_hwpe_mult">
 //                                                only loop-dependent variables left ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-// CHECK-NEXT:       %tok = "accfg.launch"(%s_new) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:       %tok = "accfg.launch"(%s_new) <{param_names = [], accelerator = "snax_hwpe_mult"}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:       "accfg.await"(%tok) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:       scf.yield %s_new : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:     }
 // CHECK-NEXT:     %final = accfg.setup "snax_hwpe_mult" from %res_state to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32) : !accfg.state<"snax_hwpe_mult">
 //                                                size parameter can be inferred as unchanged and deleted ^
-// CHECK-NEXT:     %token2 = "accfg.launch"(%final) <{"param_names" = [], "accelerator" = "snax_hwpe_mult"}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:     %token2 = "accfg.launch"(%final) <{param_names = [], accelerator = "snax_hwpe_mult"}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:     "accfg.await"(%token2) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }

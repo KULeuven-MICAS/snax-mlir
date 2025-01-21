@@ -11,13 +11,13 @@
 // CHECK-NEXT:   "snax.mcycle"() : () -> ()
 
 %2 = "test.op"() : () -> index
-%3 = "snax.alloc"(%2, %2, %2) <{"memory_space" = "L3", "alignment" = 64 : i32}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+%3 = "snax.alloc"(%2, %2, %2) <{memory_space = "L3", alignment = 64 : i32}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:   %2 = "test.op"() : () -> index
-// CHECK-NEXT:   %3 = "snax.alloc"(%2, %2, %2) <{"memory_space" = "L3", "alignment" = 64 : i32}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:   %3 = "snax.alloc"(%2, %2, %2) <{memory_space = "L3", alignment = 64 : i32}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 
 // Test streamer config attribute:
-"test.op"() {"streamer_config" = #snax.streamer_config<r[temp=n-n-n, spat=n-n-n], r[temp=n-r-i, spat=i-n-r], w[temp=i-i-i, spat=n-n]> } : () -> ()
+"test.op"() {streamer_config = #snax.streamer_config<r[temp=n-n-n, spat=n-n-n], r[temp=n-r-i, spat=i-n-r], w[temp=i-i-i, spat=n-n]> } : () -> ()
 // CHECK-NEXT: #snax.streamer_config<r[temp=n-n-n, spat=n-n-n], r[temp=n-r-i, spat=i-n-r], w[temp=i-i-i, spat=n-n]>
-"test.op"() {"streamer_config" = #snax.streamer_config <r[opts=c-t, temp=n-n-n, spat=n-n-n], r[opts=c, temp=n-r-i, spat=i-n-r], w[opts=t, temp=i-i-i, spat=n-n]> } : () -> ()
+"test.op"() {streamer_config = #snax.streamer_config <r[opts=c-t, temp=n-n-n, spat=n-n-n], r[opts=c, temp=n-r-i, spat=i-n-r], w[opts=t, temp=i-i-i, spat=n-n]> } : () -> ()
 // CHECK-NEXT: #snax.streamer_config<r[opts={{c-t|t-c}}, temp=n-n-n, spat=n-n-n], r[opts=c, temp=n-r-i, spat=i-n-r], w[opts=t, temp=i-i-i, spat=n-n]>
 

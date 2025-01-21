@@ -18,8 +18,8 @@
 
 // CHECK:      builtin.module {
 // CHECK-NEXT:   func.func @test(%arg0 : memref<16x16xi8>) -> memref<16x16xi32> {
-// CHECK-NEXT:     %0 = memref.alloc() {"alignment" = 64 : i64} : memref<16x16xi32>
-// CHECK-NEXT:     "stream.streaming_region"(%arg0, %arg0, %0) <{"accelerator" = "snax_gemmx_stream", "operandSegmentSizes" = array<i32: 2, 1>, "patterns" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d2)>]}> ({
+// CHECK-NEXT:     %0 = memref.alloc() {alignment = 64 : i64} : memref<16x16xi32>
+// CHECK-NEXT:     "stream.streaming_region"(%arg0, %arg0, %0) <{accelerator = "snax_gemmx_stream", operandSegmentSizes = array<i32: 2, 1>, patterns = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d2)>]}> ({
 // CHECK-NEXT:     ^0(%arg1 : !stream.stream<i8>, %arg2 : !stream.stream<i8>, %arg3 : !stream.stream<i32>):
 // CHECK-NEXT:       %1 = "stream.generic"(%arg1, %arg2) ({
 // CHECK-NEXT:       ^1(%arg4 : i8, %arg5 : i8):

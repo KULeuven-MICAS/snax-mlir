@@ -41,22 +41,22 @@ builtin.module {
 // CHECK-NEXT:     %2 = arith.constant 100 : index
 // CHECK-NEXT:     %3 = arith.constant 1 : index
 // CHECK-NEXT:     %4 = arith.constant 976 : i64
-// CHECK-NEXT:     "llvm.inline_asm"(%4, %arg0) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64, "has_side_effects"}> : (i64, i32) -> ()
+// CHECK-NEXT:     "llvm.inline_asm"(%4, %arg0) <{asm_string = "csrw $0, $1", constraints = "I, rK", asm_dialect = 0 : i64, has_side_effects}> : (i64, i32) -> ()
 // CHECK-NEXT:     %5 = arith.constant 980 : i64
-// CHECK-NEXT:     "llvm.inline_asm"(%5, %0) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64, "has_side_effects"}> : (i64, i32) -> ()
+// CHECK-NEXT:     "llvm.inline_asm"(%5, %0) <{asm_string = "csrw $0, $1", constraints = "I, rK", asm_dialect = 0 : i64, has_side_effects}> : (i64, i32) -> ()
 // CHECK-NEXT:     scf.for %arg3 = %1 to %2 step %3 {
 // CHECK-NEXT:       %6 = arith.addi %arg1, %0 : i32
 // CHECK-NEXT:       %7 = arith.addi %arg2, %0 : i32
 // CHECK-NEXT:       %8 = arith.constant 977 : i64
-// CHECK-NEXT:       "llvm.inline_asm"(%8, %6) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64, "has_side_effects"}> : (i64, i32) -> ()
+// CHECK-NEXT:       "llvm.inline_asm"(%8, %6) <{asm_string = "csrw $0, $1", constraints = "I, rK", asm_dialect = 0 : i64, has_side_effects}> : (i64, i32) -> ()
 // CHECK-NEXT:       %9 = arith.constant 979 : i64
-// CHECK-NEXT:       "llvm.inline_asm"(%9, %7) <{"asm_string" = "csrw $0, $1", "constraints" = "I, rK", "asm_dialect" = 0 : i64, "has_side_effects"}> : (i64, i32) -> ()
+// CHECK-NEXT:       "llvm.inline_asm"(%9, %7) <{asm_string = "csrw $0, $1", constraints = "I, rK", asm_dialect = 0 : i64, has_side_effects}> : (i64, i32) -> ()
 // CHECK-NEXT:       %10 = arith.constant 960 : i64
-// CHECK-NEXT:       "llvm.inline_asm"(%10, %0) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64, "has_side_effects"}> : (i64, i32) -> ()
+// CHECK-NEXT:       "llvm.inline_asm"(%10, %0) <{asm_string = "csrw $0, $1", constraints = "I, K", asm_dialect = 0 : i64, has_side_effects}> : (i64, i32) -> ()
 // CHECK-NEXT:       scf.while () : () -> () {
 // CHECK-NEXT:         %11 = arith.constant 963 : i64
 // CHECK-NEXT:         %12 = arith.constant 0 : i32
-// CHECK-NEXT:         %13 = "llvm.inline_asm"(%11) <{"asm_string" = "csrr $0, $1", "constraints" = "=r, I", "asm_dialect" = 0 : i64, "has_side_effects"}> : (i64) -> i32
+// CHECK-NEXT:         %13 = "llvm.inline_asm"(%11) <{asm_string = "csrr $0, $1", constraints = "=r, I", asm_dialect = 0 : i64, has_side_effects}> : (i64) -> i32
 // CHECK-NEXT:         %14 = arith.cmpi ne, %13, %12 : i32
 // CHECK-NEXT:         scf.condition(%14)
 // CHECK-NEXT:       } do {
@@ -64,9 +64,9 @@ builtin.module {
 // CHECK-NEXT:       }
 // CHECK-NEXT:       %15 = arith.constant 965 : i12
 // CHECK-NEXT:       %16 = arith.constant 0 : i5
-// CHECK-NEXT:       "llvm.inline_asm"(%15, %16) <{"asm_string" = "csrw $0, $1", "constraints" = "I, K", "asm_dialect" = 0 : i64, "has_side_effects"}> : (i12, i5) -> ()
+// CHECK-NEXT:       "llvm.inline_asm"(%15, %16) <{asm_string = "csrw $0, $1", constraints = "I, K", asm_dialect = 0 : i64, has_side_effects}> : (i12, i5) -> ()
 // Check any amount of nops
-// CHECK-NEXT:       "llvm.inline_asm"() <{"asm_string" = "nop", "constraints" = "", "asm_dialect" = 0 : i64, "has_side_effects"}> : () -> ()
+// CHECK-NEXT:       "llvm.inline_asm"() <{asm_string = "nop", constraints = "", asm_dialect = 0 : i64, has_side_effects}> : () -> ()
 // CHECK: }
 // CHECK:     func.return
 // CHECK-NEXT:   }

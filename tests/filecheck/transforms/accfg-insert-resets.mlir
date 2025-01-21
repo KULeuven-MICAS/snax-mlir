@@ -158,7 +158,7 @@ func.func @simple_loop() {
 // CHECK-NEXT:    %0 = accfg.setup "snax_hwpe_mult" to () : !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:    %res, %1 = scf.for %i = %lb to %ub step %step iter_args(%arg0 = %carry, %2 = %0) -> (i32, !accfg.state<"snax_hwpe_mult">) : i32 {
 // CHECK-NEXT:      %s2 = accfg.setup "snax_hwpe_mult" from %2 to ("A" = %A : i32, "B" = %B : i32, "O" = %O : i32, "nr_iters" = %nr_iters : i32) : !accfg.state<"snax_hwpe_mult">
-// CHECK-NEXT:      %t = "accfg.launch"(%s2) <{"accelerator" = "snax_hwpe_mult", "param_names" = []}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
+// CHECK-NEXT:      %t = "accfg.launch"(%s2) <{accelerator = "snax_hwpe_mult", param_names = []}> : (!accfg.state<"snax_hwpe_mult">) -> !accfg.token<"snax_hwpe_mult">
 // CHECK-NEXT:      "accfg.await"(%t) : (!accfg.token<"snax_hwpe_mult">) -> ()
 // CHECK-NEXT:      scf.yield %arg0, %s2 : i32, !accfg.state<"snax_hwpe_mult">
 // CHECK-NEXT:    }

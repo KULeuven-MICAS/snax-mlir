@@ -39,32 +39,32 @@ func.func @test() {
 
 
 // CHECK-NEXT: builtin.module {
-// CHECK-NEXT:   "accfg.accelerator"() <{"name" = @acc1, "fields" = {"A" = 960 : i64, "B" = 961 : i64}, "launch_fields" = {"launch" = 975 : i64}, "barrier" = 1987 : i64}> : () -> ()
+// CHECK-NEXT:   "accfg.accelerator"() <{name = @acc1, fields = {A = 960 : i64, B = 961 : i64}, launch_fields = {launch = 975 : i64}, barrier = 1987 : i64}> : () -> ()
 // CHECK-NEXT:   func.func @test() {
 // CHECK-NEXT:     %one, %two = "test.op"() : () -> (i32, i32)
 // CHECK-NEXT:     %zero = arith.constant 0 : i32
-// CHECK-NEXT:     %state = accfg.setup "acc1" to ("A" = %one : i32, "B" = %two : i32) attrs {"test_attr" = 100 : i64} : !accfg.state<"acc1">
-// CHECK-NEXT:     %token = "accfg.launch"(%zero, %state) <{"param_names" = ["launch"], "accelerator" = "acc1"}> : (i32, !accfg.state<"acc1">) -> !accfg.token<"acc1">
+// CHECK-NEXT:     %state = accfg.setup "acc1" to ("A" = %one : i32, "B" = %two : i32) attrs {test_attr = 100 : i64} : !accfg.state<"acc1">
+// CHECK-NEXT:     %token = "accfg.launch"(%zero, %state) <{param_names = ["launch"], accelerator = "acc1"}> : (i32, !accfg.state<"acc1">) -> !accfg.token<"acc1">
 // CHECK-NEXT:     %state2 = accfg.setup "acc1" from %state to ("A" = %one : i32, "B" = %two : i32) : !accfg.state<"acc1">
 // CHECK-NEXT:     "accfg.await"(%token) : (!accfg.token<"acc1">) -> ()
-// CHECK-NEXT:    "test.op"() {"accfg.effects" = #accfg.effects<none>} : () -> ()
-// CHECK-NEXT:    "test.op"() {"accfg.effects" = #accfg.effects<full>} : () -> ()
+// CHECK-NEXT:    "test.op"() {accfg.effects = #accfg.effects<none>} : () -> ()
+// CHECK-NEXT:    "test.op"() {accfg.effects = #accfg.effects<full>} : () -> ()
 // CHECK-NEXT:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
 
 
 // CHECK-GENERIC: "builtin.module"() ({
-// CHECK-GENERIC:   "accfg.accelerator"() <{"name" = @acc1, "fields" = {"A" = 960 : i64, "B" = 961 : i64}, "launch_fields" = {"launch" = 975 : i64}, "barrier" = 1987 : i64}> : () -> ()
-// CHECK-GENERIC:   "func.func"() <{"sym_name" = "test", "function_type" = () -> ()}> ({
+// CHECK-GENERIC:   "accfg.accelerator"() <{name = @acc1, fields = {A = 960 : i64, B = 961 : i64}, launch_fields = {launch = 975 : i64}, barrier = 1987 : i64}> : () -> ()
+// CHECK-GENERIC:   "func.func"() <{sym_name = "test", function_type = () -> ()}> ({
 // CHECK-GENERIC:     %one, %two = "test.op"() : () -> (i32, i32)
-// CHECK-GENERIC:     %zero = "arith.constant"() <{"value" = 0 : i32}> : () -> i32
-// CHECK-GENERIC:     %state = "accfg.setup"(%one, %two) <{"param_names" = ["A", "B"], "accelerator" = "acc1", "operandSegmentSizes" = array<i32: 2, 0>}>  {"test_attr" = 100 : i64}  : (i32, i32) -> !accfg.state<"acc1">
-// CHECK-GENERIC:     %token = "accfg.launch"(%zero, %state) <{"param_names" = ["launch"], "accelerator" = "acc1"}> : (i32, !accfg.state<"acc1">) -> !accfg.token<"acc1">
-// CHECK-GENERIC:     %state2 = "accfg.setup"(%one, %two, %state) <{"param_names" = ["A", "B"], "accelerator" = "acc1", "operandSegmentSizes" = array<i32: 2, 1>}> : (i32, i32, !accfg.state<"acc1">) -> !accfg.state<"acc1">
+// CHECK-GENERIC:     %zero = "arith.constant"() <{value = 0 : i32}> : () -> i32
+// CHECK-GENERIC:     %state = "accfg.setup"(%one, %two) <{param_names = ["A", "B"], accelerator = "acc1", operandSegmentSizes = array<i32: 2, 0>}>  {test_attr = 100 : i64}  : (i32, i32) -> !accfg.state<"acc1">
+// CHECK-GENERIC:     %token = "accfg.launch"(%zero, %state) <{param_names = ["launch"], accelerator = "acc1"}> : (i32, !accfg.state<"acc1">) -> !accfg.token<"acc1">
+// CHECK-GENERIC:     %state2 = "accfg.setup"(%one, %two, %state) <{param_names = ["A", "B"], accelerator = "acc1", operandSegmentSizes = array<i32: 2, 1>}> : (i32, i32, !accfg.state<"acc1">) -> !accfg.state<"acc1">
 // CHECK-GENERIC:     "accfg.await"(%token) : (!accfg.token<"acc1">) -> ()
-// CHECK-GENERIC:    "test.op"() {"accfg.effects" = #accfg.effects<none>} : () -> ()
-// CHECK-GENERIC:    "test.op"() {"accfg.effects" = #accfg.effects<full>} : () -> ()
+// CHECK-GENERIC:    "test.op"() {accfg.effects = #accfg.effects<none>} : () -> ()
+// CHECK-GENERIC:    "test.op"() {accfg.effects = #accfg.effects<full>} : () -> ()
 // CHECK-GENERIC:     "func.return"() : () -> ()
 // CHECK-GENERIC:   }) : () -> ()
 // CHECK-GENERIC: }) : () -> ()

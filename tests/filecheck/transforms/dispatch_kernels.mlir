@@ -13,7 +13,7 @@ builtin.module {
   }
 }
 
-//CHECK: "library_call" = "snax_gemm"
+//CHECK: library_call = "snax_gemm"
 
 // -----
 
@@ -30,7 +30,7 @@ builtin.module {
   }
 }
 
-//CHECK: "library_call" = "snax_gemm_stream"
+//CHECK: library_call = "snax_gemm_stream"
 
 // -----
 
@@ -45,7 +45,7 @@ builtin.module {
   }
 }
 
-// CHECK: "library_call" = "snax_alu_stream"
+// CHECK: library_call = "snax_alu_stream"
 
 // -----
 
@@ -60,4 +60,4 @@ builtin.module {
   }
 }
 
-// CHECK: "library_call" = "snax_alu"
+// CHECK: library_call = "snax_alu"

@@ -148,8 +148,8 @@ class MoveMemrefDims(RewritePattern):
             Returns the size of the subview at the given index,
             if the size is dynamic, the value is returned as an SSAValue
             """
-            static_sizes = subview.static_sizes.data.data
-            target = static_sizes[index].data
+            static_sizes = subview.static_sizes.get_values()
+            target = static_sizes[index]
             if not target == memref.SubviewOp.DYNAMIC_INDEX:
                 assert isinstance(target, int)
                 return target
@@ -158,7 +158,7 @@ class MoveMemrefDims(RewritePattern):
                 # indexed w.r.t. the total number of dynamic sizes.
                 magic_numbers = 0
                 for i in range(index):
-                    if static_sizes[i].data == memref.SubviewOp.DYNAMIC_INDEX:
+                    if static_sizes[i] == memref.SubviewOp.DYNAMIC_INDEX:
                         magic_numbers += 1
                 return subview.sizes[magic_numbers]
 
