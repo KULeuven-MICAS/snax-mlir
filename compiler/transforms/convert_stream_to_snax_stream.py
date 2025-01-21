@@ -227,9 +227,6 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
 
                 # insert empty patterns for D8 and zero pattern for C
                 snax_stride_patterns.insert(2, empty_pattern)
-                # ops_to_add.append(
-                #         ptr := memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                # )
                 new_inputs.append(op.inputs[-1])
 
                 # insert zero pattern for C, using the same pattern as D32 but pointing to zero
@@ -256,9 +253,6 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                 # for a gemm, the 8bit-output port D8 are unused, so we create
                 # empty patterns for them here
                 snax_stride_patterns.insert(2, empty_pattern)
-                # ops_to_add.insert(
-                #         2, ptr := memref.ExtractAlignedPointerAsIndexOp.get(op.inputs[-1])
-                # )
                 new_inputs.insert(2, op.inputs[-1])
 
             else:
