@@ -118,6 +118,11 @@ class StreamingRegionOpBase(IRDLOperation):
 
 @irdl_op_definition
 class StreamingRegionOp(StreamingRegionOpBase):
+    """
+    A streaming region op that represents an unscheduled operation,
+    with streams mapping the iteration space to the operand indexing space.
+    """
+
     name = "stream.streaming_region"
 
     def get_pattern_bounds_to_shapes_map(self) -> AffineMap:
@@ -156,6 +161,16 @@ class StreamingRegionOp(StreamingRegionOpBase):
 
 @irdl_op_definition
 class ScheduleOp(StreamingRegionOpBase):
+    """
+    A streaming region op that represents an scheduled operation,
+    with streams mapping the iteration space to the operand indexing space.
+
+    Due to the transformations that took place on the unscheduled op,
+    some extra metadata is needed, consisting of the fixed bounds
+    of the iteration space and the tile sizes that are used if a tiling
+    transformation took place.
+    """
+
     name = "stream.schedule"
 
     # The bounds of the iteration space of the schedule
@@ -199,6 +214,11 @@ class ScheduleOp(StreamingRegionOpBase):
 
 @irdl_op_definition
 class AccessPatternOp(StreamingRegionOpBase):
+    """
+    A streaming region op that represents an scheduled operation, after
+    layout resolution, with streams mapping the iteration space to memory.
+    """
+
     name = "stream.access_pattern"
 
     # The bounds of the iteration space of the schedule

@@ -85,6 +85,12 @@ class AutoflowScheduler(RewritePattern):
 
 @dataclass
 class LayoutResolution(RewritePattern):
+    """
+    Applies layout resolution by converting a ScheduleOp (mapping the iteration
+    space to the operand index space) into an AccessOp (mapping the iteration space
+    to memory), using a certain memory layout of the memref operands of the operation.
+    """
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: stream.ScheduleOp, rewriter: PatternRewriter):
         bounds = [x.value.data for x in op.bounds.data]
