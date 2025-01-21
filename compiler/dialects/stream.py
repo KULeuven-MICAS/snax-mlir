@@ -118,6 +118,11 @@ class StreamingRegionOpBase(IRDLOperation):
 
 @irdl_op_definition
 class StreamingRegionOp(StreamingRegionOpBase):
+    """
+    A streaming region op that represents an unscheduled operation,
+    with streams mapping the iteration space to the operand indexing space.
+    """
+
     name = "stream.streaming_region"
 
     def get_pattern_bounds_to_shapes_map(self) -> AffineMap:
@@ -156,6 +161,16 @@ class StreamingRegionOp(StreamingRegionOpBase):
 
 @irdl_op_definition
 class ScheduleOp(StreamingRegionOpBase):
+    """
+    A streaming region op that represents an scheduled operation,
+    with streams mapping the iteration space to the operand indexing space.
+
+    Due to the transformations that took place on the unscheduled op,
+    some extra metadata is needed, consisting of the fixed bounds
+    of the iteration space and the tile sizes that are used if a tiling
+    transformation took place.
+    """
+
     name = "stream.schedule"
 
     # The bounds of the iteration space of the schedule
@@ -194,6 +209,43 @@ class ScheduleOp(StreamingRegionOpBase):
             accelerator,
             result_types,
             {"tiles": tiles, "bounds": bounds},
+        )
+
+
+@irdl_op_definition
+class AccessPatternOp(StreamingRegionOpBase):
+    """
+    A streaming region op that represents an scheduled operation, after
+    layout resolution, with streams mapping the iteration space to memory.
+    """
+
+    name = "stream.access_pattern"
+
+    # The bounds of the iteration space of the schedule
+    bounds = prop_def(ParameterDef[ArrayAttr[IntegerAttr[IndexType]]])
+
+    def __init__(
+        self,
+        inputs: Sequence[SSAValue | Operation],
+        outputs: Sequence[SSAValue | Operation],
+        patterns: ArrayAttr[AffineMapAttr],
+        body: Region,
+        bounds: ArrayAttr[IntegerAttr[IndexType]] | Sequence[int],
+        accelerator: str | StringAttr | None = None,
+        result_types: Sequence[Attribute] = (),
+    ) -> None:
+        if isinstance(bounds, Sequence):
+            bounds = ArrayAttr(
+                [IntegerAttr.from_index_int_value(val) for val in bounds]
+            )
+        super().__init__(
+            inputs,
+            outputs,
+            patterns,
+            body,
+            accelerator,
+            result_types,
+            {"bounds": bounds},
         )
 
 
@@ -247,6 +299,7 @@ Stream = Dialect(
     [
         StreamingRegionOp,
         ScheduleOp,
+        AccessPatternOp,
         GenericOp,
         YieldOp,
     ],
