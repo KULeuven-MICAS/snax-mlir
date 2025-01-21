@@ -76,6 +76,7 @@ class SnaxBufferize(ModulePass):
 
     mlir_bufferization_pass = MLIROptPass(
         arguments=(
+            "--empty-tensor-to-alloc-tensor",
             "--one-shot-bufferize=bufferize-function-boundaries allow-return-allocs-from-loops allow-unknown-ops"
             + " function-boundary-type-conversion=identity-layout-map",
             "--mlir-print-op-generic",

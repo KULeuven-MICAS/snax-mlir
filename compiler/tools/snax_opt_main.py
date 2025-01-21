@@ -28,6 +28,7 @@ from compiler.transforms.convert_stream_to_snax_stream import ConvertStreamToSna
 from compiler.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
+from compiler.transforms.frontend.preprocess_mlir import PreprocessPass
 from compiler.transforms.frontend.preprocess_mlperf_tiny import PreprocessMLPerfTiny
 from compiler.transforms.fuse_streaming_regions import FuseStreamingRegions
 from compiler.transforms.insert_accfg_op import InsertAccOp
@@ -122,6 +123,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(SnaxBufferize.name, lambda: SnaxBufferize)
         super().register_pass(FuseStreamingRegions.name, lambda: FuseStreamingRegions)
         super().register_pass(AllocToGlobalPass.name, lambda: AllocToGlobalPass)
+        super().register_pass(PreprocessPass.name, lambda: PreprocessPass)
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)

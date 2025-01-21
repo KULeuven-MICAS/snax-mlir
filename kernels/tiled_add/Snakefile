@@ -2,10 +2,6 @@ from util.snake.configs import get_snax_alu_config
 
 config = get_snax_alu_config()
 
-# Untiled example needs preprocessing:
-for entry in config["mlirpreprocflags"]:
-    entry.append("--allow-unregistered-dialect")
-
 
 def get_snax_opt_flags(options):
     flags = []
@@ -60,9 +56,9 @@ use rule * from default_rules as default_*
 
 rule size_mlir:
     input:
-        "{file}.preprocfinal.mlir",
+        "{file}.mlir",
     output:
-        temp("{file}_{array_size}_{tile_size}.preprocfinal.sized.mlir"),
+        temp("{file}_{array_size}_{tile_size}.sized.mlir"),
     params:
         sed_script_array_size=lambda wildcards: f"'s/128/{wildcards.array_size}/gm;t'",
         sed_script_tile_size=lambda wildcards: f"'s/%tile_size = arith.constant 16 : index/%tile_size = arith.constant {wildcards.tile_size} : index/gm;t'",
@@ -75,7 +71,7 @@ rule size_mlir:
 
 rule snax_compile_mlir:
     input:
-        "{file}.preprocfinal.sized.mlir",
+        "{file}.sized.mlir",
     output:
         temp("{file}_{compiler_opt}.snax-opt.mlir"),
     wildcard_constraints:
