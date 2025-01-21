@@ -1,5 +1,4 @@
 from util.snake.paths import get_default_paths
-from util.snake.flags import get_mlir_preproc_flags
 
 
 config.update(get_default_paths())
@@ -25,7 +24,6 @@ config["cflags"] = [
 config["mliroptflags"] = [
     "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.quantized_matmul}, test-transform-dialect-erase-schedule, linalg-generalize-named-ops)' --mlir-print-local-scope --mlir-print-op-generic"
 ]
-config["mlirpreprocflags"] = get_mlir_preproc_flags()
 
 
 module default_rules:

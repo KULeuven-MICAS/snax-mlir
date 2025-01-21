@@ -4,7 +4,6 @@ from util.snake.flags import (
     get_clang_flags,
     get_default_flags,
     get_mlir_postproc_flags,
-    get_mlir_preproc_flags,
 )
 from util.snake.paths import get_default_paths
 
@@ -77,5 +76,4 @@ def get_mlperf_tiny_config():
         }
     )
     config.update({"mlirpostprocflags": get_mlir_postproc_flags()})
-    config.update({"mlirpreprocflags": get_mlir_preproc_flags()})
     return config

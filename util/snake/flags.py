@@ -1,42 +1,6 @@
 import os
 
 
-def get_mlir_preproc_flags():
-    return [
-        [
-            "--pass-pipeline='builtin.module(func.func("
-            + ", ".join(
-                [
-                    "tosa-to-linalg-named",
-                    "tosa-to-tensor",
-                    "tosa-to-scf",
-                    "tosa-to-linalg",
-                ]
-            )
-            + "))'",
-            "--mlir-print-op-generic",
-            "--mlir-print-local-scope",
-        ],
-        ["--tosa-to-arith='include-apply-rescale'", "--empty-tensor-to-alloc-tensor"],
-        [
-            "--test-linalg-transform-patterns='test-generalize-pad-tensor'",
-            "--linalg-generalize-named-ops",
-            "--empty-tensor-to-alloc-tensor",
-            "--one-shot-bufferize='"
-            + " ".join(
-                [
-                    "bufferize-function-boundaries",
-                    "allow-return-allocs-from-loops",
-                    "function-boundary-type-conversion=identity-layout-map",
-                ]
-            )
-            + "'",
-            "--mlir-print-op-generic",
-            "--mlir-print-local-scope",
-        ],
-    ]
-
-
 def get_mlir_postproc_flags(index_bitwidth=32):
     return [
         "--convert-linalg-to-loops",
@@ -137,6 +101,5 @@ def get_default_flags(snitch_sw_path, snitch_llvm_path=None, index_bitwidth=32):
         "cflags": get_cc_flags(snitch_sw_path),
         "clangflags": get_clang_flags(),
         "ldflags": get_ld_flags(snitch_sw_path, snitch_llvm_path),
-        "mlirpreprocflags": get_mlir_preproc_flags(),
         "mlirpostprocflags": get_mlir_postproc_flags(index_bitwidth),
     }
