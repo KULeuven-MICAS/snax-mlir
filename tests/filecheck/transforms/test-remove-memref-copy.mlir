@@ -10,6 +10,6 @@ builtin.module {
 
 // CHECK: builtin.module {
 // CHECK-NEXT:   %0 = "test.op"() : () -> memref<64xi32, "L3">
-// CHECK-NEXT:   %1 = memref.alloc() {"alignment" = 64 : i64} : memref<64xi32, "L1">
+// CHECK-NEXT:   %1 = memref.alloc() {alignment = 64 : i64} : memref<64xi32, "L1">
 // CHECK-NEXT:   "test.op"(%1) : (memref<64xi32, "L1">) -> ()
 // CHECK-NEXT: }

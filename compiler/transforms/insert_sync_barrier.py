@@ -2,10 +2,7 @@ from xdsl.context import MLContext
 from xdsl.dialects import builtin
 from xdsl.ir import Operation
 from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import (
-    PatternRewriter,
-)
-from xdsl.rewriter import InsertPoint
+from xdsl.rewriter import InsertPoint, Rewriter
 
 from compiler.dialects import snax
 from compiler.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
@@ -20,7 +17,7 @@ class InsertSyncBarrier(ModulePass):
     name = "insert-sync-barrier"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        rewriter = PatternRewriter(op)
+        rewriter = Rewriter()
 
         ops_to_sync = []
 

@@ -15,7 +15,7 @@
 }) : () -> ()
 
 // CHECK:  builtin.module {
-// CHECK-NEXT:    %0 = memref.alloc() {"alignment" = 64 : i64} : memref<640xi32, "L1">
+// CHECK-NEXT:    %0 = memref.alloc() {alignment = 64 : i64} : memref<640xi32, "L1">
 // CHECK-NEXT:  }
 
 // -----
@@ -159,7 +159,7 @@ func.func @gemm(%arg0 : memref<16x16xi8>, %arg1 : memref<16x16xi8>, %arg2 : memr
 // CHECK-NEXT:      %3 = "memref.memory_space_cast"(%arg1) : (memref<16x16xi8, "L3">) -> memref<16x16xi8, "L1">
 // CHECK-NEXT:      %4 = "memref.memory_space_cast"(%arg2) : (memref<16x16xi32, "L3">) -> memref<16x16xi32, "L1">
 // CHECK-NEXT:      %5 = "memref.memory_space_cast"(%1) : (memref<16x16xi32, "L3">) -> memref<16x16xi32, "L1">
-// CHECK-NEXT:      "stream.streaming_region"(%2, %3, %4, %5) <{"operandSegmentSizes" = array<i32: 3, 1>, "patterns" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>]}> ({
+// CHECK-NEXT:      "stream.streaming_region"(%2, %3, %4, %5) <{operandSegmentSizes = array<i32: 3, 1>, patterns = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>]}> ({
 // CHECK-NEXT:      ^0(%arg3 : !stream.stream<i8>, %arg4 : !stream.stream<i8>, %arg5 : !stream.stream<i32>, %arg6 : !stream.stream<i32>):
 // CHECK-NEXT:        %6 = "test.op"(%arg3, %arg4, %arg5) : (!stream.stream<i8>, !stream.stream<i8>, !stream.stream<i32>) -> !stream.stream<i32>
 // CHECK-NEXT:        stream.yield %6 : !stream.stream<i32>

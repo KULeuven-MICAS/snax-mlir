@@ -5,7 +5,7 @@ version = "0.2.2"
 requires-python = "== 3.12.*"
 
 dependencies = [
-    "xdsl @ git+https://github.com/xdslproject/xdsl.git@d72f46d92ec4b03ae05b91e70d75f93735e94393"
+    "xdsl @ git+https://github.com/xdslproject/xdsl.git@5c96c6efba255094871aabf1872e14ce706f9917"
 ]
 
 [project.optional-dependencies]

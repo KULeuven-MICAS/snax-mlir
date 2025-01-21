@@ -6,7 +6,7 @@
 
 // expect nothing to change because no memory space is specified
 // CHECK:       builtin.module {
-// CHECK-NEXT:    %0 = memref.alloc() {"alignment" = 64 : i64} : memref<16x16xi32>
+// CHECK-NEXT:    %0 = memref.alloc() {alignment = 64 : i64} : memref<16x16xi32>
 // CHECK-NEXT:  }
 
 
@@ -22,7 +22,7 @@
 // CHECK-NEXT:    %2 = arith.constant 4 : index
 // CHECK-NEXT:    %3 = arith.muli %0, %2 : index
 // CHECK-NEXT:    %4 = arith.muli %1, %3 : index
-// CHECK-NEXT:    %5 = "snax.alloc"(%4, %0, %1) <{"memory_space" = "L1", "alignment" = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:    %5 = "snax.alloc"(%4, %0, %1) <{memory_space = "L1", alignment = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:    %6 = builtin.unrealized_conversion_cast %5 : !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)> to memref<16x16xi32, "L1">
 // CHECK-NEXT:  }
 
@@ -39,7 +39,7 @@
 // CHECK-NEXT:    %2 = arith.constant 4 : index
 // CHECK-NEXT:    %3 = arith.muli %0, %2 : index
 // CHECK-NEXT:    %4 = arith.muli %1, %3 : index
-// CHECK-NEXT:    %5 = "snax.alloc"(%4, %0, %1) <{"memory_space" = "L1", "alignment" = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:    %5 = "snax.alloc"(%4, %0, %1) <{memory_space = "L1", alignment = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:    %6 = builtin.unrealized_conversion_cast %5 : !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)> to memref<?x16xi32, "L1">
 // CHECK-NEXT:  }
 
@@ -81,7 +81,7 @@
 // CHECK-NEXT:    %28 = arith.constant 0 : index
 // CHECK-NEXT:    %29 = arith.muli %28, %25 : index
 // CHECK-NEXT:    %30 = arith.addi %27, %29 : index
-// CHECK-NEXT:    %31 = "snax.alloc"(%30, %0, %1) <{"memory_space" = "L1", "alignment" = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:    %31 = "snax.alloc"(%30, %0, %1) <{memory_space = "L1", alignment = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:    %32 = builtin.unrealized_conversion_cast %31 : !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)> to memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 4), [2, 4] -> (128, 32)>, "L1">
 // CHECK-NEXT:  }
 
@@ -126,7 +126,7 @@
 // CHECK-NEXT:    %29 = arith.constant 0 : index
 // CHECK-NEXT:    %30 = arith.muli %29, %26 : index
 // CHECK-NEXT:    %31 = arith.addi %28, %30 : index
-// CHECK-NEXT:    %32 = "snax.alloc"(%31, %1, %0) <{"memory_space" = "L1", "alignment" = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:    %32 = "snax.alloc"(%31, %1, %0) <{memory_space = "L1", alignment = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:    %33 = builtin.unrealized_conversion_cast %32 : !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)> to memref<8x?xi32, #tsl.tsl<[2, 4] -> (16, 4), [?, 4] -> (?, 32)>, "L1">
 // CHECK-NEXT:  }
 

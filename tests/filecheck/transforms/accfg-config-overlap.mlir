@@ -14,7 +14,7 @@ func.func @simple(%A: i32, %B: i32) {
 // check that simple overlapping works
 // CHECK:       func.func @simple(%A : i32, %B : i32) {
 // CHECK-NEXT:    %s1 = accfg.setup "simple" to ("A" = %A : i32) : !accfg.state<"simple">
-// CHECK-NEXT:    %t = "accfg.launch"(%s1) <{"param_names" = [], "accelerator" = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
+// CHECK-NEXT:    %t = "accfg.launch"(%s1) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
 //                      ∨∨∨∨∨ setup comes right after launch ∧∧∧∧∧
 // CHECK-NEXT:    %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
 // reset right after setup
@@ -44,7 +44,7 @@ func.func @computed(%A: i32) {
 // check that values needed to calculate the setup values are also moved
 // CHECK:       func.func @computed(%A : i32) {
 // CHECK-NEXT:    %s1 = accfg.setup "simple" to ("A" = %A : i32) : !accfg.state<"simple">
-// CHECK-NEXT:    %t = "accfg.launch"(%s1) <{"param_names" = [], "accelerator" = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
+// CHECK-NEXT:    %t = "accfg.launch"(%s1) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
 //                ∨∨∨∨∨ arith values moved up
 // CHECK-NEXT:    %c = arith.constant 64 : i32
 // CHECK-NEXT:    %A_plus = arith.addi %A, %c : i32
@@ -77,7 +77,7 @@ func.func @simple_negative(%A: i32, %B: i32, %i1: i1) {
 // check that we don't move setups out of control flow (as this would change observable behaviour)
 // CHECK:       func.func @simple_negative(%A : i32, %B : i32, %i1 : i1) {
 // CHECK-NEXT:    %s1 = accfg.setup "simple" to ("A" = %A : i32) : !accfg.state<"simple">
-// CHECK-NEXT:    %t = "accfg.launch"(%s1) <{"param_names" = [], "accelerator" = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
+// CHECK-NEXT:    %t = "accfg.launch"(%s1) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
 // CHECK-NEXT:    "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
 // CHECK-NEXT:    scf.if %i1 {
 // CHECK-NEXT:      %s2 = accfg.setup "simple" from %s1 to ("A" = %B : i32) : !accfg.state<"simple">
@@ -109,7 +109,7 @@ func.func @single_loop(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 // CHECK-NEXT:     %0 = accfg.setup "simple" to () : !accfg.state<"simple">
 // CHECK-NEXT:     %l1 = accfg.setup "simple" from %0 to ("A" = %A : i32, "B" = %A : i32, "i" = %lb : i32) : !accfg.state<"simple">
 // CHECK-NEXT:     %1 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %l1) -> (!accfg.state<"simple">) : i32 {
-// CHECK-NEXT:       %t = "accfg.launch"(%l0) <{"param_names" = [], "accelerator" = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
+// CHECK-NEXT:       %t = "accfg.launch"(%l0) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
 // CHECK-NEXT:       %2 = arith.addi %i, %step : i32
 // CHECK-NEXT:       %l1_1 = accfg.setup "simple" from %l0 to ("A" = %A : i32, "B" = %A : i32, "i" = %2 : i32) : !accfg.state<"simple">
 // CHECK-NEXT:       "accfg.await"(%t) : (!accfg.token<"simple">) -> ()
@@ -149,7 +149,7 @@ func.func @complex_loop(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 // CHECK-NEXT:     %1 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %l1) -> (!accfg.state<"simple">) : i32 {
 // CHECK-NEXT:       %b_1 = arith.addi %i, %c2_i32 : i32
 //                   ∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧ this is dead now and can be eliminated by dce
-// CHECK-NEXT:       %t = "accfg.launch"(%l0) <{"param_names" = [], "accelerator" = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
+// CHECK-NEXT:       %t = "accfg.launch"(%l0) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
 // CHECK-NEXT:       %2 = arith.addi %i, %step : i32
 //                        ∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧ compute next loops %i
 // CHECK-NEXT:       %b_2 = arith.addi %2, %c2_i32 : i32
@@ -191,7 +191,7 @@ func.func @nested_loops(%A : i32, %lb : i32, %ub : i32, %step : i32) {
 // CHECK-NEXT:      %out_state = accfg.setup "simple" from %2 to ("A" = %A : i32, "i" = %i : i32, "j" = %i : i32) : !accfg.state<"simple">
 //                               ∧∧∧∧∧∧∧∧∧∧∧ loop 0 setup with correct vars             ∧∧              ∧∧
 // CHECK-NEXT:      %3 = scf.for %j = %i to %ub step %step iter_args(%out_state_1 = %out_state) -> (!accfg.state<"simple">) : i32 {
-// CHECK-NEXT:        %t = "accfg.launch"(%out_state_1) <{"param_names" = [], "accelerator" = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
+// CHECK-NEXT:        %t = "accfg.launch"(%out_state_1) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
 // CHECK-NEXT:        %4 = arith.addi %j, %step : i32
 //                         ∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧∧ calculate next loops var
 // CHECK-NEXT:        %out_state_2 = accfg.setup "simple" from %out_state_1 to ("A" = %A : i32, "i" = %i : i32, "j" = %4 : i32) : !accfg.state<"simple">
@@ -245,14 +245,14 @@ func.func @double_setup_loop(%A : i32, %B : i32, %lb : i32, %ub : i32, %step : i
 // CHECK-NEXT:    %1 = scf.for %i = %lb to %ub step %step iter_args(%l0 = %l1) -> (!accfg.state<"simple">) : i32 {
 // CHECK-NEXT:      %i_plus_1 = arith.addi %i, %c2 : i32
 //                      launch
-// CHECK-NEXT:      %t1 = "accfg.launch"(%l0) <{"param_names" = [], "accelerator" = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
+// CHECK-NEXT:      %t1 = "accfg.launch"(%l0) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
 // CHECK-NEXT:      %i2 = arith.addi %i, %i : i32
 //                      setup
 // CHECK-NEXT:      %l2 = accfg.setup "simple" from %l0 to ("A" = %B : i32, "B" = %B : i32, "i" = %i2 : i32) : !accfg.state<"simple">
 //                      await
 // CHECK-NEXT:      "accfg.await"(%t1) : (!accfg.token<"simple">) -> ()
 //                      launch
-// CHECK-NEXT:      %t2 = "accfg.launch"(%l2) <{"param_names" = [], "accelerator" = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
+// CHECK-NEXT:      %t2 = "accfg.launch"(%l2) <{param_names = [], accelerator = "simple"}> : (!accfg.state<"simple">) -> !accfg.token<"simple">
 // CHECK-NEXT:      %2 = arith.addi %i, %step : i32
 // CHECK-NEXT:      %i_plus_2 = arith.addi %2, %c2 : i32
 //                      setup

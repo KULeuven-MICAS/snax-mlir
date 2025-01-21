@@ -6,7 +6,7 @@ builtin.module {
 }
 
 // Expected an integer literal or ?
-// CHECK: Expected '>'
+// CHECK: '>' expected
 
 
 // -----
@@ -16,7 +16,7 @@ builtin.module {
 }
 
 //Expected opening bracket
-// CHECK: Expected '>'
+// CHECK: '>' expected
 
 // -----
 
@@ -25,7 +25,7 @@ builtin.module {
 }
 
 //Expected opening bracket
-// CHECK: Expected '>'
+// CHECK: '>' expected
 
 // -----
 
@@ -34,7 +34,7 @@ builtin.module {
 }
 
 //Expected arrow
-// CHECK: Expected '>'
+// CHECK: '>' expected
 
 // -----
 
@@ -43,7 +43,7 @@ builtin.module {
 }
 
 //Expected same number of strides and bounds
-// CHECK: Expected '>'
+// CHECK: '>' expected
 
 // -----
 
@@ -52,4 +52,4 @@ builtin.module {
 }
 
 //Expected colon
-// CHECK: Expected '>'
+// CHECK: '>' expected
