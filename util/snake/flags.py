@@ -1,27 +1,6 @@
 import os
 
 
-def get_mlir_postproc_flags(index_bitwidth=32):
-    return [
-        "--convert-linalg-to-loops",
-        "--convert-scf-to-cf",
-        "--lower-affine",
-        "--canonicalize",
-        "--cse",
-        "--convert-math-to-llvm",
-        "--llvm-request-c-wrappers",
-        "--expand-strided-metadata",
-        "--lower-affine",
-        f"--convert-index-to-llvm=index-bitwidth={index_bitwidth}",
-        f"--convert-cf-to-llvm=index-bitwidth={index_bitwidth}",
-        f"--convert-arith-to-llvm=index-bitwidth={index_bitwidth}",
-        f"--convert-func-to-llvm='index-bitwidth={index_bitwidth}'",
-        f"--finalize-memref-to-llvm='use-generic-functions index-bitwidth={index_bitwidth}'",
-        "--canonicalize",
-        "--reconcile-unrealized-casts",
-    ]
-
-
 def get_target_flags():
     """
     Function that returns llvm target flags, related to RISC-V backend settings
@@ -101,5 +80,4 @@ def get_default_flags(snitch_sw_path, snitch_llvm_path=None, index_bitwidth=32):
         "cflags": get_cc_flags(snitch_sw_path),
         "clangflags": get_clang_flags(),
         "ldflags": get_ld_flags(snitch_sw_path, snitch_llvm_path),
-        "mlirpostprocflags": get_mlir_postproc_flags(index_bitwidth),
     }
