@@ -3,7 +3,6 @@ import os
 from util.snake.flags import (
     get_clang_flags,
     get_default_flags,
-    get_mlir_postproc_flags,
 )
 from util.snake.paths import get_default_paths
 
@@ -71,9 +70,9 @@ def get_mlperf_tiny_config():
                     "memref-to-snax",
                     "snax-to-func",
                     "clear-memory-space",
+                    "postprocess",
                 ]
             )
         }
     )
-    config.update({"mlirpostprocflags": get_mlir_postproc_flags()})
     return config

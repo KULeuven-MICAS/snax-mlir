@@ -13,6 +13,7 @@ config["snaxoptflags"] = ",".join(
         "memref-to-snax",
         "snax-to-func",
         "clear-memory-space",
+        "postprocess",
     ]
 )
 

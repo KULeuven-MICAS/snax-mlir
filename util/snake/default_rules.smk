@@ -6,23 +6,9 @@ rule snax_opt_mlir:
     input:
         "{file}.mlir",
     output:
-        temp("{file}.snax-opt.mlir"),
-    shell:
-        "{config[snax-opt]} -p {config[snaxoptflags]} -o {output} {input}"
-
-
-rule postprocess_mlir:
-    """
-    Apply various postprocessing transformations to mlir files with upstream mlir.
-    Goal is to lower everything to LLVM dialect after this step.
-    Options controlled with `mlirpostprocflags` defined in config.
-    """
-    input:
-        "{file}.snax-opt.mlir",
-    output:
         temp("{file}.ll.mlir"),
     shell:
-        "{config[mlir-opt]} {config[mlirpostprocflags]} -o {output} {input}"
+        "{config[snax-opt]} -p {config[snaxoptflags]} -o {output} {input}"
 
 
 rule translate_mlir:

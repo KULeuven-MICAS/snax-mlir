@@ -24,6 +24,7 @@ config["snaxoptflags"] = ",".join(
         "snax-to-func",
         "test-debug-to-func",
         "clear-memory-space",
+        "postprocess",
     ]
 )
 

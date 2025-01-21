@@ -51,7 +51,7 @@ rule snax_opt_mlir:
     input:
         "{file}.mlir",
     output:
-        temp("{file}.snax-opt.mlir"),
+        temp("{file}.ll.mlir"),
     shell:
         "{config[snax-opt]} -p {config[snaxoptflags]} --allow-unregistered-dialect --print-op-generic -o {output} {input}"
 
