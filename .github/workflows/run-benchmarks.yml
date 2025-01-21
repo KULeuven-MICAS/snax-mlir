@@ -2,8 +2,6 @@ name: Run benchmarks
 
 on:
   push:
-    branches:
-      - main
   pull_request:
     paths:
       - '.github/workflows/run-benchmarks.yml'
