@@ -2,6 +2,7 @@ from util.snake.configs import get_snax_alu_config
 
 config = get_snax_alu_config()
 
+
 def get_snax_opt_flags(options):
     flags = []
     match options:
