@@ -74,7 +74,7 @@ rule snax_compile_mlir:
     input:
         "{file}.sized.mlir",
     output:
-        temp("{file}_{compiler_opt}.snax-opt.mlir"),
+        temp("{file}_{compiler_opt}.ll.mlir"),
     wildcard_constraints:
         compiler_opt="noaccfgopt|deduponly|overlaponly|accfgboth",
     params:
