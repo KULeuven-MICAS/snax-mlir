@@ -163,6 +163,12 @@ class LayoutResolution(RewritePattern):
 
 @dataclass
 class ConvertStreamToSnaxStreamPattern(RewritePattern):
+    """
+    Convert stream access patterns (with affinemap patterns mapping the iteration
+    space to memory) into actual stride pattens for SNAX Streamers, with given
+    spatial and temporal strides ready to be programmed through CSRs.
+    """
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: stream.AccessPatternOp, rewriter: PatternRewriter):
         template = get_accelerator_info(op)
