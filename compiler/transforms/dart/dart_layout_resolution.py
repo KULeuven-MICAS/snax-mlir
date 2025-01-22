@@ -98,7 +98,7 @@ class LayoutResolution(RewritePattern):
 
 
 @dataclass(frozen=True)
-class DartLayoutResolution(ModulePass):
+class DartLayoutResolutionPass(ModulePass):
     name = "dart-layout-resolution"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:

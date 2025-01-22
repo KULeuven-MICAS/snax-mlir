@@ -13,29 +13,8 @@ from xdsl.pattern_rewriter import (
 
 from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
-from compiler.accelerators.util import find_accelerator_op
 from compiler.dialects import dart, snax_stream
-from compiler.ir.dart.access_pattern import Template
 from compiler.ir.dart.affine_transform import AffineTransform
-
-
-def get_accelerator_info(op: dart.StreamingRegionOpBase) -> Template:
-    assert op.accelerator is not None
-
-    # Go and fetch the accelerator op
-    accelerator_str = op.accelerator.data
-    acc_op = find_accelerator_op(op, accelerator_str)
-
-    if not acc_op:
-        raise RuntimeError("AcceleratorOp not found!")
-
-    # get template and template_bounds
-    accelerator_type = AcceleratorRegistry().get_acc_info(acc_op)
-    assert issubclass(accelerator_type, SNAXStreamer)
-
-    template = accelerator_type.get_template(op)
-
-    return template
 
 
 @dataclass
@@ -48,7 +27,10 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: dart.AccessPatternOp, rewriter: PatternRewriter):
-        template = get_accelerator_info(op)
+        assert op.accelerator
+        accelerator_type = AcceleratorRegistry().get_acc_info(op.accelerator.data)
+        assert issubclass(accelerator_type, SNAXStreamer)
+        template = accelerator_type.get_template(op)
 
         snax_stride_patterns: list[snax_stream.StridePattern] = []
 

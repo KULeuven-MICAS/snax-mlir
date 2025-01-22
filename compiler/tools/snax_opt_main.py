@@ -28,6 +28,8 @@ from compiler.transforms.convert_linalg_to_kernel import ConvertLinalgToKernel
 from compiler.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 from compiler.transforms.dart.convert_linalg_to_dart import ConvertLinalgToDart
 from compiler.transforms.dart.dart_fuse_operations import DartFuseOperationsPass
+from compiler.transforms.dart.dart_layout_resolution import DartLayoutResolutionPass
+from compiler.transforms.dart.dart_scheduler import DartSchedulerPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.frontend.preprocess_mlir import PreprocessPass
@@ -128,6 +130,10 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(AllocToGlobalPass.name, lambda: AllocToGlobalPass)
         super().register_pass(PreprocessPass.name, lambda: PreprocessPass)
         super().register_pass(PostprocessPass.name, lambda: PostprocessPass)
+        super().register_pass(DartSchedulerPass.name, lambda: DartSchedulerPass)
+        super().register_pass(
+            DartLayoutResolutionPass.name, lambda: DartLayoutResolutionPass
+        )
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
