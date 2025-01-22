@@ -13,8 +13,8 @@ from compiler.accelerators.streamers import (
     StreamerConfiguration,
     StreamerType,
 )
-from compiler.dialects import accfg, snax_stream, stream
-from compiler.ir.stream import Template, TemplatePattern
+from compiler.dialects import accfg, snax_stream, dart
+from compiler.ir.dart.access_pattern import Template, TemplatePattern
 
 default_streamer = StreamerConfiguration(
     [
@@ -166,7 +166,7 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         ]
 
     @staticmethod
-    def get_template(op: stream.StreamingRegionOpBase) -> Template:
+    def get_template(op: dart.StreamingRegionOpBase) -> Template:
         M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
         template = [
             AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
