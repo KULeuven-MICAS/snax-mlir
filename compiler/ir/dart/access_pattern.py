@@ -6,7 +6,7 @@ from typing import Generic, cast
 from typing_extensions import Self, TypeVar, overload
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 
-from compiler.ir.autoflow.affine_transform import AffineTransform
+from compiler.ir.dart.affine_transform import AffineTransform
 
 
 @dataclass(frozen=True)

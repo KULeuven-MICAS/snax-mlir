@@ -1,7 +1,7 @@
 from xdsl.dialects import linalg, memref
 from xdsl.ir import Operation
 
-from compiler.dialects import stream
+from compiler.dialects import dart
 
 
 def dispatch_to_dm(op: Operation):
@@ -20,6 +20,6 @@ def dispatch_to_compute(op: Operation):
     """
     if isinstance(op, linalg.GenericOp):
         return True
-    if isinstance(op, stream.StreamingRegionOp):
+    if isinstance(op, dart.OperationOp):
         return True
     return False

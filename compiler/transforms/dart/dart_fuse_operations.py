@@ -13,14 +13,14 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.rewriter import InsertPoint
 
-from compiler.dialects import stream
+from compiler.dialects import dart
 
 
 @dataclass
 class FuseElementwisePattern(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
+        self, op: dart.OperationOp, rewriter: PatternRewriter
     ):
         # only ops with 1 tensor result supported for now
         if len(op.results) != 1:
@@ -37,7 +37,7 @@ class FuseElementwisePattern(RewritePattern):
         user_op = list(result.uses)[0].operation
 
         # must be another streamingregion operation
-        if not isinstance(user_op, stream.StreamingRegionOp):
+        if not isinstance(user_op, dart.OperationOp):
             return
 
         # user op must be elementwise: all indexing maps must be identity maps
@@ -88,7 +88,7 @@ class FuseElementwisePattern(RewritePattern):
             if operand is not result
         )
 
-        streaming_region_op = stream.StreamingRegionOp(
+        streaming_region_op = dart.OperationOp(
             new_inputs,
             new_outputs,
             patterns,
@@ -100,13 +100,13 @@ class FuseElementwisePattern(RewritePattern):
         producer_generic = None
         for o in op.body.block.ops:
             # make copies of generic ops from producer region
-            if isinstance(o, stream.GenericOp):
+            if isinstance(o, dart.GenericOp):
                 rewriter.insert_op(
-                    producer_generic := stream.GenericOp(
+                    producer_generic := dart.GenericOp(
                         inputs=tuple(
                             streaming_region_op.body.block.args[i.index]
                             if isinstance(i, BlockArgument)
-                            and isinstance(i.type, stream.StreamType)
+                            and isinstance(i.type, dart.StreamType)
                             else i
                             for i in o.inputs
                         ),
@@ -122,7 +122,7 @@ class FuseElementwisePattern(RewritePattern):
                         old_result, new_result
                     )
             # do not use yield op from producer region
-            elif isinstance(o, stream.YieldOp):
+            elif isinstance(o, dart.YieldOp):
                 continue
             else:
                 raise RuntimeError("Can only fuse with generic bodies")
@@ -131,9 +131,9 @@ class FuseElementwisePattern(RewritePattern):
         consumer_generic = None
         for o in user_op.body.block.ops:
             # make copies of generic ops from consumer region
-            if isinstance(o, stream.GenericOp):
+            if isinstance(o, dart.GenericOp):
                 rewriter.insert_op(
-                    consumer_generic := stream.GenericOp(
+                    consumer_generic := dart.GenericOp(
                         inputs=tuple(
                             producer_generic.results[0]
                             if index == obliterating_index
@@ -149,10 +149,10 @@ class FuseElementwisePattern(RewritePattern):
                     ),
                     InsertPoint.at_end(streaming_region_op.body.block),
                 )
-            elif isinstance(o, stream.YieldOp):
+            elif isinstance(o, dart.YieldOp):
                 assert consumer_generic
                 rewriter.insert_op(
-                    stream.YieldOp(consumer_generic.results[0]),
+                    dart.YieldOp(consumer_generic.results[0]),
                     InsertPoint.at_end(streaming_region_op.body.block),
                 )
 
@@ -164,8 +164,8 @@ class FuseElementwisePattern(RewritePattern):
 
 
 @dataclass(frozen=True)
-class FuseStreamingRegions(ModulePass):
-    name = "fuse-streaming-regions"
+class DartFuseOperationsPass(ModulePass):
+    name = "dart-fuse-operations"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(FuseElementwisePattern()).rewrite_module(op)

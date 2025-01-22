@@ -17,13 +17,14 @@ from xdsl.pattern_rewriter import (
 from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
 from compiler.accelerators.util import find_accelerator_op
-from compiler.dialects import snax_stream, stream
-from compiler.ir.autoflow.affine_transform import AffineTransform
-from compiler.ir.stream import Schedule, SchedulePattern, scheduler
-from compiler.ir.stream.access_pattern import Template
+from compiler.dialects import snax_stream, dart
+from compiler.ir.dart.affine_transform import AffineTransform
+from compiler.ir.dart.scheduler import scheduler
+from compiler.ir.dart.access_pattern import Schedule, SchedulePattern
+from compiler.ir.dart.access_pattern import Template
 
 
-def get_accelerator_info(op: stream.StreamingRegionOpBase) -> Template:
+def get_accelerator_info(op: dart.StreamingRegionOpBase) -> Template:
     assert op.accelerator is not None
 
     # Go and fetch the accelerator op
@@ -52,7 +53,7 @@ class AutoflowScheduler(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
+        self, op: dart.OperationOp, rewriter: PatternRewriter
     ):
         template = get_accelerator_info(op)
 
@@ -69,7 +70,7 @@ class AutoflowScheduler(RewritePattern):
         )
         schedule = scheduler(template, schedule)
 
-        schedule_op = stream.ScheduleOp(
+        schedule_op = dart.ScheduleOp(
             op.inputs,
             op.outputs,
             ArrayAttr([AffineMapAttr(s.pattern.to_affine_map()) for s in schedule]),
@@ -92,7 +93,7 @@ class LayoutResolution(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: stream.ScheduleOp, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: dart.ScheduleOp, rewriter: PatternRewriter):
         bounds = [x.value.data for x in op.bounds.data]
         schedule = Schedule(
             SchedulePattern(bounds, pattern.data) for pattern in op.patterns
@@ -147,7 +148,7 @@ class LayoutResolution(RewritePattern):
 
         new_patterns = ArrayAttr([AffineMapAttr(map) for map in access_patterns])
 
-        access_pattern_op = stream.AccessPatternOp(
+        access_pattern_op = dart.AccessPatternOp(
             new_inputs,
             new_outputs,
             new_patterns,
@@ -170,7 +171,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: stream.AccessPatternOp, rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: dart.AccessPatternOp, rewriter: PatternRewriter):
         template = get_accelerator_info(op)
 
         snax_stride_patterns: list[snax_stream.StridePattern] = []
@@ -324,8 +325,8 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
 
 
 @dataclass(frozen=True)
-class ConvertStreamToSnaxStream(ModulePass):
-    name = "convert-stream-to-snax-stream"
+class ConvertDartToSnaxStream(ModulePass):
+    name = "convert-dart-to-snax-stream"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(AutoflowScheduler()).rewrite_module(op)

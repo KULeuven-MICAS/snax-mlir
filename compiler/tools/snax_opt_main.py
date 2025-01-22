@@ -8,7 +8,7 @@ from compiler.dialects.accfg import ACCFG
 from compiler.dialects.kernel import Kernel
 from compiler.dialects.snax import Snax
 from compiler.dialects.snax_stream import SnaxStream
-from compiler.dialects.stream import Stream
+from compiler.dialects.dart import Dart
 from compiler.dialects.test.debug import Debug
 from compiler.dialects.tsl import TSL
 from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
@@ -25,13 +25,13 @@ from compiler.transforms.convert_linalg_to_accfg import (
 )
 from compiler.transforms.convert_linalg_to_kernel import ConvertLinalgToKernel
 from compiler.transforms.convert_linalg_to_stream import ConvertLinalgToStream
-from compiler.transforms.convert_stream_to_snax_stream import ConvertStreamToSnaxStream
+from compiler.transforms.convert_dart_to_snax_stream import ConvertDartToSnaxStream
 from compiler.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
 from compiler.transforms.frontend.preprocess_mlir import PreprocessPass
 from compiler.transforms.frontend.preprocess_mlperf_tiny import PreprocessMLPerfTiny
-from compiler.transforms.fuse_streaming_regions import FuseStreamingRegions
+from compiler.transforms.dart.dart_fuse_operations import DartFuseOperationsPass
 from compiler.transforms.insert_accfg_op import InsertAccOp
 from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
 from compiler.transforms.memref_to_snax import MemrefToSNAX
@@ -78,7 +78,7 @@ class SNAXOptMain(xDSLOptMain):
         self.ctx.load_dialect(ACCFG)
         self.ctx.load_dialect(SnaxStream)
         self.ctx.load_dialect(Debug)
-        self.ctx.load_dialect(Stream)
+        self.ctx.load_dialect(Dart)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
         super().register_pass(SetMemoryLayout.name, lambda: SetMemoryLayout)
@@ -104,7 +104,7 @@ class SNAXOptMain(xDSLOptMain):
             AccfgConfigOverlapPass.name, lambda: AccfgConfigOverlapPass
         )
         super().register_pass(
-            ConvertStreamToSnaxStream.name, lambda: ConvertStreamToSnaxStream
+            ConvertDartToSnaxStream.name, lambda: ConvertDartToSnaxStream
         )
         super().register_pass(ReuseMemrefAllocs.name, lambda: ReuseMemrefAllocs)
         super().register_pass(RemoveMemrefCopyPass.name, lambda: RemoveMemrefCopyPass)
@@ -122,7 +122,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(AddMcycleAroundLaunch.name, lambda: AddMcycleAroundLaunch)
         super().register_pass(ConvertLinalgToStream.name, lambda: ConvertLinalgToStream)
         super().register_pass(SnaxBufferize.name, lambda: SnaxBufferize)
-        super().register_pass(FuseStreamingRegions.name, lambda: FuseStreamingRegions)
+        super().register_pass(DartFuseOperationsPass.name, lambda: DartFuseOperationsPass)
         super().register_pass(AllocToGlobalPass.name, lambda: AllocToGlobalPass)
         super().register_pass(PreprocessPass.name, lambda: PreprocessPass)
         super().register_pass(PostprocessPass.name, lambda: PostprocessPass)

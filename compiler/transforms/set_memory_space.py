@@ -12,7 +12,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.utils.hints import isa
 
-from compiler.dialects import stream
+from compiler.dialects import dart
 from compiler.util.snax_memory import L1, L3
 
 
@@ -129,7 +129,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: linalg.GenericOp | stream.StreamingRegionOp, rewriter: PatternRewriter
+        self, op: linalg.GenericOp | dart.OperationOp, rewriter: PatternRewriter
     ):
         operands_to_memory_cast = tuple(
             x

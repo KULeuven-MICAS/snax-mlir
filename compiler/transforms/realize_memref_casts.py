@@ -12,7 +12,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 from xdsl.utils.hints import isa
 
-from compiler.dialects import stream
+from compiler.dialects import dart
 from compiler.dialects.snax import LayoutCast
 
 
@@ -101,7 +101,7 @@ class RealizeMemrefCasts(RewritePattern):
             if isinstance(use_op, linalg.GenericOp):
                 # don't know if input or output, default to yes
                 is_input = op.results[0] in use_op.inputs
-            elif isinstance(use_op, stream.StreamingRegionOp):
+            elif isinstance(use_op, dart.OperationOp):
                 is_input = op.results[0] in use_op.inputs
             else:
                 is_input = True
@@ -120,7 +120,7 @@ class RealizeMemrefCasts(RewritePattern):
             is_output = False
             if isinstance(use_op, linalg.GenericOp):
                 is_output = op.results[0] in use_op.outputs
-            elif isinstance(use_op, stream.StreamingRegionOp):
+            elif isinstance(use_op, dart.OperationOp):
                 is_output = op.results[0] in use_op.outputs
             elif isinstance(use_op, func.ReturnOp):
                 is_output = False

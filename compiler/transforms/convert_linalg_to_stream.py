@@ -13,7 +13,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.rewriter import InsertPoint
 
-from compiler.dialects import stream
+from compiler.dialects import dart
 
 
 @dataclass
@@ -49,10 +49,10 @@ class StreamifyGenericOpPattern(RewritePattern):
 
         # create new stream.stream operand and result types
         input_stream_types = tuple(
-            stream.StreamType(el_type) for _, el_type in streamable_input_indices
+            dart.StreamType(el_type) for _, el_type in streamable_input_indices
         )
         result_stream_types = tuple(
-            stream.StreamType(el_type) for _, el_type in streamable_output_indices
+            dart.StreamType(el_type) for _, el_type in streamable_output_indices
         )
 
         # copy patterns from generic op
@@ -63,7 +63,7 @@ class StreamifyGenericOpPattern(RewritePattern):
         )
 
         # create the streaming region to wrap around the stream.generic
-        streaming_region_op = stream.StreamingRegionOp(
+        streaming_region_op = dart.OperationOp(
             inputs=tuple(op.operands[index] for index, _ in streamable_input_indices),
             outputs=tuple(op.operands[index] for index, _ in streamable_output_indices),
             patterns=patterns,
@@ -82,21 +82,21 @@ class StreamifyGenericOpPattern(RewritePattern):
         # create stream.generic based on the linal.generic and put inside streaming region
         rewriter.insert_op(
             (
-                generic := stream.GenericOp(
+                generic := dart.GenericOp(
                     new_inputs,
                     rewriter.move_region_contents_to_new_regions(op.body),
                     op.doc,
                     op.library_call,
                     result_stream_types,
                 ),
-                stream.YieldOp(generic.results[0]),
+                dart.YieldOp(generic.results[0]),
             ),
             InsertPoint.at_end(new_body),
         )
 
         # replace linalg yield with stream yield
         assert isinstance(yield_op := generic.body.block.last_op, linalg.YieldOp)
-        rewriter.replace_op(yield_op, stream.YieldOp(yield_op.operands[0]))
+        rewriter.replace_op(yield_op, dart.YieldOp(yield_op.operands[0]))
 
         rewriter.replace_matched_op(streaming_region_op)
 
