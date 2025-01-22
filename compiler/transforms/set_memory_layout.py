@@ -22,9 +22,7 @@ from compiler.ir.tsl import Stride, TiledStride, TiledStridedLayout
 
 class AddMemoryLayoutSIMD(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: dart.OperationOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
         # check if operation is dispatched via library call, as set by e.g.
         # the dispatch-kernels pass
 
@@ -119,9 +117,7 @@ class AddMemoryLayout(RewritePattern):
     gemm_layout: GemmLayout = GemmLayout.cyclic
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: dart.OperationOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
         # check if operation is dispatched via library call, as set by e.g.
         # the dispatch-kernels pass
 

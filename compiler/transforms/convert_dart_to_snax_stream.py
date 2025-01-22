@@ -17,11 +17,10 @@ from xdsl.pattern_rewriter import (
 from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
 from compiler.accelerators.util import find_accelerator_op
-from compiler.dialects import snax_stream, dart
+from compiler.dialects import dart, snax_stream
+from compiler.ir.dart.access_pattern import Schedule, SchedulePattern, Template
 from compiler.ir.dart.affine_transform import AffineTransform
 from compiler.ir.dart.scheduler import scheduler
-from compiler.ir.dart.access_pattern import Schedule, SchedulePattern
-from compiler.ir.dart.access_pattern import Template
 
 
 def get_accelerator_info(op: dart.StreamingRegionOpBase) -> Template:
@@ -52,9 +51,7 @@ class AutoflowScheduler(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: dart.OperationOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
         template = get_accelerator_info(op)
 
         # Make sure the operands are memrefs

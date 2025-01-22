@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 
-from compiler.ir.dart.affine_transform import AffineTransform
 from compiler.ir.dart.access_pattern import (
     AccessPattern,
     Schedule,
@@ -10,6 +9,7 @@ from compiler.ir.dart.access_pattern import (
     Template,
     TemplatePattern,
 )
+from compiler.ir.dart.affine_transform import AffineTransform
 
 
 # Pytest tests

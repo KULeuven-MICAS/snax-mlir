@@ -37,7 +37,7 @@ from xdsl.irdl import (
 )
 
 """
-Custom `dart` dialect, heavily inspired by xDSL `stream` dialect, to simplify 
+Custom `dart` dialect, heavily inspired by xDSL `stream` dialect, to simplify
 things in a (hopefully) more principled approach, including:
 - inherent support for tensors
 - streams with value semantics

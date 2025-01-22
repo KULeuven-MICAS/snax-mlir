@@ -19,9 +19,7 @@ from compiler.dialects import dart
 @dataclass
 class FuseElementwisePattern(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: dart.OperationOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
         # only ops with 1 tensor result supported for now
         if len(op.results) != 1:
             return
