@@ -13,7 +13,7 @@ from compiler.accelerators.streamers import (
     StreamerConfiguration,
     StreamerType,
 )
-from compiler.dialects import accfg, snax_stream, dart
+from compiler.dialects import accfg, dart, snax_stream
 from compiler.ir.dart.access_pattern import Template, TemplatePattern
 
 default_streamer = StreamerConfiguration(

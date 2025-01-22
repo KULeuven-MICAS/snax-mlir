@@ -25,8 +25,8 @@ from compiler.transforms.convert_linalg_to_accfg import (
     TraceStatesPass,
 )
 from compiler.transforms.convert_linalg_to_kernel import ConvertLinalgToKernel
-from compiler.transforms.convert_linalg_to_stream import ConvertLinalgToStream
 from compiler.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
+from compiler.transforms.dart.convert_linalg_to_dart import ConvertLinalgToDart
 from compiler.transforms.dart.dart_fuse_operations import DartFuseOperationsPass
 from compiler.transforms.dispatch_kernels import DispatchKernels
 from compiler.transforms.dispatch_regions import DispatchRegions
@@ -120,7 +120,7 @@ class SNAXOptMain(xDSLOptMain):
         super().register_pass(DebugToFuncPass.name, lambda: DebugToFuncPass)
         super().register_pass(PreprocessMLPerfTiny.name, lambda: PreprocessMLPerfTiny)
         super().register_pass(AddMcycleAroundLaunch.name, lambda: AddMcycleAroundLaunch)
-        super().register_pass(ConvertLinalgToStream.name, lambda: ConvertLinalgToStream)
+        super().register_pass(ConvertLinalgToDart.name, lambda: ConvertLinalgToDart)
         super().register_pass(SnaxBufferize.name, lambda: SnaxBufferize)
         super().register_pass(
             DartFuseOperationsPass.name, lambda: DartFuseOperationsPass

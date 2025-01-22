@@ -18,7 +18,7 @@ from compiler.accelerators.streamers import (
     StreamerType,
 )
 from compiler.accelerators.streamers.streamers import StreamerOpts
-from compiler.dialects import accfg, kernel, snax_stream, dart
+from compiler.dialects import accfg, dart, kernel, snax_stream
 from compiler.ir.dart.access_pattern import Template, TemplatePattern
 from compiler.util.pack_bitlist import pack_bitlist
 

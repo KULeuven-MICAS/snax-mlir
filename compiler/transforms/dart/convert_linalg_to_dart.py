@@ -102,13 +102,13 @@ class StreamifyGenericOpPattern(RewritePattern):
 
 
 @dataclass(frozen=True)
-class ConvertLinalgToStream(ModulePass):
+class ConvertLinalgToDart(ModulePass):
     """
-    Converts a linalg generic to a stream generic wrapped in
-    a streaming region.
+    Converts a linalg generic to a dart generic wrapped in
+    a dart operation.
     """
 
-    name = "convert-linalg-to-stream"
+    name = "convert-linalg-to-dart"
 
     def apply(self, ctx: MLContext, op: ModuleOp) -> None:
         PatternRewriteWalker(StreamifyGenericOpPattern()).rewrite_module(op)
