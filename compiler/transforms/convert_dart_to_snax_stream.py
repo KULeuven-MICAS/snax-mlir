@@ -1,11 +1,8 @@
 from dataclasses import dataclass
 
-import numpy as np
 from xdsl.context import MLContext
-from xdsl.dialects import arith, builtin, memref
-from xdsl.dialects.builtin import AffineMapAttr, ArrayAttr, MemRefType
+from xdsl.dialects import arith, builtin
 from xdsl.ir import Operation, SSAValue
-from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -18,9 +15,8 @@ from compiler.accelerators.registry import AcceleratorRegistry
 from compiler.accelerators.snax import SNAXStreamer
 from compiler.accelerators.util import find_accelerator_op
 from compiler.dialects import dart, snax_stream
-from compiler.ir.dart.access_pattern import Schedule, SchedulePattern, Template
+from compiler.ir.dart.access_pattern import Template
 from compiler.ir.dart.affine_transform import AffineTransform
-from compiler.ir.dart.scheduler import scheduler
 
 
 def get_accelerator_info(op: dart.StreamingRegionOpBase) -> Template:
@@ -40,123 +36,6 @@ def get_accelerator_info(op: dart.StreamingRegionOpBase) -> Template:
     template = accelerator_type.get_template(op)
 
     return template
-
-
-@dataclass
-class AutoflowScheduler(RewritePattern):
-    """
-    A pass to convert streaming region operations to schedules.
-
-    Here, the operation is scheduled to an accelerator according to the accelerator template.
-    """
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
-        template = get_accelerator_info(op)
-
-        # Make sure the operands are memrefs
-        for memref_operand in op.operands:
-            if not isinstance(memref_operand.type, builtin.MemRefType):
-                return
-
-        # First, run the stream scheduling algorithm
-        schedule_bounds = tuple(op.get_static_pattern_bounds())
-        schedule = Schedule(
-            SchedulePattern(schedule_bounds, pattern.data)
-            for pattern in op.patterns.data
-        )
-        schedule = scheduler(template, schedule)
-
-        schedule_op = dart.ScheduleOp(
-            op.inputs,
-            op.outputs,
-            ArrayAttr([AffineMapAttr(s.pattern.to_affine_map()) for s in schedule]),
-            rewriter.move_region_contents_to_new_regions(op.body),
-            schedule[0].bounds,
-            [[]],
-            op.accelerator,
-            op.result_types,
-        )
-
-        rewriter.replace_matched_op(schedule_op)
-
-
-@dataclass
-class LayoutResolution(RewritePattern):
-    """
-    Applies layout resolution by converting a ScheduleOp (mapping the iteration
-    space to the operand index space) into an AccessOp (mapping the iteration space
-    to memory), using a certain memory layout of the memref operands of the operation.
-    """
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: dart.ScheduleOp, rewriter: PatternRewriter):
-        bounds = [x.value.data for x in op.bounds.data]
-        schedule = Schedule(
-            SchedulePattern(bounds, pattern.data) for pattern in op.patterns
-        )
-
-        # small function to generate a list of n zeros with the i-th element 1
-        # for example n = 4, i = 1  -> [0, 1, 0, 0]
-        def generate_one_list(n: int, i: int):
-            return [1 if j == i else 0 for j in range(n)]
-
-        access_patterns: list[AffineMap] = []
-
-        # Do this for every operand:
-        for operand in range(len(op.operands)):
-            # Mapping from data to memory:
-            assert isinstance(memref_type := op.operands[operand].type, MemRefType)
-
-            # Mapping from data to memory:
-            data_mem_map: AffineMap = memref_type.get_affine_map_in_bytes()
-
-            # Mapping from access to data:
-            access_data_map: AffineMap = schedule[operand].pattern.to_affine_map()
-
-            # Mapping from access to memory:
-            access_mem_map: AffineMap = data_mem_map.compose(access_data_map)
-
-            # Make sure no symbols are used (not supported yet)
-            if access_mem_map.num_symbols != 0:
-                raise RuntimeError(
-                    "Access patterns with symbols are not supported yet."
-                )
-
-            strides: list[int] = []
-
-            for i in range(access_mem_map.num_dims):
-                strides.append(
-                    access_mem_map.eval(
-                        generate_one_list(access_mem_map.num_dims, i), ()
-                    )[0]
-                )
-
-            access_patterns.append(
-                AffineTransform(np.array([strides]), np.array([0])).to_affine_map()
-            )
-
-        new_inputs: list[Operation] = [
-            memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs
-        ]
-        new_outputs = [
-            memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs
-        ]
-
-        new_patterns = ArrayAttr([AffineMapAttr(map) for map in access_patterns])
-
-        access_pattern_op = dart.AccessPatternOp(
-            new_inputs,
-            new_outputs,
-            new_patterns,
-            rewriter.move_region_contents_to_new_regions(op.body),
-            op.bounds,
-            op.accelerator,
-            op.result_types,
-        )
-        rewriter.replace_matched_op(
-            [*new_inputs, *new_outputs, access_pattern_op], access_pattern_op.results
-        )
 
 
 @dataclass
@@ -326,6 +205,4 @@ class ConvertDartToSnaxStream(ModulePass):
     name = "convert-dart-to-snax-stream"
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(AutoflowScheduler()).rewrite_module(op)
-        PatternRewriteWalker(LayoutResolution()).rewrite_module(op)
         PatternRewriteWalker(ConvertStreamToSnaxStreamPattern()).rewrite_module(op)
