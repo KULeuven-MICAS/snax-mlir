@@ -1,4 +1,4 @@
-from compiler.ir.stream import Schedule, Template
+from compiler.ir.dart.access_pattern import Schedule, Template
 
 
 def scheduler(template: Template, schedule: Schedule) -> Schedule:

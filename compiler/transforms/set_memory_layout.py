@@ -13,7 +13,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 from xdsl.utils.str_enum import StrEnum
 
-from compiler.dialects import stream
+from compiler.dialects import dart
 from compiler.dialects.kernel import AddOp, QMacOp, RescaleOp
 from compiler.dialects.snax import LayoutCast
 from compiler.dialects.tsl import TiledStridedLayoutAttr
@@ -22,9 +22,7 @@ from compiler.ir.tsl import Stride, TiledStride, TiledStridedLayout
 
 class AddMemoryLayoutSIMD(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
         # check if operation is dispatched via library call, as set by e.g.
         # the dispatch-kernels pass
 
@@ -119,9 +117,7 @@ class AddMemoryLayout(RewritePattern):
     gemm_layout: GemmLayout = GemmLayout.cyclic
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
         # check if operation is dispatched via library call, as set by e.g.
         # the dispatch-kernels pass
 
@@ -136,11 +132,11 @@ class AddMemoryLayout(RewritePattern):
         if library_call == "snax_gemmx" or library_call == "snax_gemmx_stream":
             # only do so for qmac kernels
             generic_op = op.body.block.first_op
-            assert isinstance(generic_op, stream.GenericOp)
+            assert isinstance(generic_op, dart.GenericOp)
             if not isinstance(generic_op.body.block.first_op, QMacOp):
                 return
 
-            if isinstance(generic_op.next_op, stream.GenericOp):
+            if isinstance(generic_op.next_op, dart.GenericOp):
                 if isinstance(generic_op.next_op.body.block.first_op, AddOp):
                     # gemm
                     has_add_c = True

@@ -1,12 +1,12 @@
 from xdsl.ir.affine import AffineMap
 
-from compiler.ir.stream import (
+from compiler.ir.dart.access_pattern import (
     Schedule,
     SchedulePattern,
     Template,
     TemplatePattern,
-    scheduler,
 )
+from compiler.ir.dart.scheduler import scheduler
 
 
 def test_matching_1o():

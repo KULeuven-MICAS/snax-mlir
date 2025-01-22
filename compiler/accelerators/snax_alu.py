@@ -17,8 +17,8 @@ from compiler.accelerators.streamers import (
     StreamerConfiguration,
     StreamerType,
 )
-from compiler.dialects import accfg, snax_stream, stream
-from compiler.ir.stream import Template, TemplatePattern
+from compiler.dialects import accfg, dart, snax_stream
+from compiler.ir.dart.access_pattern import Template, TemplatePattern
 
 default_streamer = StreamerConfiguration(
     [
@@ -194,7 +194,7 @@ class SNAXAluAccelerator(
         return op
 
     @staticmethod
-    def get_template(op: stream.StreamingRegionOpBase):
+    def get_template(op: dart.StreamingRegionOpBase):
         template = [AffineMap.from_callable(lambda x, y: (4 * x + y,))] * 3
         template_bounds = (None, 4)
         return Template(TemplatePattern(template_bounds, tp) for tp in template)

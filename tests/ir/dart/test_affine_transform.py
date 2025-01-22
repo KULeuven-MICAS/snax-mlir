@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from xdsl.ir.affine import AffineMap
 
-from compiler.ir.autoflow import AffineTransform
+from compiler.ir.dart.affine_transform import AffineTransform
 from compiler.util.canonicalize_affine import canonicalize_map
 
 

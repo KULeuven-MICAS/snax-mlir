@@ -11,9 +11,9 @@ from compiler.accelerators.accelerator import Accelerator
 from compiler.accelerators.streamers import StreamerConfiguration
 from compiler.accelerators.streamers.streamers import StreamerFlag, StreamerOpts
 from compiler.dialects import accfg
+from compiler.dialects.dart import StreamingRegionOpBase
 from compiler.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
-from compiler.dialects.stream import StreamingRegionOpBase
-from compiler.ir.stream import Template
+from compiler.ir.dart.access_pattern import Template
 
 c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
 

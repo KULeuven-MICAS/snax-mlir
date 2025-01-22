@@ -18,8 +18,8 @@ from compiler.accelerators.streamers import (
     StreamerType,
 )
 from compiler.accelerators.streamers.streamers import StreamerOpts
-from compiler.dialects import accfg, kernel, snax_stream, stream
-from compiler.ir.stream import Template, TemplatePattern
+from compiler.dialects import accfg, dart, kernel, snax_stream
+from compiler.ir.dart.access_pattern import Template, TemplatePattern
 from compiler.util.pack_bitlist import pack_bitlist
 
 default_streamer = StreamerConfiguration(
@@ -179,7 +179,7 @@ class SNAXGEMMXAccelerator(
 
         ops_to_add: list[Operation] = []
 
-        assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
+        assert isinstance(generic_op := op.body.block.first_op, dart.GenericOp)
 
         if isinstance(qmac := generic_op.body.block.first_op, kernel.QMacOp):
             # gemm
@@ -271,8 +271,8 @@ class SNAXGEMMXAccelerator(
         ]
 
     @staticmethod
-    def get_template(op: stream.StreamingRegionOpBase) -> Template:
-        assert isinstance(generic_op := op.body.block.first_op, stream.GenericOp)
+    def get_template(op: dart.StreamingRegionOpBase) -> Template:
+        assert isinstance(generic_op := op.body.block.first_op, dart.GenericOp)
         if isinstance(generic_op.body.block.first_op, kernel.QMacOp):
             # matmul
             M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
@@ -283,7 +283,7 @@ class SNAXGEMMXAccelerator(
             ]
             template_bounds = (None, None, None, 8, 8, 8)
 
-            if isinstance(generic_op.next_op, stream.GenericOp):
+            if isinstance(generic_op.next_op, dart.GenericOp):
                 generic_op = generic_op.next_op
                 if isinstance(generic_op.body.block.first_op, kernel.AddOp):
                     # gemm, add c pattern that is equal to output pattern
@@ -299,7 +299,7 @@ class SNAXGEMMXAccelerator(
             ]
             template_bounds = (None, None, 8, 8)
 
-        if not isinstance(generic_op.next_op, stream.YieldOp):
+        if not isinstance(generic_op.next_op, dart.YieldOp):
             raise RuntimeError("unsupported kernel")
 
         return Template(TemplatePattern(template_bounds, tp) for tp in template)

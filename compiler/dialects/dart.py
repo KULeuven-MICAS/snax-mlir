@@ -37,7 +37,8 @@ from xdsl.irdl import (
 )
 
 """
-Custom `stream` dialect, to simplify things in a more principled approach, including:
+Custom `dart` dialect, heavily inspired by xDSL `stream` dialect, to simplify
+things in a (hopefully) more principled approach, including:
 - inherent support for tensors
 - streams with value semantics
 - no specified static bounds in access patterns: they are just affine maps
@@ -61,7 +62,7 @@ class StreamType(
     Streams can only be read from, there is no distinction between readable/writeable streams.
     """
 
-    name = "stream.stream"
+    name = "dart.stream"
 
     element_type: ParameterDef[_StreamTypeElement]
 
@@ -117,13 +118,13 @@ class StreamingRegionOpBase(IRDLOperation):
 
 
 @irdl_op_definition
-class StreamingRegionOp(StreamingRegionOpBase):
+class OperationOp(StreamingRegionOpBase):
     """
     A streaming region op that represents an unscheduled operation,
     with streams mapping the iteration space to the operand indexing space.
     """
 
-    name = "stream.streaming_region"
+    name = "dart.operation"
 
     def get_pattern_bounds_to_shapes_map(self) -> AffineMap:
         """
@@ -171,7 +172,7 @@ class ScheduleOp(StreamingRegionOpBase):
     transformation took place.
     """
 
-    name = "stream.schedule"
+    name = "dart.schedule"
 
     # The bounds of the iteration space of the schedule
     bounds = prop_def(ParameterDef[ArrayAttr[IntegerAttr[IndexType]]])
@@ -219,7 +220,7 @@ class AccessPatternOp(StreamingRegionOpBase):
     layout resolution, with streams mapping the iteration space to memory.
     """
 
-    name = "stream.access_pattern"
+    name = "dart.access_pattern"
 
     # The bounds of the iteration space of the schedule
     bounds = prop_def(ParameterDef[ArrayAttr[IntegerAttr[IndexType]]])
@@ -251,7 +252,7 @@ class AccessPatternOp(StreamingRegionOpBase):
 
 @irdl_op_definition
 class YieldOp(AbstractYieldOperation[Attribute]):
-    name = "stream.yield"
+    name = "dart.yield"
 
     traits = traits_def(IsTerminator())
 
@@ -263,7 +264,7 @@ class GenericOp(IRDLOperation):
     Indexing maps / iterators are not relevant, so they are not included.
     """
 
-    name = "stream.generic"
+    name = "dart.generic"
 
     # inputs can be streams or integers
     inputs = var_operand_def()
@@ -294,10 +295,10 @@ class GenericOp(IRDLOperation):
         )
 
 
-Stream = Dialect(
-    "stream",
+Dart = Dialect(
+    "dart",
     [
-        StreamingRegionOp,
+        OperationOp,
         ScheduleOp,
         AccessPatternOp,
         GenericOp,

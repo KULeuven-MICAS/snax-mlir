@@ -12,14 +12,14 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.transforms.mlir_opt import MLIROptPass
 
-from compiler.dialects import stream
+from compiler.dialects import dart
 
 
 @dataclass
 class BufferizeStreamingRegion(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(
-        self, op: stream.StreamingRegionOp, rewriter: PatternRewriter
+        self, op: dart.OperationOp, rewriter: PatternRewriter
     ) -> None:
         # check for operands that need to be bufferized:
         operands_to_buffer = tuple(
@@ -43,7 +43,7 @@ class BufferizeStreamingRegion(RewritePattern):
                 return
             tensor_to_memrefs[operand] = to_tensor_op.memref
 
-        new_op = stream.StreamingRegionOp(
+        new_op = dart.OperationOp(
             inputs=[tensor_to_memrefs[input] for input in op.inputs],
             outputs=[tensor_to_memrefs[output] for output in op.outputs],
             patterns=op.patterns,

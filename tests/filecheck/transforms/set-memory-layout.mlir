@@ -4,14 +4,14 @@
 func.func @gemm(%arg0 : memref<16x16xi8, "L1">, %arg1 : memref<16x16xi8, "L1">, %arg2 : memref<16x16xi32, "L1">) -> () {
   %0 = arith.constant 0 : i32
   %1 = arith.constant 0 : i32
-  "stream.streaming_region"(%arg0, %arg1, %arg2) <{"accelerator" = "snax_gemmx", "operandSegmentSizes" = array<i32: 2, 1>, "patterns" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>]}> ({
-  ^0(%arg3 : !stream.stream<i8>, %arg4 : !stream.stream<i8>, %arg5 : !stream.stream<i32>):
-    %5 = "stream.generic"(%arg3, %arg4, %0, %1) <{"library_call" = "snax_gemmx"}> ({
+  "dart.operation"(%arg0, %arg1, %arg2) <{"accelerator" = "snax_gemmx", "operandSegmentSizes" = array<i32: 2, 1>, "patterns" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>]}> ({
+  ^0(%arg3 : !dart.stream<i8>, %arg4 : !dart.stream<i8>, %arg5 : !dart.stream<i32>):
+    %5 = "dart.generic"(%arg3, %arg4, %0, %1) <{"library_call" = "snax_gemmx"}> ({
     ^1(%arg6 : i8, %arg7 : i8, %arg8 : i32, %arg9 : i32, %arg10 : i32):
       %6 = kernel.qmac %arg6, %arg7 zp_lhs : %arg8 zp_rhs : %arg9 : i8, i8, i32, i32 -> i32
-      stream.yield %6 : i32
-    }) : (!stream.stream<i8>, !stream.stream<i8>, i32, i32) -> !stream.stream<i32>
-    stream.yield %5 : !stream.stream<i32>
+      dart.yield %6 : i32
+    }) : (!dart.stream<i8>, !dart.stream<i8>, i32, i32) -> !dart.stream<i32>
+    dart.yield %5 : !dart.stream<i32>
   }) : (memref<16x16xi8, "L1">, memref<16x16xi8, "L1">, memref<16x16xi32, "L1">) -> ()
   func.return
 }
