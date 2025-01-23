@@ -1,5 +1,4 @@
 from util.snake.configs import get_snax_mac_config
-from util.snake.paths import get_traces
 
 config = get_snax_mac_config()
 
