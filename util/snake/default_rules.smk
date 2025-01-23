@@ -1,6 +1,3 @@
-from util.snake.paths import get_traces
-
-
 rule snax_opt_mlir:
     """
     Apply various transformations snax-opt on mlir files.
@@ -57,19 +54,3 @@ rule clean:
     """
     shell:
         "rm -rf *.ll12 *.x *.o *.logs/ logs/ data* *.dasm"
-
-
-rule simulate:
-    input:
-        "{file}.x",
-    output:
-        *[
-            temp(trace)
-            for trace in get_traces(
-                ["{file}"], config["num_chips"], config["num_harts"], "dasm"
-            )
-        ],
-    log:
-        "{file}.vltlog",
-    shell:
-        "{config[vltsim]} --prefix-trace={wildcards.file}_ {wildcards.file}.x  2>&1 | tee {log}"

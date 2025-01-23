@@ -42,7 +42,17 @@ module default_rules:
         config
 
 
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
 use rule * from default_rules as default_*
+
+
+use rule * from snax_rules as snax_*
 
 
 files = ["quantized_matmul", "tiled_quantized_matmul"]

@@ -29,15 +29,25 @@ module default_rules:
         config
 
 
+use rule * from default_rules as default_*
+
+
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule * from snax_rules as snax_*
+
+
 files = ["func"]
 
 
 rule all:
     input:
         *get_traces(files, config["num_chips"], config["num_harts"], "dasm"),
-
-
-use rule * from default_rules exclude compile_simple_main as default_*
 
 
 rule compile_snax_binary:

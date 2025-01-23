@@ -36,6 +36,16 @@ module default_rules:
 use rule * from default_rules as default_*
 
 
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule * from snax_rules as snax_*
+
+
 rule link_snax_binary:
     input:
         "rescale.o",
