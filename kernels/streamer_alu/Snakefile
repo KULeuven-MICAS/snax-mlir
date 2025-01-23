@@ -1,5 +1,4 @@
 from util.snake.configs import get_snax_alu_config
-from util.snake.paths import get_traces
 
 config = get_snax_alu_config()
 config["snaxoptflags"] = ",".join(
@@ -57,7 +56,12 @@ files = ["streamer_add", "streamer_add_stream"]
 
 rule all:
     input:
-        *get_traces(files, config["num_chips"], config["num_harts"], "dasm"),
+        expand(
+            "{file}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}.dasm",
+            file=files,
+            num_chips=range(config["num_chips"]),
+            num_harts=range(config["num_harts"]),
+        ),
 
 
 from gendata import create_data_files

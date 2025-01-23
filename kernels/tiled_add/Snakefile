@@ -1,5 +1,4 @@
 from util.snake.configs import get_snax_alu_config
-from util.snake.paths import get_traces
 
 config = get_snax_alu_config()
 
@@ -133,17 +132,14 @@ COMPILER_OPTS = ["accfgboth", "noaccfgopt"]
 
 rule all:
     input:
-        *get_traces(
-            expand(
-                "{file}_{array_size}_{tile_size}_{compiler_opt}",
-                file=FILES,
-                array_size=ARRAY_SIZES,
-                tile_size=TILE_SIZES,
-                compiler_opt=COMPILER_OPTS,
-            ),
-            config["num_chips"],
-            config["num_harts"],
-            "dasm",
+        expand(
+            "{file}_{array_size}_{tile_size}_{compiler_opt}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}.dasm",
+            file=FILES,
+            array_size=ARRAY_SIZES,
+            tile_size=TILE_SIZES,
+            compiler_opt=COMPILER_OPTS,
+            num_chips=range(config["num_chips"]),
+            num_harts=range(config["num_harts"]),
         ),
 
 

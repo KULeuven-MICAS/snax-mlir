@@ -47,7 +47,12 @@ files = ["func"]
 
 rule all:
     input:
-        *get_traces(files, config["num_chips"], config["num_harts"], "dasm"),
+        expand(
+            "{file}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}.dasm",
+            file=files,
+            num_chips=range(config["num_chips"]),
+            num_harts=range(config["num_harts"]),
+        ),
 
 
 rule compile_snax_binary:

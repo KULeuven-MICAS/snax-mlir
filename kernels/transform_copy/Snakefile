@@ -30,17 +30,18 @@ use rule * from default_rules as default_*
 
 from gendata import create_files
 
+files = ["transform_copy", "transform_from_none", "transform_from_strided"]
+
 
 # Rules
 rule all:
     input:
-        "transform_copy.x",
-        "transform_from_none.x",
-        "transform_from_strided.x",
-    run:
-        shell("{config[vltsim]} {input[0]} {input[0]}")
-        shell("{config[vltsim]} {input[1]} {input[1]}")
-        shell("{config[vltsim]} {input[2]} {input[2]}")
+        expand(
+            "{file}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}.dasm",
+            file=files,
+            num_chips=range(config["num_chips"]),
+            num_harts=range(config["num_harts"]),
+        ),
 
 
 rule generate_data:
