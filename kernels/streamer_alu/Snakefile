@@ -1,6 +1,5 @@
 from util.snake.configs import get_snax_alu_config
 from util.snake.paths import get_traces, get_trace_ext
-import itertools
 
 config = get_snax_alu_config()
 config["snaxoptflags"] = ",".join(
