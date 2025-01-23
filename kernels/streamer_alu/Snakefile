@@ -1,4 +1,6 @@
 from util.snake.configs import get_snax_alu_config
+from util.snake.paths import get_traces, get_trace_ext
+import itertools
 
 config = get_snax_alu_config()
 config["snaxoptflags"] = ",".join(
@@ -41,14 +43,12 @@ module default_rules:
 use rule * from default_rules as default_*
 
 
-# Rules
+files = ["streamer_add", "streamer_add_stream"]
+
+
 rule all:
     input:
-        "streamer_add.x",
-        "streamer_add_stream.x",
-    run:
-        for item in input:
-            shell("{config[vltsim]} {item}")
+        *get_traces(files, config["num_chips"], config["num_harts"], "dasm"),
 
 
 from gendata import create_data_files

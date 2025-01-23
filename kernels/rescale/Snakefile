@@ -1,4 +1,5 @@
 from util.snake.configs import get_snax_gemmx_config
+from util.snake.paths import get_traces
 
 config = get_snax_gemmx_config()
 config["snaxoptflags"] = ",".join(
@@ -46,11 +47,12 @@ rule link_snax_binary:
         "{config[ld]} {config[ldflags]} {input} -o {output}"
 
 
+files = ["rescale"]
+
+
 rule all:
     input:
-        "rescale.x",
-    shell:
-        "{config[vltsim]} {input[0]}"
+        *get_traces(files, config["num_chips"], config["num_harts"], "dasm"),
 
 
 from gendata import create_data_files

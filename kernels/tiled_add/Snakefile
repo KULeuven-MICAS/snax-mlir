@@ -1,4 +1,5 @@
 from util.snake.configs import get_snax_alu_config
+from util.snake.paths import get_traces
 
 config = get_snax_alu_config()
 
@@ -122,16 +123,18 @@ COMPILER_OPTS = ["accfgboth", "noaccfgopt"]
 
 rule all:
     input:
-        expand(
-            "{file}_{array_size}_{tile_size}_{compiler_opt}.x",
-            file=FILES,
-            array_size=ARRAY_SIZES,
-            tile_size=TILE_SIZES,
-            compiler_opt=COMPILER_OPTS,
+        *get_traces(
+            expand(
+                "{file}_{array_size}_{tile_size}_{compiler_opt}",
+                file=FILES,
+                array_size=ARRAY_SIZES,
+                tile_size=TILE_SIZES,
+                compiler_opt=COMPILER_OPTS,
+            ),
+            config["num_chips"],
+            config["num_harts"],
+            "dasm",
         ),
-    run:
-        for item in input:
-            shell("{config[vltsim]} {item}")
 
 
 from gendata import generate_data

@@ -15,6 +15,8 @@ def get_snax_mac_config() -> dict[str, Any]:
     config: dict[str, Any] = {}
     config.update(get_default_paths())
     config.update(get_default_flags(snitch_sw_path))
+    config["num_chips"] = 1
+    config["num_harts"] = 2
     config["vltsim"] = f"{snax_utils_path}/snax-mac-rtl/bin/snitch_cluster.vlt"
     config["cflags"].append(
         f"-I{snitch_sw_path}/target/snitch_cluster/sw/snax/mac/include"
@@ -32,6 +34,8 @@ def get_snax_gemmx_config() -> dict[str, Any]:
     config: dict[str, Any] = {}
     config.update(get_default_paths())
     config.update(get_default_flags(snitch_sw_path))
+    config["num_chips"] = 1
+    config["num_harts"] = 2
     config["vltsim"] = (
         snax_utils_path
         + "/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster.vlt"
@@ -46,6 +50,8 @@ def get_snax_alu_config() -> dict[str, Any]:
     config: dict[str, Any] = {}
     config.update(get_default_paths())
     config.update(get_default_flags(snitch_sw_path))
+    config["num_chips"] = 1
+    config["num_harts"] = 2
     config["vltsim"] = snax_utils_path + "/snax-alu-rtl/bin/snitch_cluster.vlt"
     return config
 

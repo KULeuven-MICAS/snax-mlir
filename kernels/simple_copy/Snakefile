@@ -1,4 +1,5 @@
 from util.snake.configs import get_snax_mac_config
+from util.snake.paths import get_traces
 
 config = get_snax_mac_config()
 config["snaxoptflags"] = ",".join(
@@ -29,12 +30,13 @@ module default_rules:
 use rule * from default_rules as default_*
 
 
+files = ["simple_copy"]
+
+
 # Rules
 rule all:
     input:
-        "simple_copy.x",
-    shell:
-        "{config[vltsim]} {input[0]}"
+        *get_traces(files, config["num_chips"], config["num_harts"], "dasm"),
 
 
 rule compile_main:
