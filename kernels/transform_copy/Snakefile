@@ -28,6 +28,16 @@ module default_rules:
 use rule * from default_rules as default_*
 
 
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule * from snax_rules as snax_*
+
+
 from gendata import create_files
 
 files = ["transform_copy", "transform_from_none", "transform_from_strided"]
