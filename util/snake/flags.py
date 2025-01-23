@@ -1,7 +1,8 @@
 import os
+from collections.abc import Sequence
 
 
-def get_target_flags():
+def get_target_flags() -> Sequence[str]:
     """
     Function that returns llvm target flags, related to RISC-V backend settings
     """
@@ -14,7 +15,7 @@ def get_target_flags():
     ]
 
 
-def get_clang_flags():
+def get_clang_flags() -> Sequence[str]:
     """
     Function that returns clang-specific flags, related to RISC-V backend settings
     """
@@ -32,7 +33,7 @@ def get_clang_flags():
     ]
 
 
-def get_cc_flags(snitch_sw_path):
+def get_cc_flags(snitch_sw_path: str) -> Sequence[str]:
     """
     Function that returns default c-compiler flags
     """
@@ -55,7 +56,9 @@ def get_cc_flags(snitch_sw_path):
     ]
 
 
-def get_ld_flags(snitch_sw_path, snitch_llvm_path=None):
+def get_ld_flags(
+    snitch_sw_path: str, snitch_llvm_path: str | None = None
+) -> Sequence[str]:
     """
     Function that returns default linker flags
     """
@@ -73,7 +76,7 @@ def get_ld_flags(snitch_sw_path, snitch_llvm_path=None):
     ]
 
 
-def get_default_flags(snitch_sw_path, snitch_llvm_path=None, index_bitwidth=32):
+def get_default_flags(snitch_sw_path: str, snitch_llvm_path: str | None = None):
     if snitch_llvm_path is None:
         snitch_llvm_path = os.environ["CONDA_PREFIX"] + "/bin"
     return {
