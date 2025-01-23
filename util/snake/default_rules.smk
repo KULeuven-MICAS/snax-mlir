@@ -1,4 +1,4 @@
-from util.snake.paths import get_trace_ext
+from util.snake.paths import get_traces
 
 
 rule snax_opt_mlir:
@@ -63,13 +63,12 @@ rule simulate:
     input:
         "{file}.x",
     output:
-        temp(
-            multiext(
-                *get_trace_ext(
-                    "{file}", config["num_chips"], config["num_harts"], "dasm"
-                )
+        *[
+            temp(trace)
+            for trace in get_traces(
+                ["{file}"], config["num_chips"], config["num_harts"], "dasm"
             )
-        ),
+        ],
     log:
         "{file}.vltlog",
     shell:
