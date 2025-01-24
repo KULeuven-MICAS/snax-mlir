@@ -21,21 +21,20 @@ config["snaxoptflags"] = ",".join(
 )
 
 
-module default_rules:
+module snax_rules:
     snakefile:
-        "../../util/snake/default_rules.smk"
+        "../../util/snake/snax.smk"
     config:
         config
 
 
+use rule * from snax_rules as snax_*
+
+
+# Rules
 rule all:
     input:
-        "func.x",
-    shell:
-        "{config[vltsim]} {input[0]}"
-
-
-use rule * from default_rules exclude compile_simple_main as default_*
+        "func_traces.json",
 
 
 rule compile_snax_binary:

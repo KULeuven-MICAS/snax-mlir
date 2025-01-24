@@ -45,14 +45,14 @@ def get_snax_opt_flags(options):
     )
 
 
-module default_rules:
+module snax_rules:
     snakefile:
-        "../../util/snake/default_rules.smk"
+        "../../util/snake/snax.smk"
     config:
         config
 
 
-use rule * from default_rules as default_*
+use rule * from snax_rules as snax_*
 
 
 rule size_mlir:
@@ -123,15 +123,12 @@ COMPILER_OPTS = ["accfgboth", "noaccfgopt"]
 rule all:
     input:
         expand(
-            "{file}_{array_size}_{tile_size}_{compiler_opt}.x",
+            "{file}_{array_size}_{tile_size}_{compiler_opt}_traces.json",
             file=FILES,
             array_size=ARRAY_SIZES,
             tile_size=TILE_SIZES,
             compiler_opt=COMPILER_OPTS,
         ),
-    run:
-        for item in input:
-            shell("{config[vltsim]} {item}")
 
 
 from gendata import generate_data

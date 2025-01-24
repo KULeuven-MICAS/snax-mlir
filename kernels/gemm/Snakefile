@@ -31,14 +31,20 @@ config["snaxoptflags"] = ",".join(
 )
 
 
-module default_rules:
+module snax_rules:
     snakefile:
-        "../../util/snake/default_rules.smk"
+        "../../util/snake/snax.smk"
     config:
         config
 
 
-use rule * from default_rules as default_*
+use rule * from snax_rules as snax_*
+
+
+# Rules
+rule all:
+    input:
+        "gemm_traces.json",
 
 
 rule compile_main:
@@ -49,13 +55,6 @@ rule compile_main:
         "main.o",
     shell:
         "{config[cc]} {config[cflags]} -c {input[0]}"
-
-
-rule all:
-    input:
-        "gemm.x",
-    shell:
-        "{config[vltsim]} {input[0]}"
 
 
 from gendata import create_data_files
