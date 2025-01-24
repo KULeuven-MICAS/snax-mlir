@@ -44,7 +44,7 @@ use rule * from snax_rules as snax_*
 # Rules
 rule all:
     input:
-        "gemm_aggregated.json",
+        "gemm_traces.json",
 
 
 rule compile_main:

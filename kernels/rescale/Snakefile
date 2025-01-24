@@ -48,7 +48,7 @@ rule link_snax_binary:
 
 rule all:
     input:
-        "rescale_aggregated.json",
+        "rescale_traces.json",
 
 
 from gendata import create_data_files

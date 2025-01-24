@@ -35,7 +35,7 @@ def merge_json(file_list: Sequence[str], output_file: str):
     ]
 
     # Use prefix for output file if not explicitly provided
-    output_file = output_file or f"{prefix}_aggregated.json"
+    output_file = output_file or f"{prefix}_traces.json"
 
     # Output the aggregated result
     with open(output_file, "w") as f:

@@ -123,7 +123,7 @@ COMPILER_OPTS = ["accfgboth", "noaccfgopt"]
 rule all:
     input:
         expand(
-            "{file}_{array_size}_{tile_size}_{compiler_opt}_aggregated.json",
+            "{file}_{array_size}_{tile_size}_{compiler_opt}_traces.json",
             file=FILES,
             array_size=ARRAY_SIZES,
             tile_size=TILE_SIZES,

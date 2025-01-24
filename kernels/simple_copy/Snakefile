@@ -32,7 +32,7 @@ use rule * from snax_rules as snax_*
 # Rules
 rule all:
     input:
-        "simple_copy_aggregated.json",
+        "simple_copy_traces.json",
 
 
 rule compile_main:

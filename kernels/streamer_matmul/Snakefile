@@ -50,7 +50,7 @@ files = ["quantized_matmul", "tiled_quantized_matmul"]
 # Rules
 rule all:
     input:
-        expand("{file}_aggregated.json", file=files),
+        expand("{file}_traces.json", file=files),
 
 
 rule generate_quantized_matmul:

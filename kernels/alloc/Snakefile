@@ -34,7 +34,7 @@ use rule * from snax_rules as snax_*
 # Rules
 rule all:
     input:
-        "func_aggregated.json",
+        "func_traces.json",
 
 
 rule compile_snax_binary:

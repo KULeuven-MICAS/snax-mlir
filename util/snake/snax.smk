@@ -45,6 +45,9 @@ rule trace_dasm:
 
 
 rule aggregate_json:
+    """
+    Aggregate traced stats for across chips and hart traces.
+    """
     input:
         expand(
             "{file}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}_perf.json",
@@ -53,6 +56,6 @@ rule aggregate_json:
             num_harts=range(config["num_harts"]),
         ),
     output:
-        temp("{file}_aggregated.json"),
+        temp("{file}_traces.json"),
     run:
         merge_json(input, output[0])

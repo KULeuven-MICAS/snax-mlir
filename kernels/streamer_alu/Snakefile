@@ -47,7 +47,7 @@ files = ["streamer_add", "streamer_add_stream"]
 # Rules
 rule all:
     input:
-        expand("{file}_aggregated.json", file=files),
+        expand("{file}_traces.json", file=files),
 
 
 from gendata import create_data_files
