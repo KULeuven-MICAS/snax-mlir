@@ -102,9 +102,12 @@ def test_access_pattern_inner_dims():
     with pytest.raises(ValueError):
         access_pattern.inner_dims(0)
 
-    # request more inner dims than there exist (invalid)
-    with pytest.raises(ValueError):
-        access_pattern.inner_dims(4)
+    # requesting more inner dims than available should
+    # just return the original pattern
+    inner_pattern = access_pattern.inner_dims(4)
+    assert inner_pattern.bounds == bounds
+    assert inner_pattern.pattern == pattern
+    assert isinstance(inner_pattern, AccessPattern)
 
 
 def test_schedule_pattern_creation():

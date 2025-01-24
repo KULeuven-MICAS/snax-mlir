@@ -68,10 +68,8 @@ class AccessPattern(ABC):
         For `dim` = 1, will return:
             (d2) -> d2
         """
-        if dim == 0:
-            raise ValueError("Cannot return innermost 0 dimensions")
-        if dim > self.num_dims:
-            raise ValueError("Requested more dimensions than there exist")
+        if dim <= 0:
+            raise ValueError("can only select a positive number of dimensions")
         return type(self)(
             self.bounds[-dim:],
             AffineTransform(self.pattern.A[:, -dim:], self.pattern.b),
