@@ -1,4 +1,4 @@
-def get_default_paths():
+def get_default_paths() -> dict[str, str]:
     return {
         "cc": "clang",
         "ld": "clang",

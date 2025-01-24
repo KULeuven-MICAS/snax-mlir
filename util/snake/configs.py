@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from util.snake.flags import (
     get_clang_flags,
@@ -7,11 +8,11 @@ from util.snake.flags import (
 from util.snake.paths import get_default_paths
 
 
-def get_snax_mac_config():
+def get_snax_mac_config() -> dict[str, Any]:
     # use CONDA_PREFIX to access pixi env
     snax_utils_path = os.environ["CONDA_PREFIX"] + "/snax-utils"
     snitch_sw_path = snax_utils_path + "/snax-mac"
-    config = {}
+    config: dict[str, Any] = {}
     config.update(get_default_paths())
     config.update(get_default_flags(snitch_sw_path))
     config["vltsim"] = f"{snax_utils_path}/snax-mac-rtl/bin/snitch_cluster.vlt"
@@ -24,11 +25,11 @@ def get_snax_mac_config():
     return config
 
 
-def get_snax_gemmx_config():
+def get_snax_gemmx_config() -> dict[str, Any]:
     # use CONDA_PREFIX to access pixi env
     snax_utils_path = os.environ["CONDA_PREFIX"] + "/snax-utils"
     snitch_sw_path = snax_utils_path + "/snax-kul-cluster-mixed-narrow-wide"
-    config = {}
+    config: dict[str, Any] = {}
     config.update(get_default_paths())
     config.update(get_default_flags(snitch_sw_path))
     config["vltsim"] = (
@@ -38,19 +39,19 @@ def get_snax_gemmx_config():
     return config
 
 
-def get_snax_alu_config():
+def get_snax_alu_config() -> dict[str, Any]:
     # use CONDA_PREFIX to access pixi env
     snax_utils_path = os.environ["CONDA_PREFIX"] + "/snax-utils"
     snitch_sw_path = snax_utils_path + "/snax-alu"
-    config = {}
+    config: dict[str, Any] = {}
     config.update(get_default_paths())
     config.update(get_default_flags(snitch_sw_path))
     config["vltsim"] = snax_utils_path + "/snax-alu-rtl/bin/snitch_cluster.vlt"
     return config
 
 
-def get_mlperf_tiny_config():
-    config = {}
+def get_mlperf_tiny_config() -> dict[str, Any]:
+    config: dict[str, Any] = {}
     config.update(get_default_paths())
     config.update({"clangflags": get_clang_flags()})
     config.update(
