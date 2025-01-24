@@ -28,16 +28,6 @@ module default_rules:
         config
 
 
-use rule * from default_rules as default_*
-
-
-module snax_rules:
-    snakefile:
-        "../../util/snake/snax.smk"
-    config:
-        config
-
-
 use rule * from snax_rules as snax_*
 
 

@@ -25,16 +25,6 @@ config["snaxoptflags"] = ",".join(
 )
 
 
-module default_rules:
-    snakefile:
-        "../../util/snake/default_rules.smk"
-    config:
-        config
-
-
-use rule * from default_rules as default_*
-
-
 module snax_rules:
     snakefile:
         "../../util/snake/snax.smk"
