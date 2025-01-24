@@ -17,6 +17,8 @@ config["snaxoptflags"] = ",".join(
         "realize-memref-casts",
         "insert-sync-barrier",
         "dispatch-regions{nb_cores=2}",
+        "dart-scheduler",
+        "dart-layout-resolution",
         "convert-dart-to-snax-stream",
         "convert-linalg-to-accfg",
         "convert-accfg-to-csr",
