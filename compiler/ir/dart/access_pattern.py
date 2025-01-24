@@ -42,7 +42,7 @@ class AccessPattern(ABC):
     def num_dims(self):
         return len(self.bounds)
 
-    @deprecated
+    @deprecated("use inner_dims instead")
     def disable_dims(self, dim: int) -> Self:
         """
         Returns an affine map with the leftmost `dim` dimensions set to 0
