@@ -3,6 +3,7 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Generic, cast
 
+from numpy import deprecate
 from typing_extensions import Self, TypeVar, overload
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 
@@ -42,6 +43,7 @@ class AccessPattern(ABC):
     def num_dims(self):
         return len(self.bounds)
 
+    @deprecate
     def disable_dims(self, dim: int) -> Self:
         """
         Returns an affine map with the leftmost `dim` dimensions set to 0
@@ -55,6 +57,26 @@ class AccessPattern(ABC):
         """
         return type(self)(
             self.bounds[dim:], AffineTransform(self.pattern.A[:, dim:], self.pattern.b)
+        )
+
+    def inner_dims(self, dim: int) -> Self:
+        """
+        Returns an affine map with all but the innermost `dim` dimensions set to 0
+
+        For example:
+            (d0, d1, d2) -> d0 + d1 + d2
+        For `dim` = 2, will return:
+            (d1, d2) -> d1 + d2
+        For `dim` = 1, will return:
+            (d2) -> d2
+        """
+        if dim == 0:
+            raise ValueError("Cannot return innermost 0 dimensions")
+        if dim > self.num_dims:
+            raise ValueError("Requested more dimensions than there exist")
+        return type(self)(
+            self.bounds[-dim:],
+            AffineTransform(self.pattern.A[:, -dim:], self.pattern.b),
         )
 
 
