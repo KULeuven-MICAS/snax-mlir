@@ -31,13 +31,10 @@ module snax_rules:
 use rule * from snax_rules as snax_*
 
 
-files = ["func"]
-
-
 # Rules
 rule all:
     input:
-        expand("{file}_aggregated.json", file=files),
+        "func_aggregated.json",
 
 
 rule compile_snax_binary:

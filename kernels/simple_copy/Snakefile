@@ -29,13 +29,10 @@ module snax_rules:
 use rule * from snax_rules as snax_*
 
 
-files = ["simple_copy"]
-
-
 # Rules
 rule all:
     input:
-        expand("{file}_aggregated.json", file=files),
+        "simple_copy_aggregated.json",
 
 
 rule compile_main:

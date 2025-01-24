@@ -46,17 +46,9 @@ rule link_snax_binary:
         "{config[ld]} {config[ldflags]} {input} -o {output}"
 
 
-files = ["rescale"]
-
-
 rule all:
     input:
-        expand(
-            "{file}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}.dasm",
-            file=files,
-            num_chips=range(config["num_chips"]),
-            num_harts=range(config["num_harts"]),
-        ),
+        "rescale_aggregated.json",
 
 
 from gendata import create_data_files
