@@ -3,7 +3,7 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Generic, cast
 
-from typing_extensions import Self, TypeVar, deprecated, overload
+from typing_extensions import Self, TypeVar, overload
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 
 from compiler.ir.dart.affine_transform import AffineTransform
@@ -42,7 +42,6 @@ class AccessPattern(ABC):
     def num_dims(self):
         return len(self.bounds)
 
-    @deprecated("use inner_dims instead")
     def disable_dims(self, dim: int) -> Self:
         """
         Returns an affine map with the leftmost `dim` dimensions set to 0
