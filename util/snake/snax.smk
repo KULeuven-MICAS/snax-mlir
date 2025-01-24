@@ -35,15 +35,13 @@ rule trace_dasm:
 
 rule aggregate_json:
     input:
-        temp(
-            expand(
-                "{file}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}_perf.json",
-                file=["{file}"],
-                num_chips=range(config["num_chips"]),
-                num_harts=range(config["num_harts"]),
-            )
+        expand(
+            "{file}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}_perf.json",
+            file=["{file}"],
+            num_chips=range(config["num_chips"]),
+            num_harts=range(config["num_harts"]),
         ),
     output:
-        "{file}_aggregated.json",
+        temp("{file}_aggregated.json"),
     run:
         merge_json(input, output[0])
