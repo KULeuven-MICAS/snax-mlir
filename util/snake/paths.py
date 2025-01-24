@@ -11,7 +11,7 @@ def get_default_paths() -> dict[str, str]:
     }
 
 
-def get_default_snax_paths():
+def get_default_snax_paths() -> dict[str, str]:
     # use CONDA_PREFIX to access pixi env
     gen_trace_path = f"{os.environ['CONDA_PREFIX']}/snax-utils/gen_trace.py"
     return {
