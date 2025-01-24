@@ -251,6 +251,9 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
     def disable_dims(self, dim: int) -> Self:
         return type(self)(sp.disable_dims(dim) for sp in self)
 
+    def inner_dims(self, dim: int) -> Self:
+        return type(self)(sp.inner_dims(dim) for sp in self)
+
     def clear_unused_dims(self, bounds: tuple[int] | None = None) -> Self:
         """
         Returns a PatternCollection of which all dimensions that have bound 1 are cleared.
