@@ -7,7 +7,9 @@ from collections.abc import Sequence
 
 def merge_json(file_list: Sequence[str], output_file: str):
     prefix = ""
-    traces = defaultdict(lambda: defaultdict(list))
+    traces: defaultdict[
+        int, defaultdict[int, list[dict[str, int | float | str | None]]]
+    ] = defaultdict(lambda: defaultdict(list))
     for filename in file_list:
         match = re.match(r"(.*)_trace_chip_(\d{2})_hart_(\d{5})_perf\.json", filename)
         if match:
@@ -29,7 +31,7 @@ def merge_json(file_list: Sequence[str], output_file: str):
     # Convert the defaultdict to a nested list structure
     result = [
         [chip_harts[hart_id] for hart_id in sorted(chip_harts)]
-        for chip_id, chip_harts in sorted(traces.items())
+        for _, chip_harts in sorted(traces.items())
     ]
 
     # Use prefix for output file if not explicitly provided
@@ -48,18 +50,17 @@ if __name__ == "__main__":
         "files",
         metavar="FILE",
         nargs="+",
-        help=(
-            "List of JSON files to merge.",
-            "Filenames must match the format",
-            "'<prefix>_trace_chip_<chip_id>_hart_<hart_id>_perf.json'.",
-        ),
+        help="List of JSON files to merge."
+        "Filenames must match the format"
+        "'<prefix>_trace_chip_<chip_id>_hart_<hart_id>_perf.json'.",
     )
     parser.add_argument(
         "-o",
         "--output",
         metavar="OUTPUT_FILE",
         default=None,
-        help="Name of the output JSON file. Defaults to '<prefix>_aggregated.json' based on input filenames.",
+        help="Name of the output JSON file."
+        "Defaults to '<prefix>_aggregated.json' based on input filenames.",
     )
 
     args = parser.parse_args()
