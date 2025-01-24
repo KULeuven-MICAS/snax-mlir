@@ -48,6 +48,20 @@ rule compile_llvm_module:
         "{config[cc]} {config[clangflags]} -x ir -c {input} -o {output}"
 
 
+rule trace_dasm:
+    """
+    Use spike-dasm and gen_trace.py to make simulation traces human-readable
+    and aggregate stats for a specific hart's trace.
+    """
+    input:
+        "{file}.dasm",
+    output:
+        temp("{file}.json"),
+        temp("{file}.txt"),
+    shell:
+        "{config[cc]} {config[clangflags]} -x ir -c {input} -o {output}"
+
+
 rule clean:
     """
     Remove generated files.

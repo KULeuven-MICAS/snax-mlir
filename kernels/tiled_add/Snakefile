@@ -133,13 +133,11 @@ COMPILER_OPTS = ["accfgboth", "noaccfgopt"]
 rule all:
     input:
         expand(
-            "{file}_{array_size}_{tile_size}_{compiler_opt}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}.dasm",
+            "{file}_{array_size}_{tile_size}_{compiler_opt}_aggregated.json",
             file=FILES,
             array_size=ARRAY_SIZES,
             tile_size=TILE_SIZES,
             compiler_opt=COMPILER_OPTS,
-            num_chips=range(config["num_chips"]),
-            num_harts=range(config["num_harts"]),
         ),
 
 

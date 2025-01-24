@@ -41,14 +41,14 @@ module default_rules:
         config
 
 
+use rule * from default_rules as default_*
+
+
 module snax_rules:
     snakefile:
         "../../util/snake/snax.smk"
     config:
         config
-
-
-use rule * from default_rules as default_*
 
 
 use rule * from snax_rules as snax_*
@@ -60,12 +60,7 @@ files = ["quantized_matmul", "tiled_quantized_matmul"]
 # Rules
 rule all:
     input:
-        expand(
-            "{file}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}.dasm",
-            file=files,
-            num_chips=range(config["num_chips"]),
-            num_harts=range(config["num_harts"]),
-        ),
+        expand("{file}_aggregated.json", file=files),
 
 
 rule generate_quantized_matmul:
