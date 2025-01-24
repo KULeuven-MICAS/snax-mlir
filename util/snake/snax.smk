@@ -4,7 +4,7 @@ from util.tracing.merge_json import merge_json
 # All snax compliant configs also use the default rules
 module default_rules:
     snakefile:
-        "../../util/snake/default_rules.smk"
+        "default_rules.smk"
     config:
         config
 
