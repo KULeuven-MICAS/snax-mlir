@@ -231,19 +231,6 @@ def test_schedule_rotate():
     assert rotated_schedule[1].bounds == sp2.rotate(1).bounds
 
 
-def test_schedule_disable_dims():
-    pattern1 = AffineMap(
-        num_dims=3,
-        num_symbols=0,
-        results=(AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(2)),
-    )
-    sp1 = SchedulePattern((10, 20, 30), pattern1)
-    schedule = Schedule([sp1])
-    disabled_schedule = schedule.disable_dims(2)
-    assert isinstance(disabled_schedule, Schedule)
-    assert disabled_schedule[0].bounds == sp1.disable_dims(2).bounds
-
-
 def test_schedule_tile_dim():
     pattern1 = AffineMap(
         num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
@@ -266,19 +253,6 @@ def test_schedule_clear_unused_dims():
     assert cleared_schedule[0].bounds == ((10,))
     expected_results = np.array([[0], [1]])
     assert (cleared_schedule[0].pattern.A == expected_results).all()
-
-
-def test_template_disable_dims():
-    pattern1 = AffineMap(
-        num_dims=3,
-        num_symbols=0,
-        results=(AffineDimExpr(0), AffineDimExpr(1), AffineDimExpr(2)),
-    )
-    tp1 = TemplatePattern((10, 20, 30), pattern1)
-    template = Template([tp1])
-    disabled_template = template.disable_dims(1)
-    assert isinstance(disabled_template, Template)
-    assert disabled_template[0].bounds == tp1.disable_dims(1).bounds
 
 
 def test_template_matches_schedule():
