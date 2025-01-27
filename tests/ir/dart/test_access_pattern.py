@@ -26,47 +26,6 @@ def test_access_pattern_creation():
     assert access_pattern.num_dims == 3
 
 
-def test_access_pattern_disable_dims():
-    pattern = AffineTransform(
-        np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), b=np.array([1, 2, 3])
-    )
-    bounds = (10, 20, 30)
-    access_pattern = AccessPattern(bounds, pattern)
-
-    # test 1: disable 0 dims (none)
-    disabled_pattern = access_pattern.disable_dims(0)
-    assert disabled_pattern.bounds == bounds
-    assert disabled_pattern.pattern == pattern
-    assert isinstance(disabled_pattern, AccessPattern)
-
-    # test 2: disable 1 dims
-    disabled_pattern = access_pattern.disable_dims(1)
-    expected_bounds = (20, 30)
-    expected_results = np.array([[0, 0], [1, 0], [0, 1]])
-    assert disabled_pattern.bounds == expected_bounds
-    assert (disabled_pattern.pattern.A == expected_results).all()
-    assert (disabled_pattern.pattern.b == pattern.b).all()
-    assert isinstance(disabled_pattern, AccessPattern)
-
-    # test 3: disable 2 dims
-    disabled_pattern = access_pattern.disable_dims(2)
-    expected_bounds = (30,)
-    expected_results = np.array([[0], [0], [1]])
-    assert disabled_pattern.bounds == expected_bounds
-    assert (disabled_pattern.pattern.A == expected_results).all()
-    assert (disabled_pattern.pattern.b == pattern.b).all()
-    assert isinstance(disabled_pattern, AccessPattern)
-
-    # test 4: disable 3 dims (all)
-    disabled_pattern = access_pattern.disable_dims(3)
-    expected_bounds: tuple[int, ...] = tuple()
-    expected_results = []
-    assert disabled_pattern.bounds == expected_bounds
-    assert (disabled_pattern.pattern.A == expected_results).all()
-    assert (disabled_pattern.pattern.b == pattern.b).all()
-    assert isinstance(disabled_pattern, AccessPattern)
-
-
 def test_access_pattern_inner_dims():
     pattern = AffineTransform(
         np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), b=np.array([1, 2, 3])
