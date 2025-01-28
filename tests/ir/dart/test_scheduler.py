@@ -7,6 +7,11 @@ from compiler.ir.dart.access_pattern import (
     TemplatePattern,
 )
 from compiler.ir.dart.scheduler import scheduler, scheduler_backtrack
+from compiler.ir.dart.scheduler import (
+    is_pure_output_stationary,
+    scheduler,
+    scheduler_backtrack,
+)
 
 
 def test_matching_1o():
