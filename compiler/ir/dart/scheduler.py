@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Iterator
 
 from compiler.ir.dart.access_pattern import Schedule, Template
 
@@ -7,14 +7,13 @@ def scheduler_backtrack(
     template: Template,
     schedule: Schedule,
     inner_dims: int = 1,
-) -> Generator[Schedule]:
+) -> Iterator[Schedule]:
     """
     Backtracking method to find all possible mappings of the schedule on the template
 
     `template` (Template): the accelerator template
     `schedule` (Schedule): the partially scheduled operation
     `inner_dims` (int): current number of innermost dimensions being handled
-    `pure_output_stationary` (bool):
     """
 
     """
@@ -25,7 +24,7 @@ def scheduler_backtrack(
         There are 3 innermost dimensions that are being checked with the template.
         The other outermost dimensions are not considered.
 
-        The current dimension under foces (d3) is the most outermost dim of the innermost dims.
+        The current dimension under consideration (d3) is the most outermost dim of the innermost dims.
         When we apply a tiling, this will happen to this dimension d3.
         When we apply a rotation, we will rotate outermost dims + focused dim (d0 - d4)
 
