@@ -22,4 +22,8 @@ def dispatch_to_compute(op: Operation):
         return True
     if isinstance(op, dart.OperationOp):
         return True
+    if isinstance(op, dart.ScheduleOp):
+        return True
+    if isinstance(op, dart.AccessPatternOp):
+        return True
     return False
