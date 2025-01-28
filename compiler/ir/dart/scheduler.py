@@ -98,7 +98,7 @@ def is_pure_output_stationary(template: Template, schedule: Schedule):
     """
     Checks whether a schedule, outside of the template, is fully output
     stationary. This is determined by making sure all parallel dimensions
-    preced the reduction dimensions in the output operand (last operand).
+    precede the reduction dimensions in the output operand (last operand).
     """
     # fetch the pattern of the last operand
     output_schedule = schedule[-1].pattern.A
