@@ -41,28 +41,30 @@ class DispatchRegionsRewriter(RewritePattern):
 
             # walk through the block
             for op in block.walk(region_first=True):
-                # if op is dispatchable, add to existing list
-                # of dispatchable ops to include in scf.if body
-                if dispatch_rule(op):
-                    ops_to_dispatch.append(op)
+                # dispatch current list if it is nonempty, and the current op
+                # can not be added (either because it mustn't be dispatched, or
+                # because it doesn't share the same parent)
+                if len(ops_to_dispatch) and (
+                    not dispatch_rule(op) or op.parent is not ops_to_dispatch[-1].parent
+                ):
+                    # create and insert scf.if op
+                    if_op = scf.IfOp(core_cond, [], [yield_op := scf.YieldOp()])
+                    rewriter.insert_op(if_op, InsertPoint.before(ops_to_dispatch[0]))
 
-                # else, the scf.if body stops. in this case
-                # create and insert the scf.if operation
-                elif len(ops_to_dispatch) > 0:
-                    # detach ops in list from original region
+                    # detach ops in list from original region and put them in the if
                     for dispatch_op in ops_to_dispatch:
                         dispatch_op.detach()
-                    # add scf terminator
-                    ops_to_dispatch.append(scf.YieldOp())
-                    # create and insert scf.if op
-                    if_op = scf.IfOp(core_cond, [], ops_to_dispatch)
-                    rewriter.insert_op(if_op, InsertPoint.before(op))
+                        rewriter.insert_op(dispatch_op, InsertPoint.before(yield_op))
 
                     # reset dispatchable ops list
                     ops_to_dispatch = []
 
                     # assert changes_made flag
                     changes_made = True
+
+                # add op to the dispatch list if it must be dispatched
+                if dispatch_rule(op):
+                    ops_to_dispatch = [op]
 
             return changes_made
 
