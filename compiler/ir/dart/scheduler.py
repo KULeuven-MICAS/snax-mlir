@@ -1,4 +1,6 @@
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Sequence
+
+import numpy as np
 
 from compiler.ir.dart.access_pattern import Schedule, Template
 
@@ -7,6 +9,7 @@ def scheduler_backtrack(
     template: Template,
     schedule: Schedule,
     inner_dims: int = 1,
+    extra_checks: Sequence[Callable[[Template, Schedule], bool]] = [],
 ) -> Iterator[Schedule]:
     """
     Backtracking method to find all possible mappings of the schedule on the template
@@ -57,10 +60,15 @@ def scheduler_backtrack(
             # not possible, consider next option
             continue
 
+        # check 2: apply extra checks
+        if not all(check(template_check, schedule_check) for check in extra_checks):
+            # not a valid schedule, consider next option
+            continue
+
         # checks passed, we have a candidate schedule now
         candidate_schedule = schedule
 
-        # check 2: check for valid iteration bounds
+        # check 3: check for valid iteration bounds
         template_bound = (
             template[0].bounds[-inner_dims] if inner_dims <= template.num_dims else None
         )
@@ -80,10 +88,45 @@ def scheduler_backtrack(
                 )
 
         # continue with candidate schedule, with an extra inner dim:
-        yield from scheduler_backtrack(template, candidate_schedule, inner_dims + 1)
+        yield from scheduler_backtrack(
+            template, candidate_schedule, inner_dims + 1, extra_checks
+        )
 
 
-def scheduler(template: Template, schedule: Schedule) -> Schedule:
+def is_pure_output_stationary(template: Template, schedule: Schedule):
+    """
+    Checks whether a schedule, outside of the template, is fully output
+    stationary. This is determined by making sure all parallel dimensions
+    precede the reduction dimensions in the output operand (last operand).
+    """
+    # fetch the pattern of the last operand
+    output_schedule = schedule[-1].pattern.A
+    # do not consider template dims
+    output_schedule = output_schedule[:, : -template.num_dims]
+
+    # check whether there are any non-zero elements in every column
+    # create iteration_types list with False for reduction, True for parallel
+    iteration_types: list[bool] = list(
+        map(lambda x: bool(x), np.any(output_schedule != 0, axis=0).tolist())
+    )
+    # the first zero should come after the last 1 for output stationary
+
+    # if only reduction, or only parallel, pure otuput stationary is guaranteed
+    if not (True in iteration_types and False in iteration_types):
+        return True
+
+    first_reduction_idx = iteration_types.index(False)
+    last_parallel_idx = len(iteration_types) - 1 - iteration_types[::-1].index(True)
+
+    # last parallel index should come before first reduction idx for pure output stationarity
+    return first_reduction_idx > last_parallel_idx
+
+
+def scheduler(
+    template: Template,
+    schedule: Schedule,
+    extra_checks: Sequence[Callable[[Template, Schedule], bool]] = [],
+) -> Schedule:
     # for now just return the first result of the backtracking
-    result = next(scheduler_backtrack(template, schedule))
+    result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
     return result

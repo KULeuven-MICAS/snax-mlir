@@ -6,7 +6,11 @@ from compiler.ir.dart.access_pattern import (
     Template,
     TemplatePattern,
 )
-from compiler.ir.dart.scheduler import scheduler, scheduler_backtrack
+from compiler.ir.dart.scheduler import (
+    is_pure_output_stationary,
+    scheduler,
+    scheduler_backtrack,
+)
 
 
 def test_matching_1o():
@@ -157,3 +161,67 @@ def test_multiple_results():
 
     result = list(scheduler_backtrack(template, schedule))
     assert len(result) == 6
+
+
+def test_pure_output_stationary_check():
+    template_pattern = AffineMap.from_callable(lambda e: (e, e, e))
+
+    schedule_checks: list[tuple[AffineMap, bool]] = [
+        # only template dim: is valid
+        (AffineMap.from_callable(lambda e: (e, e, e)), True),
+        # only parallel dims: is valid
+        (AffineMap.from_callable(lambda c, d, e: (c + e, d + e, e)), True),
+        # only reduction dims: is valid
+        (AffineMap.from_callable(lambda _c, _d, e: (e, e, e)), True),
+        # parallel dim before reduction dim: valid
+        (AffineMap.from_callable(lambda c, _, e: (e, e, 2 * c + e)), True),
+        # reduction dim before parallel dim: invalid
+        (AffineMap.from_callable(lambda _, d, e: (e, e, 2 * d + e)), False),
+        # some more complex mixtures of parallel dim / reduction dim
+        (AffineMap.from_callable(lambda a, b, _c, _d, e: (e, b + e, 2 * a + e)), True),
+        (AffineMap.from_callable(lambda _a, _b, c, d, e: (e, c + e, 2 * d + e)), False),
+        (AffineMap.from_callable(lambda a, _b, c, _d, e: (e, a + e, 2 * c + e)), False),
+        (AffineMap.from_callable(lambda _a, b, _c, d, e: (e, b + e, 2 * d + e)), False),
+    ]
+
+    template = Template(
+        (TemplatePattern([1] * template_pattern.num_dims, template_pattern),)
+    )
+
+    for schedule_pattern, expected_result in schedule_checks:
+        schedule = Schedule(
+            (SchedulePattern([1] * schedule_pattern.num_dims, schedule_pattern),)
+        )
+        assert is_pure_output_stationary(template, schedule) is expected_result
+
+
+def test_pure_output_stationary_scheduler():
+    template_pattern = AffineMap.from_callable(lambda y: (y,))
+    template = Template([TemplatePattern([4], template_pattern)])
+
+    schedule_pattern = AffineMap.from_callable(lambda x, y: (y,))
+    schedule = Schedule([SchedulePattern([8, 8], schedule_pattern)])
+
+    # the expected output stationary schedule
+    output_stationary_pattern = AffineMap.from_callable(
+        lambda y0, x, y1: (4 * y0 + y1,)
+    )
+    schedule_output_stationary = Schedule(
+        [SchedulePattern([2, 8, 4], output_stationary_pattern)]
+    )
+
+    # if we run the scheduler without constraints, there are 2 valid schedules:
+    result = list(scheduler_backtrack(template, schedule, extra_checks=[]))
+    assert len(result) == 2
+    # one of which is the output stationary one:
+    assert schedule_output_stationary in result
+
+    # if we run the scheduler with the pure output stationary constraint, there is 1:
+    result = list(
+        scheduler_backtrack(
+            template, schedule, extra_checks=[is_pure_output_stationary]
+        )
+    )
+    assert len(result) == 1
+    # that one result being the output stationary one
+    assert result[0] == schedule_output_stationary
