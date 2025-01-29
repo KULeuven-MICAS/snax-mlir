@@ -67,6 +67,49 @@ def test_access_pattern_disable_dims():
     assert isinstance(disabled_pattern, AccessPattern)
 
 
+def test_access_pattern_inner_dims():
+    pattern = AffineTransform(
+        np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), b=np.array([1, 2, 3])
+    )
+    bounds = (10, 20, 30)
+    access_pattern = AccessPattern(bounds, pattern)
+
+    # test 1: keep all dims
+    inner_pattern = access_pattern.inner_dims(3)
+    assert inner_pattern.bounds == bounds
+    assert inner_pattern.pattern == pattern
+    assert isinstance(inner_pattern, AccessPattern)
+
+    # test 2: get 2 dims
+    inner_pattern = access_pattern.inner_dims(2)
+    expected_bounds = (20, 30)
+    expected_results = np.array([[0, 0], [1, 0], [0, 1]])
+    assert inner_pattern.bounds == expected_bounds
+    assert (inner_pattern.pattern.A == expected_results).all()
+    assert (inner_pattern.pattern.b == pattern.b).all()
+    assert isinstance(inner_pattern, AccessPattern)
+
+    # test 3: get 1 dim
+    inner_pattern = access_pattern.inner_dims(1)
+    expected_bounds = (30,)
+    expected_results = np.array([[0], [0], [1]])
+    assert inner_pattern.bounds == expected_bounds
+    assert (inner_pattern.pattern.A == expected_results).all()
+    assert (inner_pattern.pattern.b == pattern.b).all()
+    assert isinstance(inner_pattern, AccessPattern)
+
+    # request 0 inner dims (invalid)
+    with pytest.raises(ValueError):
+        access_pattern.inner_dims(0)
+
+    # requesting more inner dims than available should
+    # just return the original pattern
+    inner_pattern = access_pattern.inner_dims(4)
+    assert inner_pattern.bounds == bounds
+    assert inner_pattern.pattern == pattern
+    assert isinstance(inner_pattern, AccessPattern)
+
+
 def test_schedule_pattern_creation():
     pattern = AffineTransform(np.array([[1, 0], [0, 1]]), np.array([0, 0]))
     bounds = (15, 25)

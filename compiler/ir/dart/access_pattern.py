@@ -57,6 +57,24 @@ class AccessPattern(ABC):
             self.bounds[dim:], AffineTransform(self.pattern.A[:, dim:], self.pattern.b)
         )
 
+    def inner_dims(self, dim: int) -> Self:
+        """
+        Returns an affine map with all but the innermost `dim` dimensions set to 0
+
+        For example:
+            (d0, d1, d2) -> d0 + d1 + d2
+        For `dim` = 2, will return:
+            (d1, d2) -> d1 + d2
+        For `dim` = 1, will return:
+            (d2) -> d2
+        """
+        if dim <= 0:
+            raise ValueError("can only select a positive number of dimensions")
+        return type(self)(
+            self.bounds[-dim:],
+            AffineTransform(self.pattern.A[:, -dim:], self.pattern.b),
+        )
+
 
 @dataclass(frozen=True)
 class SchedulePattern(AccessPattern):
@@ -230,6 +248,9 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
 
     def disable_dims(self, dim: int) -> Self:
         return type(self)(sp.disable_dims(dim) for sp in self)
+
+    def inner_dims(self, dim: int) -> Self:
+        return type(self)(sp.inner_dims(dim) for sp in self)
 
     def clear_unused_dims(self, bounds: tuple[int] | None = None) -> Self:
         """
