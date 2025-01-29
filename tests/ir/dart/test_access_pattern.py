@@ -240,7 +240,7 @@ def test_template_pattern_matches():
     )
     assert tp.matches(sp_non_matching_pattern) is False
 
-    # check pattern with wrong bounds (should be irellevant for template check)
+    # check pattern with wrong bounds (should be irrelevant for template check)
     sp_non_matching_bounds = SchedulePattern((5, 15), pattern)
     assert tp.matches(sp_non_matching_bounds)
 

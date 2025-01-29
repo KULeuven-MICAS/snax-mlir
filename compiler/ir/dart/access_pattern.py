@@ -198,7 +198,7 @@ class TemplatePattern(AccessPattern):
         """
         if sp.num_dims > self.num_dims:
             sp = sp.inner_dims(self.num_dims)
-        if sp.num_dims != self.num_dims:
+        elif sp.num_dims < self.num_dims:
             return False
         if sp.pattern != self.pattern:
             return False
