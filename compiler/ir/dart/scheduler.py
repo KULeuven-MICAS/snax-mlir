@@ -1,5 +1,4 @@
-from collections.abc import Iterator
-from collections.abc import Callable, Generator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 
 import numpy as np
 
@@ -11,7 +10,7 @@ def scheduler_backtrack(
     schedule: Schedule,
     inner_dims: int = 1,
     extra_checks: Sequence[Callable[[Template, Schedule], bool]] = [],
-) -> Generator[Schedule]:
+) -> Iterator[Schedule]:
     """
     Backtracking method to find all possible mappings of the schedule on the template
 
