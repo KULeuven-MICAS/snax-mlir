@@ -42,21 +42,6 @@ class AccessPattern(ABC):
     def num_dims(self):
         return len(self.bounds)
 
-    def disable_dims(self, dim: int) -> Self:
-        """
-        Returns an affine map with the leftmost `dim` dimensions set to 0
-
-        For example:
-            (d0, d1, d2) -> d0 + d1 + d2
-        For `dim` = 1, will return:
-            (d1, d2) -> d1 + d2
-        For `dim` = 2, will return:
-            (d2) -> d2
-        """
-        return type(self)(
-            self.bounds[dim:], AffineTransform(self.pattern.A[:, dim:], self.pattern.b)
-        )
-
     def inner_dims(self, dim: int) -> Self:
         """
         Returns an affine map with all but the innermost `dim` dimensions set to 0
@@ -247,9 +232,6 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
     @property
     def max_dim(self) -> int:
         return max(pattern.num_dims for pattern in self._patterns)
-
-    def disable_dims(self, dim: int) -> Self:
-        return type(self)(sp.disable_dims(dim) for sp in self)
 
     def inner_dims(self, dim: int) -> Self:
         return type(self)(sp.inner_dims(dim) for sp in self)
