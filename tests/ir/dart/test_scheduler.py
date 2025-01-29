@@ -6,7 +6,7 @@ from compiler.ir.dart.access_pattern import (
     Template,
     TemplatePattern,
 )
-from compiler.ir.dart.scheduler import scheduler
+from compiler.ir.dart.scheduler import scheduler, scheduler_backtrack
 
 
 def test_matching_1o():
@@ -143,3 +143,17 @@ def test_tiling_1o_1d2():
     result = scheduler(template, schedule)
 
     assert result == expected
+
+
+def test_multiple_results():
+    # test the scheduling result of a problem with multiple results
+    pattern_template = AffineMap.from_callable(lambda c: (c,))
+    template = Template((TemplatePattern(bounds=(2,), pattern=pattern_template),))
+    pattern_schedule = AffineMap.from_callable(lambda a, b, c: (c,))
+    schedule = Schedule((SchedulePattern(bounds=(4, 4, 4), pattern=pattern_schedule),))
+
+    # the c dimension will be tiled, so 3 temporal for loops remain.
+    # there should be 3*2*1=6 ways to order them, so we excpect 6 results.
+
+    result = list(scheduler_backtrack(template, schedule))
+    assert len(result) == 6
