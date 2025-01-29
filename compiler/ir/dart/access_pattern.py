@@ -196,7 +196,9 @@ class TemplatePattern(AccessPattern):
         Check if a given schedule pattern matches this
         template pattern.
         """
-        if sp.num_dims != self.num_dims:
+        if sp.num_dims > self.num_dims:
+            sp = sp.inner_dims(self.num_dims)
+        elif sp.num_dims < self.num_dims:
             return False
         if sp.pattern != self.pattern:
             return False

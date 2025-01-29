@@ -226,20 +226,34 @@ def test_template_pattern_matches():
     )
     bounds = (10, 20)
     tp = TemplatePattern(bounds, pattern)
+
+    # test matching pattern
     sp_matching = SchedulePattern(bounds, pattern)
+    assert tp.matches(sp_matching)
+
+    # test non matching pattern
     sp_non_matching_pattern = SchedulePattern(
         bounds,
         AffineMap(
             num_dims=2, num_symbols=0, results=(AffineDimExpr(1), AffineDimExpr(0))
         ),
     )
-    sp_non_matching_bounds = SchedulePattern((5, 15), pattern)
-
-    assert tp.matches(sp_matching) is True
     assert tp.matches(sp_non_matching_pattern) is False
-    assert (
-        tp.matches(sp_non_matching_bounds) is True
-    )  # Bounds are not checked in matches
+
+    # check pattern with wrong bounds (should be irrelevant for template check)
+    sp_non_matching_bounds = SchedulePattern((5, 15), pattern)
+    assert tp.matches(sp_non_matching_bounds)
+
+    # if the schedule has higher dimensionality than the template, only the innermost
+    # are considered
+    larger_pattern = AffineMap(
+        num_dims=3,
+        num_symbols=0,
+        results=(AffineDimExpr(1) + AffineDimExpr(0), AffineDimExpr(2)),
+    )
+    larger_bounds = (44, 10, 20)
+    sp_matching_larger = SchedulePattern(larger_bounds, larger_pattern)
+    assert tp.matches(sp_matching_larger)
 
 
 def test_schedule_rotate():
