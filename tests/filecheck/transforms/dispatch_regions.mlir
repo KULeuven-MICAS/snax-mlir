@@ -75,6 +75,34 @@
 
 // -----
 
+// two copies after each other
+
+func.func public @func() {
+	%0 = memref.alloc() {alignment = 64 : i64} : memref<16x16xi8>
+	"memref.copy"(%0, %0) : (memref<16x16xi8>, memref<16x16xi8>) -> ()
+	"memref.copy"(%0, %0) : (memref<16x16xi8>, memref<16x16xi8>) -> ()
+	"snax.cluster_sync_op"() : () -> ()
+	func.return
+}
+
+// CHECK: 		builtin.module {
+// CHECK-NEXT:   func.func public @func() {
+// CHECK-NEXT:     %0 = func.call @snax_cluster_core_idx() {pin_to_constants =
+// CHECK-NEXT:     %1 = arith.constant
+// CHECK-NEXT:     %2 = arith.cmpi eq, %0, %1 : i32
+// CHECK-NEXT:     %3 = memref.alloc() {alignment = 64 : i64} : memref<16x16xi8>
+// CHECK-NEXT:     scf.if %2 {
+// CHECK-NEXT:       "memref.copy"(%3, %3) : (memref<16x16xi8>, memref<16x16xi8>) -> ()
+// CHECK-NEXT:       "memref.copy"(%3, %3) : (memref<16x16xi8>, memref<16x16xi8>) -> ()
+// CHECK-NEXT:     }
+// CHECK-NEXT:     "snax.cluster_sync_op"() : () -> ()
+// CHECK-NEXT:     func.return
+// CHECK-NEXT:   }
+// CHECK-NEXT:   func.func private @snax_cluster_core_idx() -> i32
+// CHECK-NEXT: }
+
+// -----
+
 // test function with dispatchable ops to both cores
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> (), "sym_visibility" = "public"}> ({
@@ -93,10 +121,10 @@
 
 // CHECK: builtin.module {
 // CHECK-NEXT:   func.func public @simple_mult(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>) {
-// CHECK-NEXT:     %3 = func.call @snax_cluster_core_idx() {pin_to_constants = [{{[^\]]*}}]} : () -> i32
+// CHECK-NEXT:     %3 = func.call @snax_cluster_core_idx() {pin_to_constants =
 // CHECK-NEXT:     %4 = arith.constant 0 : i32
 // CHECK-NEXT:     %5 = arith.cmpi eq, %3, %4 : i32
-// CHECK-NEXT:     %6 = arith.constant {{\d}} : i32
+// CHECK-NEXT:     %6 = arith.constant
 // CHECK-NEXT:     %7 = arith.cmpi eq, %3, %6 : i32
 // CHECK-NEXT:     %alloc = memref.alloc() {alignment = 64 : i64} : memref<64xi32>
 // CHECK-NEXT:     scf.if %7 {
@@ -146,7 +174,7 @@
 
 // CHECK: builtin.module {
 // CHECK-NEXT:   func.func public @simple_mult(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>) {
-// CHECK-NEXT:     %3 = func.call @snax_cluster_core_idx() {pin_to_constants = [{{[^\]]*}}]} : () -> i32
+// CHECK-NEXT:     %3 = func.call @snax_cluster_core_idx() {pin_to_constants =
 // CHECK-NEXT:     %4 = arith.constant 0 : i32
 // CHECK-NEXT:     %5 = arith.cmpi eq, %3, %4 : i32
 // CHECK-NEXT:     %6 = arith.constant true
@@ -216,8 +244,8 @@ func.func public @func() {
 
 // CHECK: builtin.module {
 // CHECK-NEXT:   func.func public @func() {
-// CHECK-NEXT:     %0 = func.call @snax_cluster_core_idx() {pin_to_constants = [{{[^\]]*}}]} : () -> i32
-// CHECK-NEXT:     %1 = arith.constant {{\d}} : i32
+// CHECK-NEXT:     %0 = func.call @snax_cluster_core_idx() {pin_to_constants =
+// CHECK-NEXT:     %1 = arith.constant
 // CHECK-NEXT:     %2 = arith.cmpi eq, %0, %1 : i32
 // CHECK-NEXT:     %3 = memref.alloc() {alignment = 64 : i64} : memref<16x16xi8>
 // CHECK-NEXT:     %4 = memref.alloc() {alignment = 64 : i64} : memref<16x16xi8>

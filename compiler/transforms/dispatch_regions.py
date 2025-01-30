@@ -64,7 +64,7 @@ class DispatchRegionsRewriter(RewritePattern):
 
                 # add op to the dispatch list if it must be dispatched
                 if dispatch_rule(op):
-                    ops_to_dispatch = [op]
+                    ops_to_dispatch.append(op)
 
             return changes_made
 
