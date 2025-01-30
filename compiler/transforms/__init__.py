@@ -21,7 +21,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return InsertResetsPass
 
-    def get_trace_states_pass():
+    def get_accfg_trace_states():
         from compiler.transforms.convert_linalg_to_accfg import TraceStatesPass
 
         return TraceStatesPass
@@ -186,12 +186,12 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return AddMcycleAroundLaunch
 
-    def get_debug_to_func():
+    def get_test_debug_to_func():
         from compiler.transforms.test.debug_to_func import DebugToFuncPass
 
         return DebugToFuncPass
 
-    def get_insert_debugs():
+    def get_test_insert_debugs():
         from compiler.transforms.test.insert_debugs import InsertDebugPass
 
         return InsertDebugPass
@@ -205,7 +205,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "accfg-config-overlap": get_accfg_config_overlap,
         "accfg-dedup": get_accfg_dedup,
         "accfg-insert-resets": get_accfg_insert_resets,
-        "accfg-trace-states": get_trace_states_pass,
+        "accfg-trace-states": get_accfg_trace_states,
         "alloc-to-global": get_alloc_to_global,
         "clear-memory-space": get_clear_memory_space,
         "convert-accfg-to-csr": get_convert_accfg_to_csr,
@@ -236,7 +236,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "snax-to-func": get_snax_to_func,
         "test-add-mcycle-around-launch": get_test_add_mcycle_around_launch,
         "test-add-mcycle-around-loop": get_test_add_mcycle_around_loop,
-        "test-debug-to-func": get_debug_to_func,
-        "test-insert-debugs": get_insert_debugs,
+        "test-debug-to-func": get_test_debug_to_func,
+        "test-insert-debugs": get_test_insert_debugs,
         "test-remove-memref-copy": get_test_remove_memref_copy,
     }
