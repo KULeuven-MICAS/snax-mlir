@@ -2,6 +2,7 @@ import argparse
 from collections.abc import Sequence
 
 from xdsl.context import MLContext
+from xdsl.dialects import get_all_dialects
 from xdsl.xdsl_opt_main import xDSLOptMain
 
 from compiler.dialects import get_all_snax_dialects
@@ -47,6 +48,15 @@ from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
 
 
 class SNAXOptMain(xDSLOptMain):
+    def register_all_dialects(self):
+        all_dialects = get_all_dialects()
+        # FIXME: override upstream accfg and stream dialect.
+        all_dialects.pop("accfg", None)
+        all_dialects.pop("stream", None)
+        all_dialects.update(get_all_snax_dialects())
+        for dialect_name, dialect_factory in all_dialects.items():
+            self.ctx.register_dialect(dialect_name, dialect_factory)
+
     def __init__(
         self,
         description: str = "SNAX modular optimizer driver",
@@ -57,8 +67,7 @@ class SNAXOptMain(xDSLOptMain):
         self.available_targets = {}
 
         self.ctx = MLContext()
-        super().register_all_dialects()
-        self.register_all_snax_dialects()
+        self.register_all_dialects()
         super().register_all_frontends()
         super().register_all_passes()
         super().register_all_targets()
@@ -125,18 +134,6 @@ class SNAXOptMain(xDSLOptMain):
         self.ctx.allow_unregistered = self.args.allow_unregistered_dialect
 
         super().setup_pipeline()
-
-    def register_all_snax_dialects(self):
-        # NOTE: This function asssumes prior registration of accfg and stream
-        # FIXME: override upstream accfg dialect.
-        #    Remove this after upstreaming full downstream accfg dialect.
-        self.ctx._registered_dialects.pop("accfg", None)  # pyright: ignore
-        # Warning: overrides upstream stream dialect.
-        self.ctx._registered_dialects.pop("stream", None)  # pyright: ignore
-        for dialect_name, dialect_factory in get_all_snax_dialects(
-            test_dialects=True
-        ).items():
-            self.ctx.register_dialect(dialect_name, dialect_factory)
 
 
 def main():

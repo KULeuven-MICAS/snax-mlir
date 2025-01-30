@@ -2,14 +2,9 @@ from collections.abc import Callable
 
 from xdsl.ir import Dialect
 
-from compiler.dialects.test import get_all_snax_test_dialects
 
-
-def get_all_snax_dialects(
-    test_dialects: bool = True,
-) -> dict[str, Callable[[], Dialect]]:
-    """Returns all available snax dialects.
-    If test_dialects is set to True, also return all available test dialects"""
+def get_all_snax_dialects() -> dict[str, Callable[[], Dialect]]:
+    """Returns all available snax dialects"""
 
     def get_accfg():
         from compiler.dialects.accfg import ACCFG
@@ -20,6 +15,11 @@ def get_all_snax_dialects(
         from compiler.dialects.dart import Dart
 
         return Dart
+
+    def get_debug():
+        from compiler.dialects.test.debug import Debug
+
+        return Debug
 
     def get_kernel():
         from compiler.dialects.kernel import Kernel
@@ -41,19 +41,12 @@ def get_all_snax_dialects(
 
         return TSL
 
-    snax_dialect_factories = {
+    return {
         "accfg": get_accfg,
         "dart": get_dart,
+        "debug": get_debug,
         "kernel": get_kernel,
         "snax": get_snax,
         "snax_stream": get_snax_stream,
         "tsl": get_tsl,
     }
-
-    dialect_factories: dict[str, Callable[[], Dialect]] = {}
-
-    if test_dialects:
-        dialect_factories.update(get_all_snax_test_dialects())
-    dialect_factories.update(snax_dialect_factories)
-
-    return dialect_factories
