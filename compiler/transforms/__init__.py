@@ -21,6 +21,11 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return InsertResetsPass
 
+    def get_trace_states_pass():
+        from compiler.transforms.convert_linalg_to_accfg import TraceStatesPass
+
+        return TraceStatesPass
+
     def get_alloc_to_global():
         from compiler.transforms.alloc_to_global import AllocToGlobalPass
 
@@ -85,11 +90,6 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return DartSchedulerPass
 
-    def get_debug_to_func():
-        from compiler.transforms.test.debug_to_func import DebugToFuncPass
-
-        return DebugToFuncPass
-
     def get_dispatch_kernels():
         from compiler.transforms.dispatch_kernels import DispatchKernels
 
@@ -104,11 +104,6 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         from compiler.transforms.insert_accfg_op import InsertAccOp
 
         return InsertAccOp
-
-    def get_insert_debugs():
-        from compiler.transforms.test.insert_debugs import InsertDebugPass
-
-        return InsertDebugPass
 
     def get_insert_sync_barrier():
         from compiler.transforms.insert_sync_barrier import InsertSyncBarrier
@@ -191,24 +186,30 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return AddMcycleAroundLaunch
 
+    def get_debug_to_func():
+        from compiler.transforms.test.debug_to_func import DebugToFuncPass
+
+        return DebugToFuncPass
+
+    def get_insert_debugs():
+        from compiler.transforms.test.insert_debugs import InsertDebugPass
+
+        return InsertDebugPass
+
     def get_test_remove_memref_copy():
         from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
 
         return RemoveMemrefCopyPass
 
-    def get_trace_states_pass():
-        from compiler.transforms.convert_linalg_to_accfg import TraceStatesPass
-
-        return TraceStatesPass
-
     return {
         "accfg-config-overlap": get_accfg_config_overlap,
         "accfg-dedup": get_accfg_dedup,
         "accfg-insert-resets": get_accfg_insert_resets,
+        "accfg-trace-states": get_trace_states_pass,
         "alloc-to-global": get_alloc_to_global,
         "clear-memory-space": get_clear_memory_space,
         "convert-accfg-to-csr": get_convert_accfg_to_csr,
-        "convert-dart-to-snax_stream": get_convert_dart_to_snax_stream,
+        "convert-dart-to-snax-stream": get_convert_dart_to_snax_stream,
         "convert-kernel-to-linalg": get_convert_kernel_to_linalg,
         "convert-linalg-to-accfg": get_convert_linalg_to_accfg,
         "convert-linalg-to-dart": get_convert_linalg_to_dart,
@@ -217,11 +218,9 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "dart-fuse-operations": get_dart_fuse_operations,
         "dart-layout-resolution": get_dart_layout_resolution,
         "dart-scheduler": get_dart_scheduler,
-        "debug-to-func": get_debug_to_func,
         "dispatch-kernels": get_dispatch_kernels,
         "dispatch-regions": get_dispatch_regions,
         "insert-accfg-op": get_insert_accfg_op,
-        "insert-debugs": get_insert_debugs,
         "insert-sync-barrier": get_insert_sync_barrier,
         "memref-to-snax": get_memref_to_snax,
         "postprocess": get_postprocess_mlir,
@@ -237,6 +236,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "snax-to-func": get_snax_to_func,
         "test-add-mcycle-around-launch": get_test_add_mcycle_around_launch,
         "test-add-mcycle-around-loop": get_test_add_mcycle_around_loop,
+        "test-debug-to-func": get_debug_to_func,
+        "test-insert-debugs": get_insert_debugs,
         "test-remove-memref-copy": get_test_remove_memref_copy,
-        "trace-states": get_trace_states_pass,
     }
