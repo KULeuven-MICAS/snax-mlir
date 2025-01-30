@@ -4,13 +4,7 @@ from collections.abc import Sequence
 from xdsl.context import MLContext
 from xdsl.xdsl_opt_main import xDSLOptMain
 
-from compiler.dialects.accfg import ACCFG
-from compiler.dialects.dart import Dart
-from compiler.dialects.kernel import Kernel
-from compiler.dialects.snax import Snax
-from compiler.dialects.snax_stream import SnaxStream
-from compiler.dialects.test.debug import Debug
-from compiler.dialects.tsl import TSL
+from compiler.dialects import get_all_snax_dialects
 from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 from compiler.transforms.accfg_dedup import AccfgDeduplicate
 from compiler.transforms.accfg_insert_resets import InsertResetsPass
@@ -64,23 +58,11 @@ class SNAXOptMain(xDSLOptMain):
 
         self.ctx = MLContext()
         super().register_all_dialects()
+        self.register_all_snax_dialects()
         super().register_all_frontends()
         super().register_all_passes()
         super().register_all_targets()
 
-        ## Add custom dialects & passes
-        # FIXME: override upstream accfg dialect. Remove this after upstreaming full downstream accfg dialect.
-        self.ctx._registered_dialects.pop("accfg", None)  # pyright: ignore
-        # Warning: overrides upstream stream dialect.
-        self.ctx._registered_dialects.pop("stream", None)  # pyright: ignore
-
-        self.ctx.load_dialect(Snax)
-        self.ctx.load_dialect(TSL)
-        self.ctx.load_dialect(Kernel)
-        self.ctx.load_dialect(ACCFG)
-        self.ctx.load_dialect(SnaxStream)
-        self.ctx.load_dialect(Debug)
-        self.ctx.load_dialect(Dart)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
         super().register_pass(SetMemoryLayout.name, lambda: SetMemoryLayout)
@@ -144,7 +126,17 @@ class SNAXOptMain(xDSLOptMain):
 
         super().setup_pipeline()
 
-    pass
+    def register_all_snax_dialects(self):
+        # NOTE: This function asssumes prior registration of accfg and stream
+        # FIXME: override upstream accfg dialect.
+        #    Remove this after upstreaming full downstream accfg dialect.
+        self.ctx._registered_dialects.pop("accfg", None)  # pyright: ignore
+        # Warning: overrides upstream stream dialect.
+        self.ctx._registered_dialects.pop("stream", None)  # pyright: ignore
+        for dialect_name, dialect_factory in get_all_snax_dialects(
+            test_dialects=True
+        ).items():
+            self.ctx.register_dialect(dialect_name, dialect_factory)
 
 
 def main():
