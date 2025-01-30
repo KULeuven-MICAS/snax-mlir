@@ -101,7 +101,7 @@ class RealizeMemrefCasts(RewritePattern):
             if isinstance(use_op, linalg.GenericOp):
                 # don't know if input or output, default to yes
                 is_input = op.results[0] in use_op.inputs
-            elif isinstance(use_op, dart.OperationOp):
+            elif isinstance(use_op, dart.StreamingRegionOpBase):
                 is_input = op.results[0] in use_op.inputs
             else:
                 is_input = True
@@ -120,7 +120,7 @@ class RealizeMemrefCasts(RewritePattern):
             is_output = False
             if isinstance(use_op, linalg.GenericOp):
                 is_output = op.results[0] in use_op.outputs
-            elif isinstance(use_op, dart.OperationOp):
+            elif isinstance(use_op, dart.StreamingRegionOpBase):
                 is_output = op.results[0] in use_op.outputs
             elif isinstance(use_op, func.ReturnOp):
                 is_output = False
