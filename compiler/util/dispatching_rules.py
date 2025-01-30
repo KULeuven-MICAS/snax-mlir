@@ -20,10 +20,6 @@ def dispatch_to_compute(op: Operation):
     """
     if isinstance(op, linalg.GenericOp):
         return True
-    if isinstance(op, dart.OperationOp):
-        return True
-    if isinstance(op, dart.ScheduleOp):
-        return True
-    if isinstance(op, dart.AccessPatternOp):
+    if isinstance(op, dart.StreamingRegionOpBase):
         return True
     return False
