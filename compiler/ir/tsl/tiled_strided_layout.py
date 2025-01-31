@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Self
 
 import numpy as np
 from numpy._typing import NDArray
@@ -76,6 +77,11 @@ class TiledStridedLayout:
         """Get the stride at a particular dimension and depth of
         the Tiled Strided Layout"""
         return self.tstrides[dim].strides[depth]
+
+    def simplify(self) -> Self:
+        return type(self)(
+            [tstride.simplify() for tstride in self.tstrides], self.offset
+        )
 
     def all_values(self) -> NDArray[np.int_]:
         """

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Self
 
 from compiler.ir.tsl.stride import Stride
 
@@ -72,6 +73,33 @@ class TiledStride:
             of the Tiled Stride
         """
         return enumerate(self.strides)
+
+    def simplify(self) -> Self:
+        strides: list[Stride] = []
+        for stride in reversed(self.strides):
+            if len(strides) == 0:
+                # always keep the innermost one
+                strides.insert(0, stride)
+                continue
+
+            if stride.bound == 1:
+                # strides with a bound of 0 are useless
+                continue
+
+            prev_stride = strides[0]
+            if (
+                prev_stride.step
+                and prev_stride.bound
+                and prev_stride.step * prev_stride.bound == stride.step
+                and stride.bound
+            ):
+                # we can squash this stride with the previous one
+                strides[0] = Stride(prev_stride.step, prev_stride.bound * stride.bound)
+
+            else:
+                strides.insert(0, stride)
+
+        return type(self)(strides)
 
     def is_dynamic(self) -> bool:
         """Check if the Tiled Stride is dynamic"""

@@ -73,3 +73,29 @@ def test_tiled_stride_tile_bounds(example_tiled_strides: tuple[TiledStride, ...]
     assert tiledStride1.tile_bounds() == [6, 4]
     assert tiledStride2.tile_bounds() == [2, 6, 4]
     assert tiledStride3.tile_bounds() == [None, 4]
+
+
+def test_tiled_stride_simplify():
+    # normal tstrides are unaffected
+    tstride_normal = TiledStride([Stride(16, 8), Stride(1, 8)])
+    assert tstride_normal.simplify() == tstride_normal
+
+    # strides with bound 1 are evicted
+    tstride_bound1 = TiledStride([Stride(16, 1), Stride(1, 8)])
+    assert tstride_bound1.simplify() == TiledStride([Stride(1, 8)])
+
+    # squashable strides are squashed
+    tstride_squashme = TiledStride([Stride(8, 8), Stride(1, 8)])
+    assert tstride_squashme.simplify() == TiledStride([Stride(1, 64)])
+
+    # bound 1 + squash
+    tstride = TiledStride([Stride(8, 8), Stride(16, 1), Stride(1, 8)])
+    assert tstride.simplify() == TiledStride([Stride(1, 64)])
+
+    # squash + bound 1
+    tstride = TiledStride([Stride(64, 1), Stride(8, 8), Stride(1, 8)])
+    assert tstride.simplify() == TiledStride([Stride(1, 64)])
+
+    # normal remains the same
+    tstride = TiledStride([Stride(8, 2), Stride(16, 8), Stride(1, 8)])
+    assert tstride.simplify() == tstride
