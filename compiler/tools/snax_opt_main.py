@@ -5,8 +5,10 @@ from xdsl.context import MLContext
 from xdsl.dialects import get_all_dialects
 from xdsl.transforms import get_all_passes
 from xdsl.xdsl_opt_main import xDSLOptMain
+
 from compiler.dialects import get_all_snax_dialects
 from compiler.transforms import get_all_snax_passes
+
 
 class SNAXOptMain(xDSLOptMain):
     def register_all_dialects(self):
