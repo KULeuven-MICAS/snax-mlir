@@ -125,7 +125,10 @@ def is_pure_output_stationary(template: Template, schedule: Schedule):
 def scheduler(
     template: Template,
     schedule: Schedule,
-    extra_checks: Sequence[Callable[[Template, Schedule], bool]] = [],
+    extra_checks: Sequence[Callable[[Template, Schedule], bool]] = [
+        # defaulting to pure output stationary schedules for now
+        is_pure_output_stationary
+    ],
 ) -> Schedule:
     # for now just return the first result of the backtracking
     result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks))

@@ -275,13 +275,13 @@ class SNAXGEMMXAccelerator(
         assert isinstance(generic_op := op.body.block.first_op, dart.GenericOp)
         if isinstance(generic_op.body.block.first_op, kernel.QMacOp):
             # matmul
-            M, N, K, m, n, k = (AffineDimExpr(i) for i in range(6))
+            m, n, k = (AffineDimExpr(i) for i in range(3))
             template = [
-                AffineMap(6, 0, (M * 8 + m, K * 8 + k)),
-                AffineMap(6, 0, (K * 8 + k, N * 8 + n)),
-                AffineMap(6, 0, (M * 8 + m, N * 8 + n)),
+                AffineMap(3, 0, (m, k)),
+                AffineMap(3, 0, (k, n)),
+                AffineMap(3, 0, (m, n)),
             ]
-            template_bounds = (None, None, None, 8, 8, 8)
+            template_bounds = (8, 8, 8)
 
             if isinstance(generic_op.next_op, dart.GenericOp):
                 generic_op = generic_op.next_op
@@ -292,12 +292,12 @@ class SNAXGEMMXAccelerator(
                     raise RuntimeError("unsupported kernel")
         else:
             # rescale only function of gemmx
-            M, K, m, k = (AffineDimExpr(i) for i in range(4))
+            m, k = (AffineDimExpr(i) for i in range(2))
             template = [
-                AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
-                AffineMap(4, 0, (M * 8 + m, K * 8 + k)),
+                AffineMap(2, 0, (m, k)),
+                AffineMap(2, 0, (m, k)),
             ]
-            template_bounds = (None, None, 8, 8)
+            template_bounds = (8, 8)
 
         if not isinstance(generic_op.next_op, dart.YieldOp):
             raise RuntimeError("unsupported kernel")
