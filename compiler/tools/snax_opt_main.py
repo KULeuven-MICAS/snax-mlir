@@ -2,15 +2,10 @@ import argparse
 from collections.abc import Sequence
 
 from xdsl.context import MLContext
+from xdsl.dialects import get_all_dialects
 from xdsl.xdsl_opt_main import xDSLOptMain
 
-from compiler.dialects.accfg import ACCFG
-from compiler.dialects.dart import Dart
-from compiler.dialects.kernel import Kernel
-from compiler.dialects.snax import Snax
-from compiler.dialects.snax_stream import SnaxStream
-from compiler.dialects.test.debug import Debug
-from compiler.dialects.tsl import TSL
+from compiler.dialects import get_all_snax_dialects
 from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 from compiler.transforms.accfg_dedup import AccfgDeduplicate
 from compiler.transforms.accfg_insert_resets import InsertResetsPass
@@ -53,6 +48,15 @@ from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
 
 
 class SNAXOptMain(xDSLOptMain):
+    def register_all_dialects(self):
+        all_dialects = get_all_dialects()
+        # FIXME: override upstream accfg and stream dialect.
+        all_dialects.pop("accfg", None)
+        all_dialects.pop("stream", None)
+        all_dialects.update(get_all_snax_dialects())
+        for dialect_name, dialect_factory in all_dialects.items():
+            self.ctx.register_dialect(dialect_name, dialect_factory)
+
     def __init__(
         self,
         description: str = "SNAX modular optimizer driver",
@@ -63,24 +67,11 @@ class SNAXOptMain(xDSLOptMain):
         self.available_targets = {}
 
         self.ctx = MLContext()
-        super().register_all_dialects()
+        self.register_all_dialects()
         super().register_all_frontends()
         super().register_all_passes()
         super().register_all_targets()
 
-        ## Add custom dialects & passes
-        # FIXME: override upstream accfg dialect. Remove this after upstreaming full downstream accfg dialect.
-        self.ctx._registered_dialects.pop("accfg", None)  # pyright: ignore
-        # Warning: overrides upstream stream dialect.
-        self.ctx._registered_dialects.pop("stream", None)  # pyright: ignore
-
-        self.ctx.load_dialect(Snax)
-        self.ctx.load_dialect(TSL)
-        self.ctx.load_dialect(Kernel)
-        self.ctx.load_dialect(ACCFG)
-        self.ctx.load_dialect(SnaxStream)
-        self.ctx.load_dialect(Debug)
-        self.ctx.load_dialect(Dart)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
         super().register_pass(SetMemoryLayout.name, lambda: SetMemoryLayout)
@@ -143,8 +134,6 @@ class SNAXOptMain(xDSLOptMain):
         self.ctx.allow_unregistered = self.args.allow_unregistered_dialect
 
         super().setup_pipeline()
-
-    pass
 
 
 def main():
