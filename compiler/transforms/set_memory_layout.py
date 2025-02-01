@@ -131,7 +131,7 @@ class SetMemoryLayout(ModulePass):
     tiled: bool | None = True
 
     def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
-        tiled = self.tiled if self.tiled else True
+        tiled = self.tiled if self.tiled is not None else True
         PatternRewriteWalker(AddCyclicMemoryLayout(tiled_layout=tiled)).rewrite_module(
             op
         )
