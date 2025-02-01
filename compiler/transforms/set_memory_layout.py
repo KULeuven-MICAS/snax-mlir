@@ -5,7 +5,7 @@ import numpy as np
 from xdsl.context import MLContext
 from xdsl.dialects import builtin
 from xdsl.ir import Attribute
-from xdsl.parser import MemRefType, NoneAttr
+from xdsl.parser import MemRefType
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -44,8 +44,8 @@ class AddCyclicMemoryLayout(RewritePattern):
     def match_and_rewrite(self, op: dart.ScheduleOp, rewriter: PatternRewriter):
         # do not alter pre-existing layouts
         for operand in op.operands:
-            if isa(operand.type, MemRefType[Attribute]) and not isinstance(
-                operand.type.layout, NoneAttr
+            if isa(operand.type, MemRefType[Attribute]) and isinstance(
+                operand.type.layout, TiledStridedLayoutAttr
             ):
                 return
 
