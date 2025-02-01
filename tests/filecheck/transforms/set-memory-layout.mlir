@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p set-memory-layout --print-op-generic | filecheck %s
+// RUN: ./compiler/snax-opt --split-input-file %s -p set-memory-layout{tiled=false} --print-op-generic | filecheck %s
 // RUN: ./compiler/snax-opt --split-input-file %s -p set-memory-layout{tiled=true} --print-op-generic | filecheck %s --check-prefix=TILED
 
 func.func @gemm(%arg0 : memref<16x16xi8, "L1">, %arg1 : memref<16x16xi8, "L1">, %arg2 : memref<16x16xi32, "L1">) {
