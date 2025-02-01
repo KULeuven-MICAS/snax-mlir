@@ -149,9 +149,7 @@ if __name__ == "__main__":
 
     output_report: dict[str, dict] = {}
 
-    for size, layout, add_c in itertools.product(
-        sizes, ("cyclic", "banked"), (True, False)
-    ):
+    for size, layout, add_c in itertools.product(sizes, ("cyclic",), (True, False)):
         m, n, k = size
 
         # plot:
