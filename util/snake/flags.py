@@ -76,11 +76,15 @@ def get_ld_flags(
     ]
 
 
-def get_default_flags(snitch_sw_path: str, snitch_llvm_path: str | None = None, snax_mlir_path : str | None = None):
+def get_default_flags(
+    snitch_sw_path: str,
+    snitch_llvm_path: str | None = None,
+    snax_mlir_path: str | None = None,
+):
     if snitch_llvm_path is None:
         snitch_llvm_path = os.environ["CONDA_PREFIX"] + "/bin"
     if snax_mlir_path is None:
-        snax_mlir_path = "../.." 
+        snax_mlir_path = "../.."
     return {
         "cflags": get_cc_flags(snitch_sw_path, snax_mlir_path),
         "clangflags": get_clang_flags(),
