@@ -6,7 +6,7 @@ requires-python = "== 3.12.*"
 
 dependencies = [
     "xdsl @ git+https://github.com/xdslproject/xdsl.git@5c96c6efba255094871aabf1872e14ce706f9917",
-		"numpy",
+    "numpy",
 ]
 
 [project.optional-dependencies]
@@ -27,7 +27,7 @@ viz = [
 
 # Dependencies for neural network compilation
 nn = [
-    "tensorflow-cpu>=2.16.1",
+    "tensorflow-cpu==2.16.2",
 ]
 
 [project.scripts]
