@@ -33,7 +33,7 @@ def get_clang_flags() -> Sequence[str]:
     ]
 
 
-def get_cc_flags(snitch_sw_path: str) -> Sequence[str]:
+def get_cc_flags(snitch_sw_path: str, snax_mlir_path: str) -> Sequence[str]:
     """
     Function that returns default c-compiler flags
     """
@@ -50,7 +50,7 @@ def get_cc_flags(snitch_sw_path: str) -> Sequence[str]:
         f"-I{snitch_sw_path}/sw/math/src/internal",
         f"-I{snitch_sw_path}/sw/math/include/bits",
         f"-I{snitch_sw_path}/sw/math/include",
-        "-I../../runtime/include",
+        f"-I{snax_mlir_path}/runtime/include",
         "-D__DEFINED_uint64_t",
         *get_clang_flags(),
     ]
@@ -76,11 +76,17 @@ def get_ld_flags(
     ]
 
 
-def get_default_flags(snitch_sw_path: str, snitch_llvm_path: str | None = None):
+def get_default_flags(
+    snitch_sw_path: str,
+    snitch_llvm_path: str | None = None,
+    snax_mlir_path: str | None = None,
+):
     if snitch_llvm_path is None:
         snitch_llvm_path = os.environ["CONDA_PREFIX"] + "/bin"
+    if snax_mlir_path is None:
+        snax_mlir_path = "../.."
     return {
-        "cflags": get_cc_flags(snitch_sw_path),
+        "cflags": get_cc_flags(snitch_sw_path, snax_mlir_path),
         "clangflags": get_clang_flags(),
         "ldflags": get_ld_flags(snitch_sw_path, snitch_llvm_path),
     }
