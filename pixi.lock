@@ -183,7 +183,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/89/9b/599bcfc7064fbe5740919e78c5df18e5dceb0887e676256a1061bb5ae232/virtualenv-20.29.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/52/24/ab44c871b0f07f491e5d2ad12c9bd7358e527510618cb1b803a88e986db1/werkzeug-3.1.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl
-      - pypi: git+https://github.com/xdslproject/xdsl?rev=5c96c6efba255094871aabf1872e14ce706f9917#5c96c6efba255094871aabf1872e14ce706f9917
+      - pypi: git+https://github.com/xdslproject/xdsl?rev=9d83620a7fc723bf541266f8d6b3681e564a3570#9d83620a7fc723bf541266f8d6b3681e564a3570
       - pypi: .
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -2125,9 +2125,9 @@ packages:
 - pypi: .
   name: snax-mlir
   version: 0.2.2
-  sha256: 355650aa24fa9f31d6c3b05c47b3faac738adb935dc0fe6dc18bf958fc48171b
+  sha256: a84cb724b7032f27eb62c5fe77dbb6e9a2a603a29d01c65ca3f299ea073d2bf7
   requires_dist:
-  - xdsl @ git+https://github.com/xdslproject/xdsl.git@5c96c6efba255094871aabf1872e14ce706f9917
+  - xdsl @ git+https://github.com/xdslproject/xdsl.git@9d83620a7fc723bf541266f8d6b3681e564a3570
   - numpy
   - pre-commit ; extra == 'dev'
   - filecheck==1.0.0 ; extra == 'dev'
@@ -2383,14 +2383,13 @@ packages:
   - pkg:pypi/wrapt?source=hash-mapping
   size: 63590
   timestamp: 1736869574299
-- pypi: git+https://github.com/xdslproject/xdsl?rev=5c96c6efba255094871aabf1872e14ce706f9917#5c96c6efba255094871aabf1872e14ce706f9917
+- pypi: git+https://github.com/xdslproject/xdsl?rev=9d83620a7fc723bf541266f8d6b3681e564a3570#9d83620a7fc723bf541266f8d6b3681e564a3570
   name: xdsl
-  version: 0.26.0+21.g5c96c6ef
+  version: 0.27.0+46.g9d83620a
   requires_dist:
   - immutabledict<4.2.2
   - typing-extensions>=4.7,<4.13
   - ordered-set==4.1.0
-  - pip<25.0 ; extra == 'dev'
   - toml<0.11 ; extra == 'dev'
   - pytest-cov ; extra == 'dev'
   - coverage<8.0.0 ; extra == 'dev'
@@ -2399,16 +2398,16 @@ packages:
   - nbval<0.12 ; extra == 'dev'
   - filecheck==1.0.1 ; extra == 'dev'
   - lit<19.0.0 ; extra == 'dev'
-  - marimo==0.10.14 ; extra == 'dev'
-  - pre-commit==4.0.1 ; extra == 'dev'
-  - ruff==0.9.2 ; extra == 'dev'
-  - asv<0.7 ; extra == 'dev'
+  - marimo==0.11.0 ; extra == 'dev'
+  - pre-commit==4.1.0 ; extra == 'dev'
+  - ruff==0.9.4 ; extra == 'dev'
   - nbconvert>=7.7.2,<8.0.0 ; extra == 'dev'
   - textual-dev==1.7.0 ; extra == 'dev'
-  - pytest-asyncio==0.25.2 ; extra == 'dev'
-  - pyright==1.1.392.post0 ; extra == 'dev'
-  - mkdocs>=1.6.1 ; extra == 'docs'
+  - pytest-asyncio==0.25.3 ; extra == 'dev'
+  - pyright==1.1.393 ; extra == 'dev'
+  - mkdocs-gen-files>=0.5.0 ; extra == 'docs'
   - mkdocs-material>=9.5.49 ; extra == 'docs'
+  - mkdocs>=1.6.1 ; extra == 'docs'
   - mkdocstrings[python]>=0.27.0 ; extra == 'docs'
   - textual==1.0.0 ; extra == 'gui'
   - pyclip==0.7 ; extra == 'gui'
