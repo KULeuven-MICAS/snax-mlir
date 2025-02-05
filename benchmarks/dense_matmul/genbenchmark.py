@@ -93,7 +93,7 @@ def output_log(output_report) -> str:
     result = "# Dense Matmul Benchmark Results\n\n"
     dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     result += f"This test was run at {dt_string}\n\n"
-    for layout, add_c in itertools.product(("cyclic", "banked"), (True, False)):
+    for layout, add_c in itertools.product(("cyclic",), (True, False)):
         result += f"Results for a {layout} layout {'with add C' if add_c else ''} \n\n"
         result += "| benchmark | layout | add C | M | N | K | plots | cycles | ideal | utilization |\n"
         result += "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n"
@@ -149,9 +149,7 @@ if __name__ == "__main__":
 
     output_report: dict[str, dict] = {}
 
-    for size, layout, add_c in itertools.product(
-        sizes, ("cyclic", "banked"), (True, False)
-    ):
+    for size, layout, add_c in itertools.product(sizes, ("cyclic",), (True, False)):
         m, n, k = size
 
         # plot:
