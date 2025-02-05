@@ -74,7 +74,7 @@ class TiledStride:
         """
         return enumerate(self.strides)
 
-    def simplify(self) -> Self:
+    def canonicalize(self) -> Self:
         strides: list[Stride] = []
         for stride in reversed(self.strides):
             if len(strides) == 0:

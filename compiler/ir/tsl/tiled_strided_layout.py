@@ -78,9 +78,9 @@ class TiledStridedLayout:
         the Tiled Strided Layout"""
         return self.tstrides[dim].strides[depth]
 
-    def simplify(self) -> Self:
+    def canonicalize(self) -> Self:
         return type(self)(
-            [tstride.simplify() for tstride in self.tstrides], self.offset
+            [tstride.canonicalize() for tstride in self.tstrides], self.offset
         )
 
     def all_values(self) -> NDArray[np.int_]:
