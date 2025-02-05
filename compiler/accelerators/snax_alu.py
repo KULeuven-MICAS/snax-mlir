@@ -195,6 +195,6 @@ class SNAXAluAccelerator(
 
     @staticmethod
     def get_template(op: dart.StreamingRegionOpBase):
-        template = [AffineMap.from_callable(lambda x, y: (4 * x + y,))] * 3
-        template_bounds = (None, 4)
+        template = [AffineMap.from_callable(lambda y: (y,))] * 3
+        template_bounds = (4,)
         return Template(TemplatePattern(template_bounds, tp) for tp in template)
