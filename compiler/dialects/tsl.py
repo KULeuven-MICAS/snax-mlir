@@ -7,7 +7,7 @@ from xdsl.dialects.arith import ConstantOp, DivUIOp, MuliOp
 from xdsl.dialects.builtin import (
     FixedBitwidthType,
     IndexType,
-    MemrefLayoutAttr,
+    MemRefLayoutAttr,
     MemRefType,
     StridedLayoutAttr,
 )
@@ -25,7 +25,7 @@ from compiler.parser.tsl_parser import TSLParser
 
 
 @irdl_attr_definition
-class TiledStridedLayoutAttr(MemrefLayoutAttr, Data[TiledStridedLayout]):
+class TiledStridedLayoutAttr(MemRefLayoutAttr, Data[TiledStridedLayout]):
     """An Attribute containing an TiledStridedLayout object."""
 
     name = "tsl.tsl"
