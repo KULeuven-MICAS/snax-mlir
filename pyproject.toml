@@ -5,7 +5,7 @@ version = "0.2.2"
 requires-python = "== 3.12.*"
 
 dependencies = [
-    "xdsl @ git+https://github.com/xdslproject/xdsl.git@5c96c6efba255094871aabf1872e14ce706f9917",
+    "xdsl @ git+https://github.com/xdslproject/xdsl.git@668176f288fa4dbfac173e40b538c0020e76c233",
     "numpy",
 ]
 

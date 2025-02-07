@@ -4,14 +4,13 @@ from collections.abc import Sequence
 from typing import cast
 
 from xdsl.dialects.builtin import (
-    AnyIntegerAttr,
     IndexType,
     IntegerAttr,
     IntegerType,
-    MemrefLayoutAttr,
+    MemRefLayoutAttr,
     MemRefType,
     NoneAttr,
-    UnrankedMemrefType,
+    UnrankedMemRefType,
     i32,
 )
 from xdsl.dialects.llvm import LLVMStructType
@@ -71,14 +70,14 @@ class LayoutCast(IRDLOperation):
     def __init__(
         self,
         source: SSAValue | Operation,
-        dest: MemRefType[Attribute] | UnrankedMemrefType[Attribute],
+        dest: MemRefType[Attribute] | UnrankedMemRefType[Attribute],
     ):
         super().__init__(operands=[source], result_types=[dest])
 
     @staticmethod
     def from_type_and_target_layout(
         source: SSAValue | Operation,
-        layout: MemrefLayoutAttr,
+        layout: MemRefLayoutAttr,
     ) -> LayoutCast:
         source = SSAValue.get(source)
         assert isinstance(source.type, Attribute)
@@ -124,7 +123,7 @@ class Alloc(IRDLOperation):
     shapes: VarOperand = var_operand_def(IndexType)
     result: OpResult = result_def(LLVMStructType)
     memory_space: Attribute | None = opt_prop_def(Attribute)
-    alignment: AnyIntegerAttr | None = opt_prop_def(AnyIntegerAttr)
+    alignment: IntegerAttr | None = opt_prop_def(IntegerAttr)
 
     def __init__(
         self,
@@ -132,7 +131,7 @@ class Alloc(IRDLOperation):
         size: SSAValue | Operation,
         shapes: Sequence[SSAValue | Operation],
         memory_space: Attribute = NoneAttr(),
-        alignment: AnyIntegerAttr | None = None,
+        alignment: IntegerAttr | None = None,
         integer_type: IntegerType = i32,
     ):
         # output type is llvm struct memref descriptor
