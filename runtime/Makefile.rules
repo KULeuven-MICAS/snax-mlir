@@ -13,7 +13,7 @@ DASM          = spike-dasm
 GENTRACE      = ${CONDA_PREFIX}/snax-utils/gen_trace.py
 MLIROPT       = mlir-opt
 MLIRTRANSLATE = mlir-translate
-SNAXOPT       = $(MAKEFILE_RULES_DIRNAME)/../compiler/snax-opt
+SNAXOPT       = $(MAKEFILE_RULES_DIRNAME)/../snaxc/snax-opt
 PYTHON        = python3
 TFLITE_TO_TOSA = $(MAKEFILE_RULES_DIRNAME)/tflite_to_tosa.py
 
