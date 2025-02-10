@@ -4,10 +4,11 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
   pull_request:
-    paths:
-      - '.github/workflows/run-benchmarks.yml'
-      - 'benchmarks/**'
+    #paths:
+    #  - '.github/workflows/run-benchmarks.yml'
+    #  - 'benchmarks/**'
 
 jobs:
   run-benchmarks:
