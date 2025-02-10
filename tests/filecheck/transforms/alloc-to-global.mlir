@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt %s -p alloc-to-global | filecheck %s
+// RUN: snax-opt %s -p alloc-to-global | filecheck %s
 
 %0 = memref.alloc() {"alignment" = 64 : i64} : memref<16x16xi8>
 

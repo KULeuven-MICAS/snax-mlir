@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p set-memory-space | filecheck %s
+// RUN: snax-opt --split-input-file %s -p set-memory-space | filecheck %s
 
 "builtin.module"() ({
   %0 = "memref.get_global"() <{"name" = @constant}> : () -> memref<640xi32>

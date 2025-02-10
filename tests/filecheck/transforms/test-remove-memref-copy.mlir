@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt %s -p test-remove-memref-copy | filecheck %s
+// RUN: snax-opt %s -p test-remove-memref-copy | filecheck %s
 
 builtin.module {
   %0 = "test.op"() : () -> memref<64xi32, "L3">

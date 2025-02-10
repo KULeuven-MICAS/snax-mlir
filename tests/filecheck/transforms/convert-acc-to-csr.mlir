@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt %s -p convert-accfg-to-csr --split-input-file | filecheck %s
+// RUN: snax-opt %s -p convert-accfg-to-csr --split-input-file | filecheck %s
 
 builtin.module {
 

@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt  %s -p insert-accfg-op{accelerator=snax_hwpe_mult} | filecheck %s
+// RUN: snax-opt  %s -p insert-accfg-op{accelerator=snax_hwpe_mult} | filecheck %s
 
 builtin.module{}
 

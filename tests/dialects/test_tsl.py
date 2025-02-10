@@ -1,11 +1,11 @@
 import pytest
 from xdsl.ir.affine import AffineMap
 
-from compiler.dialects.tsl import TiledStridedLayoutAttr
-from compiler.ir.tsl.stride import Stride
-from compiler.ir.tsl.tiled_stride import TiledStride
-from compiler.ir.tsl.tiled_strided_layout import TiledStridedLayout
-from compiler.util.canonicalize_affine import canonicalize_map
+from snaxc.dialects.tsl import TiledStridedLayoutAttr
+from snaxc.ir.tsl.stride import Stride
+from snaxc.ir.tsl.tiled_stride import TiledStride
+from snaxc.ir.tsl.tiled_strided_layout import TiledStridedLayout
+from snaxc.util.canonicalize_affine import canonicalize_map
 
 
 @pytest.fixture()

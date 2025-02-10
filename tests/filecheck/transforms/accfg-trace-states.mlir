@@ -1,4 +1,4 @@
-//RUN: ./compiler/snax-opt -p accfg-trace-states %s | filecheck %s
+//RUN: snax-opt -p accfg-trace-states %s | filecheck %s
 
 // CHECK-NEXT: builtin.module {
 

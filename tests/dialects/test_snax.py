@@ -8,8 +8,8 @@ from xdsl.utils.exceptions import VerifyException
 from xdsl.utils.hints import isa
 from xdsl.utils.test_value import TestSSAValue
 
-from compiler.dialects.snax import Alloc, LayoutCast
-from compiler.util.memref_descriptor import LLVMMemrefDescriptor
+from snaxc.dialects.snax import Alloc, LayoutCast
+from snaxc.util.memref_descriptor import LLVMMemrefDescriptor
 
 
 def test_memref_memory_space_cast():

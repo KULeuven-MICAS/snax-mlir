@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p insert-sync-barrier --print-op-generic | filecheck %s
+// RUN: snax-opt --split-input-file %s -p insert-sync-barrier --print-op-generic | filecheck %s
 
 // two global ops: no synchronization barrier required
 "builtin.module"() ({

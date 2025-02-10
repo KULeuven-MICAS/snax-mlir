@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from compiler.dialects.accfg import AcceleratorOp
+from snaxc.dialects.accfg import AcceleratorOp
 from util.tracing.annotation import EventGenerator
 from util.tracing.event import DurationEvent
 from util.tracing.state import CSRInstruction, TraceState

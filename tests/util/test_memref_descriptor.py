@@ -4,7 +4,7 @@ from xdsl.dialects.llvm import LLVMArrayType, LLVMPointerType, LLVMStructType
 from xdsl.dialects.memref import MemRefType
 from xdsl.utils.exceptions import VerifyException
 
-from compiler.util.memref_descriptor import LLVMMemrefDescriptor
+from snaxc.util.memref_descriptor import LLVMMemrefDescriptor
 
 
 def test_llvmmemrefdescriptor_init():

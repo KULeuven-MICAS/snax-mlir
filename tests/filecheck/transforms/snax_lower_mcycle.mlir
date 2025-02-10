@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt %s -p snax-lower-mcycle --print-op-generic | filecheck %s
+// RUN: snax-opt %s -p snax-lower-mcycle --print-op-generic | filecheck %s
 
   "snax.mcycle"() : () -> ()
 //func.func @mcycle () -> () {

@@ -4,7 +4,7 @@ from xdsl.ir.affine import (
     AffineMap,
 )
 
-from compiler.util.canonicalize_affine import canonicalize_expr, canonicalize_map
+from snaxc.util.canonicalize_affine import canonicalize_expr, canonicalize_map
 
 
 def test_canonicalize():

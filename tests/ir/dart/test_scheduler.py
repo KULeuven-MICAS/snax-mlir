@@ -1,12 +1,12 @@
 from xdsl.ir.affine import AffineMap
 
-from compiler.ir.dart.access_pattern import (
+from snaxc.ir.dart.access_pattern import (
     Schedule,
     SchedulePattern,
     Template,
     TemplatePattern,
 )
-from compiler.ir.dart.scheduler import (
+from snaxc.ir.dart.scheduler import (
     is_pure_output_stationary,
     scheduler,
     scheduler_backtrack,

@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt -p convert-linalg-to-dart %s | filecheck %s
+// RUN: snax-opt -p convert-linalg-to-dart %s | filecheck %s
 
 %arg0, %arg1, %arg2 = "test.op"() : () -> (tensor<16x16xi8>, tensor<16x16xi8>, tensor<16x16xi32>)
 %c0_i32 = arith.constant 0 : i32

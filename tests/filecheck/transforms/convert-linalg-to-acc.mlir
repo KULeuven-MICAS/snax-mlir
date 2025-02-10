@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt -p 'convert-linalg-to-accfg,mlir-opt{executable=mlir-opt generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic,-split-input-file}' %s | filecheck %s
+// RUN: snax-opt -p 'convert-linalg-to-accfg,mlir-opt{executable=mlir-opt generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic,-split-input-file}' %s | filecheck %s
 
 "builtin.module"() ({
   "accfg.accelerator"() <{
