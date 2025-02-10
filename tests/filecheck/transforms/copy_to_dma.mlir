@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p snax-copy-to-dma | filecheck %s
+// RUN: snax-opt --split-input-file %s -p snax-copy-to-dma | filecheck %s
 
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<?xi32>, memref<?xi32>) -> (), "sym_visibility" = "public"}> ({

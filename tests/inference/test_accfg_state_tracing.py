@@ -1,8 +1,8 @@
 from xdsl.dialects import builtin, scf
 from xdsl.ir import BlockArgument
 
-from compiler.dialects import accfg
-from compiler.inference.trace_acc_state import infer_state_of, infer_states_for_if
+from snaxc.dialects import accfg
+from snaxc.inference.trace_acc_state import infer_state_of, infer_states_for_if
 
 ACC = "acc1"
 

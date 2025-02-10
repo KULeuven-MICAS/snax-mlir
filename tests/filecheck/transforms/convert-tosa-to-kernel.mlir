@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt -p convert-tosa-to-kernel %s | filecheck %s
+// RUN: snax-opt -p convert-tosa-to-kernel %s | filecheck %s
 
 %0 = "test.op"() : () -> tensor<?x8xi32>
 %1 = tosa.rescale %0 {"double_round" = true, "input_zp" = 0 : i32, "multiplier" = array<i32: 1085889731>, "output_zp" = -128 : i32, "per_channel" = false, "scale32" = true, "shift" = array<i32: 37>} : (tensor<?x8xi32>) -> tensor<?x8xi8>

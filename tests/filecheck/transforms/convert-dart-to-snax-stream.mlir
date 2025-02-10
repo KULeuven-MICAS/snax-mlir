@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p insert-accfg-op{accelerator=snax_alu},insert-accfg-op{accelerator=snax_gemmx},dart-scheduler,dart-layout-resolution,convert-dart-to-snax-stream | filecheck %s
+// RUN: snax-opt --split-input-file %s -p insert-accfg-op{accelerator=snax_alu},insert-accfg-op{accelerator=snax_gemmx},dart-scheduler,dart-layout-resolution,convert-dart-to-snax-stream | filecheck %s
 
 func.func public @streamer_add(%arg0 : memref<16xi64>, %arg1 : memref<16xi64>, %arg2 : memref<16xi64>) {
   "dart.operation"(%arg0, %arg1, %arg2) <{patterns = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], accelerator = "snax_alu", operandSegmentSizes = array<i32: 2, 1>}> ({

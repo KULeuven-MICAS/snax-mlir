@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt -p dart-fuse-operations %s | filecheck %s
+// RUN: snax-opt -p dart-fuse-operations %s | filecheck %s
 
 func.func @streamer_matmul(%arg0 : tensor<16x16xi8>, %arg1 : tensor<16x16xi8>, %arg2 : tensor<16x16xi32>) -> tensor<16x16xi32> {
   %c0_i32 = arith.constant 0 : i32

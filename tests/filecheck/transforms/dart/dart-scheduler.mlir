@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p insert-accfg-op{accelerator=snax_gemmx},dart-scheduler | filecheck %s
+// RUN: snax-opt --split-input-file %s -p insert-accfg-op{accelerator=snax_gemmx},dart-scheduler | filecheck %s
 
 func.func @streamer_matmul(%arg0 : memref<16x16xi8>, %arg1 : memref<16x16xi8, strided<[1, 16]>>, %arg2 : memref<16x16xi32>) {
   %0 = arith.constant 0 : i32

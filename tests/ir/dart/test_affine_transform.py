@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from xdsl.ir.affine import AffineMap
 
-from compiler.ir.dart.affine_transform import AffineTransform
-from compiler.util.canonicalize_affine import canonicalize_map
+from snaxc.ir.dart.affine_transform import AffineTransform
+from snaxc.util.canonicalize_affine import canonicalize_map
 
 
 def test_affine_transform_initialization_valid():

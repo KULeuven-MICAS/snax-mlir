@@ -1,5 +1,5 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p dispatch-regions | filecheck %s --check-prefixes=CHECK,NB_TWO
-// RUN: ./compiler/snax-opt --split-input-file %s -p dispatch-regions{nb_cores=3} | filecheck %s --check-prefixes=CHECK,NB_THREE
+// RUN: snax-opt --split-input-file %s -p dispatch-regions | filecheck %s --check-prefixes=CHECK,NB_TWO
+// RUN: snax-opt --split-input-file %s -p dispatch-regions{nb_cores=3} | filecheck %s --check-prefixes=CHECK,NB_THREE
 
 // test function without dispatchable ops
 "builtin.module"() ({

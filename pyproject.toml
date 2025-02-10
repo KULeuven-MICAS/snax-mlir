@@ -31,7 +31,7 @@ nn = [
 ]
 
 [project.scripts]
-snax-opt = "compiler.tools.snax_opt_main:main"
+snax-opt = "snaxc.tools.snax_opt_main:main"
 
 [tool.ruff]
 select = ["E", "F", "W", "I", "UP", "PT", "TID251"]
@@ -76,28 +76,28 @@ enableTypeIgnoreComments = false
 enableExperimentalFeatures = true
 typeCheckingMode = "strict"
 "include" = [
-    "compiler", 
+    "snaxc", 
     "tests",
 ]
 "exclude" = [
-    "compiler/accelerators/gemmini.py",
-    "compiler/accelerators/rocc.py",
-    "compiler/accelerators/snax.py",
-    "compiler/accelerators/snax_alu.py",
-    "compiler/accelerators/snax_gemm.py",
-    "compiler/accelerators/snax_gemmx.py",
-    "compiler/accelerators/snax_hwpe_mult.py",
-    "compiler/dialects/accfg.py",
-    "compiler/inference/dataflow.py",
-    "compiler/inference/helpers.py",
-    "compiler/inference/scoped_setups.py",
-    "compiler/inference/trace_acc_state.py",
-    "compiler/transforms/accfg_dedup.py",
-    "compiler/transforms/convert_linalg_to_accfg.py",
-    "compiler/transforms/frontend/preprocess_mlperf_tiny.py",
-    "compiler/transforms/reuse_memref_allocs.py",
-    "compiler/transforms/set_memory_layout.py",
-    "compiler/transforms/snax_copy_to_dma.py",
+    "snaxc/accelerators/gemmini.py",
+    "snaxc/accelerators/rocc.py",
+    "snaxc/accelerators/snax.py",
+    "snaxc/accelerators/snax_alu.py",
+    "snaxc/accelerators/snax_gemm.py",
+    "snaxc/accelerators/snax_gemmx.py",
+    "snaxc/accelerators/snax_hwpe_mult.py",
+    "snaxc/dialects/accfg.py",
+    "snaxc/inference/dataflow.py",
+    "snaxc/inference/helpers.py",
+    "snaxc/inference/scoped_setups.py",
+    "snaxc/inference/trace_acc_state.py",
+    "snaxc/transforms/accfg_dedup.py",
+    "snaxc/transforms/convert_linalg_to_accfg.py",
+    "snaxc/transforms/frontend/preprocess_mlperf_tiny.py",
+    "snaxc/transforms/reuse_memref_allocs.py",
+    "snaxc/transforms/set_memory_layout.py",
+    "snaxc/transforms/snax_copy_to_dma.py",
     "tests/benchmark/test_snax_benchmark.py",
     "tests/inference/test_accfg_state_tracing.py",
     "tests/util/",

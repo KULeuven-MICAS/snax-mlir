@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p realize-memref-casts --print-op-generic | filecheck %s
+// RUN: snax-opt --split-input-file %s -p realize-memref-casts --print-op-generic | filecheck %s
 
 "builtin.module"() ({
   %0 = "test.op"() : () -> (memref<64xi32, "L3">)

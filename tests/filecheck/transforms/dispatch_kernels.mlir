@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p insert-accfg-op{accelerator=snax_alu},insert-accfg-op{accelerator=snax_gemm},dispatch-kernels --allow-unregistered-dialect --print-op-generic | filecheck %s
+// RUN: snax-opt --split-input-file %s -p insert-accfg-op{accelerator=snax_alu},insert-accfg-op{accelerator=snax_gemm},dispatch-kernels --allow-unregistered-dialect --print-op-generic | filecheck %s
 
 builtin.module {
   func.func @mnist(%arg0 : memref<?x128xi8>, %arg1 : memref<128x128xi8>, %arg2 : memref<?x128xi32>) -> memref<?x128xi32> {

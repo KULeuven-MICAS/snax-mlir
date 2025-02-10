@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p memref-to-snax | filecheck %s
+// RUN: snax-opt --split-input-file %s -p memref-to-snax | filecheck %s
 
 "builtin.module"() ({
   %0 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<16x16xi32>

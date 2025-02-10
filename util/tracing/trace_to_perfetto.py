@@ -5,8 +5,8 @@ import json
 import typing
 from concurrent.futures import ProcessPoolExecutor
 
-from compiler.accelerators.registry import AcceleratorRegistry
-from compiler.accelerators.snax import SNAXAccelerator
+from snaxc.accelerators.registry import AcceleratorRegistry
+from snaxc.accelerators.snax import SNAXAccelerator
 from util.tracing.annotation import (
     BarrierEventGenerator,
     DMAEventGenerator,

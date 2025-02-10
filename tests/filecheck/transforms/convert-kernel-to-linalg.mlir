@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file -p convert-kernel-to-linalg %s | filecheck %s
+// RUN: snax-opt --split-input-file -p convert-kernel-to-linalg %s | filecheck %s
 
 %0, %1, %2 = "test.op"() : () -> (memref<64xi32>, memref<64xi32>, memref<64xi32>)
 linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%0, %1 : memref<64xi32>, memref<64xi32>) outs(%2 : memref<64xi32>) {

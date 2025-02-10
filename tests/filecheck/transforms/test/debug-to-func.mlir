@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt %s -p test-debug-to-func | filecheck %s
+// RUN: snax-opt %s -p test-debug-to-func | filecheck %s
 
 builtin.module {
   func.func public @streamer_add(%arg0 : memref<?xi64>, %arg1 : memref<?xi64>, %arg2 : memref<?xi64>) {

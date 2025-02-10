@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt --split-input-file %s -p snax-to-func --print-op-generic | filecheck %s
+// RUN: snax-opt --split-input-file %s -p snax-to-func --print-op-generic | filecheck %s
 
 "builtin.module"() ({
   "snax.cluster_sync_op"() : () -> ()

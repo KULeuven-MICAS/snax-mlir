@@ -1,4 +1,4 @@
-// RUN: ./compiler/snax-opt %s -p accfg-dedup | filecheck %s
+// RUN: snax-opt %s -p accfg-dedup | filecheck %s
 
 func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg2 : memref<?xi32>) {
   %0 = arith.constant 0 : index

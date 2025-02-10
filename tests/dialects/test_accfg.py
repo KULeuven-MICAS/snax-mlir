@@ -1,7 +1,7 @@
 from xdsl.dialects import builtin, test
 from xdsl.dialects.builtin import StringAttr
 
-from compiler.dialects import accfg
+from snaxc.dialects import accfg
 
 
 def test_acc_setup():

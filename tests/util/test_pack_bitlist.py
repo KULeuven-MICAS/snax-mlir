@@ -3,7 +3,7 @@ from io import StringIO
 from xdsl.dialects import arith, builtin
 from xdsl.printer import Printer
 
-from compiler.util.pack_bitlist import pack_bitlist
+from snaxc.util.pack_bitlist import pack_bitlist
 
 
 def test_pack_bitlist():

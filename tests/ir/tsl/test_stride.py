@@ -1,6 +1,6 @@
 import pytest
 
-from compiler.ir.tsl.stride import Stride
+from snaxc.ir.tsl.stride import Stride
 
 
 @pytest.fixture()

@@ -1,8 +1,8 @@
 import pytest
 
-from compiler.ir.tsl.stride import Stride
-from compiler.ir.tsl.tiled_stride import TiledStride
-from compiler.ir.tsl.tiled_strided_layout import TiledStridedLayout
+from snaxc.ir.tsl.stride import Stride
+from snaxc.ir.tsl.tiled_stride import TiledStride
+from snaxc.ir.tsl.tiled_strided_layout import TiledStridedLayout
 
 
 @pytest.fixture()
