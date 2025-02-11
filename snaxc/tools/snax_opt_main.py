@@ -40,18 +40,16 @@ class SNAXOptMain(xDSLOptMain):
 
         self.ctx = MLContext()
         self.register_all_dialects()
-        super().register_all_frontends()
+        self.register_all_frontends()
         self.register_all_passes()
-        super().register_all_targets()
+        self.register_all_targets()
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
-        super().register_all_arguments(arg_parser)
+        self.register_all_arguments(arg_parser)
         self.args = arg_parser.parse_args(args=args)
-
         self.ctx.allow_unregistered = self.args.allow_unregistered_dialect
-
-        super().setup_pipeline()
+        self.setup_pipeline()
 
 
 def main():
