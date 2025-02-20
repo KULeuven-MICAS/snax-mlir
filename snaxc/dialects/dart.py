@@ -1,6 +1,7 @@
 from collections.abc import Iterable, Mapping, Sequence
-from typing import Generic, TypeVar
+from typing import Generic
 
+from typing_extensions import TypeVar
 from xdsl.dialects.builtin import (
     AffineMapAttr,
     ArrayAttr,
