@@ -1,6 +1,5 @@
 from collections.abc import Iterable
 
-from xdsl.context import Context
 from xdsl.dialects import builtin, linalg
 from xdsl.dialects.builtin import ShapedType
 from xdsl.passes import ModulePass
@@ -11,8 +10,8 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
+from snaxc.acc_context import AccContext
 from snaxc.accelerators.dispatching import DispatchTemplate
-from snaxc.accelerators.registry import AcceleratorRegistry
 from snaxc.accelerators.snax import SNAXStreamer
 from snaxc.dialects.accfg import AcceleratorOp
 from snaxc.dialects.kernel import KernelOp
@@ -98,12 +97,14 @@ class DispatchTemplatePattern(RewritePattern):
 class DispatchKernels(ModulePass):
     name = "dispatch-kernels"
 
-    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: AccContext, op: builtin.ModuleOp) -> None:
         # find all accelerator ops in the IR
         accelerators: list[type[DispatchTemplate]] = []
         for accelerator_op in op.ops:
             if isinstance(accelerator_op, AcceleratorOp):
-                accelerator_type = AcceleratorRegistry().get_acc_info(accelerator_op)
+                accelerator_type = ctx.get_accelerator(
+                    str(accelerator_op.properties["name"])[1:]
+                )
                 if issubclass(accelerator_type, DispatchTemplate):
                     accelerators.append(accelerator_type)
 

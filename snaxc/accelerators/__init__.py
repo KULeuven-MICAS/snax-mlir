@@ -5,7 +5,7 @@ from snaxc.accelerators.accelerator import Accelerator
 from .util import *
 
 
-def get_all_accelerators() -> dict[str, Callable[[], Accelerator]]:
+def get_all_accelerators() -> dict[str, Callable[[], type[Accelerator]]]:
     """Return the list of all available passes."""
 
     def get_snax_alu():
