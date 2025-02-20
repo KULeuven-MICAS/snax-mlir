@@ -1,11 +1,10 @@
 from dataclasses import dataclass
 
-from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
 from xdsl.traits import SymbolTable
 
-from snaxc.accelerators.registry import AcceleratorRegistry
+from snaxc.acc_context import AccContext
 
 
 @dataclass(frozen=True)
@@ -25,11 +24,13 @@ class InsertAccOp(ModulePass):
         snax-opt -p insert-accfg-op{accelerater=snax_hwpe_mult}
     """
 
-    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
+    def apply(
+        self, ctx: AccContext, op: builtin.ModuleOp
+    ) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
         # Access registry to get the accelerator interface
-        acc_info = AcceleratorRegistry().get_acc_info(self.accelerator)
+        acc_info = ctx.get_accelerator(self.accelerator)()
         # With the interface, generate an appropriate acc op
-        acc_op = acc_info().generate_acc_op()
+        acc_op = acc_info.generate_acc_op()
 
         t = op.get_trait(SymbolTable)
         assert t is not None

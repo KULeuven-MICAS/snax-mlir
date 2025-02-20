@@ -1,16 +1,40 @@
 import argparse
 from collections.abc import Sequence
 
-from xdsl.context import Context
 from xdsl.dialects import get_all_dialects
 from xdsl.transforms import get_all_passes
 from xdsl.xdsl_opt_main import xDSLOptMain
 
+from snaxc.acc_context import AccContext
+from snaxc.accelerators import get_all_accelerators
 from snaxc.dialects import get_all_snax_dialects
 from snaxc.transforms import get_all_snax_passes
 
 
 class SNAXOptMain(xDSLOptMain):
+    def __init__(
+        self,
+        description: str = "SNAX modular optimizer driver",
+        args: Sequence[str] | None = None,
+    ):
+        self.available_frontends = {}
+        self.available_passes = {}
+        self.available_targets = {}
+
+        self.ctx: AccContext = AccContext()
+        self.register_all_dialects()
+        self.register_all_accelerators()
+        self.register_all_frontends()
+        self.register_all_passes()
+        self.register_all_targets()
+
+        # arg handling
+        arg_parser = argparse.ArgumentParser(description=description)
+        self.register_all_arguments(arg_parser)
+        self.args = arg_parser.parse_args(args=args)
+        self.ctx.allow_unregistered = self.args.allow_unregistered_dialect
+        self.setup_pipeline()
+
     def register_all_dialects(self):
         all_dialects = get_all_dialects()
         # FIXME: override upstream accfg and stream dialect.
@@ -29,27 +53,9 @@ class SNAXOptMain(xDSLOptMain):
         for pass_name, pass_factory in all_passes.items():
             self.register_pass(pass_name, pass_factory)
 
-    def __init__(
-        self,
-        description: str = "SNAX modular optimizer driver",
-        args: Sequence[str] | None = None,
-    ):
-        self.available_frontends = {}
-        self.available_passes = {}
-        self.available_targets = {}
-
-        self.ctx = Context()
-        self.register_all_dialects()
-        self.register_all_frontends()
-        self.register_all_passes()
-        self.register_all_targets()
-
-        # arg handling
-        arg_parser = argparse.ArgumentParser(description=description)
-        self.register_all_arguments(arg_parser)
-        self.args = arg_parser.parse_args(args=args)
-        self.ctx.allow_unregistered = self.args.allow_unregistered_dialect
-        self.setup_pipeline()
+    def register_all_accelerators(self):
+        for accelerator_name, accelerator_factory in get_all_accelerators().items():
+            self.ctx.register_accelerator(accelerator_name, accelerator_factory)
 
 
 def main():
