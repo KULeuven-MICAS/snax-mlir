@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import bufferization, builtin
 from xdsl.ir import Operation, OpResult, SSAValue
 from xdsl.passes import ModulePass
@@ -96,7 +96,7 @@ class SnaxBufferize(ModulePass):
         )
     )
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         self.mlir_bufferization_pass.apply(ctx, op)
         PatternRewriteWalker(BufferizeStreamingRegion()).rewrite_module(op)
         self.mlir_canonicalization_pass.apply(ctx, op)

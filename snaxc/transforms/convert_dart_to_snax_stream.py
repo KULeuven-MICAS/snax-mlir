@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import arith, builtin
 from xdsl.ir import Operation, SSAValue
 from xdsl.passes import ModulePass
@@ -186,5 +186,5 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
 class ConvertDartToSnaxStream(ModulePass):
     name = "convert-dart-to-snax-stream"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(ConvertStreamToSnaxStreamPattern()).rewrite_module(op)

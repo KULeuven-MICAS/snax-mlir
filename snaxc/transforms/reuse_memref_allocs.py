@@ -1,4 +1,4 @@
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import affine, arith, builtin, memref, scf
 from xdsl.dialects.builtin import IndexType
 from xdsl.ir import Block, Operation, SSAValue
@@ -306,7 +306,7 @@ class MoveMemrefDims(RewritePattern):
 class ReuseMemrefAllocs(ModulePass):
     name = "reuse-memref-allocs"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
                 [

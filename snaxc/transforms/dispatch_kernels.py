@@ -1,6 +1,6 @@
 from collections.abc import Iterable
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, linalg
 from xdsl.dialects.builtin import ShapedType
 from xdsl.passes import ModulePass
@@ -98,7 +98,7 @@ class DispatchTemplatePattern(RewritePattern):
 class DispatchKernels(ModulePass):
     name = "dispatch-kernels"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         # find all accelerator ops in the IR
         accelerators: list[type[DispatchTemplate]] = []
         for accelerator_op in op.ops:

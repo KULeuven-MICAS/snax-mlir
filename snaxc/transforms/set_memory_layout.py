@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from math import ceil, prod
 
 import numpy as np
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.ir import Attribute
 from xdsl.parser import MemRefType
@@ -130,7 +130,7 @@ class SetMemoryLayout(ModulePass):
 
     tiled: bool | None = True
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         tiled = self.tiled if self.tiled is not None else True
         PatternRewriteWalker(AddCyclicMemoryLayout(tiled_layout=tiled)).rewrite_module(
             op

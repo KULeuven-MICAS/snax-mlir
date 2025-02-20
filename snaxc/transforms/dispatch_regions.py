@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, scf
 from xdsl.ir import Block, Operation, SSAValue
 from xdsl.passes import ModulePass
@@ -162,7 +162,7 @@ class DispatchRegions(ModulePass):
 
     nb_cores: int = 2  # amount of cores
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             DispatchRegionsRewriter(self.nb_cores),
             apply_recursively=False,

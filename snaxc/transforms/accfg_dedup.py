@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, scf
 from xdsl.ir import OpResult, SSAValue
 from xdsl.passes import ModulePass
@@ -254,7 +254,7 @@ class AccfgDeduplicate(ModulePass):
 
     hoist: bool = True
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         patterns = [
             SimplifyRedundantSetupCalls(),
             PullSetupOpsOutOfLoops(),

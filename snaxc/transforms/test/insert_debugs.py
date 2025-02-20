@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, linalg
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -56,7 +56,7 @@ class InsertDebugStatements(RewritePattern):
 class InsertDebugPass(ModulePass):
     name = "test-insert-debugs"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             InsertDebugStatements(), apply_recursively=False
         ).rewrite_module(op)

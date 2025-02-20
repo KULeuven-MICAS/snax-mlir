@@ -1,4 +1,4 @@
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, memref
 from xdsl.irdl import Operation
 from xdsl.passes import ModulePass
@@ -67,5 +67,5 @@ class DebugToFunc(RewritePattern):
 class DebugToFuncPass(ModulePass):
     name = "test-debug-to-func"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(DebugToFunc()).rewrite_module(op)

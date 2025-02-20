@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
 from xdsl.transforms.mlir_opt import MLIROptPass
@@ -40,6 +40,6 @@ class PreprocessPass(ModulePass):
 
     executable: str = field(default="mlir-opt")
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         for flags in MLIR_PREPOC_FLAGS:
             MLIROptPass(generic=True, arguments=flags).apply(ctx, op)

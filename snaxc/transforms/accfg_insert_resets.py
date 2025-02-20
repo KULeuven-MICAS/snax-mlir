@@ -3,7 +3,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TypeVar
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, scf
 from xdsl.ir import Attribute, Operation, SSAValue
 from xdsl.passes import ModulePass
@@ -102,7 +102,7 @@ class InsertResetsPass(ModulePass):
 
     reset_after_await: bool = False
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             InsertResetsForDanglingStatesPattern(self.reset_after_await)
         ).rewrite_module(op)

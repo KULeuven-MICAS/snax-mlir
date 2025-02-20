@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import linalg
 from xdsl.dialects.builtin import ArrayAttr, ModuleOp, ShapedType, StringAttr
 from xdsl.ir import Block, Region
@@ -110,5 +110,5 @@ class ConvertLinalgToDart(ModulePass):
 
     name = "convert-linalg-to-dart"
 
-    def apply(self, ctx: MLContext, op: ModuleOp) -> None:
+    def apply(self, ctx: Context, op: ModuleOp) -> None:
         PatternRewriteWalker(StreamifyGenericOpPattern()).rewrite_module(op)

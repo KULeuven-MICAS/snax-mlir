@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
 from xdsl.transforms.mlir_opt import MLIROptPass
@@ -34,7 +34,7 @@ class PostprocessPass(ModulePass):
     executable: str = field(default="mlir-opt")
     index_bitwidth: int = field(default=32)
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         flags = tuple(
             flag.format(index_bitwidth=self.index_bitwidth)
             for flag in MLIR_POSTPROC_FLAGS

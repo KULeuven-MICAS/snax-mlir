@@ -1,4 +1,4 @@
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, scf
 from xdsl.dialects.arith import AddiOp, ConstantOp, MuliOp
 from xdsl.dialects.builtin import (
@@ -492,7 +492,7 @@ class SNAXCopyToDMA(ModulePass):
 
     name = "snax-copy-to-dma"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(MatchSimpleCopy()).rewrite_module(op)
         PatternRewriteWalker(TransformDMA()).rewrite_module(op)
 

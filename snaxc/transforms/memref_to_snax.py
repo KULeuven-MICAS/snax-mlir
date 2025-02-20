@@ -1,6 +1,6 @@
 from typing import cast
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, memref
 from xdsl.dialects.arith import AddiOp, ConstantOp, MuliOp, SubiOp
 from xdsl.dialects.builtin import (
@@ -163,5 +163,5 @@ class AllocOpRewrite(RewritePattern):
 class MemrefToSNAX(ModulePass):
     name = "memref-to-snax"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(AllocOpRewrite()).rewrite_module(op)
