@@ -1,4 +1,4 @@
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, linalg
 from xdsl.ir import Block
 from xdsl.parser import IRDLOperation
@@ -75,5 +75,5 @@ class ParseLinalgBody(RewritePattern):
 class ConvertLinalgToKernel(ModulePass):
     name = "convert-linalg-to-kernel"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(ParseLinalgBody()).rewrite_module(op)

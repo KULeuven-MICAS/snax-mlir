@@ -2,7 +2,7 @@ from abc import ABC
 from dataclasses import dataclass
 from functools import cache
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.dialects.builtin import StringAttr
 from xdsl.ir import Operation
@@ -202,7 +202,7 @@ class ConvertAccfgToCsrPass(ModulePass):
 
     name = "convert-accfg-to-csr"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         # first lower all accfg ops and erase old SSA values
         PatternRewriteWalker(
             GreedyRewritePatternApplier(

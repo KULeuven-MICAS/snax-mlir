@@ -1,4 +1,4 @@
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, llvm
 from xdsl.ir import Operation, Sequence, SSAValue
 from xdsl.passes import ModulePass
@@ -158,7 +158,7 @@ class AllocToFunc(RewritePattern):
 class SNAXToFunc(ModulePass):
     name = "snax-to-func"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         contains_sync = any(
             isinstance(op_in_module, snax.ClusterSyncOp) for op_in_module in op.walk()
         )

@@ -1,4 +1,4 @@
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.ir import Operation
 from xdsl.passes import ModulePass
@@ -16,7 +16,7 @@ class InsertSyncBarrier(ModulePass):
 
     name = "insert-sync-barrier"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         rewriter = Rewriter()
 
         ops_to_sync = []

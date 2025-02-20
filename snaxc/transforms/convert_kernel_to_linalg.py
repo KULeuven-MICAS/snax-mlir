@@ -1,4 +1,4 @@
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, linalg
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -46,5 +46,5 @@ class LowerLinalgBody(RewritePattern):
 class ConvertKernelToLinalg(ModulePass):
     name = "convert-kernel-to-linalg"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(LowerLinalgBody()).rewrite_module(op)

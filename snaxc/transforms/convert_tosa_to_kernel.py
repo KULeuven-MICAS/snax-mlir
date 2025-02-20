@@ -1,5 +1,5 @@
 from xdsl.builder import Builder
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import arith, builtin, linalg, tensor, tosa
 from xdsl.dialects.builtin import IntegerAttr, i1, i8, i32
 from xdsl.ir import Attribute, BlockArgument
@@ -130,5 +130,5 @@ class ConvertTosaToKernelPass(ModulePass):
 
     name = "convert-tosa-to-kernel"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(RescaleClampPattern()).rewrite_module(op)

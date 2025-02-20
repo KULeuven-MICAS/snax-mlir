@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 import numpy as np
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, memref
 from xdsl.dialects.builtin import AffineMapAttr, ArrayAttr, MemRefType
 from xdsl.ir import Operation
@@ -101,5 +101,5 @@ class LayoutResolution(RewritePattern):
 class DartLayoutResolutionPass(ModulePass):
     name = "dart-layout-resolution"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(LayoutResolution()).rewrite_module(op)

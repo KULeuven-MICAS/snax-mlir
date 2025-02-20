@@ -1,4 +1,4 @@
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, func
 from xdsl.ir import Attribute, BlockArgument
 from xdsl.passes import ModulePass
@@ -10,7 +10,7 @@ from snaxc.dialects.tsl import TiledStridedLayoutAttr
 class ClearMemorySpace(ModulePass):
     name = "clear-memory-space"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         # helper function to clear the memory space of a memref
         # also clears the layout information of the memref - not used anymore
         def clear_memory_space(t: Attribute) -> Attribute:

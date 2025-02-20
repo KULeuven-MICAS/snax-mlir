@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.ir import Block, BlockArgument, Region
 from xdsl.ir.affine import AffineMap
@@ -165,5 +165,5 @@ class FuseElementwisePattern(RewritePattern):
 class DartFuseOperationsPass(ModulePass):
     name = "dart-fuse-operations"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(FuseElementwisePattern()).rewrite_module(op)

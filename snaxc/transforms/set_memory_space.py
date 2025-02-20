@@ -1,6 +1,6 @@
 from typing import cast
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, func, linalg, memref
 from xdsl.ir import Attribute, Operation, SSAValue
 from xdsl.passes import ModulePass
@@ -231,7 +231,7 @@ class HandleFuncReturns(RewritePattern):
 class SetMemorySpace(ModulePass):
     name = "set-memory-space"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(InitFuncMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(InitMemRefGlobalMemorySpace()).rewrite_module(op)
         PatternRewriteWalker(InitMemRefAllocMemorySpace()).rewrite_module(op)

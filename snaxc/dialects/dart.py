@@ -1,6 +1,7 @@
 from collections.abc import Iterable, Mapping, Sequence
-from typing import Generic, TypeVar
+from typing import Generic
 
+from typing_extensions import TypeVar
 from xdsl.dialects.builtin import (
     AffineMapAttr,
     ArrayAttr,
@@ -45,7 +46,9 @@ things in a (hopefully) more principled approach, including:
 - no stream ops outside of streaming regions allowed
 """
 
-_StreamTypeElement = TypeVar("_StreamTypeElement", bound=Attribute)
+_StreamTypeElement = TypeVar(
+    "_StreamTypeElement", bound=Attribute, covariant=True, default=Attribute
+)
 
 
 @irdl_attr_definition

@@ -1,4 +1,4 @@
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, llvm
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -33,5 +33,5 @@ class ConvertMCycleToLLVM(RewritePattern):
 class SNAXLowerMCycle(ModulePass):
     name = "snax-lower-mcycle"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(ConvertMCycleToLLVM()).rewrite_module(op)

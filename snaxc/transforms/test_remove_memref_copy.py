@@ -1,4 +1,4 @@
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, memref
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -23,7 +23,7 @@ class RemoveMemrefCopyPass(ModulePass):
     Only to be used for testing purposes.
     """
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             RemoveMemrefCopyPattern(), apply_recursively=False
         ).rewrite_module(op)

@@ -1,7 +1,7 @@
 import argparse
 from collections.abc import Sequence
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import get_all_dialects
 from xdsl.transforms import get_all_passes
 from xdsl.xdsl_opt_main import xDSLOptMain
@@ -38,7 +38,7 @@ class SNAXOptMain(xDSLOptMain):
         self.available_passes = {}
         self.available_targets = {}
 
-        self.ctx = MLContext()
+        self.ctx = Context()
         self.register_all_dialects()
         self.register_all_frontends()
         self.register_all_passes()

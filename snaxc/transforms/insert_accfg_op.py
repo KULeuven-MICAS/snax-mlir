@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
 from xdsl.traits import SymbolTable
@@ -25,7 +25,7 @@ class InsertAccOp(ModulePass):
         snax-opt -p insert-accfg-op{accelerater=snax_hwpe_mult}
     """
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         # Access registry to get the accelerator interface
         acc_info = AcceleratorRegistry().get_acc_info(self.accelerator)
         # With the interface, generate an appropriate acc op

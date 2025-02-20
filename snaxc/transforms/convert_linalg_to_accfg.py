@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin, func, linalg, scf
 from xdsl.ir import Block, Operation, OpResult, Region, SSAValue
 from xdsl.parser import StringAttr
@@ -279,7 +279,7 @@ def _weave_states_in_region(
 class ConvertLinalgToAccPass(ModulePass):
     name = "convert-linalg-to-accfg"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(ConvertLinalgToAcceleratorPattern(op)).rewrite_module(op)
         PatternRewriteWalker(ConvertSnaxStreamToAcceleratorPattern(op)).rewrite_module(
             op
@@ -297,7 +297,7 @@ class TraceStatesPass(ModulePass):
 
     name = "accfg-trace-states"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
             op
         )

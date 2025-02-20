@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.dialects.builtin import AffineMapAttr, ArrayAttr
 from xdsl.passes import ModulePass
@@ -64,5 +64,5 @@ class AutoflowScheduler(RewritePattern):
 class DartSchedulerPass(ModulePass):
     name = "dart-scheduler"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(AutoflowScheduler()).rewrite_module(op)

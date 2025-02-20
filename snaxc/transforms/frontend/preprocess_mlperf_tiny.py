@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 from xdsl.builder import Builder
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, linalg, memref, tensor
 from xdsl.ir import BlockArgument, Operation, OpResult
 from xdsl.ir.affine import AffineMap
@@ -238,7 +238,7 @@ class PreprocessMLPerfTiny(ModulePass):
         )
     )
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(
             InsertStaticFunctionCall(), apply_recursively=False
         ).rewrite_module(op)

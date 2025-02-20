@@ -1,4 +1,4 @@
-from xdsl.context import MLContext
+from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, linalg, memref
 from xdsl.dialects.memref import MemorySpaceCastOp
 from xdsl.ir import Attribute, Operation, OpResult
@@ -140,5 +140,5 @@ class RealizeMemrefCasts(RewritePattern):
 class RealizeMemrefCastsPass(ModulePass):
     name = "realize-memref-casts"
 
-    def apply(self, ctx: MLContext, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(RealizeMemrefCasts(), walk_reverse=True).rewrite_module(op)
