@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from xdsl.context import Context
 from xdsl.dialects import builtin, func, linalg, scf
 from xdsl.ir import Block, Operation, OpResult, Region, SSAValue
-from xdsl.parser import StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -12,7 +11,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
-from snaxc.accelerators.registry import AcceleratorRegistry
+from snaxc.accelerators import AccContext
 from snaxc.dialects import accfg
 from snaxc.dialects.snax_stream import StreamingRegionOp
 from snaxc.inference.helpers import (
@@ -34,6 +33,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
     """
 
     module: builtin.ModuleOp
+    ctx: AccContext
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.GenericOp, rewriter: PatternRewriter, /):
@@ -41,17 +41,12 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
             return
 
         library_call_name = op.library_call.data
-
-        acc_reg = AcceleratorRegistry()
-        acc_names = acc_reg.get_names()
-        if library_call_name not in acc_names:
+        if library_call_name not in self.ctx.registered_dialect_names:
             return
 
         # Lookup the accelerator interface based on the library_call
-        _, acc_info = acc_reg.lookup_acc_info(
-            StringAttr(library_call_name), self.module
-        )
-        rewriter.replace_matched_op(acc_info().convert_to_acc_ops(op))
+        acc = self.ctx.get_acc(library_call_name)
+        rewriter.replace_matched_op(acc().convert_to_acc_ops(op))
 
 
 @dataclass
@@ -61,12 +56,12 @@ class ConvertSnaxStreamToAcceleratorPattern(RewritePattern):
     """
 
     module: builtin.ModuleOp
+    ctx: AccContext
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: StreamingRegionOp, rewriter: PatternRewriter):
-        _, acc_info = AcceleratorRegistry().lookup_acc_info(op.accelerator, self.module)
-
-        rewriter.replace_matched_op(acc_info().convert_to_acc_ops(op))
+        acc = self.ctx.get_acc(op.accelerator.data)
+        rewriter.replace_matched_op(acc().convert_to_acc_ops(op))
 
 
 @dataclass
@@ -280,10 +275,13 @@ class ConvertLinalgToAccPass(ModulePass):
     name = "convert-linalg-to-accfg"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(ConvertLinalgToAcceleratorPattern(op)).rewrite_module(op)
-        PatternRewriteWalker(ConvertSnaxStreamToAcceleratorPattern(op)).rewrite_module(
+        assert isinstance(ctx, AccContext)
+        PatternRewriteWalker(ConvertLinalgToAcceleratorPattern(op, ctx)).rewrite_module(
             op
         )
+        PatternRewriteWalker(
+            ConvertSnaxStreamToAcceleratorPattern(op, ctx)
+        ).rewrite_module(op)
         # run these strictly sequentially, otherwise stuff breaks
         PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
             op

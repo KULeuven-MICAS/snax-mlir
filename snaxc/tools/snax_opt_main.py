@@ -5,8 +5,7 @@ from xdsl.dialects import get_all_dialects
 from xdsl.transforms import get_all_passes
 from xdsl.xdsl_opt_main import xDSLOptMain
 
-from snaxc.acc_context import AccContext
-from snaxc.accelerators import get_all_accelerators
+from snaxc.accelerators import AccContext, get_all_accelerators
 from snaxc.dialects import get_all_snax_dialects
 from snaxc.transforms import get_all_snax_passes
 

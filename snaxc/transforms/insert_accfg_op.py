@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 
+from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
 from xdsl.traits import SymbolTable
 
-from snaxc.acc_context import AccContext
+from snaxc.accelerators import AccContext
 
 
 @dataclass(frozen=True)
@@ -25,10 +26,11 @@ class InsertAccOp(ModulePass):
     """
 
     def apply(
-        self, ctx: AccContext, op: builtin.ModuleOp
+        self, ctx: Context, op: builtin.ModuleOp
     ) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
         # Access registry to get the accelerator interface
-        acc_info = ctx.get_accelerator(self.accelerator)()
+        assert isinstance(ctx, AccContext)
+        acc_info = ctx.get_acc(self.accelerator)()
         # With the interface, generate an appropriate acc op
         acc_op = acc_info.generate_acc_op()
 
