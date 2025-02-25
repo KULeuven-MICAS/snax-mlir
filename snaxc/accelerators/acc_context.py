@@ -7,7 +7,7 @@ from xdsl.ir import Operation
 from xdsl.parser import ModuleOp
 from xdsl.traits import SymbolTable
 
-from snaxc.accelerators import Accelerator
+from snaxc.accelerators.accelerator import Accelerator
 from snaxc.dialects.accfg import AcceleratorOp
 
 T = TypeVar("T")
@@ -73,6 +73,11 @@ class AccContext(Context):
         Returns both the looked up accelerator op and the Accelerator interface
         """
         acc_op = find_accelerator_op(module, name)
+        if acc_op is None:
+            raise Exception(
+                f"Symbol Table lookup failed for accelerator '{name}'. "
+                "Is the symbol declared by an accfg.accelerator op in the module?"
+            )
         return acc_op, self.get_acc(acc_op.name_prop.string_value())
 
     @property
@@ -80,13 +85,13 @@ class AccContext(Context):
         """
         Returns the names of all registered accelerators. Not valid across mutations of this object.
         """
-        return self._registered_dialects.keys()
+        return self._registered_accelerators.keys()
 
 
-def find_accelerator_op(op: Operation, accelerator_str: str) -> AcceleratorOp:
+def find_accelerator_op(op: Operation, accelerator_str: str) -> AcceleratorOp | None:
     """
     Finds the accelerator op with a given symbol name in the ModuleOp of
-    a given operation. Raises AssertionError if not found
+    a given operation. Returns None if not found.
     """
 
     # find the module op
@@ -98,8 +103,5 @@ def find_accelerator_op(op: Operation, accelerator_str: str) -> AcceleratorOp:
     trait = module_op.get_trait(SymbolTable)
     assert trait is not None
     acc_op = trait.lookup_symbol(module_op, accelerator_str)
-    assert isinstance(
-        acc_op, AcceleratorOp
-    ), f"Symbol Table lookup failed for accelerator '{accelerator_str}'." \
-        "Is the symbol declared by an accfg.accelerator op in the module?"
+    assert isinstance(acc_op, AcceleratorOp | None)
     return acc_op

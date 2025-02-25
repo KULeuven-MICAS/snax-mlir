@@ -41,7 +41,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
             return
 
         library_call_name = op.library_call.data
-        if library_call_name not in self.ctx.registered_dialect_names:
+        if library_call_name not in self.ctx.registered_accelerator_names:
             return
 
         # Lookup the accelerator interface based on the library_call
