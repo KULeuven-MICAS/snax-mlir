@@ -160,7 +160,7 @@ class StreamingRegionOp(IRDLOperation):
         )
 
     def verify_(self):
-        acc_op = find_accelerator_op(self, self.accelerator)
+        acc_op = find_accelerator_op(self, self.accelerator.data)
         if not acc_op:
             raise VerifyException("AcceleratorOp not found!")
 

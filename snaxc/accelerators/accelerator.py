@@ -14,7 +14,7 @@ class Accelerator(ABC):
     name: str
 
     @abstractmethod
-    def convert_to_acc_ops(self, op: type[Operation]) -> Sequence[Operation]:
+    def convert_to_acc_ops(self, op: Operation) -> Sequence[Operation]:
         """
         Lowers the operation op to a sequence of acc_ops.
         acc_ops are:
