@@ -61,7 +61,7 @@ class ConvertSnaxStreamToAcceleratorPattern(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: StreamingRegionOp, rewriter: PatternRewriter):
         acc = self.ctx.get_acc(op.accelerator.data)
-        rewriter.replace_matched_op(acc().convert_to_acc_ops(op))
+        rewriter.replace_matched_op(acc.convert_to_acc_ops(op))
 
 
 @dataclass
