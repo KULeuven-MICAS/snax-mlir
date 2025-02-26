@@ -4,6 +4,7 @@ from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.dialects.builtin import i64
 from xdsl.ir import Operation, SSAValue
 from xdsl.ir.affine import AffineMap
+from xdsl.utils.hints import isa
 
 import snaxc.dialects.kernel as kernel
 from snaxc.accelerators.dispatching import DispatchTemplate, SupportedKernel
@@ -65,7 +66,7 @@ class SNAXAluAccelerator(
         else:
             return []
 
-        ops_to_insert = []
+        ops_to_insert: Sequence[Operation] = []
         for new_ops, _ in args:
             ops_to_insert.extend(new_ops)
 
@@ -97,24 +98,27 @@ class SNAXAluAccelerator(
         c8 = arith.ConstantOp.from_int_and_width(8, 32)
         c32 = arith.ConstantOp.from_int_and_width(32, 32)
 
-        ptrs = [
-            (
-                [
-                    ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref),
-                    metadata := memref.ExtractStridedMetaDataOp(ref),
-                    el_bytes := arith.ConstantOp.from_int_and_width(
-                        ref.type.element_type.size, builtin.IndexType()
-                    ),
-                    byte_offset := arith.MuliOp(metadata.offset, el_bytes),
-                    ptr_plus_byte_offset := arith.AddiOp(
-                        ptr, byte_offset, builtin.IndexType()
-                    ),
-                    ptr_i32 := arith.IndexCastOp(ptr_plus_byte_offset, builtin.i32),
-                ],
-                ptr_i32.result,
+        ptrs: Sequence[tuple[Sequence[Operation], SSAValue]] = []
+
+        for ref in (a, b, o):
+            assert isa(ref.type, builtin.MemRefType[builtin.IntegerType])
+            ptrs.append(
+                (
+                    [
+                        ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref),
+                        metadata := memref.ExtractStridedMetaDataOp(ref),
+                        el_bytes := arith.ConstantOp.from_int_and_width(
+                            ref.type.element_type.size, builtin.IndexType()
+                        ),
+                        byte_offset := arith.MuliOp(metadata.offset, el_bytes),
+                        ptr_plus_byte_offset := arith.AddiOp(
+                            ptr, byte_offset, builtin.IndexType()
+                        ),
+                        ptr_i32 := arith.IndexCastOp(ptr_plus_byte_offset, builtin.i32),
+                    ],
+                    ptr_i32.result,
+                )
             )
-            for ref in (a, b, o)
-        ]
 
         return [
             # streamer 1
