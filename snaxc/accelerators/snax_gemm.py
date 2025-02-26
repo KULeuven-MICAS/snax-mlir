@@ -99,7 +99,7 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         else:
             args = self._generate_setup_vals(op)
 
-            ops_to_insert = []
+            ops_to_insert: Sequence[Operation] = []
             # insert ops to calculate arguments
             for new_ops, _ in args:
                 ops_to_insert.extend(new_ops)
@@ -140,10 +140,12 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         c0 = arith.ConstantOp.from_int_and_width(0, 32)
-        addr_acc = acc_op.launch_fields.data["launch_gemm"].value.data
-        addr_acc = arith.ConstantOp.from_int_and_width(addr_acc, 32)
-        addr_str = acc_op.launch_fields.data["launch_streamer"].value.data
-        addr_str = arith.ConstantOp.from_int_and_width(addr_str, 32)
+        addr_acc = dict(acc_op.launch_field_items())["launch_gemm"].value.data
+        addr_acc = arith.ConstantOp.from_int_and_width(addr_acc, 32)  # type : ignore
+        addr_str = dict(acc_op.launch_field_items())[
+            "launch_streamer"
+        ].value.data  # type : ignore
+        addr_str = arith.ConstantOp.from_int_and_width(addr_str, 32)  # typ
         return [
             c0,
             addr_acc,
