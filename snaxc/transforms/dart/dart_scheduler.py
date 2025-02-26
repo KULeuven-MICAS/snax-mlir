@@ -32,7 +32,7 @@ class AutoflowScheduler(RewritePattern):
     def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
         assert op.accelerator
         accelerator_type = self.ctx.get_acc(op.accelerator.data)
-        assert issubclass(accelerator_type, SNAXStreamer)
+        assert isinstance(accelerator_type, SNAXStreamer)
         template = accelerator_type.get_template(op)
 
         # Make sure the operands are memrefs

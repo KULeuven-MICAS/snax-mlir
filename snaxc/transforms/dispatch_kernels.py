@@ -24,9 +24,9 @@ class DispatchTemplatePattern(RewritePattern):
     compute kernel template.
     """
 
-    accelerators: Iterable[type[DispatchTemplate]] = []
+    accelerators: Iterable[DispatchTemplate] = []
 
-    def __init__(self, accelerators: Iterable[type[DispatchTemplate]]) -> None:
+    def __init__(self, accelerators: Iterable[DispatchTemplate]) -> None:
         self.accelerators = accelerators
 
     @op_type_rewrite_pattern
@@ -46,7 +46,7 @@ class DispatchTemplatePattern(RewritePattern):
         if not isinstance(next(linalg_body_ops), linalg.YieldOp):
             return
 
-        matched_accelerator: type[DispatchTemplate] | None = None
+        matched_accelerator: DispatchTemplate | None = None
 
         for accelerator in self.accelerators:
             if matched_accelerator:
@@ -80,7 +80,7 @@ class DispatchTemplatePattern(RewritePattern):
         library_call = matched_accelerator.name
 
         # optional streaming extension for custom operands:
-        if issubclass(matched_accelerator, SNAXStreamer):
+        if isinstance(matched_accelerator, SNAXStreamer):
             suffix = "_stream"
             # check if no dynamic operands
             for operand in (
@@ -101,11 +101,11 @@ class DispatchKernels(ModulePass):
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         # find all accelerator ops in the IR
         assert isinstance(ctx, AccContext)
-        accelerators: list[type[DispatchTemplate]] = []
+        accelerators: list[DispatchTemplate] = []
         for accelerator_op in op.ops:
             if isinstance(accelerator_op, AcceleratorOp):
                 accelerator_type = ctx.get_acc(accelerator_op.get_acc_name())
-                if issubclass(accelerator_type, DispatchTemplate):
+                if isinstance(accelerator_type, DispatchTemplate):
                     accelerators.append(accelerator_type)
 
         # dispatch

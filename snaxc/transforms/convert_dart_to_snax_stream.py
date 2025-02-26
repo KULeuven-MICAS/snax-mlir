@@ -31,7 +31,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
     def match_and_rewrite(self, op: dart.AccessPatternOp, rewriter: PatternRewriter):
         assert op.accelerator
         accelerator_type = self.ctx.get_acc(op.accelerator.data)
-        assert issubclass(accelerator_type, SNAXStreamer)
+        assert isinstance(accelerator_type, SNAXStreamer)
         template = accelerator_type.get_template(op)
 
         snax_stride_patterns: list[snax_stream.StridePattern] = []

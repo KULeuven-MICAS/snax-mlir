@@ -28,7 +28,7 @@ class InsertAccOp(ModulePass):
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         # Access registry to get the accelerator interface
         assert isinstance(ctx, AccContext)
-        acc_info = ctx.get_acc(self.accelerator)()
+        acc_info = ctx.get_acc(self.accelerator)
         # With the interface, generate an appropriate acc op
         acc_op = acc_info.generate_acc_op()
 

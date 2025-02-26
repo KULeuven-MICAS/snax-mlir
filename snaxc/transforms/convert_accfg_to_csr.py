@@ -31,9 +31,7 @@ class LowerAccfgBasePattern(RewritePattern, ABC):
     ctx: AccContext
 
     @cache
-    def get_acc(
-        self, accelerator_str: str
-    ) -> tuple[accfg.AcceleratorOp, type[Accelerator]]:
+    def get_acc(self, accelerator_str: str) -> tuple[accfg.AcceleratorOp, Accelerator]:
         return self.ctx.get_acc_op_from_module(accelerator_str, self.module)
 
     def __hash__(self):

@@ -4,33 +4,33 @@ from snaxc.accelerators.acc_context import *
 from snaxc.accelerators.accelerator import Accelerator
 
 
-def get_all_accelerators() -> dict[str, Callable[[], type[Accelerator]]]:
+def get_all_accelerators() -> dict[str, Callable[[], Accelerator]]:
     """Return the list of all available passes."""
 
     def get_snax_alu():
         from snaxc.accelerators.snax_alu import SNAXAluAccelerator
 
-        return SNAXAluAccelerator
+        return SNAXAluAccelerator()
 
     def get_snax_gemm():
         from snaxc.accelerators.snax_gemm import SNAXGEMMAccelerator
 
-        return SNAXGEMMAccelerator
+        return SNAXGEMMAccelerator()
 
     def get_snax_gemmx():
         from snaxc.accelerators.snax_gemmx import SNAXGEMMXAccelerator
 
-        return SNAXGEMMXAccelerator
+        return SNAXGEMMXAccelerator()
 
     def get_snax_hwpe_mult():
         from snaxc.accelerators.snax_hwpe_mult import SNAXHWPEMultAccelerator
 
-        return SNAXHWPEMultAccelerator
+        return SNAXHWPEMultAccelerator()
 
     def get_gemmini():
         from snaxc.accelerators.gemmini import GemminiAccelerator
 
-        return GemminiAccelerator
+        return GemminiAccelerator()
 
     return {
         "snax_alu": get_snax_alu,

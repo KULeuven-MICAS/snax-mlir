@@ -16,7 +16,7 @@ class AccContext(Context):
     Context that additionally allows to register and query accelerators
     """
 
-    _registered_accelerators: dict[str, Callable[[], type[Accelerator]]] = field(
+    _registered_accelerators: dict[str, Callable[[], Accelerator]] = field(
         default_factory=dict
     )
 
@@ -31,7 +31,7 @@ class AccContext(Context):
         )
 
     def register_accelerator(
-        self, name: str, accelerator_factory: Callable[[], type[Accelerator]]
+        self, name: str, accelerator_factory: Callable[[], Accelerator]
     ) -> None:
         """
         Register an accelerator without loading it.
@@ -42,7 +42,7 @@ class AccContext(Context):
             raise ValueError(f"'{name}' accelerator is already registered")
         self._registered_accelerators[name] = accelerator_factory
 
-    def get_optional_accelerator(self, name: str) -> type[Accelerator] | None:
+    def get_optional_accelerator(self, name: str) -> Accelerator | None:
         """
         Get an operation class from its name if it exists.
         If the accelerator is not registered, raise an exception.
@@ -51,7 +51,7 @@ class AccContext(Context):
             return self._registered_accelerators[name]()
         return None
 
-    def get_acc(self, name: str) -> type[Accelerator]:
+    def get_acc(self, name: str) -> Accelerator:
         """
         Get an operation class from its name if it exists.
         If the accelerator is not registered, raise an exception.
@@ -62,7 +62,7 @@ class AccContext(Context):
 
     def get_acc_op_from_module(
         self, name: str, module: ModuleOp
-    ) -> tuple[AcceleratorOp, type[Accelerator]]:
+    ) -> tuple[AcceleratorOp, Accelerator]:
         """
         Perform a symbol table lookup for the accelerator op in the IR
         and then get the corresponding the Accelerator interface from
