@@ -2,6 +2,7 @@ from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, linalg, memref
 from xdsl.ir import Operation, SSAValue
+from xdsl.utils.hints import isa
 
 from snaxc.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier
 from snaxc.dialects import accfg
@@ -70,8 +71,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
         ptrs: Sequence[tuple[Sequence[Operation], SSAValue]] = []
 
         for ref in (a, b, c):
-            assert isinstance(ref.type, builtin.MemRefType)
-            assert isinstance(ref.type.element_type, builtin.IntegerType)
+            assert isa(ref.type, builtin.MemRefType[builtin.IntegerType])
             ptrs.append(
                 (
                     [
