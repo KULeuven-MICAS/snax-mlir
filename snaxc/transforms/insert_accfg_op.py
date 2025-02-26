@@ -25,9 +25,7 @@ class InsertAccOp(ModulePass):
         snax-opt -p insert-accfg-op{accelerater=snax_hwpe_mult}
     """
 
-    def apply(
-        self, ctx: Context, op: builtin.ModuleOp
-    ) -> None:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         # Access registry to get the accelerator interface
         assert isinstance(ctx, AccContext)
         acc_info = ctx.get_acc(self.accelerator)()

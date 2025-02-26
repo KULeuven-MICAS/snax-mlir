@@ -1,6 +1,5 @@
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import TypeVar
 
 from xdsl.context import Context
 from xdsl.ir import Operation
@@ -9,8 +8,6 @@ from xdsl.traits import SymbolTable
 
 from snaxc.accelerators.accelerator import Accelerator
 from snaxc.dialects.accfg import AcceleratorOp
-
-T = TypeVar("T")
 
 
 @dataclass
