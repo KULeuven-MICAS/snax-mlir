@@ -193,8 +193,8 @@ class LaunchOp(AccfgBaseOp):
             )
         # TODO: allow use in control flow
 
-    # def get_acc_name(self) -> str:
-    #    return self.accelerator.data
+    def get_acc_name(self) -> str:
+        return self.accelerator.data
 
 
 @irdl_op_definition
