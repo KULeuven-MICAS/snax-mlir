@@ -80,13 +80,6 @@ typeCheckingMode = "strict"
     "tests",
 ]
 "exclude" = [
-    "snaxc/accelerators/gemmini.py",
-    "snaxc/accelerators/rocc.py",
-    "snaxc/accelerators/snax.py",
-    "snaxc/accelerators/snax_alu.py",
-    "snaxc/accelerators/snax_gemm.py",
-    "snaxc/accelerators/snax_gemmx.py",
-    "snaxc/accelerators/snax_hwpe_mult.py",
     "snaxc/dialects/accfg.py",
     "snaxc/inference/dataflow.py",
     "snaxc/inference/helpers.py",

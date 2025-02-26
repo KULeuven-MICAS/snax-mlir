@@ -42,7 +42,7 @@ class RoCCAccelerator(Accelerator, ABC):
         # Note: This assumes that the full pair was previously set, but it was
         #   deduplicated. if one of the two values of the pair was not set, this fix
         #   can not recover the previous value
-        optional_default_value = []
+        optional_default_value: Sequence[Operation] = []
         to_add_as_defaults: list[str] = []
         if setup_op.in_state is None:
             field_dict = dict(setup_op.iter_params())
@@ -101,7 +101,7 @@ def create_pairs(
             if instruction + ".rs2" not in field_dict:
                 field_dict[instruction + ".rs2"] = prev_state[instruction + ".rs2"]
     # For launch_ops, no tracing back is necessary, since dedup doesn't happen
-    elif isinstance(fields_op, accfg.LaunchOp):
+    else:  # accfg.LaunchOp
         pass
     # Assert that pairs of rs1 and rs2 exist for each item in the fields
     for instruction in instructions:
