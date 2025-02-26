@@ -46,7 +46,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
 
         # Lookup the accelerator interface based on the library_call
         acc = self.ctx.get_acc(library_call_name)
-        rewriter.replace_matched_op(acc().convert_to_acc_ops(op))
+        rewriter.replace_matched_op(acc.convert_to_acc_ops(op))
 
 
 @dataclass
