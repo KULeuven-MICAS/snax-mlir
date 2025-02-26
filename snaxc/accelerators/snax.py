@@ -251,7 +251,6 @@ class SNAXStreamer(ABC):
         int: The next usable CSR address
         dict[str, int]: The dictionary mapping setup field to csr address
         """
-        breakpoint()
         streamer_setup = {
             key: base_addr + i for i, key in enumerate(self.streamer_setup_fields)
         }
