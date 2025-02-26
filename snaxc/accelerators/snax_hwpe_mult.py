@@ -18,7 +18,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
     fields = ("A", "B", "O", "vector_length", "nr_iters", "mode")
     launch_fields = ("launch",)
 
-    def convert_to_acc_ops(self, op: linalg.GenericOp) -> Sequence[Operation]:
+    def convert_to_acc_ops(self, op: Operation) -> Sequence[Operation]:
         """
         Lowers the operation op to a sequence of acc_ops.
         acc_ops are:
@@ -29,22 +29,27 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
         These ops can further be lowered by specific instances of the
         Accelerator interface
         """
-        args = self._generate_setup_vals(op)
+        if not isinstance(op, linalg.GenericOp):
+            return []
+        else:
+            args = self._generate_setup_vals(op)
 
-        ops_to_insert: Sequence[Operation] = []
-        # insert ops to calculate arguments
-        for new_ops, _ in args:
-            ops_to_insert.extend(new_ops)
+            ops_to_insert: Sequence[Operation] = []
+            # insert ops to calculate arguments
+            for new_ops, _ in args:
+                ops_to_insert.extend(new_ops)
 
-        return [
-            *ops_to_insert,
-            setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
-            launch_val := arith.ConstantOp(
-                builtin.IntegerAttr.from_int_and_width(0, 5)
-            ),
-            token := accfg.LaunchOp([launch_val], self.launch_fields, setup),
-            accfg.AwaitOp(token),
-        ]
+            return [
+                *ops_to_insert,
+                setup := accfg.SetupOp(
+                    [val for _, val in args], self.fields, self.name
+                ),
+                launch_val := arith.ConstantOp(
+                    builtin.IntegerAttr.from_int_and_width(0, 5)
+                ),
+                token := accfg.LaunchOp([launch_val], self.launch_fields, setup),
+                accfg.AwaitOp(token),
+            ]
 
     def _generate_setup_vals(
         self, op: linalg.GenericOp
