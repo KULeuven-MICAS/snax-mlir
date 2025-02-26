@@ -11,7 +11,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
-from snaxc.accelerators.registry import AcceleratorRegistry
+from snaxc.accelerators import AccContext
 from snaxc.accelerators.snax import SNAXStreamer
 from snaxc.dialects import dart
 from snaxc.ir.dart.access_pattern import Schedule, SchedulePattern
@@ -26,11 +26,13 @@ class AutoflowScheduler(RewritePattern):
     Here, the operation is scheduled to an accelerator according to the accelerator template.
     """
 
+    ctx: AccContext
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
         assert op.accelerator
-        accelerator_type = AcceleratorRegistry().get_acc_info(op.accelerator.data)
-        assert issubclass(accelerator_type, SNAXStreamer)
+        accelerator_type = self.ctx.get_acc(op.accelerator.data)
+        assert isinstance(accelerator_type, SNAXStreamer)
         template = accelerator_type.get_template(op)
 
         # Make sure the operands are memrefs
@@ -65,4 +67,5 @@ class DartSchedulerPass(ModulePass):
     name = "dart-scheduler"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(AutoflowScheduler()).rewrite_module(op)
+        assert isinstance(ctx, AccContext)
+        PatternRewriteWalker(AutoflowScheduler(ctx)).rewrite_module(op)

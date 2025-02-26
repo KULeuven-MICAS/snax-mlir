@@ -5,7 +5,7 @@ from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
 from xdsl.traits import SymbolTable
 
-from snaxc.accelerators.registry import AcceleratorRegistry
+from snaxc.accelerators import AccContext
 
 
 @dataclass(frozen=True)
@@ -27,9 +27,10 @@ class InsertAccOp(ModulePass):
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         # Access registry to get the accelerator interface
-        acc_info = AcceleratorRegistry().get_acc_info(self.accelerator)
+        assert isinstance(ctx, AccContext)
+        acc_info = ctx.get_acc(self.accelerator)
         # With the interface, generate an appropriate acc op
-        acc_op = acc_info().generate_acc_op()
+        acc_op = acc_info.generate_acc_op()
 
         t = op.get_trait(SymbolTable)
         assert t is not None

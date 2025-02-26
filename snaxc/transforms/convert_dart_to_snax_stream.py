@@ -11,7 +11,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
-from snaxc.accelerators.registry import AcceleratorRegistry
+from snaxc.accelerators import AccContext
 from snaxc.accelerators.snax import SNAXStreamer
 from snaxc.dialects import dart, snax_stream
 from snaxc.ir.dart.affine_transform import AffineTransform
@@ -25,11 +25,13 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
     spatial and temporal strides ready to be programmed through CSRs.
     """
 
+    ctx: AccContext
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: dart.AccessPatternOp, rewriter: PatternRewriter):
         assert op.accelerator
-        accelerator_type = AcceleratorRegistry().get_acc_info(op.accelerator.data)
-        assert issubclass(accelerator_type, SNAXStreamer)
+        accelerator_type = self.ctx.get_acc(op.accelerator.data)
+        assert isinstance(accelerator_type, SNAXStreamer)
         template = accelerator_type.get_template(op)
 
         snax_stride_patterns: list[snax_stream.StridePattern] = []
@@ -187,4 +189,5 @@ class ConvertDartToSnaxStream(ModulePass):
     name = "convert-dart-to-snax-stream"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(ConvertStreamToSnaxStreamPattern()).rewrite_module(op)
+        assert isinstance(ctx, AccContext)
+        PatternRewriteWalker(ConvertStreamToSnaxStreamPattern(ctx)).rewrite_module(op)

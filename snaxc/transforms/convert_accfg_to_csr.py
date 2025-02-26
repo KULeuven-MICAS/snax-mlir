@@ -4,7 +4,6 @@ from functools import cache
 
 from xdsl.context import Context
 from xdsl.dialects import builtin
-from xdsl.dialects.builtin import StringAttr
 from xdsl.ir import Operation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -15,8 +14,8 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 
+from snaxc.accelerators import AccContext
 from snaxc.accelerators.accelerator import Accelerator
-from snaxc.accelerators.registry import AcceleratorRegistry
 from snaxc.dialects import accfg
 
 
@@ -29,15 +28,11 @@ class LowerAccfgBasePattern(RewritePattern, ABC):
     """
 
     module: builtin.ModuleOp
+    ctx: AccContext
 
     @cache
-    def get_acc(
-        self, accelerator: StringAttr
-    ) -> tuple[accfg.AcceleratorOp, type[Accelerator]]:
-        acc_op, acc_info = AcceleratorRegistry().lookup_acc_info(
-            accelerator, self.module
-        )
-        return acc_op, acc_info
+    def get_acc(self, accelerator_str: str) -> tuple[accfg.AcceleratorOp, Accelerator]:
+        return self.ctx.get_acc_op_from_module(accelerator_str, self.module)
 
     def __hash__(self):
         return id(self)
@@ -53,7 +48,7 @@ class LowerAccfgSetupToCsr(LowerAccfgBasePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
-        acc_op, acc_info = self.get_acc(op.accelerator)
+        acc_op, acc_info = self.get_acc(op.get_acc_name())
         # grab a dict that translates field names to CSR addresses:
         # emit the llvm assembly code to set csr values:
         rewriter.replace_matched_op(
@@ -71,8 +66,8 @@ class LowerAccfgLaunchToCsr(LowerAccfgBasePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: accfg.LaunchOp, rewriter: PatternRewriter, /):
         assert isinstance(op.state.type, accfg.StateType)
-        acc_op, acc_info = self.get_acc(op.state.type.accelerator)
-
+        acc_op, acc_info = self.get_acc(op.get_acc_name())
+        # acc_op, acc_info = self.get_acc(op.state.type.accelerator.data)
         # insert an op that sets the launch CSR to 1
         rewriter.replace_matched_op(
             acc_info.lower_acc_launch(op, acc_op),
@@ -88,8 +83,7 @@ class LowerAccfgAwaitToCsr(LowerAccfgBasePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: accfg.AwaitOp, rewriter: PatternRewriter, /):
-        assert isinstance(op.token.type, accfg.StateType | accfg.TokenType)
-        acc_op, acc_info = self.get_acc(op.token.type.accelerator)
+        acc_op, acc_info = self.get_acc(op.get_acc_name())
 
         # emit a snax_hwpe-style barrier
         rewriter.replace_matched_op(
@@ -204,12 +198,13 @@ class ConvertAccfgToCsrPass(ModulePass):
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         # first lower all accfg ops and erase old SSA values
+        assert isinstance(ctx, AccContext)
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
                 [
-                    LowerAccfgSetupToCsr(op),
-                    LowerAccfgLaunchToCsr(op),
-                    LowerAccfgAwaitToCsr(op),
+                    LowerAccfgSetupToCsr(op, ctx),
+                    LowerAccfgLaunchToCsr(op, ctx),
+                    LowerAccfgAwaitToCsr(op, ctx),
                 ]
             ),
             walk_reverse=True,
