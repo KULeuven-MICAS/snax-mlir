@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 from xdsl.dialects import arith, linalg, memref
 from xdsl.dialects.builtin import IndexType, i64
-from xdsl.ir import Operation
+from xdsl.ir import Operation, SSAValue
 
 from snaxc.accelerators.rocc import RoCCAccelerator
 from snaxc.dialects import accfg
@@ -52,25 +52,25 @@ class GemminiAccelerator(RoCCAccelerator):
 
     def _gemmini_loop_ws(
         self,
-        pad_K,
-        pad_J,
-        pad_I,
-        K,
-        J,
-        I,
-        A,
-        B,
-        D,
-        C,
-        A_stride,
-        B_stride,
-        D_stride,
-        C_stride,
-    ):
+        pad_K: Operation | SSAValue,
+        pad_J: Operation | SSAValue,
+        pad_I: Operation | SSAValue,
+        K: Operation | SSAValue,
+        J: Operation | SSAValue,
+        I: Operation | SSAValue,
+        A: Operation | SSAValue,
+        B: Operation | SSAValue,
+        D: Operation | SSAValue,
+        C: Operation | SSAValue,
+        A_stride: Operation | SSAValue,
+        B_stride: Operation | SSAValue,
+        D_stride: Operation | SSAValue,
+        C_stride: Operation | SSAValue,
+    ) -> Sequence[Operation]:
         # Make lists for constructors of accfg ops
-        ops_to_insert = []
-        ops_to_configure = []
-        ops_to_launch = []
+        ops_to_insert: Sequence[Operation] = []
+        ops_to_configure: Sequence[Operation | SSAValue] = []
+        ops_to_launch: Sequence[Operation | SSAValue] = []
         # Insert hardcoded constants for now
         constants = [
             [pad_K, pad_J, pad_I],  # pad_K, pad_J, pad_I
@@ -127,9 +127,9 @@ class GemminiAccelerator(RoCCAccelerator):
 
     def convert_to_acc_ops(self, op: linalg.GenericOp) -> Sequence[Operation]:
         a, b, _, _, c = op.operands  # Don't use zero point adjustments
-        ops_to_insert = []
-        pointer_values = []
-        stride_values = []
+        ops_to_insert: Sequence[Operation] = []
+        pointer_values: Sequence[SSAValue] = []
+        stride_values: Sequence[SSAValue] = []
         for operand in a, b, c:
             ops_to_insert.extend(
                 [
@@ -144,7 +144,7 @@ class GemminiAccelerator(RoCCAccelerator):
             pointer_values.append(offset_ptr_i64.result)
             stride_values.append(stride_i64.result)
 
-        size_values = []
+        size_values: Sequence[SSAValue] = []
         for operand, i in zip([a, b, a], [0, 1, 1]):
             ops_to_insert.extend(
                 [
