@@ -104,9 +104,7 @@ class DispatchKernels(ModulePass):
         accelerators: list[type[DispatchTemplate]] = []
         for accelerator_op in op.ops:
             if isinstance(accelerator_op, AcceleratorOp):
-                accelerator_type = ctx.get_acc(
-                    str(accelerator_op.properties["name"])[1:]
-                )
+                accelerator_type = ctx.get_acc(accelerator_op.get_acc_name())
                 if issubclass(accelerator_type, DispatchTemplate):
                     accelerators.append(accelerator_type)
 
