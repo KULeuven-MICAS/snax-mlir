@@ -4,7 +4,6 @@ from functools import cache
 
 from xdsl.context import Context
 from xdsl.dialects import builtin
-from xdsl.dialects.builtin import StringAttr
 from xdsl.ir import Operation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -33,9 +32,9 @@ class LowerAccfgBasePattern(RewritePattern, ABC):
 
     @cache
     def get_acc(
-        self, accelerator: StringAttr
+        self, accelerator_str: str
     ) -> tuple[accfg.AcceleratorOp, type[Accelerator]]:
-        return self.ctx.get_acc_op_from_module(accelerator.data, self.module)
+        return self.ctx.get_acc_op_from_module(accelerator_str, self.module)
 
     def __hash__(self):
         return id(self)
@@ -51,7 +50,7 @@ class LowerAccfgSetupToCsr(LowerAccfgBasePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
-        acc_op, acc_info = self.get_acc(op.accelerator)
+        acc_op, acc_info = self.get_acc(op.get_acc_name())
         # grab a dict that translates field names to CSR addresses:
         # emit the llvm assembly code to set csr values:
         rewriter.replace_matched_op(
@@ -69,7 +68,8 @@ class LowerAccfgLaunchToCsr(LowerAccfgBasePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: accfg.LaunchOp, rewriter: PatternRewriter, /):
         assert isinstance(op.state.type, accfg.StateType)
-        acc_op, acc_info = self.get_acc(op.state.type.accelerator)
+        acc_op, acc_info = self.get_acc(op.get_acc_name())
+        # acc_op, acc_info = self.get_acc(op.state.type.accelerator.data)
         # insert an op that sets the launch CSR to 1
         rewriter.replace_matched_op(
             acc_info.lower_acc_launch(op, acc_op),
@@ -85,8 +85,7 @@ class LowerAccfgAwaitToCsr(LowerAccfgBasePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: accfg.AwaitOp, rewriter: PatternRewriter, /):
-        assert isinstance(op.token.type, accfg.StateType | accfg.TokenType)
-        acc_op, acc_info = self.get_acc(op.token.type.accelerator)
+        acc_op, acc_info = self.get_acc(op.get_acc_name())
 
         # emit a snax_hwpe-style barrier
         rewriter.replace_matched_op(

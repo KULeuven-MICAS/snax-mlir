@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from enum import Enum
 
@@ -103,8 +104,18 @@ class StateType(ParametrizedAttribute, TypeAttribute):
         return super().__init__([accelerator])
 
 
+class AccfgBaseOp(IRDLOperation, ABC):
+    """
+    Abstract base class for accfg ops
+    """
+
+    @abstractmethod
+    def get_acc_name(self) -> str:
+        raise NotImplementedError()
+
+
 @irdl_op_definition
-class LaunchOp(IRDLOperation):
+class LaunchOp(AccfgBaseOp):
     """
     Launch an accelerator. This acts as a barrier for CSR values,
     meaning CSRs can be safely modified after a launch op without
@@ -182,9 +193,12 @@ class LaunchOp(IRDLOperation):
             )
         # TODO: allow use in control flow
 
+    def get_acc_name(self) -> str:
+        return self.accelerator.data
+
 
 @irdl_op_definition
-class AwaitOp(IRDLOperation):
+class AwaitOp(AccfgBaseOp):
     """
     Blocks until the launched operation finishes.
     """
@@ -196,9 +210,15 @@ class AwaitOp(IRDLOperation):
     def __init__(self, token: SSAValue | Operation):
         super().__init__(operands=[token])
 
+    def get_acc_name(self) -> str:
+        assert isinstance(
+            self.token.type, TokenType
+        ), "Could not get accelerator name from token type, is the ACCFG IR traced?"
+        return self.token.type.accelerator.data
+
 
 @irdl_op_definition
-class SetupOp(IRDLOperation):
+class SetupOp(AccfgBaseOp):
     """
     accfg.setup writes values to a specific accelerators configuration and returns
     a value representing the currently known state of that accelerator's config.
@@ -350,6 +370,9 @@ class SetupOp(IRDLOperation):
         setup_op.attributes.update(attributes)
         return setup_op
 
+    def get_acc_name(self) -> str:
+        return self.accelerator.data
+
 
 class AcceleratorSymbolOpTrait(SymbolOpInterface):
     def get_sym_attr_name(self, op: Operation) -> StringAttr | None:
@@ -358,7 +381,7 @@ class AcceleratorSymbolOpTrait(SymbolOpInterface):
 
 
 @irdl_op_definition
-class AcceleratorOp(IRDLOperation):
+class AcceleratorOp(AccfgBaseOp):
     """
     Declares an accelerator that can be configured, launched, etc.
     `fields` is a dictionary mapping accelerator configuration names to
@@ -430,9 +453,12 @@ class AcceleratorOp(IRDLOperation):
             assert isinstance(val, IntegerAttr)
             yield name, val
 
+    def get_acc_name(self) -> str:
+        return self.name_prop.string_value()
+
 
 @irdl_op_definition
-class ResetOp(IRDLOperation):
+class ResetOp(AccfgBaseOp):
     name = "accfg.reset"
 
     in_state = operand_def(StateType)
@@ -441,6 +467,12 @@ class ResetOp(IRDLOperation):
 
     def __init__(self, in_state: Operation | SSAValue):
         super().__init__(operands=[in_state])
+
+    def get_acc_name(self) -> str:
+        assert isinstance(
+            self.in_state.type, StateType
+        ), "Could not get accelerator name from in_state type, is the ACCFG IR traced?"
+        return self.in_state.type.accelerator.data
 
 
 ACCFG = Dialect(
