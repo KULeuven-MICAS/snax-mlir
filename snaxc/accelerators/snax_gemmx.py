@@ -3,7 +3,7 @@ from math import prod
 
 from xdsl.dialects import arith, builtin
 from xdsl.dialects.builtin import i8, i32
-from xdsl.ir import BlockArgument, Operation, SSAValue
+from xdsl.ir import BlockArgument, Operation, OpResult, SSAValue
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 
 from snaxc.accelerators.dispatching import DispatchTemplate, SupportedKernel
@@ -140,7 +140,7 @@ class SNAXGEMMXAccelerator(
     ) -> Sequence[Operation]:
         args = self._generate_setup_vals(op)
 
-        ops_to_insert = []
+        ops_to_insert: Sequence[Operation] = []
         # insert ops to calculate arguments
         for new_ops, _ in args:
             ops_to_insert.extend(new_ops)
@@ -170,7 +170,7 @@ class SNAXGEMMXAccelerator(
 
         c0 = arith.ConstantOp.from_int_and_width(0, 32)
         c1 = arith.ConstantOp.from_int_and_width(1, 32)
-        knm: list = [
+        knm: list[tuple[tuple[Operation], OpResult]] = [
             (((cst := arith.ConstantOp.from_int_and_width(val.data, 32)),), cst.result)
             for val in op.stride_patterns.data[0].upper_bounds
         ]
