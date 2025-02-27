@@ -240,7 +240,7 @@ class SNAXStreamer(ABC):
     def get_streamer_launch_fields(self) -> Sequence[str]:
         return ["launch_streamer"]
 
-    def get_streamer_setup_dict(self, base_addr) -> tuple[int, dict[str, int]]:
+    def get_streamer_setup_dict(self, base_addr: int) -> tuple[int, dict[str, int]]:
         """
         Generate CSR Addresses for the setup of the streamers
 
@@ -257,7 +257,7 @@ class SNAXStreamer(ABC):
         base_addr += len(self.streamer_setup_fields)
         return base_addr, streamer_setup
 
-    def get_streamer_launch_dict(self, base_addr) -> tuple[int, dict[str, int]]:
+    def get_streamer_launch_dict(self, base_addr: int) -> tuple[int, dict[str, int]]:
         """
         Generate CSR Addresses for the launch of the streamers
 

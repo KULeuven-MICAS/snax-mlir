@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 from xdsl.dialects import arith, linalg, memref
 from xdsl.dialects.builtin import IndexType, i64
-from xdsl.ir import Operation
+from xdsl.ir import Operation, SSAValue
 
 from snaxc.accelerators.rocc import RoCCAccelerator
 from snaxc.dialects import accfg
@@ -52,25 +52,25 @@ class GemminiAccelerator(RoCCAccelerator):
 
     def _gemmini_loop_ws(
         self,
-        pad_K,
-        pad_J,
-        pad_I,
-        K,
-        J,
-        I,
-        A,
-        B,
-        D,
-        C,
-        A_stride,
-        B_stride,
-        D_stride,
-        C_stride,
-    ):
+        pad_K: Operation | SSAValue,
+        pad_J: Operation | SSAValue,
+        pad_I: Operation | SSAValue,
+        K: Operation | SSAValue,
+        J: Operation | SSAValue,
+        I: Operation | SSAValue,
+        A: Operation | SSAValue,
+        B: Operation | SSAValue,
+        D: Operation | SSAValue,
+        C: Operation | SSAValue,
+        A_stride: Operation | SSAValue,
+        B_stride: Operation | SSAValue,
+        D_stride: Operation | SSAValue,
+        C_stride: Operation | SSAValue,
+    ) -> Sequence[Operation]:
         # Make lists for constructors of accfg ops
-        ops_to_insert = []
-        ops_to_configure = []
-        ops_to_launch = []
+        ops_to_insert: Sequence[Operation] = []
+        ops_to_configure: Sequence[Operation | SSAValue] = []
+        ops_to_launch: Sequence[Operation | SSAValue] = []
         # Insert hardcoded constants for now
         constants = [
             [pad_K, pad_J, pad_I],  # pad_K, pad_J, pad_I
@@ -125,57 +125,60 @@ class GemminiAccelerator(RoCCAccelerator):
             accfg.AwaitOp(token),
         ]
 
-    def convert_to_acc_ops(self, op: linalg.GenericOp) -> Sequence[Operation]:
-        a, b, _, _, c = op.operands  # Don't use zero point adjustments
-        ops_to_insert = []
-        pointer_values = []
-        stride_values = []
-        for operand in a, b, c:
+    def convert_to_acc_ops(self, op: Operation) -> Sequence[Operation]:
+        if not isinstance(op, linalg.GenericOp):
+            return []
+        else:
+            a, b, _, _, c = op.operands  # Don't use zero point adjustments
+            ops_to_insert: Sequence[Operation] = []
+            pointer_values: Sequence[SSAValue] = []
+            stride_values: Sequence[SSAValue] = []
+            for operand in a, b, c:
+                ops_to_insert.extend(
+                    [
+                        metadata := memref.ExtractStridedMetaDataOp(operand),
+                        pointer := memref.ExtractAlignedPointerAsIndexOp.get(operand),
+                        offset_ptr := arith.AddiOp(pointer, metadata.offset),
+                        offset_ptr_i64 := arith.IndexCastOp(offset_ptr, i64),
+                        # Only add stride at index 0 for our experiments
+                        stride_i64 := arith.IndexCastOp(metadata.strides[0], i64),
+                    ]
+                )
+                pointer_values.append(offset_ptr_i64.result)
+                stride_values.append(stride_i64.result)
+
+            size_values: Sequence[SSAValue] = []
+            for operand, i in zip([a, b, a], [0, 1, 1]):
+                ops_to_insert.extend(
+                    [
+                        cst_16 := arith.ConstantOp.from_int_and_width(16, IndexType()),
+                        metadata := memref.ExtractStridedMetaDataOp(operand),
+                        divided_size := arith.DivUIOp(metadata.sizes[i], cst_16),
+                        size_i64 := arith.IndexCastOp(divided_size, i64),
+                    ]
+                )
+                size_values.append(size_i64.result)
+
             ops_to_insert.extend(
                 [
-                    metadata := memref.ExtractStridedMetaDataOp(operand),
-                    pointer := memref.ExtractAlignedPointerAsIndexOp.get(operand),
-                    offset_ptr := arith.AddiOp(pointer, metadata.offset),
-                    offset_ptr_i64 := arith.IndexCastOp(offset_ptr, i64),
-                    # Only add stride at index 0 for our experiments
-                    stride_i64 := arith.IndexCastOp(metadata.strides[0], i64),
+                    cst_0 := arith.ConstantOp.from_int_and_width(0, 64),
+                    *self._gemmini_loop_ws(
+                        cst_0,
+                        cst_0,
+                        cst_0,
+                        size_values[2],  # K
+                        size_values[1],  # J
+                        size_values[0],  # I
+                        pointer_values[0],  # a
+                        pointer_values[1],  # b
+                        cst_0,  # d
+                        pointer_values[2],  # c
+                        stride_values[0],  # a
+                        stride_values[1],  # b
+                        stride_values[2],  # d --> use same as C
+                        stride_values[2],  # c
+                    ),
                 ]
             )
-            pointer_values.append(offset_ptr_i64.result)
-            stride_values.append(stride_i64.result)
 
-        size_values = []
-        for operand, i in zip([a, b, a], [0, 1, 1]):
-            ops_to_insert.extend(
-                [
-                    cst_16 := arith.ConstantOp.from_int_and_width(16, IndexType()),
-                    metadata := memref.ExtractStridedMetaDataOp(operand),
-                    divided_size := arith.DivUIOp(metadata.sizes[i], cst_16),
-                    size_i64 := arith.IndexCastOp(divided_size, i64),
-                ]
-            )
-            size_values.append(size_i64.result)
-
-        ops_to_insert.extend(
-            [
-                cst_0 := arith.ConstantOp.from_int_and_width(0, 64),
-                *self._gemmini_loop_ws(
-                    cst_0,
-                    cst_0,
-                    cst_0,
-                    size_values[2],  # K
-                    size_values[1],  # J
-                    size_values[0],  # I
-                    pointer_values[0],  # a
-                    pointer_values[1],  # b
-                    cst_0,  # d
-                    pointer_values[2],  # c
-                    stride_values[0],  # a
-                    stride_values[1],  # b
-                    stride_values[2],  # d --> use same as C
-                    stride_values[2],  # c
-                ),
-            ]
-        )
-
-        return ops_to_insert
+            return ops_to_insert

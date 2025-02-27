@@ -3,7 +3,7 @@ from math import prod
 
 from xdsl.dialects import arith, builtin
 from xdsl.dialects.builtin import i8, i32
-from xdsl.ir import BlockArgument, Operation, SSAValue
+from xdsl.ir import BlockArgument, Operation, OpResult, SSAValue
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 
 from snaxc.accelerators.dispatching import DispatchTemplate, SupportedKernel
@@ -135,27 +135,30 @@ class SNAXGEMMXAccelerator(
         op.attributes["streamer_config"] = self.streamer_config
         return op
 
-    def convert_to_acc_ops(
-        self, op: snax_stream.StreamingRegionOp
-    ) -> Sequence[Operation]:
-        args = self._generate_setup_vals(op)
+    def convert_to_acc_ops(self, op: Operation) -> Sequence[Operation]:
+        if not isinstance(op, snax_stream.StreamingRegionOp):
+            return []
+        else:
+            args = self._generate_setup_vals(op)
 
-        ops_to_insert = []
-        # insert ops to calculate arguments
-        for new_ops, _ in args:
-            ops_to_insert.extend(new_ops)
+            ops_to_insert: Sequence[Operation] = []
+            # insert ops to calculate arguments
+            for new_ops, _ in args:
+                ops_to_insert.extend(new_ops)
 
-        return [
-            *ops_to_insert,
-            setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
-            launch_val := arith.ConstantOp(
-                builtin.IntegerAttr.from_int_and_width(1, 5)
-            ),
-            token := accfg.LaunchOp(
-                [launch_val, launch_val], self.launch_fields, setup
-            ),
-            accfg.AwaitOp(token),
-        ]
+            return [
+                *ops_to_insert,
+                setup := accfg.SetupOp(
+                    [val for _, val in args], self.fields, self.name
+                ),
+                launch_val := arith.ConstantOp(
+                    builtin.IntegerAttr.from_int_and_width(1, 5)
+                ),
+                token := accfg.LaunchOp(
+                    [launch_val, launch_val], self.launch_fields, setup
+                ),
+                accfg.AwaitOp(token),
+            ]
 
     def _generate_setup_vals(
         self, op: snax_stream.StreamingRegionOp
@@ -170,7 +173,7 @@ class SNAXGEMMXAccelerator(
 
         c0 = arith.ConstantOp.from_int_and_width(0, 32)
         c1 = arith.ConstantOp.from_int_and_width(1, 32)
-        knm: list = [
+        knm: list[tuple[tuple[Operation], OpResult]] = [
             (((cst := arith.ConstantOp.from_int_and_width(val.data, 32)),), cst.result)
             for val in op.stride_patterns.data[0].upper_bounds
         ]

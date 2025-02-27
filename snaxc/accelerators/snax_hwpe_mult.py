@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, linalg, memref
-from xdsl.ir import Attribute, Operation, SSAValue
+from xdsl.ir import Operation, SSAValue
 from xdsl.utils.hints import isa
 
 from snaxc.accelerators.snax import SNAXAccelerator, SNAXPollingBarrier
@@ -18,7 +18,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
     fields = ("A", "B", "O", "vector_length", "nr_iters", "mode")
     launch_fields = ("launch",)
 
-    def convert_to_acc_ops(self, op: linalg.GenericOp) -> Sequence[Operation]:
+    def convert_to_acc_ops(self, op: Operation) -> Sequence[Operation]:
         """
         Lowers the operation op to a sequence of acc_ops.
         acc_ops are:
@@ -29,22 +29,27 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
         These ops can further be lowered by specific instances of the
         Accelerator interface
         """
-        args = self._generate_setup_vals(op)
+        if not isinstance(op, linalg.GenericOp):
+            return []
+        else:
+            args = self._generate_setup_vals(op)
 
-        ops_to_insert = []
-        # insert ops to calculate arguments
-        for new_ops, _ in args:
-            ops_to_insert.extend(new_ops)
+            ops_to_insert: Sequence[Operation] = []
+            # insert ops to calculate arguments
+            for new_ops, _ in args:
+                ops_to_insert.extend(new_ops)
 
-        return [
-            *ops_to_insert,
-            setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
-            launch_val := arith.ConstantOp(
-                builtin.IntegerAttr.from_int_and_width(0, 5)
-            ),
-            token := accfg.LaunchOp([launch_val], self.launch_fields, setup),
-            accfg.AwaitOp(token),
-        ]
+            return [
+                *ops_to_insert,
+                setup := accfg.SetupOp(
+                    [val for _, val in args], self.fields, self.name
+                ),
+                launch_val := arith.ConstantOp(
+                    builtin.IntegerAttr.from_int_and_width(0, 5)
+                ),
+                token := accfg.LaunchOp([launch_val], self.launch_fields, setup),
+                accfg.AwaitOp(token),
+            ]
 
     def _generate_setup_vals(
         self, op: linalg.GenericOp
@@ -57,8 +62,6 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
         - a reference to the SSAValue containing the calculated field value
         """
         a, b, c = op.operands
-        for operand in op.operands:
-            assert isa(operand.type, builtin.MemRefType[Attribute])
 
         zero = arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
         iters_one = arith.ConstantOp.from_int_and_width(1, 32)
@@ -70,24 +73,27 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
         nr_iters = [iters_one], iters_one.result
         mode = [mode_one], mode_one.result
 
-        ptrs = [
-            (
-                [
-                    ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref),
-                    metadata := memref.ExtractStridedMetaDataOp(ref),
-                    el_bytes := arith.ConstantOp.from_int_and_width(
-                        ref.type.element_type.size, builtin.IndexType()
-                    ),
-                    byte_offset := arith.MuliOp(metadata.offset, el_bytes),
-                    ptr_plus_byte_offset := arith.AddiOp(
-                        ptr, byte_offset, builtin.IndexType()
-                    ),
-                    ptr_i32 := arith.IndexCastOp(ptr_plus_byte_offset, builtin.i32),
-                ],
-                ptr_i32.result,
+        ptrs: Sequence[tuple[Sequence[Operation], SSAValue]] = []
+
+        for ref in (a, b, c):
+            assert isa(ref.type, builtin.MemRefType[builtin.IntegerType])
+            ptrs.append(
+                (
+                    [
+                        ptr := memref.ExtractAlignedPointerAsIndexOp.get(ref),
+                        metadata := memref.ExtractStridedMetaDataOp(ref),
+                        el_bytes := arith.ConstantOp.from_int_and_width(
+                            ref.type.element_type.size, builtin.IndexType()
+                        ),
+                        byte_offset := arith.MuliOp(metadata.offset, el_bytes),
+                        ptr_plus_byte_offset := arith.AddiOp(
+                            ptr, byte_offset, builtin.IndexType()
+                        ),
+                        ptr_i32 := arith.IndexCastOp(ptr_plus_byte_offset, builtin.i32),
+                    ],
+                    ptr_i32.result,
+                )
             )
-            for ref in (a, b, c)
-        ]
 
         return ptrs + [nr_iters] + [vector_length] + [mode]
 

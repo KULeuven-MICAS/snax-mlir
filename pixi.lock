@@ -96,7 +96,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pulp-2.8.0-py312h7900ff3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pycparser-2.22-pyh29332c3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyparsing-3.2.1-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/pyright-1.1.392.post0-py312h66e93f0_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/pyright-1.1.394-py312h66e93f0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pysocks-1.7.1-pyha55dd90_7.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/python-3.12.8-h9e4cc4f_1_cpython.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/python-fastjsonschema-2.21.1-pyhd8ed1ab_0.conda
@@ -1790,9 +1790,9 @@ packages:
   - pkg:pypi/pyparsing?source=hash-mapping
   size: 93082
   timestamp: 1735698406955
-- conda: https://conda.anaconda.org/conda-forge/linux-64/pyright-1.1.392.post0-py312h66e93f0_0.conda
-  sha256: 5090c2661a5309cff19d49df69157034b3f6f27a86753aa795c646cdfceb689f
-  md5: 2c82781d41bc3214fb2e752f32a0e55e
+- conda: https://conda.anaconda.org/conda-forge/linux-64/pyright-1.1.394-py312h66e93f0_0.conda
+  sha256: 83be71223a86e617985f34aa6965288d27daba452183b6f89d0016a56925bf1e
+  md5: 054e0eb7340912cbf366bdc737f40e63
   depends:
   - __glibc >=2.17,<3.0.a0
   - libgcc >=13
@@ -1805,8 +1805,8 @@ packages:
   license_family: MIT
   purls:
   - pkg:pypi/pyright?source=hash-mapping
-  size: 3495504
-  timestamp: 1737005908273
+  size: 3523891
+  timestamp: 1739377976577
 - conda: https://conda.anaconda.org/conda-forge/noarch/pysocks-1.7.1-pyha55dd90_7.conda
   sha256: ba3b032fa52709ce0d9fd388f63d330a026754587a2f461117cac9ab73d8d0d8
   md5: 461219d1a5bd61342293efa2c0c90eac
@@ -2054,6 +2054,8 @@ packages:
   - throttler >=1.2.2,<2.0.0
   license: MIT
   license_family: MIT
+  purls:
+  - pkg:pypi/snakemake-interface-executor-plugins?source=hash-mapping
   size: 22863
   timestamp: 1734791239397
 - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-interface-report-plugins-1.1.0-pyhdfd78af_0.tar.bz2
@@ -2075,6 +2077,8 @@ packages:
   - throttler >=1.2.2,<2.0.0
   - wrapt >=1.15.0,<2.0.0
   license: MIT
+  purls:
+  - pkg:pypi/snakemake-interface-storage-plugins?source=hash-mapping
   size: 18653
   timestamp: 1724066710607
 - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-minimal-8.27.1-pyhdfd78af_0.tar.bz2
@@ -2125,7 +2129,7 @@ packages:
 - pypi: .
   name: snax-mlir
   version: 0.2.2
-  sha256: d78c4be06637cf522f6588b991c61bd458219089f12c3fdfb2915c0e4365842e
+  sha256: 2216c43550851c62872e70ad5242f9ae210a5be991beddb31f425424edc2d0be
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@e9b1efb65d0873ee21442515e78f3a449b01bedb
   - numpy

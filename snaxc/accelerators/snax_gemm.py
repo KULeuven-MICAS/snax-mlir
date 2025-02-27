@@ -83,9 +83,7 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         op.attributes["streamer_config"] = self.streamer_config
         return op
 
-    def convert_to_acc_ops(
-        self, op: snax_stream.StreamingRegionOp
-    ) -> Sequence[Operation]:
+    def convert_to_acc_ops(self, op: Operation) -> Sequence[Operation]:
         """
         Lowers the operation op to a sequence of acc_ops.
         acc_ops are:
@@ -96,24 +94,29 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
         These ops can further be lowered by specific instances of the
         Accelerator interface
         """
-        args = self._generate_setup_vals(op)
+        if not isinstance(op, snax_stream.StreamingRegionOp):
+            return []
+        else:
+            args = self._generate_setup_vals(op)
 
-        ops_to_insert = []
-        # insert ops to calculate arguments
-        for new_ops, _ in args:
-            ops_to_insert.extend(new_ops)
+            ops_to_insert: Sequence[Operation] = []
+            # insert ops to calculate arguments
+            for new_ops, _ in args:
+                ops_to_insert.extend(new_ops)
 
-        return [
-            *ops_to_insert,
-            setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
-            launch_val := arith.ConstantOp(
-                builtin.IntegerAttr.from_int_and_width(1, 5)
-            ),
-            token := accfg.LaunchOp(
-                [launch_val, launch_val], self.launch_fields, setup
-            ),
-            accfg.AwaitOp(token),
-        ]
+            return [
+                *ops_to_insert,
+                setup := accfg.SetupOp(
+                    [val for _, val in args], self.fields, self.name
+                ),
+                launch_val := arith.ConstantOp(
+                    builtin.IntegerAttr.from_int_and_width(1, 5)
+                ),
+                token := accfg.LaunchOp(
+                    [launch_val, launch_val], self.launch_fields, setup
+                ),
+                accfg.AwaitOp(token),
+            ]
 
     def _generate_setup_vals(
         self, op: snax_stream.StreamingRegionOp
@@ -137,10 +140,12 @@ class SNAXGEMMAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate):
     @staticmethod
     def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         c0 = arith.ConstantOp.from_int_and_width(0, 32)
-        addr_acc = acc_op.launch_fields.data["launch_gemm"].value.data
-        addr_acc = arith.ConstantOp.from_int_and_width(addr_acc, 32)
-        addr_str = acc_op.launch_fields.data["launch_streamer"].value.data
-        addr_str = arith.ConstantOp.from_int_and_width(addr_str, 32)
+        addr_acc = dict(acc_op.launch_field_items())["launch_gemm"].value.data
+        addr_acc = arith.ConstantOp.from_int_and_width(addr_acc, 32)  # type : ignore
+        addr_str = dict(acc_op.launch_field_items())[
+            "launch_streamer"
+        ].value.data  # type : ignore
+        addr_str = arith.ConstantOp.from_int_and_width(addr_str, 32)  # typ
         return [
             c0,
             addr_acc,
