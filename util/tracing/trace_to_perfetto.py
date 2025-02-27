@@ -5,7 +5,7 @@ import json
 import typing
 from concurrent.futures import ProcessPoolExecutor
 
-from snaxc.accelerators.registry import AcceleratorRegistry
+from snaxc.accelerators import get_all_accelerators
 from snaxc.accelerators.snax import SNAXAccelerator
 from util.tracing.annotation import (
     BarrierEventGenerator,
@@ -25,11 +25,7 @@ def worker(file: str, accelerator: str):
         DMAEventGenerator(),
     ]
     if accelerator is not None:
-        accelerator_op = (
-            AcceleratorRegistry()
-            .registered_accelerators[accelerator]()
-            .generate_acc_op()
-        )
+        accelerator_op = get_all_accelerators()[accelerator]().generate_acc_op()
         generators.append(SNAXAcceleratorEventGenerator(accelerator_op))
 
     with open(file) as f:
@@ -69,10 +65,10 @@ def parse_arguments():
     )
 
     # Only allow SNAX accelerators for now
-    snax_accelerators = []
-    for accelerator, acc_class in AcceleratorRegistry().registered_accelerators.items():
-        if issubclass(acc_class, SNAXAccelerator):
-            snax_accelerators.append(accelerator)
+    snax_accelerators: typing.Sequence[str] = []
+    for name, factory in get_all_accelerators().items():
+        if isinstance(factory(), SNAXAccelerator):
+            snax_accelerators.append(name)
 
     parser.add_argument(
         "--accelerator",
