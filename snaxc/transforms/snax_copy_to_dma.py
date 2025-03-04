@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, scf
 from xdsl.dialects.arith import AddiOp, ConstantOp, MuliOp
@@ -160,8 +162,11 @@ def extract_offset(memreftype: MemRefType):
     return 0
 
 
+@dataclass
 class TransformDMA(RewritePattern):
     """Look for memref copy operations with TSL layout and insert snitch DMA calls"""
+
+    test_ignore_transform: bool = False
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: CopyOp, rewriter: PatternRewriter):
@@ -186,6 +191,8 @@ class TransformDMA(RewritePattern):
         # if source is not tsl, construct representation:
         if isinstance(op.source.type.layout, TiledStridedLayoutAttr):
             tsl_source = op.source.type.layout
+        elif self.test_ignore_transform:
+            tsl_source = op.destination.type.layout
         else:
             strides = extract_strides(op.source.type)
             tile_bounds: list[list[int | None]]
@@ -209,6 +216,8 @@ class TransformDMA(RewritePattern):
         # if dest is not tsl, construct representation:
         if isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
             tsl_dest = op.destination.type.layout
+        elif self.test_ignore_transform:
+            tsl_dest = op.source.type.layout
         else:
             strides = extract_strides(op.destination.type)
             tile_bounds: list[list[int | None]]
@@ -485,6 +494,7 @@ class TransformDMA(RewritePattern):
         rewriter.replace_op(op, outermost_for_loop)
 
 
+@dataclass(frozen=True)
 class SNAXCopyToDMA(ModulePass):
     """
     This pass translates memref copies to snitch DMA calls.
@@ -492,9 +502,15 @@ class SNAXCopyToDMA(ModulePass):
 
     name = "snax-copy-to-dma"
 
+    test_ignore_transform: bool | None = False
+
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(MatchSimpleCopy()).rewrite_module(op)
-        PatternRewriteWalker(TransformDMA()).rewrite_module(op)
+
+        ignore = self.test_ignore_transform
+        if ignore is None:
+            ignore = False
+        PatternRewriteWalker(TransformDMA(ignore)).rewrite_module(op)
 
         if any(
             isinstance(op_in_module, func.CallOp)
