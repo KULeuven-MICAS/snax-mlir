@@ -37,6 +37,7 @@ from compiler.transforms.snax_to_func import SNAXToFunc
 from compiler.transforms.stream_snaxify import StreamSnaxify
 from compiler.transforms.test_add_mcycle_around_loop import AddMcycleAroundLoopPass
 from compiler.transforms.test_remove_memref_copy import RemoveMemrefCopyPass
+from compiler.transforms.linalg_to_gemmini_os import ConvertLinalgToGemminiOsPass
 
 
 class SNAXOptMain(xDSLOptMain):
@@ -99,6 +100,8 @@ class SNAXOptMain(xDSLOptMain):
             lambda: GuardedLinalgToMemrefStreamPass,
         )
         super().register_pass(ScheduleMemrefLinalg.name, lambda: ScheduleMemrefLinalg)
+        super().register_pass(ConvertLinalgToGemminiOsPass.name, lambda: ConvertLinalgToGemminiOsPass)
+
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
