@@ -134,7 +134,6 @@ class LaunchOp(IRDLOperation):
         param_names: Iterable[str] | Iterable[StringAttr],
         state: SSAValue | Operation,
     ):
-        breakpoint()
         state_val: SSAValue = SSAValue.get(state)
 
         if not isinstance(state_val.type, StateType):

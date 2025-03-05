@@ -11,7 +11,7 @@ CFLAGS += -Wall -Wextra
 
 # Override snax-opt rules to avoid linalg-to-library-call pass
 SNAXOPTACCFLAGS = -p convert-linalg-to-gemmini-os
-#SNAXOPTACCFLAGS = -p convert-linalg-to-gemmini-os ,convert-accfg-to-csr
+#SNAXOPTACCFLAGS = -p convert-linalg-to-gemmini-os,convert-accfg-to-csr
 
 tiled_matmul.mlir: tiled_matmul.transform.mlir
 	${MLIROPT} --pass-pipeline='builtin.module(test-transform-dialect-interpreter{bind-first-extra-to-ops=linalg.quantized_matmul}, test-transform-dialect-erase-schedule, linalg-generalize-named-ops)' $^ | sed -E 's/iterator_types =/library_call="gemmini_os", iterator_types =/gm;t' > $@
