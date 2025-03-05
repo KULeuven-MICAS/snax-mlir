@@ -1,7 +1,7 @@
 from typing import Sequence
 from compiler.accelerators.gemmini import GemminiAccelerator
 from compiler.dialects import accfg
-from xdsl.dialects import linalg, arith, scf
+from xdsl.dialects import linalg, arith, scf, builtin
 from xdsl.ir import Operation, SSAValue
 from abc import ABC, abstractmethod
 
@@ -15,10 +15,11 @@ class GemminiOsAcceleratorBase(GemminiAccelerator, ABC):
         return accfg.SetupOp(vals, self.fields, self.name)
 
     def get_launch_await_seq(self, launch_vals: Sequence[Operation | SSAValue], state: accfg.SetupOp) -> tuple[accfg.LaunchOp, accfg.AwaitOp]:
-        return (
+        ops =  (
             token := accfg.LaunchOp(launch_vals, self.launch_fields, state),
             accfg.AwaitOp(token),
         )
+        return ops
 
 
 class GemminiMvinAccelerator(GemminiOsAcceleratorBase):
@@ -95,18 +96,31 @@ class GemminiExAccelerator(GemminiOsAcceleratorBase):
 
         (╯°□°)╯︵ ┻━┻
 
+        if k == 0
+          use op-code defined by k_COMPUTE_PRELOADED (4)
+        else
+          use op-code defined by k_COMPUTE_ACCUMULATE (5)
+          
         """
         true_region = [
-            *self.get_launch_await_seq(launch_vals, input_state),
+            launch_op_true := accfg.LaunchOp(launch_vals, self.launch_fields, input_state),
+            accfg.AwaitOp(launch_op_true),
             scf.Yield()
         ]
+        launch_op_true.attributes["override_gemmini_opcode"] = builtin.IntegerAttr(4, 32)
         false_region = [
-            *self.get_launch_await_seq(launch_vals, input_state),
+            launch_op_false := accfg.LaunchOp(launch_vals, self.launch_fields, input_state),
+            accfg.AwaitOp(launch_op_false),
             scf.Yield()
         ]
+        launch_op_false.attributes["override_gemmini_opcode"] = builtin.IntegerAttr(5, 32)
         return scf.If(condition, [], true_region, false_region)
 
 def convert_to_accfg_sequence(op : linalg.Generic) -> Sequence[Operation]:
+    """
+    Convert a linalg generic to a sequence of different accelerator calls for
+    gemmini output stationary mode
+    """
     mvin = GemminiMvinAccelerator()
     ex = GemminiExAccelerator()
     mvout = GemminiMvoutAccelerator()
