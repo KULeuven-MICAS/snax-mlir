@@ -4,6 +4,7 @@ from compiler.dialects import accfg
 from xdsl.dialects import linalg, arith, scf, builtin
 from xdsl.ir import Operation, SSAValue
 from abc import ABC, abstractmethod
+from accelerators.rocc import create_pairs, combine_pairs_to_ops
 
 class GemminiOsAcceleratorBase(GemminiAccelerator, ABC):
     """
@@ -115,6 +116,38 @@ class GemminiExAccelerator(GemminiOsAcceleratorBase):
         ]
         launch_op_false.attributes["override_gemmini_opcode"] = builtin.IntegerAttr(5, 32)
         return scf.If(condition, [], true_region, false_region)
+
+    @staticmethod
+    def lower_acc_launch(
+        launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
+    ) -> Sequence[Operation]:
+        """
+        Patched lower_acc_launch method to fix override in opcode emission
+
+        (╥‸╥)
+
+        LaunchOps that have override_gemmini_opcode attribute have to 
+        ignore acceleratorop for code emission
+        """
+        xcustom_acc = 3  # hardcoded to 3 for now
+
+        vals = create_pairs(launch_op)
+
+        mapping = acc_op.launch_field_items()
+
+        if launch_op.attributes["override_gemmini_opcode"] is not None:
+            repacked_mapping = dict(mapping)
+            
+            # override "k_COMPUTE"
+            assert "k_COMPUTE.rs2" in repacked_mapping
+            repacked_mapping["k_COMPUTE.rs2"] = launch_op.attributes["override_gemmini_opcode"]
+            assert "k_COMPUTE.rs1" in repacked_mapping
+            repacked_mapping["k_COMPUTE.rs1"] = launch_op.attributes["override_gemmini_opcode"]
+
+            mapping = repacked_mapping.items()
+
+        # Create the sequence of all operations that need to be emitted
+        return combine_pairs_to_ops(mapping, vals, xcustom_acc)
 
 def convert_to_accfg_sequence(op : linalg.Generic) -> Sequence[Operation]:
     """
