@@ -10,7 +10,7 @@ CFLAGS += -Wall -Wextra
 
 
 # Override snax-opt rules to avoid linalg-to-library-call pass
-SNAXOPTACCFLAGS = -p convert-linalg-to-gemmini-os
+SNAXOPTACCFLAGS = -p convert-linalg-to-gemmini-os,convert-gemmini-os-to-rocc
 #SNAXOPTACCFLAGS = -p convert-linalg-to-gemmini-os,convert-accfg-to-csr
 
 tiled_matmul.mlir: tiled_matmul.transform.mlir
