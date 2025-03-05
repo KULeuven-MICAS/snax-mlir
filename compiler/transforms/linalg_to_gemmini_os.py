@@ -40,7 +40,9 @@ class ConvertLinalgToGemminiOsPattern(RewritePattern):
         library_call_name = op.library_call.data
         if library_call_name != "gemmini_os":
             return
-        rewriter.replace_matched_op(convert_to_accfg_sequence(op))
+        rewriter.replace_matched_op(
+                convert_to_accfg_sequence(op),
+                )
 
 
 class ConvertLinalgToGemminiOsPass(ModulePass):

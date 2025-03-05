@@ -1,9 +1,27 @@
 from typing import Sequence
 from compiler.accelerators.gemmini import GemminiAccelerator
-from xdsl.dialects import linalg
-from xdsl.ir import Operation
+from compiler.dialects import accfg
+from xdsl.dialects import linalg, arith
+from xdsl.ir import Operation, SSAValue
+from abc import ABC, abstractmethod
 
-class GemminiMvinAccelerator(GemminiAccelerator):
+class GemminiOsAcceleratorBase(GemminiAccelerator, ABC):
+    """
+    Abstract base class for Gemmini accelerator instances in
+    output stationary mode
+    """
+
+    def get_setup_op(self, vals : Sequence[Operation | SSAValue]) -> accfg.SetupOp:
+        return accfg.SetupOp(vals, self.fields, self.name)
+
+    def get_launch_await_seq(self, launch_vals: Sequence[Operation | SSAValue], state: accfg.SetupOp) -> tuple[accfg.LaunchOp, accfg.AwaitOp]:
+        return (
+            token := accfg.LaunchOp(launch_vals, self.launch_fields, state),
+            accfg.AwaitOp(token),
+        )
+
+
+class GemminiMvinAccelerator(GemminiOsAcceleratorBase):
     name = "gemmini_mvin"
     """
     For some weird reason, all of these config instructions use the same 
@@ -27,7 +45,7 @@ class GemminiMvinAccelerator(GemminiAccelerator):
     }
 
 
-class GemminiMvoutAccelerator(GemminiAccelerator):
+class GemminiMvoutAccelerator(GemminiOsAcceleratorBase):
     name = "gemmini_mvout"
     """
     For some weird reason, all of these config instructions use the same 
@@ -46,7 +64,7 @@ class GemminiMvoutAccelerator(GemminiAccelerator):
         "k_MVOUT.rs2": 3,
     }
 
-class GemminiExAccelerator(GemminiAccelerator):
+class GemminiExAccelerator(GemminiOsAcceleratorBase):
     name = "gemmini_ex"
     """
     For some weird reason, all of these config instructions use the same 
@@ -69,4 +87,12 @@ class GemminiExAccelerator(GemminiAccelerator):
     }
 
 def convert_to_accfg_sequence(op : linalg.Generic) -> Sequence[Operation]:
-    return None
+    ex = GemminiExAccelerator()
+    ops_to_insert : Sequence[SSAValue | Operation] = []
+    ops_to_insert.extend([
+        zero := arith.Constant.from_int_and_width(0, 64),
+        setup := accfg.SetupOp([zero, zero], GemminiExAccelerator.fields, "gemmini_ex"),
+        *ex.get_launch_await_seq([zero,zero],setup)
+    ])
+    return ops_to_insert
+            
