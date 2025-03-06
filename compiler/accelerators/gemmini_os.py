@@ -4,7 +4,7 @@ from compiler.dialects import accfg
 from xdsl.dialects import linalg, arith, scf, builtin
 from xdsl.ir import Operation, SSAValue
 from abc import ABC, abstractmethod
-from accelerators.rocc import create_pairs, combine_pairs_to_ops
+from compiler.accelerators.rocc import create_pairs, combine_pairs_to_ops
 
 class GemminiOsAcceleratorBase(GemminiAccelerator, ABC):
     """

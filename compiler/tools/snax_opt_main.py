@@ -8,6 +8,7 @@ from compiler.dialects.accfg import ACCFG
 from compiler.dialects.snax import Snax
 from compiler.dialects.snax_stream import SnaxStream
 from compiler.dialects.tsl import TSL
+from compiler.dialects.bitcast_backport import ArithPatched
 from compiler.transforms.accfg_config_overlap import AccfgConfigOverlapPass
 from compiler.transforms.accfg_dedup import AccfgDeduplicate
 from compiler.transforms.accfg_insert_resets import InsertResetsPass
@@ -60,11 +61,13 @@ class SNAXOptMain(xDSLOptMain):
         ## Add custom dialects & passes
         # FIXME: override upstream accfg dialect. Remove this after upstreaming full downstream accfg dialect.
         self.ctx._registered_dialects.pop("accfg", None)  # pyright: ignore
+        self.ctx._registered_dialects.pop("arith", None)  # pyright: ignore
 
         self.ctx.load_dialect(Snax)
         self.ctx.load_dialect(TSL)
         self.ctx.load_dialect(ACCFG)
         self.ctx.load_dialect(SnaxStream)
+        self.ctx.load_dialect(ArithPatched)
         super().register_pass(DispatchKernels.name, lambda: DispatchKernels)
         super().register_pass(LinalgToLibraryCall.name, lambda: LinalgToLibraryCall)
         super().register_pass(SetMemorySpace.name, lambda: SetMemorySpace)
