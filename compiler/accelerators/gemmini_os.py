@@ -328,39 +328,37 @@ def convert_to_accfg_sequence(op: linalg.Generic) -> Sequence[Operation]:
     )
 
     # And now the main boo-hoo:
+    # the super bad-ass unrolling we do only works for K > 1
+    # so lets assert for K here
+    assert isinstance(A.type, builtin.MemRefType)
+    K_statically_known = A.type.get_shape()[1] // 16
+    assert K_statically_known > 1, "K must be larger than 1"
+
     """
+    // this only works for K > 1
     for (size_t i = 0; i < I; i++) {
         for (size_t j = 0; j < J; j++) {
-        const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
+            const uint32_t A_sp_addr_0 = A_sp_addr_start + (i*K*DIM);
+            const uint32_t B_sp_addr_0 = B_sp_addr_start + (j*DIM);
 
-        for (size_t k = 0; k < K; k++) {
+            gemmini_extended_preload(GARBAGE_ADDR, GARBAGE_ADDR, DIM, DIM, DIM, DIM);
+            gemmini_extended_compute_preloaded(A_sp_addr_0, B_sp_addr_0, DIM, DIM, DIM, DIM);
 
-            const uint32_t A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
-            const uint32_t B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
+            for (size_t k = 1; k < K-1; k++) {
+                const uint32_t A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
+                const uint32_t B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
 
-            uint32_t out_sp_addr = k == K-1 ? C_sp_addr : GARBAGE_ADDR;
+                gemmini_extended_preload(GARBAGE_ADDR, GARBAGE_ADDR, DIM, DIM, DIM, DIM);
 
-            // If we're not using a bias, then we want to overwrite what's in the
-            // accumulator, rather than writing over it
-            if (k == K-1) {
-                out_sp_addr &= ~(1 << (ADDR_LEN-2));
+                gemmini_extended_compute_accumulated(A_sp_addr, B_sp_addr, DIM, DIM, DIM, DIM);
             }
 
-            const size_t A_cols = DIM - (k == K - 1 ? pad_K : 0);
-            const size_t A_rows = DIM - (i == I - 1 ? pad_I : 0);
-            const size_t B_cols = DIM - (j == J - 1 ? pad_J : 0);
-            const size_t B_rows = DIM - (k == K - 1 ? pad_K : 0);
-            const size_t C_cols = DIM - (j == J - 1 ? pad_J : 0);
-            const size_t C_rows = DIM - (i == I - 1 ? pad_I : 0);
+            const uint32_t A_sp_addr_last = A_sp_addr_start + (i*K + (K-1))*DIM;
+            const uint32_t B_sp_addr_last = B_sp_addr_start + ((K-1)*J + j)*DIM;
 
-            gemmini_extended_preload(GARBAGE_ADDR, out_sp_addr, DIM, DIM, C_cols, C_rows);
+            gemmini_extended_preload(GARBAGE_ADDR, GARBAGE_ADDR, DIM, DIM, DIM, DIM);
 
-            if (k == 0) { // First iteration
-            gemmini_extended_compute_preloaded(A_sp_addr, B_sp_addr, A_cols, A_rows, B_cols, B_rows);
-            } else { // All other iterations
-            gemmini_extended_compute_accumulated(A_sp_addr, B_sp_addr, A_cols, A_rows, B_cols, B_rows);
-            }
-        }
+            gemmini_extended_compute_accumulated(A_sp_addr_last, B_sp_addr_last, DIM, DIM, DIM, DIM);
         }
     }
     """
