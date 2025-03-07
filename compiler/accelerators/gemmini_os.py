@@ -343,23 +343,9 @@ def convert_to_accfg_sequence(op: linalg.Generic) -> Sequence[Operation]:
     )
 
     # finally, move D out
-    """
-    // Move-out C
-    const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
-
-    for (size_t i = 0; i < I; i++) {
-        for (size_t j = 0; j < J; j++) {
-            void * const C_dram_addr = (int8_t*)C + (i*C_row_stride + j)*DIM*sizeof_C;
-            const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
-
-            const size_t C_cols = DIM - (j == J - 1 ? pad_J : 0);
-            const size_t C_rows = DIM - (i == I - 1 ? pad_I : 0);
-
-            gemmini_extended_mvout(C_dram_addr, C_sp_addr, C_cols, C_rows);
-        }
-    }
-    """
-
+    C_ptr = pointer_values[2]
+    C_stride = stride_values[2]
+    ops_to_insert.extend(gen_move_out_d(C_ptr, C_stride, C_sp_addr_start, I, J))
     return ops_to_insert
 
 
@@ -843,3 +829,57 @@ def gemmini_extended_compute_rs1_rs2(A, BD, A_cols, A_rows, BD_cols, BD_rows):
     )[-1].result
 
     return rs1, rs2
+
+
+def gen_move_out_d(C, C_row_stride, C_sp_addr_start, I, J):
+    """
+    // Move-out C
+
+    for (size_t i = 0; i < I; i++) {
+        for (size_t j = 0; j < J; j++) {
+            void * const C_dram_addr = (int8_t*)C + (i*C_row_stride + j)*DIM;
+            const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
+
+            gemmini_extended_mvout(C_dram_addr, C_sp_addr, DIM, DIM);
+        }
+    }
+    """
+    int_t = builtin.i64
+
+    cst_0 = arith.Constant.from_int_and_width(0, int_t)
+    cst_1 = arith.Constant.from_int_and_width(1, int_t)
+
+    outer = Block(arg_types=[int_t])
+    with ImplicitBuilder(outer) as (i,):
+        inner = Block(arg_types=[int_t])
+        DIM = arith.Constant.from_int_and_width(GemminiConstants.DIM, int_t)
+        with ImplicitBuilder(inner) as (j,):
+            # C_dram_addr = (int8_t*)C + (i*C_row_stride + j)*DIM;
+            C_dram_addr = add(C, mul(add(mul(i, C_row_stride), j), DIM))
+
+            # C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
+            C_sp_addr = add(C_sp_addr_start, mul(add(mul(i, J), j), DIM))
+
+            setup = accfg.SetupOp([], [], GemminiMvoutAccelerator.name)
+            """
+            ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (uint64_t)(spad_addr))
+            """
+            packed = list(
+                pack_bitlist(
+                    values=(DIM, DIM, C_sp_addr),
+                    offsets=(
+                        GemminiConstants.ADDR_LEN + 16,
+                        GemminiConstants.ADDR_LEN,
+                        0,
+                    ),
+                    dtype=64,
+                )
+            )[-1]
+            GemminiMvoutAccelerator().get_launch_await_seq(
+                (C_dram_addr, packed), setup.out_state
+            )
+            scf.Yield()
+        scf.For(cst_0, J, cst_1, [], inner)
+        scf.Yield()
+    loop = scf.For(cst_0, I, cst_1, [], outer)
+    return (cst_1, cst_0, loop)
