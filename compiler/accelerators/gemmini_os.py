@@ -4,6 +4,7 @@ from compiler.dialects import accfg
 from xdsl.dialects import linalg, arith, scf, builtin, memref
 from xdsl.ir import Operation, SSAValue, Attribute, Block
 from abc import ABC, abstractmethod
+from xdsl.builder import ImplicitBuilder
 from compiler.accelerators.rocc import create_pairs, combine_pairs_to_ops
 
 
@@ -445,24 +446,25 @@ def gen_move_in_b(
         }
     }
     """
-    from xdsl.builder import ImplicitBuilder
-
-    ops = [
-        cst_0 := arith.Constant.from_int_and_width(0, int_t),
-        cst_1 := arith.Constant.from_int_and_width(1, int_t),
-        DIM := arith.Constant.from_int_and_width(GemminiConstants.DIM, int_t),
-        float_one_as_int := arith.Constant.from_int_and_width(0x3F800000, int_t),
-    ]
-    calc_ops, rs1 = build_mv_setup_rs1(float_one_as_int)
-    ops.extend(calc_ops)
-    ops.append(
-        cfg_op := GemminiMvinAccelerator().get_setup_op(
-            (
-                rs1,
-                B_row_stride,
-            )
+    cst_0 = arith.Constant.from_int_and_width(0, int_t)
+    cst_1 = arith.Constant.from_int_and_width(1, int_t)
+    DIM = arith.Constant.from_int_and_width(GemminiConstants.DIM, int_t)
+    float_one_as_int = arith.Constant.from_int_and_width(0x3F800000, int_t)
+    other_ops, rs1 = build_mv_setup_rs1(float_one_as_int)
+    cfg_op = GemminiMvinAccelerator().get_setup_op(
+        (
+            rs1,
+            B_row_stride,
         )
     )
+    ops = [
+        cst_0,
+        cst_1,
+        DIM,
+        float_one_as_int,
+        *other_ops,
+        cfg_op,
+    ]
 
     outer = Block(arg_types=[int_t])
     with ImplicitBuilder(outer) as (j,):
@@ -495,7 +497,9 @@ def gen_move_in_b(
         scf.For(cst_0, K, cst_1, [], body=inner)
         scf.Yield()
 
-    return (*ops, scf.For(cst_0, J, B_blocks, [], body=outer))
+    ops.append(scf.For(cst_0, J, B_blocks, [], body=outer))
+
+    return ops
 
 
 def build_mv_launch_rs2(
@@ -539,14 +543,19 @@ def build_mv_setup_rs1(scale_factor) -> tuple[Sequence[Operation], SSAValue]:
 
     and CONFIG_LD = 1
     """
-    return (
-        cst_32 := arith.Constant.from_int_and_width(32, builtin.i64),
-        v0 := arith.ShLI(scale_factor, cst_32),
-        other_consts := arith.Constant.from_int_and_width(
-            (GemminiConstants.DIM << 16)  # block_mvin_srtride
-            | (1 << 8)  # pixel_repeats
-            | (2),  # CONFIG_LD
-            builtin.i64,
-        ),
-        res := arith.OrI(v0, other_consts),
-    ), res.result
+
+    cst_32 = arith.Constant.from_int_and_width(32, builtin.i64)
+    v0 = arith.ShLI(scale_factor, cst_32)
+    other_consts = arith.Constant.from_int_and_width(
+        (GemminiConstants.DIM << 16)  # block_mvin_srtride
+        | (1 << 8)  # pixel_repeats
+        | (2),  # CONFIG_LD
+        builtin.i64,
+    )
+    res = arith.OrI(v0, other_consts)
+    return [
+        cst_32,
+        v0,
+        other_consts,
+        res,
+    ], res.result
