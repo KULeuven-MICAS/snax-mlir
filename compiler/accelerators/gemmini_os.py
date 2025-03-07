@@ -1,6 +1,7 @@
 from typing import Sequence
 from compiler.accelerators.gemmini import GemminiAccelerator
 from compiler.dialects import accfg
+from compiler.util.pack_bitlist import pack_bitlist
 from xdsl.dialects import linalg, arith, scf, builtin, memref
 from xdsl.ir import Operation, SSAValue, Attribute, Block
 from abc import ABC, abstractmethod
@@ -25,6 +26,7 @@ class GemminiConstants:
     ACC_SCALE_IDENTITY = 1.0
     ACC_SCALE_EXP_BITS = 8
     ACC_SCALE_SIG_BITS = 24
+    GARBAGE_ADDRESS = 4294967295
 
 
 class GemminiOsAcceleratorBase(GemminiAccelerator, ABC):
@@ -104,15 +106,15 @@ class GemminiExAccelerator(GemminiOsAcceleratorBase):
       instructions, because this is based on the op-code of the operation.
     """
     fields = {
-        "k_CONFIG_k_CONFIG_EX.rs1": 0,
-        "k_CONFIG_k_CONFIG_EX.rs2": 0,
+        # "k_CONFIG_k_CONFIG_EX.rs1": 0,
+        # "k_CONFIG_k_CONFIG_EX.rs2": 0,
     }
     launch_fields = {
         "k_PRELOAD.rs1": 2,
         "k_PRELOAD.rs2": 2,
         "k_COMPUTE.rs1": 4,  # and 5, both COMPUTE_PRELOADED and COMPUTE_ACCUMULATE
         "k_COMPUTE.rs2": 4,  # and 5, both COMPUTE_PRELOADED and COMPUTE_ACCUMULATE
-        "is_accum": -1,
+        "is_preloaded": -1,
     }
 
     def get_conditional_launch_seq(
@@ -334,34 +336,11 @@ def convert_to_accfg_sequence(op: linalg.Generic) -> Sequence[Operation]:
     K_statically_known = A.type.get_shape()[1] // 16
     assert K_statically_known > 1, "K must be larger than 1"
 
-    """
-    // this only works for K > 1
-    for (size_t i = 0; i < I; i++) {
-        for (size_t j = 0; j < J; j++) {
-            const uint32_t A_sp_addr_0 = A_sp_addr_start + (i*K*DIM);
-            const uint32_t B_sp_addr_0 = B_sp_addr_start + (j*DIM);
-
-            gemmini_extended_preload(GARBAGE_ADDR, GARBAGE_ADDR, DIM, DIM, DIM, DIM);
-            gemmini_extended_compute_preloaded(A_sp_addr_0, B_sp_addr_0, DIM, DIM, DIM, DIM);
-
-            for (size_t k = 1; k < K-1; k++) {
-                const uint32_t A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
-                const uint32_t B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
-
-                gemmini_extended_preload(GARBAGE_ADDR, GARBAGE_ADDR, DIM, DIM, DIM, DIM);
-
-                gemmini_extended_compute_accumulated(A_sp_addr, B_sp_addr, DIM, DIM, DIM, DIM);
-            }
-
-            const uint32_t A_sp_addr_last = A_sp_addr_start + (i*K + (K-1))*DIM;
-            const uint32_t B_sp_addr_last = B_sp_addr_start + ((K-1)*J + j)*DIM;
-
-            gemmini_extended_preload(GARBAGE_ADDR, GARBAGE_ADDR, DIM, DIM, DIM, DIM);
-
-            gemmini_extended_compute_accumulated(A_sp_addr_last, B_sp_addr_last, DIM, DIM, DIM, DIM);
-        }
-    }
-    """
+    ops_to_insert.extend(
+        insert_main_boo_hoo(
+            size_values, (A_sp_addr_start, B_sp_addr_start, C_sp_addr_start)
+        )
+    )
 
     # finally, move D out
     """
@@ -381,18 +360,6 @@ def convert_to_accfg_sequence(op: linalg.Generic) -> Sequence[Operation]:
     }
     """
 
-    ops_to_insert.extend(
-        [
-            zero := arith.Constant.from_int_and_width(0, 64),
-            zero_bit := arith.Constant.from_int_and_width(0, 1),
-            setup := mvin.get_setup_op([zero, zero]),
-            *mvin.get_launch_await_seq([zero, zero], setup),
-            setup := ex.get_setup_op([zero, zero]),
-            *ex.get_conditional_launch_seq([zero, zero, zero, zero], setup, zero_bit),
-            setup := mvout.get_setup_op([zero, zero]),
-            *mvout.get_launch_await_seq([zero, zero], setup),
-        ]
-    )
     return ops_to_insert
 
 
@@ -637,3 +604,242 @@ def build_mv_setup_rs1(scale_factor) -> tuple[Sequence[Operation], SSAValue]:
         other_consts,
         res,
     ], res.result
+
+
+def insert_main_boo_hoo(
+    sizes: Sequence[SSAValue],
+    sp_start: Sequence[SSAValue],
+):
+    """
+    // this only works for K > 1
+    for (size_t i = 0; i < I; i++) {
+        for (size_t j = 0; j < J; j++) {
+            const uint32_t A_sp_addr_0 = A_sp_addr_start + (i*K*DIM);
+            const uint32_t B_sp_addr_0 = B_sp_addr_start + (j*DIM);
+            const uint32_t C_sp_addr   = C_sp_addr_start + (i*J + j)*DIM;
+
+            // launch pt1
+            gemmini_extended_preload(GARBAGE_ADDR, GARBAGE_ADDR, DIM, DIM, DIM, DIM);
+            // launch
+            gemmini_extended_compute_preloaded(A_sp_addr_0, B_sp_addr_0, DIM, DIM, DIM, DIM);
+
+            for (size_t k = 1; k < K-1; k++) {
+                const uint32_t A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
+                const uint32_t B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
+
+                // launch pt1
+                gemmini_extended_preload(GARBAGE_ADDR, GARBAGE_ADDR, DIM, DIM, DIM, DIM);
+                // launch()
+                gemmini_extended_compute_accumulated(A_sp_addr, B_sp_addr, DIM, DIM, DIM, DIM);
+            }
+
+            const uint32_t A_sp_addr_last = A_sp_addr_start + (i*K + (K-1))*DIM;
+            const uint32_t B_sp_addr_last = B_sp_addr_start + ((K-1)*J + j)*DIM;
+
+            gemmini_extended_preload(GARBAGE_ADDR, C_sp_addr, DIM, DIM, DIM, DIM);
+
+            gemmini_extended_compute_accumulated(A_sp_addr_last, B_sp_addr_last, DIM, DIM, DIM, DIM);
+        }
+    }
+    """
+    int_t = builtin.i64
+    A_sp_addr_start, B_sp_addr_start, C_sp_addr_start = sp_start
+    I, J, K = sizes
+
+    cst_0 = arith.Constant.from_int_and_width(0, int_t)
+    cst_1 = arith.Constant.from_int_and_width(1, int_t)
+
+    outer = Block(arg_types=[int_t])
+    with ImplicitBuilder(outer) as (i,):
+        cst_true = arith.Constant.from_int_and_width(1, 1)
+        cst_false = arith.Constant.from_int_and_width(0, 1)
+        DIM = arith.Constant.from_int_and_width(GemminiConstants.DIM, int_t)
+        GARBAGE_ADDR = arith.Constant.from_int_and_width(
+            GemminiConstants.GARBAGE_ADDRESS, int_t
+        )
+        setup = GemminiExAccelerator().get_setup_op([])
+
+        inner = Block(arg_types=[int_t])
+        with ImplicitBuilder(inner) as (j,):
+            # A_sp_addr_0 = A_sp_addr_start + (i*K*DIM);
+            A_sp_addr_0 = add(A_sp_addr_start, mul(i, mul(K, DIM)))
+
+            # B_sp_addr_0 = B_sp_addr_start + (j*DIM);
+            B_sp_addr_0 = add(B_sp_addr_start, mul(j, DIM))
+
+            # C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
+            C_sp_addr = add(C_sp_addr_start, mul(add(mul(i, J), j), DIM))
+
+            # launch shenanigans
+            GemminiExAccelerator().get_launch_await_seq(
+                (
+                    *gemmini_extended_preload_rs1_rs2_constants(
+                        GemminiConstants.GARBAGE_ADDRESS,
+                        GemminiConstants.GARBAGE_ADDRESS,
+                        GemminiConstants.DIM,
+                        GemminiConstants.DIM,
+                        GemminiConstants.DIM,
+                        GemminiConstants.DIM,
+                    ),
+                    *gemmini_extended_compute_rs1_rs2(
+                        A_sp_addr_0,
+                        B_sp_addr_0,
+                        DIM,
+                        DIM,
+                        DIM,
+                        DIM,
+                    ),
+                    cst_true,  # THIS IS THE ONLY PLACE WHERE WE CALL gemmini_extended_compute_preloaded
+                ),
+                setup.out_state,
+            )
+            K_minus_one = arith.Subi(K, cst_1)
+
+            inner_most = Block(arg_types=[int_t])
+            with ImplicitBuilder(inner_most) as (k,):
+                # A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
+                A_sp_addr = add(A_sp_addr_start, mul(add(mul(i, K), k), DIM))
+
+                # B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
+                B_sp_addr = add(B_sp_addr_start, mul(add(mul(k, J), j), DIM))
+
+                # launch shenanigans
+                GemminiExAccelerator().get_launch_await_seq(
+                    (
+                        *gemmini_extended_preload_rs1_rs2_constants(
+                            GemminiConstants.GARBAGE_ADDRESS,
+                            GemminiConstants.GARBAGE_ADDRESS,
+                            GemminiConstants.DIM,
+                            GemminiConstants.DIM,
+                            GemminiConstants.DIM,
+                            GemminiConstants.DIM,
+                        ),
+                        *gemmini_extended_compute_rs1_rs2(
+                            A_sp_addr,
+                            B_sp_addr,
+                            DIM,
+                            DIM,
+                            DIM,
+                            DIM,
+                        ),
+                        cst_false,  # we are now in gemmini_extended_compute_accumulated mode
+                    ),
+                    setup.out_state,
+                )
+                scf.Yield()
+            scf.For(cst_1, K_minus_one, cst_1, [], body=inner_most)
+            # A_sp_addr_last = A_sp_addr_start + (i*K + (K-1))*DIM;
+            A_sp_addr_last = add(
+                A_sp_addr_start, mul(add(mul(i, K), sub(K, cst_1)), DIM)
+            )
+
+            # B_sp_addr_last = B_sp_addr_start + ((K-1)*J + j)*DIM;
+            B_sp_addr_last = add(
+                B_sp_addr_start, mul(add(mul(sub(K, cst_1), J), j), DIM)
+            )
+
+            # launch shenanigans
+            GemminiExAccelerator().get_launch_await_seq(
+                (
+                    *gemmini_extended_preload_rs1_rs2(
+                        GARBAGE_ADDR,
+                        C_sp_addr,
+                        DIM,
+                        DIM,
+                        DIM,
+                        DIM,
+                    ),
+                    *gemmini_extended_compute_rs1_rs2(
+                        A_sp_addr_last,
+                        B_sp_addr_last,
+                        DIM,
+                        DIM,
+                        DIM,
+                        DIM,
+                    ),
+                    cst_false,  # we are now in gemmini_extended_compute_accumyulated mode
+                ),
+                setup.out_state,
+            )
+            scf.Yield()
+        scf.For(cst_0, J, cst_1, [], body=inner)
+        scf.Yield()
+    loop = scf.For(cst_0, I, cst_1, [], body=outer)
+
+    return [cst_1, cst_0, loop]
+
+
+def gemmini_extended_preload_rs1_rs2(BD, C, BD_cols, BD_rows, C_cols, C_rows):
+    """
+    rs1 = ((uint64_t)(BD_rows) << (ADDR_LEN + 16))
+        | ((uint64_t)(BD_cols) << ADDR_LEN)
+        | (uint64_t)(BD),
+    rs2 = ((uint64_t)(C_rows) << (ADDR_LEN + 16))
+        | ((uint64_t)(C_cols) << ADDR_LEN)
+        | (uint64_t)(C)
+    """
+    ADDR_LEN = GemminiConstants.ADDR_LEN
+    rs1 = list(
+        pack_bitlist(
+            values=(BD_rows, BD_cols, BD),
+            offsets=(ADDR_LEN + 16, ADDR_LEN, 0),
+            dtype=64,
+        )
+    )[-1].result
+    rs2 = list(
+        pack_bitlist(
+            values=(C_rows, C_cols, C),
+            offsets=(ADDR_LEN + 16, ADDR_LEN, 0),
+            dtype=64,
+        )
+    )[-1].result
+
+    return rs1, rs2
+
+
+def gemmini_extended_preload_rs1_rs2_constants(BD, C, BD_cols, BD_rows, C_cols, C_rows):
+    """
+    rs1 = ((uint64_t)(BD_rows) << (ADDR_LEN + 16))
+        | ((uint64_t)(BD_cols) << ADDR_LEN)
+        | (uint64_t)(BD),
+    rs2 = ((uint64_t)(C_rows) << (ADDR_LEN + 16))
+        | ((uint64_t)(C_cols) << ADDR_LEN)
+        | (uint64_t)(C)
+    """
+    ADDR_LEN = GemminiConstants.ADDR_LEN
+    rs1 = arith.Constant.from_int_and_width(
+        ((BD_rows) << (ADDR_LEN + 16)) | ((BD_cols) << ADDR_LEN) | (BD), builtin.i64
+    )
+    rs2 = arith.Constant.from_int_and_width(
+        ((C_rows) << (ADDR_LEN + 16)) | ((C_cols) << ADDR_LEN) | (C), builtin.i64
+    )
+    return rs1.result, rs2.result
+
+
+def gemmini_extended_compute_rs1_rs2(A, BD, A_cols, A_rows, BD_cols, BD_rows):
+    """
+    rs1 = ((uint64_t)(A_rows) << (ADDR_LEN + 16))
+    | ((uint64_t)(A_cols) << ADDR_LEN)
+    | (uint64_t)(A),
+
+    rs2 = ((uint64_t)(BD_rows) << (ADDR_LEN + 16))
+    | ((uint64_t)(BD_cols) << ADDR_LEN)
+    | (uint64_t)(BD), k_COMPUTE_PRELOADED)
+    """
+    ADDR_LEN = GemminiConstants.ADDR_LEN
+    rs1 = list(
+        pack_bitlist(
+            values=(A_rows, A_cols, A),
+            offsets=(ADDR_LEN + 16, ADDR_LEN, 0),
+            dtype=64,
+        )
+    )[-1].result
+    rs2 = list(
+        pack_bitlist(
+            values=(BD_rows, BD_cols, BD),
+            offsets=(ADDR_LEN + 16, ADDR_LEN, 0),
+            dtype=64,
+        )
+    )[-1].result
+
+    return rs1, rs2
