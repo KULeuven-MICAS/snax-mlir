@@ -1,6 +1,7 @@
 from typing import Sequence
 from compiler.accelerators.gemmini import GemminiAccelerator
 from compiler.dialects import accfg
+from compiler.inference.trace_acc_state import infer_state_of
 from compiler.util.pack_bitlist import pack_bitlist
 from xdsl.dialects import linalg, arith, scf, builtin, memref
 from xdsl.ir import Operation, SSAValue, Attribute, Block
@@ -154,27 +155,32 @@ class GemminiExAccelerator(GemminiOsAcceleratorBase):
         """
         xcustom_acc = 3  # hardcoded to 3 for now
 
+        # grab is_preloaded var
+        is_preloaded = dict(launch_op.iter_params())["is_preloaded"]
+
         vals = create_pairs(launch_op)
 
-        mapping = acc_op.launch_field_items()
+        if_block = Block()
+        with ImplicitBuilder(if_block):
+            combine_pairs_to_ops(acc_op.launch_field_items(), vals, xcustom_acc)
+            scf.Yield()
 
-        if launch_op.attributes["override_gemmini_opcode"] is not None:
-            repacked_mapping = dict(mapping)
+        else_block = Block()
+        with ImplicitBuilder(else_block):
+            repacked_mapping = dict(acc_op.launch_field_items())
 
-            # override "k_COMPUTE"
+            # override "k_COMPUTE" to 5, to signal accumulate mode
             assert "k_COMPUTE.rs2" in repacked_mapping
-            repacked_mapping["k_COMPUTE.rs2"] = launch_op.attributes[
-                "override_gemmini_opcode"
-            ]
+            repacked_mapping["k_COMPUTE.rs2"] = builtin.IntegerAttr(5, builtin.i32)
             assert "k_COMPUTE.rs1" in repacked_mapping
-            repacked_mapping["k_COMPUTE.rs1"] = launch_op.attributes[
-                "override_gemmini_opcode"
-            ]
+            repacked_mapping["k_COMPUTE.rs1"] = builtin.IntegerAttr(5, builtin.i32)
 
             mapping = repacked_mapping.items()
+            combine_pairs_to_ops(mapping, vals, xcustom_acc)
+            scf.Yield()
 
         # Create the sequence of all operations that need to be emitted
-        return combine_pairs_to_ops(mapping, vals, xcustom_acc)
+        return scf.If(is_preloaded, [], [if_block], [else_block])
 
 
 def convert_to_accfg_sequence(op: linalg.Generic) -> Sequence[Operation]:
