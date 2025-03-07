@@ -311,20 +311,21 @@ def convert_to_accfg_sequence(op: linalg.Generic) -> Sequence[Operation]:
     )
 
     # now we invoke mvinA repeatedly
-    """
-    // Move-in A
-    gemmini_extended_config_ld(A_row_stride * sizeof(elem_t), A_scale_factor);
-    for (size_t i = 0; i < I; i++) {
-        for (size_t k = 0; k < K; k += A_blocks) {
-        const elem_t * const A_dram_addr = A + (i*A_row_stride + k)*DIM;
-        const uint32_t A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
-        const size_t blocks = k + A_blocks <= K ? A_blocks : K-k;
-        const size_t cols = blocks * DIM - (k + blocks >= K ? pad_K : 0);
-        const size_t rows = DIM - (i == I-1 ? pad_I : 0);
-        gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
-        }
-    }
-    """
+    A_row_stride = stride_values[0]
+    A_ptr = pointer_values[0]
+    ops_to_insert.extend(
+        gen_move_in_a(
+            A_ptr,
+            A_row_stride,
+            A_blocks,
+            A_sp_addr_start,
+            I,
+            K,
+            I_pad,
+            K_pad,
+            int_t=int_t,
+        )
+    )
 
     # And now the main boo-hoo:
     """
@@ -341,9 +342,8 @@ def convert_to_accfg_sequence(op: linalg.Generic) -> Sequence[Operation]:
 
             // If we're not using a bias, then we want to overwrite what's in the
             // accumulator, rather than writing over it
-            int no_bias_new_matrix = no_bias && D != NULL && k == K-1;
-            if (no_bias_new_matrix) {
-            out_sp_addr &= ~(1 << (ADDR_LEN-2));
+            if (k == K-1) {
+                out_sp_addr &= ~(1 << (ADDR_LEN-2));
             }
 
             const size_t A_cols = DIM - (k == K - 1 ? pad_K : 0);
@@ -498,6 +498,86 @@ def gen_move_in_b(
         scf.Yield()
 
     ops.append(scf.For(cst_0, J, B_blocks, [], body=outer))
+
+    return ops
+
+
+def gen_move_in_a(
+    A, A_row_stride, A_blocks, A_sp_addr_start, I, K, I_pad, K_pad, *, int_t: Attribute
+) -> Sequence[Operation]:
+    """
+    Generate the following C equivalent:
+
+    // Move-in A
+    gemmini_extended_config_ld(A_row_stride * sizeof(elem_t), A_scale_factor);
+    for (size_t i = 0; i < I; i++) {
+        for (size_t k = 0; k < K; k += A_blocks) {
+        const elem_t * const A_dram_addr = A + (i*A_row_stride + k)*DIM;
+        const uint32_t A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
+        const size_t blocks = k + A_blocks <= K ? A_blocks : K-k;
+        const size_t cols = blocks * DIM - (k + blocks >= K ? pad_K : 0);
+        const size_t rows = DIM - (i == I-1 ? pad_I : 0);
+        gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
+        }
+    }
+    """
+    cst_0 = arith.Constant.from_int_and_width(0, int_t)
+    cst_1 = arith.Constant.from_int_and_width(1, int_t)
+    DIM = arith.Constant.from_int_and_width(GemminiConstants.DIM, int_t)
+    float_one_as_int = arith.Constant.from_int_and_width(0x3F800000, int_t)
+    other_ops, rs1 = build_mv_setup_rs1(float_one_as_int)
+    cfg_op = GemminiMvinAccelerator().get_setup_op(
+        (
+            rs1,
+            A_row_stride,
+        )
+    )
+    ops = [
+        cst_0,
+        cst_1,
+        DIM,
+        float_one_as_int,
+        *other_ops,
+        cfg_op,
+    ]
+
+    outer = Block(arg_types=[int_t])
+    with ImplicitBuilder(outer) as (i,):
+        inner = Block(arg_types=[int_t])
+        with ImplicitBuilder(inner) as (k,):
+            # A_dram_addr = A + (i*A_row_stride + k)*DIM;
+            A_dram_addr = add(A, mul(add(mul(i, A_row_stride), k), DIM))
+
+            # A_sp_addr = A_sp_addr_start + (i*K + k)*DIM;
+            A_sp_addr = add(A_sp_addr_start, mul(add(mul(i, K), k), DIM))
+
+            # blocks = k + A_blocks <= K ? A_blocks : K-k;
+            blocks = select(
+                leq(add(k, A_blocks), K),  # k + A_blocks <= K
+                A_blocks,
+                sub(K, k),
+            )
+
+            # cols = blocks * DIM - (k + blocks >= K ? pad_K : 0);
+            # _intermediate = select(leq(add(k, blocks), K), K_pad, cst_0)
+            _intermediate = cst_0  # we can assume padding to always be 0
+            cols = sub(mul(blocks, DIM), _intermediate)
+
+            # rows = DIM - (i == I-1 ? pad_I : 0);
+            # _intermediate2 = select(eq(i, sub(I, cst_1)), I_pad, cst_0)
+            _intermediate2 = cst_0  # we can assume padding to always be 0
+            rows = sub(DIM, _intermediate2)
+
+            # gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
+            GemminiMvinAccelerator().get_launch_await_seq(
+                (A_dram_addr, build_mv_launch_rs2(A_sp_addr, cols, rows)),
+                cfg_op.out_state,
+            )
+            scf.Yield()
+        scf.For(cst_0, K, A_blocks, [], body=inner)
+        scf.Yield()
+
+    ops.append(scf.For(cst_0, I, cst_1, [], body=outer))
 
     return ops
 
