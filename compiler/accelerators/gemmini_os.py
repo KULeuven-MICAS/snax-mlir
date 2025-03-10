@@ -3,7 +3,7 @@ from compiler.accelerators.gemmini import GemminiAccelerator
 from compiler.dialects import accfg
 from compiler.inference.trace_acc_state import infer_state_of
 from compiler.util.pack_bitlist import pack_bitlist
-from xdsl.dialects import linalg, arith, scf, builtin, memref
+from xdsl.dialects import linalg, arith, scf, builtin, memref, printf
 from xdsl.ir import Operation, SSAValue, Attribute, Block
 from abc import ABC, abstractmethod
 from xdsl.builder import ImplicitBuilder
@@ -722,6 +722,8 @@ def insert_main_boo_hoo(
             )
             C_sp_addr_last = arith.AndI(C_sp_addr, funky_val)
 
+            printf.PrintFormatOp("Josse was here")
+            
             # launch shenanigans
             GemminiExAccelerator().get_launch_await_seq(
                 (
