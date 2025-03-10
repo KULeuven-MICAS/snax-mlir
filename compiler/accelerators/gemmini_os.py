@@ -16,7 +16,7 @@ class GemminiConstants:
     """
 
     DIM = 16
-    ADDR_LEN = 32
+    ADDR_LEN = 32  # This is the length of addresses on the scratchpad
     BANK_NUM = 4
     BANK_ROWS = 4096
     ACC_ROWS = 1024
@@ -27,7 +27,7 @@ class GemminiConstants:
     ACC_SCALE_IDENTITY = 1.0
     ACC_SCALE_EXP_BITS = 8
     ACC_SCALE_SIG_BITS = 24
-    GARBAGE_ADDRESS = 4294967295
+    GARBAGE_ADDRESS = 4294967295  # (uint32_t)-1
 
 
 class GemminiOsAcceleratorBase(GemminiAccelerator, ABC):
@@ -188,9 +188,6 @@ def convert_to_accfg_sequence(op: linalg.Generic) -> Sequence[Operation]:
     Convert a linalg generic to a sequence of different accelerator calls for
     gemmini output stationary mode
     """
-    mvin = GemminiMvinAccelerator()
-    ex = GemminiExAccelerator()
-    mvout = GemminiMvoutAccelerator()
     ops_to_insert: Sequence[SSAValue | Operation] = []
     int_t = builtin.i64
 
@@ -226,9 +223,7 @@ def convert_to_accfg_sequence(op: linalg.Generic) -> Sequence[Operation]:
                 metadata := memref.ExtractStridedMetaDataOp(operand),
                 pointer := memref.ExtractAlignedPointerAsIndexOp.get(operand),
                 offset_ptr := arith.Addi(pointer, metadata.offset),
-                offset_ptr_i64 := arith.IndexCastOp(
-                    offset_ptr, int_t
-                ),  # TODO: shouldn't this be i32?
+                offset_ptr_i64 := arith.IndexCastOp(offset_ptr, int_t),
                 # Only add stride at index 0 for our experiments
                 stride_i64 := arith.IndexCastOp(metadata.strides[0], int_t),
             ]
@@ -279,7 +274,6 @@ def convert_to_accfg_sequence(op: linalg.Generic) -> Sequence[Operation]:
         ]
     )
 
-    blocks_values = [A_blocks, B_blocks]
     ## now we calc {A,B,C}_sp_addr_start
     A_sp_addr_start = cst_0.result
     # const uint32_t B_sp_addr_start = BANK_NUM * BANK_ROWS - K * J * DIM;
@@ -838,13 +832,20 @@ def gemmini_extended_compute_rs1_rs2(A, BD, A_cols, A_rows, BD_cols, BD_rows):
 def gen_move_out_d(C, C_row_stride, C_sp_addr_start, I, J):
     """
     // Move-out C
+    if (C != NULL) {
+        const size_t sizeof_C = full_C ? sizeof(acc_t) : sizeof(elem_t);
+        // full_C = false, so sizeof_C is sizeof(elem_t), which is 1
 
-    for (size_t i = 0; i < I; i++) {
-        for (size_t j = 0; j < J; j++) {
-            void * const C_dram_addr = (int8_t*)C + (i*C_row_stride + j)*DIM;
-            const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
+        for (size_t i = 0; i < I; i++) {
+            for (size_t j = 0; j < J; j++) {
+                void * const C_dram_addr = (int8_t*)C + (i*C_row_stride + j)*DIM*sizeof_C;
+                const uint32_t C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
 
-            gemmini_extended_mvout(C_dram_addr, C_sp_addr, DIM, DIM);
+                const size_t C_cols = DIM - (j == J - 1 ? pad_J : 0);
+                const size_t C_rows = DIM - (i == I - 1 ? pad_I : 0);
+
+                gemmini_extended_mvout(C_dram_addr, C_sp_addr, C_cols, C_rows);
+            }
         }
     }
     """
@@ -864,21 +865,18 @@ def gen_move_out_d(C, C_row_stride, C_sp_addr_start, I, J):
             # C_sp_addr = C_sp_addr_start + (i*J + j)*DIM;
             C_sp_addr = add(C_sp_addr_start, mul(add(mul(i, J), j), DIM))
 
+            # make empty setup op so we have an input state for the launch
             setup = accfg.SetupOp([], [], GemminiMvoutAccelerator.name)
             """
             ((uint64_t)(rows) << (ADDR_LEN + 16)) | ((uint64_t)(cols) << ADDR_LEN) | (uint64_t)(spad_addr))
             """
-            packed = list(
-                pack_bitlist(
-                    values=(DIM, DIM, C_sp_addr),
-                    offsets=(
-                        GemminiConstants.ADDR_LEN + 16,
-                        GemminiConstants.ADDR_LEN,
-                        0,
-                    ),
-                    dtype=64,
-                )
-            )[-1]
+            # calculate the constant part first:
+            rows_and_cols = arith.Constant.from_int_and_width(
+                (GemminiConstants.DIM << (GemminiConstants.ADDR_LEN + 16))
+                | (GemminiConstants.DIM << GemminiConstants.ADDR_LEN),
+                64,
+            )
+            packed = arith.OrI(rows_and_cols, C_sp_addr)
             GemminiMvoutAccelerator().get_launch_await_seq(
                 (C_dram_addr, packed), setup.out_state
             )
