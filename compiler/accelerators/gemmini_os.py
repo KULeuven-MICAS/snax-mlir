@@ -7,7 +7,7 @@ from xdsl.dialects import linalg, arith, scf, builtin, memref
 from xdsl.ir import Operation, SSAValue, Attribute, Block
 from abc import ABC, abstractmethod
 from xdsl.builder import ImplicitBuilder
-from compiler.accelerators.rocc import create_pairs, combine_pairs_to_ops
+from compiler.accelerators.rocc import create_pairs, combine_pairs_to_ops, get_rocc_inline_asm
 
 
 class GemminiConstants:
@@ -162,21 +162,30 @@ class GemminiExAccelerator(GemminiOsAcceleratorBase):
 
         if_block = Block()
         with ImplicitBuilder(if_block):
-            combine_pairs_to_ops(acc_op.launch_field_items(), vals, xcustom_acc)
+            get_rocc_inline_asm(
+                xcustom_acc,
+                acc_op.launch_fields.data['k_PRELOAD.rs1'].value.data,
+                *vals['k_PRELOAD']
+            )
+            get_rocc_inline_asm(
+                xcustom_acc,
+                4,
+                *vals['k_COMPUTE']
+            )
             scf.Yield()
 
         else_block = Block()
         with ImplicitBuilder(else_block):
-            repacked_mapping = dict(acc_op.launch_field_items())
-
-            # override "k_COMPUTE" to 5, to signal accumulate mode
-            assert "k_COMPUTE.rs2" in repacked_mapping
-            repacked_mapping["k_COMPUTE.rs2"] = builtin.IntegerAttr(5, builtin.i32)
-            assert "k_COMPUTE.rs1" in repacked_mapping
-            repacked_mapping["k_COMPUTE.rs1"] = builtin.IntegerAttr(5, builtin.i32)
-
-            mapping = repacked_mapping.items()
-            combine_pairs_to_ops(mapping, vals, xcustom_acc)
+            get_rocc_inline_asm(
+                xcustom_acc,
+                acc_op.launch_fields.data['k_PRELOAD.rs1'].value.data,
+                *vals['k_PRELOAD']
+            )
+            get_rocc_inline_asm(
+                xcustom_acc,
+                5,
+                *vals['k_COMPUTE']
+            )
             scf.Yield()
 
         # Create the sequence of all operations that need to be emitted
