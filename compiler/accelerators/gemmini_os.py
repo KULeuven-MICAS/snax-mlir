@@ -405,28 +405,16 @@ def gen_move_in_b(
     """
     cst_0 = arith.Constant.from_int_and_width(0, int_t)
     cst_1 = arith.Constant.from_int_and_width(1, int_t)
-    DIM = arith.Constant.from_int_and_width(GemminiConstants.DIM, int_t)
-    float_one_as_int = arith.Constant.from_int_and_width(0x3F800000, int_t)
-    other_ops, rs1 = build_mv_setup_rs1(float_one_as_int)
-    cfg_op = GemminiMvinAccelerator().get_setup_op(
-        (
-            rs1,
-            B_row_stride,
-        )
-    )
     ops = [
         cst_0,
         cst_1,
-        DIM,
-        float_one_as_int,
-        *other_ops,
-        cfg_op,
     ]
 
     outer = Block(arg_types=[int_t])
     with ImplicitBuilder(outer) as (j,):
         inner = Block(arg_types=[int_t])
         with ImplicitBuilder(inner) as (k,):
+            DIM = arith.Constant.from_int_and_width(GemminiConstants.DIM, int_t)
             # B_dram_addr = B + (k*B_row_stride + j)*DIM;
             B_dram_addr = add(B, mul(add(mul(k, B_row_stride), j), DIM))
             # B_sp_addr = B_sp_addr_start + (k*J + j)*DIM;
@@ -445,6 +433,17 @@ def gen_move_in_b(
             # _intermediate2 = select(eq(k, sub(K, cst_1)), K_pad, cst_0)
             _intermediate2 = cst_0  # padding is always 0
             rows = sub(DIM, _intermediate2)
+
+            # setup call
+            float_one_as_int = arith.Constant.from_int_and_width(0x3F800000, int_t)
+            other_ops, rs1 = build_mv_setup_rs1(float_one_as_int)
+            cfg_op = GemminiMvinAccelerator().get_setup_op(
+                (
+                    rs1,
+                    B_row_stride,
+                )
+            )
+
             # gemmini_extended_mvin(B_dram_addr, B_sp_addr, cols, rows);
             GemminiMvinAccelerator().get_launch_await_seq(
                 (B_dram_addr, build_mv_launch_rs2(B_sp_addr, cols, rows)),
@@ -480,28 +479,18 @@ def gen_move_in_a(
     """
     cst_0 = arith.Constant.from_int_and_width(0, int_t)
     cst_1 = arith.Constant.from_int_and_width(1, int_t)
-    DIM = arith.Constant.from_int_and_width(GemminiConstants.DIM, int_t)
-    float_one_as_int = arith.Constant.from_int_and_width(0x3F800000, int_t)
-    other_ops, rs1 = build_mv_setup_rs1(float_one_as_int)
-    cfg_op = GemminiMvinAccelerator().get_setup_op(
-        (
-            rs1,
-            A_row_stride,
-        )
-    )
+
     ops = [
         cst_0,
         cst_1,
-        DIM,
-        float_one_as_int,
-        *other_ops,
-        cfg_op,
     ]
 
     outer = Block(arg_types=[int_t])
     with ImplicitBuilder(outer) as (i,):
         inner = Block(arg_types=[int_t])
         with ImplicitBuilder(inner) as (k,):
+            DIM = arith.Constant.from_int_and_width(GemminiConstants.DIM, int_t)
+            float_one_as_int = arith.Constant.from_int_and_width(0x3F800000, int_t)
             # A_dram_addr = A + (i*A_row_stride + k)*DIM;
             A_dram_addr = add(A, mul(add(mul(i, A_row_stride), k), DIM))
 
@@ -525,6 +514,15 @@ def gen_move_in_a(
             _intermediate2 = cst_0  # we can assume padding to always be 0
             rows = sub(DIM, _intermediate2)
 
+            # setup call:
+            _, rs1 = build_mv_setup_rs1(float_one_as_int)
+
+            cfg_op = GemminiMvinAccelerator().get_setup_op(
+                (
+                    rs1,
+                    A_row_stride,
+                )
+            )
             # gemmini_extended_mvin(A_dram_addr, A_sp_addr, cols, rows);
             GemminiMvinAccelerator().get_launch_await_seq(
                 (A_dram_addr, build_mv_launch_rs2(A_sp_addr, cols, rows)),
