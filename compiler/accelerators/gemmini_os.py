@@ -807,12 +807,12 @@ def gemmini_extended_preload_rs1_rs2_constants(BD, C, BD_cols, BD_rows, C_cols, 
 def gemmini_extended_compute_rs1_rs2(A, BD, A_cols, A_rows, BD_cols, BD_rows):
     """
     rs1 = ((uint64_t)(A_rows) << (ADDR_LEN + 16))
-    | ((uint64_t)(A_cols) << ADDR_LEN)
-    | (uint64_t)(A),
+        | ((uint64_t)(A_cols) << ADDR_LEN)
+        | (uint64_t)(A)
 
     rs2 = ((uint64_t)(BD_rows) << (ADDR_LEN + 16))
-    | ((uint64_t)(BD_cols) << ADDR_LEN)
-    | (uint64_t)(BD), k_COMPUTE_PRELOADED)
+        | ((uint64_t)(BD_cols) << ADDR_LEN)
+        | (uint64_t)(BD)
     """
     ADDR_LEN = GemminiConstants.ADDR_LEN
     rs1 = list(
