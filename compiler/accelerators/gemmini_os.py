@@ -111,35 +111,22 @@ class GemminiExAccelerator(GemminiOsAcceleratorBase):
         # "k_CONFIG_k_CONFIG_EX.rs2": 0,
     }
     launch_fields = {
-        "k_PRELOAD.rs1": 2,
-        "k_PRELOAD.rs2": 2,
+        "k_PRELOAD.rs1": 6,
+        "k_PRELOAD.rs2": 6,
         "k_COMPUTE.rs1": 4,  # and 5, both COMPUTE_PRELOADED and COMPUTE_ACCUMULATE
         "k_COMPUTE.rs2": 4,  # and 5, both COMPUTE_PRELOADED and COMPUTE_ACCUMULATE
         "is_preloaded": -1,
     }
 
-    def get_conditional_launch_seq(
-        self,
-        launch_vals: Sequence[Operation | SSAValue],
-        input_state: accfg.SetupOp,
-        condition: SSAValue | Operation,
-    ):
-        """
-        This launch sequence is special, because it will conditionally
-        use a different opcode.
-
-        (╯°□°)╯︵ ┻━┻
-
-        if k == 0
-          use op-code defined by k_COMPUTE_PRELOADED (4)
-        else
-          use op-code defined by k_COMPUTE_ACCUMULATE (5)
-
-        """
-        launch = accfg.LaunchOp(
-            [*launch_vals, condition], self.launch_fields, input_state
+    def get_launch_await_seq(
+        self, launch_vals: Sequence[Operation | SSAValue], state: accfg.SetupOp
+    ) -> tuple[accfg.LaunchOp, accfg.AwaitOp]:
+        ops = (
+            token := accfg.LaunchOp(launch_vals, self.launch_fields, state),
+            accfg.AwaitOp(token),
         )
-        return launch, accfg.AwaitOp(launch)
+        return ops
+
 
     @staticmethod
     def lower_acc_launch(
