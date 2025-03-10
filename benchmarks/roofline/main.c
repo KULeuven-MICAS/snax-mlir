@@ -35,8 +35,8 @@ int main() {
   for (int i = 0; i < 2; i++)
     total_results *= computed->shape[i];
 
-	printf("Skipping check \n");
-	return 0;
+	// printf("Skipping check \n");
+	// return 0;
 
   printf("Checking %d results...\n", total_results);
 
@@ -45,8 +45,8 @@ int main() {
   for (int i = 0; i < total_results; i++) {
 
     if (golden->aligned_data[i] != computed->aligned_data[i]) {
-      // printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
-      // computed->aligned_data[i]);
+      printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
+      computed->aligned_data[i]);
       nerr++;
     }
   }

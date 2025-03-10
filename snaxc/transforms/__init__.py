@@ -115,6 +115,11 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return MemrefToSNAX
 
+    def get_pipeline():
+        from snaxc.transforms.pipeline import PipelinePass
+
+        return PipelinePass
+
     def get_postprocess_mlir():
         from snaxc.transforms.backend.postprocess_mlir import PostprocessPass
 
@@ -223,6 +228,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "insert-accfg-op": get_insert_accfg_op,
         "insert-sync-barrier": get_insert_sync_barrier,
         "memref-to-snax": get_memref_to_snax,
+        "pipeline": get_pipeline,
         "postprocess": get_postprocess_mlir,
         "preprocess": get_preprocess_mlir,
         "preprocess-mlperftiny": get_preprocess_mlperf_tiny,
