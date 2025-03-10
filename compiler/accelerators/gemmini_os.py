@@ -430,7 +430,7 @@ def gen_move_in_b(
 
             # setup call
             float_one_as_int = arith.Constant.from_int_and_width(0x3F800000, int_t)
-            other_ops, rs1 = build_mv_setup_rs1(float_one_as_int)
+            _, rs1 = build_mv_setup_rs1(float_one_as_int)
             cfg_op = GemminiMvinAccelerator().get_setup_op(
                 (
                     rs1,
@@ -721,13 +721,17 @@ def insert_main_boo_hoo(
             B_sp_addr_last = add(
                 B_sp_addr_start, mul(add(mul(sub(K, cst_1), J), j), DIM)
             )
+            funky_val = arith.Constant.from_int_and_width(
+                ~(1 << (GemminiConstants.ADDR_LEN - 2)), int_t
+            )
+            C_sp_addr_last = arith.AndI(C_sp_addr, funky_val)
 
             # launch shenanigans
             GemminiExAccelerator().get_launch_await_seq(
                 (
                     *gemmini_extended_preload_rs1_rs2(
                         GARBAGE_ADDR,
-                        C_sp_addr,
+                        C_sp_addr_last,
                         DIM,
                         DIM,
                         DIM,

@@ -88,8 +88,13 @@ def create_pairs(
     For setup ops, this can retrace back previous setup state if necessary
     (i.e. if one of the two operands of an instruction gets dedupped)
     """
-    # Make a set of all the unique instruction names in the current operation
-    instructions = set([name[:-4] for name, _ in fields_op.iter_params() if name.endswith('.rs1') or name.endswith('.rs2')])
+    # Create a list (in-order) of all the instruction names
+    # we need to preserve order here because of terrible decisions made earlier
+    instructions = []
+    for name, _ in fields_op.iter_params():
+        if name.endswith(".rs1") or name.endswith(".rs2") and name not in instructions:
+            instructions.append(name[:-4])
+
     field_dict = dict(fields_op.iter_params())
 
     # For setup_ops, get the previous setup state, if necessary
