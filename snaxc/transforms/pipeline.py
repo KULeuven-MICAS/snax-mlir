@@ -1,4 +1,3 @@
-import enum
 from typing import Sequence
 from xdsl.context import Context
 from xdsl.dialects import builtin, linalg, memref, scf
@@ -22,7 +21,6 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 
 from snaxc.dialects import dart, snax
-from snaxc.dialects import pipeline
 from snaxc.dialects.pipeline import DoubleStageOp, IndexOp, PipelineOp, StageOp, YieldOp
 from snaxc.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
 
@@ -332,14 +330,15 @@ class UnrollPipeline(RewritePattern):
                 stage = stages[j].clone()
 
                 # turn into single stages
-                stage = get_single_stage(stage, i % 2 == 0, rewriter)
+                single_stage = get_single_stage(stage, i % 2 == 0, rewriter)
+                stage.erase()
 
                 # use preamble index instead
-                for k, operand in enumerate(stage.operands):
+                for k, operand in enumerate(single_stage.operands):
                     if isinstance(operand, OpResult) and operand.op is index_op:
-                        stage.operands[k] = preamble_index.results[operand.index]
+                        single_stage.operands[k] = preamble_index.results[operand.index]
 
-                preambles.extend([cst, preamble_index, stage])
+                preambles.extend([cst, preamble_index, single_stage])
 
             # add synchronization
             preambles.extend([snax.ClusterSyncOp()])
@@ -348,6 +347,11 @@ class UnrollPipeline(RewritePattern):
         rewriter.insert_op(preambles, InsertPoint.before(for_op))
 
         # restructure the for loop, assume nb_iters is large enough to fully unroll
+
+        new_for_loop_ops: list[Operation]
+        # create n + 1 index ops
+        for i in range(len(stages) + 1):
+            pass
 
         # double the pipeline op
         rewriter.insert_op(clone := op.clone(), InsertPoint.after(op))
@@ -362,7 +366,7 @@ class UnrollPipeline(RewritePattern):
         # set start
         new_lb = ConstantOp(IntegerAttr.from_index_int_value(len(stages) - 1))
         new_step = ConstantOp(IntegerAttr.from_index_int_value(2))
-        new_ub = ConstantOp(IntegerAttr.from_index_int_value(ub - 2))
+        new_ub = ConstantOp(IntegerAttr.from_index_int_value(ub))
 
         # replace by for loop with new iterations
         new_for = scf.ForOp(new_lb, new_ub, new_step, [], rewriter.move_region_contents_to_new_regions(for_op.body))
@@ -387,15 +391,17 @@ class UnrollPipeline(RewritePattern):
 
                 stage = stages[-j-1].clone()
 
-                # turn into single stages
-                stage = get_single_stage(stage, i % 2 == 0, rewriter)
+                # turn into single stages 
+                # TODO: figure out the correct even/odd thing here
+                single_stage = get_single_stage(stage, i % 2 == 1, rewriter)
+                stage.erase()
 
                 # use postamble index instead
-                for k, operand in enumerate(stage.operands):
+                for k, operand in enumerate(single_stage.operands):
                     if isinstance(operand, OpResult) and operand.op is index_op:
-                        stage.operands[k] = postamble_index.results[operand.index]
+                        single_stage.operands[k] = postamble_index.results[operand.index]
 
-                postambles.extend([cst, postamble_index, stage])
+                postambles.extend([cst, postamble_index, single_stage])
 
             # add synchronization
             postambles.extend([snax.ClusterSyncOp()])
@@ -474,7 +480,6 @@ class RemovePipelineIndex(RewritePattern):
                         op_in_stage.operands[i] = op.input
                 operations_in_stage.append(op_in_stage)
         rewriter.replace_matched_op(operations_in_stage, new_results)
-
 
 class PipelinePass(ModulePass):
     name = "pipeline"
