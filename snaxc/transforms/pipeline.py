@@ -2,7 +2,7 @@ from typing import Sequence
 from xdsl.context import Context
 from xdsl.dialects import builtin, linalg, memref, scf
 from xdsl.dialects import arith
-from xdsl.dialects.arith import ConstantOp
+from xdsl.dialects.arith import AddiOp, ConstantOp
 from xdsl.dialects.builtin import (
     IndexType,
     IntegerAttr,
@@ -348,28 +348,52 @@ class UnrollPipeline(RewritePattern):
 
         # restructure the for loop, assume nb_iters is large enough to fully unroll
 
-        new_for_loop_ops: list[Operation]
-        # create n + 1 index ops
-        for i in range(len(stages) + 1):
-            pass
-
-        # double the pipeline op
-        rewriter.insert_op(clone := op.clone(), InsertPoint.after(op))
-
-        op.attributes["unrolled"] = StringAttr("even")
-        clone.attributes["unrolled"] = StringAttr("odd")
-
-        # insert sync after every stage
-        rewriter.insert_op(snax.ClusterSyncOp(), InsertPoint.after(op))
-        rewriter.insert_op(snax.ClusterSyncOp(), InsertPoint.after(clone))
-
         # set start
-        new_lb = ConstantOp(IntegerAttr.from_index_int_value(len(stages) - 1))
+        new_lb = ConstantOp(IntegerAttr.from_index_int_value(0))
         new_step = ConstantOp(IntegerAttr.from_index_int_value(2))
-        new_ub = ConstantOp(IntegerAttr.from_index_int_value(ub))
+        new_ub = ConstantOp(IntegerAttr.from_index_int_value(ub - (len(stages) -1)))
 
         # replace by for loop with new iterations
-        new_for = scf.ForOp(new_lb, new_ub, new_step, [], rewriter.move_region_contents_to_new_regions(for_op.body))
+        new_for = scf.ForOp(new_lb, new_ub, new_step, [], Region(Block([new_for_yield := scf.YieldOp()], arg_types=[IndexType()])))
+        iteration_var = new_for.body.block.args[0]
+
+        # create n + 1 index ops
+        for_index_ops: dict[int, Operation] = {}
+        for i in range(len(stages) + 1):
+            cst = ConstantOp(IntegerAttr.from_index_int_value(i))
+            add_i = AddiOp(cst, iteration_var)
+            for_index = index_op.clone()
+            for_index.operands[0] = add_i.result
+            for_index_ops[i] = for_index
+            rewriter.insert_op([cst, add_i, for_index], InsertPoint.before(new_for_yield))
+
+        # insert even stages
+        for i in range(len(stages)):
+            stage = stages[i].clone()
+            single_stage = get_single_stage(stage, True, rewriter)
+            # use correct preamble index
+            for k, operand in enumerate(single_stage.operands):
+                if isinstance(operand, OpResult) and operand.op is index_op:
+                    single_stage.operands[k] = for_index_ops[len(stages)-i-1].results[operand.index]
+            stage.erase()
+            rewriter.insert_op(single_stage, InsertPoint.before(new_for_yield))
+
+        rewriter.insert_op(snax.ClusterSyncOp(), InsertPoint.before(new_for_yield))
+
+        # insert odd stages
+        for i in range(len(stages)):
+            stage = stages[i].clone()
+            single_stage = get_single_stage(stage, False, rewriter)
+            # use correct preamble index
+            for k, operand in enumerate(single_stage.operands):
+                if isinstance(operand, OpResult) and operand.op is index_op:
+                    single_stage.operands[k] = for_index_ops[len(stages)-i].results[operand.index]
+            stage.erase()
+            rewriter.insert_op(single_stage, InsertPoint.before(new_for_yield))
+
+        rewriter.insert_op(snax.ClusterSyncOp(), InsertPoint.before(new_for_yield))
+
+        # replace by for loop with new iterations
         rewriter.replace_op(for_op, [new_lb, new_ub, new_step, new_for])
 
         # insert the postambles
@@ -489,6 +513,7 @@ class PipelinePass(ModulePass):
         PatternRewriteWalker(ConstructPipeline(), apply_recursively=False).rewrite_module(op)
         PatternRewriteWalker(DuplicateBuffers(), apply_recursively=False).rewrite_module(op)
         PatternRewriteWalker(UnrollPipeline(), apply_recursively=False).rewrite_module(op)
+        breakpoint()
         PatternRewriteWalker(UndoubleStages(), apply_recursively=False).rewrite_module(op)
         PatternRewriteWalker(DestructStages(), apply_recursively=False).rewrite_module(op)
         PatternRewriteWalker(RemovePipeline(), apply_recursively=False).rewrite_module(op)
