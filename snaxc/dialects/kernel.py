@@ -1,4 +1,5 @@
 from abc import ABC
+from typing import cast
 
 from xdsl.builder import Builder
 from xdsl.dialects import arith, linalg
@@ -105,7 +106,24 @@ class MacOp(KernelOp, BinaryOp, Parsable):
             mac = arith.AddiOp(args[2], mul)
             linalg.YieldOp(mac)
 
-        return equivalent_region
+        @Builder.implicit_region(
+            (
+                SSAValue.get(self.lhs).type,
+                SSAValue.get(self.rhs).type,
+                *self.result_types,
+            )
+        )
+        def equivalent_region_extsi(args: tuple[BlockArgument, ...]) -> None:
+            a = arith.ExtSIOp(args[0], cast(IntegerType, args[2].type))
+            b = arith.ExtSIOp(args[1], cast(IntegerType, args[2].type))
+            mul = arith.MuliOp(a, b)
+            mac = arith.AddiOp(args[2], mul)
+            linalg.YieldOp(mac)
+
+        if SSAValue.get(self.lhs).type == self.result_types[0]:
+            return equivalent_region
+        else:
+            return equivalent_region_extsi
 
 
 @irdl_op_definition

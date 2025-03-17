@@ -55,6 +55,27 @@ linalg.generic {indexing_maps = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_ma
 
 // -----
 
+%0, %1, %2 = "test.op"() : () -> (memref<64x64xi8>, memref<64x64xi8>, memref<64x64xi32>)
+linalg.generic {indexing_maps = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>], iterator_types = ["parallel", "parallel", "reduction"]} ins(%0, %1 : memref<64x64xi8>, memref<64x64xi8>) outs(%2 : memref<64x64xi32>) {
+^bb0(%in: i8, %in_0: i8, %out: i32):
+  %3 = arith.extsi %in : i8 to i32
+  %4 = arith.extsi %in_0 : i8 to i32
+  %5 = arith.muli %3, %4 : i32
+  %6 = arith.addi %out, %5 : i32
+  linalg.yield %6 : i32
+}
+
+// CHECK: builtin.module {
+// CHECK-NEXT:   %0, %1, %2 = "test.op"() : () -> (memref<64x64xi8>, memref<64x64xi8>, memref<64x64xi32>)
+// CHECK-NEXT:   linalg.generic {indexing_maps = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>], iterator_types = ["parallel", "parallel", "reduction"]} ins(%0, %1 : memref<64x64xi8>, memref<64x64xi8>) outs(%2 : memref<64x64xi32>) {
+// CHECK-NEXT:   ^0(%in : i8, %in_1 : i8, %out : i32):
+// CHECK-NEXT:     %3 = kernel.mac %in, %in_1 : i8, i8 -> i32
+// CHECK-NEXT:     linalg.yield %3 : i32
+// CHECK-NEXT:   }
+// CHECK-NEXT: }
+
+// -----
+
 %0, %1, %2, %3 = "test.op"() : () -> (memref<?x?xi8>, memref<?x?xi8>, memref<?x?xi32>, i32)
 linalg.generic {indexing_maps = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> (d0, d1)>], iterator_types = ["parallel", "parallel", "reduction"]} ins(%0, %1, %3, %3 : memref<?x?xi8>, memref<?x?xi8>, i32, i32) outs(%2 : memref<?x?xi32>) {
 ^bb0(%in: i8, %in_0: i8, %in_1: i32, %in_2: i32, %out: i32):
