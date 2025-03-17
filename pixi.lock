@@ -82,7 +82,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-openmp-19.1.7-h024ca30_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/markupsafe-3.0.2-py312h178313f_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/mkl-2024.2.2-ha957f24_16.conda
-      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/mlir-19.1.1.d401987fe349a87c53fe25829215b80b70c0c1a-hb0f4dca_0.conda
+      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/mlir-19.1.1.c.d401987fe349a87c53fe25829215b80b70c0c1a-hb0f4dca_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/nbformat-5.10.4-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.5-h2d0b736_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/nodeenv-1.9.1-pyhd8ed1ab_1.conda
@@ -183,7 +183,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/89/9b/599bcfc7064fbe5740919e78c5df18e5dceb0887e676256a1061bb5ae232/virtualenv-20.29.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/52/24/ab44c871b0f07f491e5d2ad12c9bd7358e527510618cb1b803a88e986db1/werkzeug-3.1.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl
-      - pypi: git+https://github.com/xdslproject/xdsl?rev=e9b1efb65d0873ee21442515e78f3a449b01bedb#e9b1efb65d0873ee21442515e78f3a449b01bedb
+      - pypi: git+https://github.com/xdslproject/xdsl.git?rev=e9b1efb65d0873ee21442515e78f3a449b01bedb#e9b1efb65d0873ee21442515e78f3a449b01bedb
       - pypi: .
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -1405,11 +1405,11 @@ packages:
   - pylint>=2.6.0 ; extra == 'dev'
   - pyink ; extra == 'dev'
   requires_python: '>=3.9'
-- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/mlir-19.1.1.d401987fe349a87c53fe25829215b80b70c0c1a-hb0f4dca_0.conda
-  sha256: 7acf5a91f899a4615ecf2cea64ca3325df3df2c118b4f783a9b2aed7874a249b
-  md5: fa36d905863939968e31473f6fa8280b
-  size: 47090078
-  timestamp: 1734438399731
+- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/mlir-19.1.1.c.d401987fe349a87c53fe25829215b80b70c0c1a-hb0f4dca_0.conda
+  sha256: ae082f0b8d9c39916a81e083b89d7577ed377048f41cc339eaa0e982e8a03cfa
+  md5: 46bc97854617f9df01e47c5505f0f7bc
+  size: 43010488
+  timestamp: 1741358904582
 - pypi: https://files.pythonhosted.org/packages/73/59/7854fbfb59f8ae35483ce93493708be5942ebb6328cd85b3a609df629736/namex-0.0.8-py3-none-any.whl
   name: namex
   version: 0.0.8
@@ -2116,6 +2116,8 @@ packages:
   - yte >=1.5.1,<2.0
   license: MIT
   license_family: MIT
+  purls:
+  - pkg:pypi/snakemake?source=hash-mapping
   size: 810266
   timestamp: 1736367856698
 - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-0.2.8-hb0f4dca_0.conda
@@ -2129,7 +2131,7 @@ packages:
 - pypi: .
   name: snax-mlir
   version: 0.2.2
-  sha256: 2216c43550851c62872e70ad5242f9ae210a5be991beddb31f425424edc2d0be
+  sha256: 84c72b22ac8814b99a73e72a6c001159c1c27ea2289ebd6f64d5a77eaa9e65bf
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@e9b1efb65d0873ee21442515e78f3a449b01bedb
   - numpy
@@ -2222,7 +2224,7 @@ packages:
   - grpcio>=1.24.3,<2.0
   - tensorboard>=2.16,<2.17
   - keras>=3.0.0
-  - tensorflow-intel==2.16.2 ; platform_system == 'Windows'
+  - tensorflow-intel==2.16.2 ; sys_platform == 'win32'
   - tensorflow-io-gcs-filesystem>=0.23.1 ; python_full_version < '3.12'
   - numpy>=1.23.5,<2.0.0 ; python_full_version < '3.12'
   - numpy>=1.26.0,<2.0.0 ; python_full_version >= '3.12'
@@ -2387,7 +2389,7 @@ packages:
   - pkg:pypi/wrapt?source=hash-mapping
   size: 63590
   timestamp: 1736869574299
-- pypi: git+https://github.com/xdslproject/xdsl?rev=e9b1efb65d0873ee21442515e78f3a449b01bedb#e9b1efb65d0873ee21442515e78f3a449b01bedb
+- pypi: git+https://github.com/xdslproject/xdsl.git?rev=e9b1efb65d0873ee21442515e78f3a449b01bedb#e9b1efb65d0873ee21442515e78f3a449b01bedb
   name: xdsl
   version: 0.28.0+35.ge9b1efb6
   requires_dist:
