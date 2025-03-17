@@ -73,6 +73,7 @@ class SNAXGEMMXAccelerator(
 
     supported_kernels = (
         SupportedKernel(kernel.QMacOp, (i8, i8, i32, i32, i32)),
+        SupportedKernel(kernel.MacOp, (i8, i8, i32)),
         SupportedKernel(kernel.AddOp, (i32, i32, i32)),
         SupportedKernel(kernel.RescaleOp, (i32, i8)),
     )
@@ -184,7 +185,9 @@ class SNAXGEMMXAccelerator(
 
         assert isinstance(generic_op := op.body.block.first_op, dart.GenericOp)
 
-        if isinstance(qmac := generic_op.body.block.first_op, kernel.QMacOp):
+        if isinstance(
+            qmac := generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp
+        ):
             # gemm
             # bypass simd and set all related values to 0
             bypassSIMD = c1.result  # bypass simd
@@ -194,11 +197,15 @@ class SNAXGEMMXAccelerator(
             shift_vals = (c0.result for _ in range(2))
             mult_vals = (c0.result for _ in range(8))
 
-            # get zero points for gemm
-            assert isinstance(qmac.zp_lhs, BlockArgument)
-            zp_a = generic_op.inputs[qmac.zp_lhs.index]
-            assert isinstance(qmac.zp_rhs, BlockArgument)
-            zp_b = generic_op.inputs[qmac.zp_rhs.index]
+            if isinstance(qmac, kernel.QMacOp):
+                # get zero points for gemm
+                assert isinstance(qmac.zp_lhs, BlockArgument)
+                zp_a = generic_op.inputs[qmac.zp_lhs.index]
+                assert isinstance(qmac.zp_rhs, BlockArgument)
+                zp_b = generic_op.inputs[qmac.zp_rhs.index]
+            else:
+                zp_a = c0
+                zp_b = c0
 
             # bitwise and with 8b'11111111 to avoid the sign bits extending the 8-bit field
             # when bitlist packing
@@ -276,7 +283,7 @@ class SNAXGEMMXAccelerator(
     @staticmethod
     def get_template(op: dart.StreamingRegionOpBase) -> Template:
         assert isinstance(generic_op := op.body.block.first_op, dart.GenericOp)
-        if isinstance(generic_op.body.block.first_op, kernel.QMacOp):
+        if isinstance(generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp):
             # matmul
             m, n, k = (AffineDimExpr(i) for i in range(3))
             template = [
