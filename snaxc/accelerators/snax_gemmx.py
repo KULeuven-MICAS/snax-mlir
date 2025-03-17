@@ -73,6 +73,7 @@ class SNAXGEMMXAccelerator(
 
     supported_kernels = (
         SupportedKernel(kernel.QMacOp, (i8, i8, i32, i32, i32)),
+        SupportedKernel(kernel.MacOp, (i8, i8, i32)),
         SupportedKernel(kernel.AddOp, (i32, i32, i32)),
         SupportedKernel(kernel.RescaleOp, (i32, i8)),
     )
@@ -276,7 +277,7 @@ class SNAXGEMMXAccelerator(
     @staticmethod
     def get_template(op: dart.StreamingRegionOpBase) -> Template:
         assert isinstance(generic_op := op.body.block.first_op, dart.GenericOp)
-        if isinstance(generic_op.body.block.first_op, kernel.QMacOp):
+        if isinstance(generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp):
             # matmul
             m, n, k = (AffineDimExpr(i) for i in range(3))
             template = [
