@@ -60,6 +60,10 @@ class AccessPattern(ABC):
             AffineTransform(self.pattern.A[:, -dim:], self.pattern.b),
         )
 
+    def __str__(self) -> str:
+        bounds = [str(b) if b else "?" for b in self.bounds]
+        return f'({", ".join(bounds)}) {str(self.pattern.to_affine_map())}'
+
 
 @dataclass(frozen=True)
 class SchedulePattern(AccessPattern):
@@ -253,6 +257,9 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
             )
             for sp in self
         )
+
+    def __str__(self) -> str:
+        return "\n".join(str(pattern) for pattern in self)
 
 
 class Schedule(PatternCollection[SchedulePattern]):
