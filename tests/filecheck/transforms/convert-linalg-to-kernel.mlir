@@ -58,8 +58,8 @@ linalg.generic {indexing_maps = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_ma
 %0, %1, %2 = "test.op"() : () -> (memref<64x64xi8>, memref<64x64xi8>, memref<64x64xi32>)
 linalg.generic {indexing_maps = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>], iterator_types = ["parallel", "parallel", "reduction"]} ins(%0, %1 : memref<64x64xi8>, memref<64x64xi8>) outs(%2 : memref<64x64xi32>) {
 ^bb0(%in: i8, %in_0: i8, %out: i32):
-	%3 = arith.extsi %in : i8 to i32
-	%4 = arith.extsi %in_0 : i8 to i32
+  %3 = arith.extsi %in : i8 to i32
+  %4 = arith.extsi %in_0 : i8 to i32
   %5 = arith.muli %3, %4 : i32
   %6 = arith.addi %out, %5 : i32
   linalg.yield %6 : i32
