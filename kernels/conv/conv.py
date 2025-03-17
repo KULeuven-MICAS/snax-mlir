@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from io import StringIO
 
 import numpy as np
-from numpy._typing import NDArray
 import tensorflow as tf
+from numpy._typing import NDArray
 from xdsl.builder import Builder
 from xdsl.dialects.arith import ConstantOp
 from xdsl.dialects.builtin import (
@@ -76,15 +76,15 @@ def compute_convolution(
 
     return output_tf.numpy()
 
-def conv(spec: ConvSpec):
 
+def conv(spec: ConvSpec):
     input, weight = generate_conv_tensors(spec)
     output = compute_convolution(spec, input, weight)
 
     # reshape to the mlir conv2d op spec
-    input = input.transpose((0, 3, 1, 2)) #NHWC -> NCHW
-    weight = weight.transpose((3, 2, 0, 1)) #HWCF -> FCHW
-    output = output.transpose((0, 3, 1, 2)) #NHWC -> NCHW
+    input = input.transpose((0, 3, 1, 2))  # NHWC -> NCHW
+    weight = weight.transpose((3, 2, 0, 1))  # HWCF -> FCHW
+    output = output.transpose((0, 3, 1, 2))  # NHWC -> NCHW
 
     input_type = TensorType(i8, shape=input.shape)
     weight_type = TensorType(i8, shape=weight.shape)
@@ -94,6 +94,8 @@ def conv(spec: ConvSpec):
 
     dilations = DenseIntOrFPElementsAttr.tensor_from_list([spec.dilation], i64, [2])
     strides = DenseIntOrFPElementsAttr.tensor_from_list([spec.stride], i64, [2])
+
+    breakpoint()
 
     # Define Program:
 
@@ -115,7 +117,10 @@ def conv(spec: ConvSpec):
 
         # Specify the operation
         result = Conv2DNchwFchwOp(
-            dilations, strides, (input_c.result, weight_c.result), (empty_tensor.results[0],)
+            (input_c.result, weight_c.result),
+            (empty_tensor.results[0],),
+            (output_type,),
+            {"dilations": dilations, "strides": strides},
         )
 
         ReturnOp(result, golden_c)
