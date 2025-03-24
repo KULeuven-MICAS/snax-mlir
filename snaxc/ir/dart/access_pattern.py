@@ -42,6 +42,17 @@ class AccessPattern(ABC):
     def num_dims(self):
         return len(self.bounds)
 
+    @property
+    def num_results(self):
+        return len(self.pattern.b)
+
+    @property
+    def used_results(self) -> list[int]:
+        """
+        Returns the number of non-zero results
+        """
+        return np.where(np.all(self.pattern.A != 0, axis=1))[0].tolist()
+
     def inner_dims(self, dim: int) -> Self:
         """
         Returns an affine map with all but the innermost `dim` dimensions set to 0
@@ -59,6 +70,15 @@ class AccessPattern(ABC):
             self.bounds[-dim:],
             AffineTransform(self.pattern.A[:, -dim:], self.pattern.b),
         )
+
+    def select_results(self, results: Sequence[int]) -> Self:
+        """
+        Returns the same access pattern with only the selected results remaining.
+        """
+        A = self.pattern.A[results, :]
+        b = self.pattern.b[results]
+        pattern = AffineTransform(A, b)
+        return type(self)(self.bounds, pattern)
 
     def __str__(self) -> str:
         bounds = [str(b) if b else "?" for b in self.bounds]
@@ -234,6 +254,10 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
         return self[0].num_dims
 
     @property
+    def num_results(self) -> int:
+        return self[0].num_results
+
+    @property
     def max_dim(self) -> int:
         return max(pattern.num_dims for pattern in self._patterns)
 
@@ -260,6 +284,31 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
 
     def __str__(self) -> str:
         return "\n".join(str(pattern) for pattern in self)
+
+    def select_results(self, dims: Sequence[int]):
+        """
+        Return the same PatternCollection with only the selected
+        results remaining in the patterns.
+        """
+
+        return type(self)(sp.select_results(dims) for sp in self)
+
+    def reduce_results(self) -> Self:
+        """
+        Remove all unused result dimensions
+        """
+
+        unused_results = set(range(self.num_results))
+        used_results = set(range(self.num_results))
+
+        # gather dims that are unused in all patterns
+        for pattern in self:
+            for used_result in pattern.used_results:
+                unused_results.discard(used_result)
+
+        used_results = sorted(list(used_results.difference(unused_results)))
+
+        return self.select_results(used_results)
 
 
 class Schedule(PatternCollection[SchedulePattern]):
