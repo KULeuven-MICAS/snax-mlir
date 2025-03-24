@@ -194,7 +194,7 @@ def test_template_pattern_matches():
     sp_non_matching_pattern = SchedulePattern(
         bounds,
         AffineMap(
-            num_dims=2, num_symbols=0, results=(AffineDimExpr(1), AffineDimExpr(0))
+            num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(0))
         ),
     )
     assert tp.matches(sp_non_matching_pattern) is False
@@ -270,7 +270,7 @@ def test_template_matches_schedule():
     sp3 = SchedulePattern(
         (10, 20),
         AffineMap(
-            num_dims=2, num_symbols=0, results=(AffineDimExpr(1), AffineDimExpr(0))
+            num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(0))
         ),
     )
     schedule_non_matching = Schedule([sp1, sp3])
