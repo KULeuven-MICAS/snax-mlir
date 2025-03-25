@@ -99,7 +99,7 @@ class AddCyclicMemoryLayout(RewritePattern):
                 )
 
                 # can we further tile the layout according to the remaining size?
-                if self.tiled_layout:
+                if self.tiled_layout and size_remaining % schedule_bound == 0:
                     layout_bound = schedule_bound
                 else:
                     layout_bound = size_remaining
