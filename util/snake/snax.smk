@@ -38,8 +38,8 @@ rule trace_dasm:
     input:
         "{file}.dasm",
     output:
-        temp("{file}_perf.json"),
-        temp("{file}.txt"),
+        "{file}_perf.json",
+        "{file}.txt",
     shell:
         "{config[spike-dasm]} < {input} | {config[python]} {config[gen_trace.py]} --permissive -d {output[0]} > {output[1]}"
 
