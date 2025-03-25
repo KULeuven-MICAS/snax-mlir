@@ -174,10 +174,6 @@ class SNAXGEMMXAccelerator(
 
         c0 = arith.ConstantOp.from_int_and_width(0, 32)
         c1 = arith.ConstantOp.from_int_and_width(1, 32)
-        knm: list[tuple[tuple[Operation], OpResult]] = [
-            (((cst := arith.ConstantOp.from_int_and_width(val.data, 32)),), cst.result)
-            for val in op.stride_patterns.data[0].upper_bounds
-        ]
 
         streamer_setup_vals = list(self._generate_streamer_setup_vals(op))
 
@@ -188,6 +184,22 @@ class SNAXGEMMXAccelerator(
         if isinstance(
             qmac := generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp
         ):
+            # compute knm: fix n = 1
+            n = 1
+            # count the number of non-reducing bounds (output stride != 0)
+            m = (
+                prod(
+                    bound.data
+                    for bound, stride in zip(
+                        op.stride_patterns.data[-1].upper_bounds,
+                        op.stride_patterns.data[-1].temporal_strides,
+                    )
+                    if stride.data != 0
+                )
+                // n
+            )
+            k = prod(x.data for x in op.stride_patterns.data[0].upper_bounds) // m
+
             # gemm
             # bypass simd and set all related values to 0
             bypassSIMD = c1.result  # bypass simd
@@ -218,11 +230,12 @@ class SNAXGEMMXAccelerator(
             subtractions = bitlist[-1].results[0]
 
         elif isinstance(rescale := generic_op.body.block.first_op, kernel.RescaleOp):
+            # set k and n to 1
+            k = 1
+            n = 1
+            m = prod(x.data for x in op.stride_patterns.data[0].upper_bounds)
+
             # extract and compute correct value for csr's based on kernel rescale op
-            # set k to 1
-            knm.insert(
-                0, ((cst := arith.ConstantOp.from_int_and_width(1, 32),), cst.result)
-            )
             # simd
             bypassSIMD = c0.result
             subtractions = c0.result
@@ -267,6 +280,11 @@ class SNAXGEMMXAccelerator(
 
         else:
             raise NotImplementedError()
+
+        knm: list[tuple[tuple[Operation], OpResult]] = [
+            (((cst := arith.ConstantOp.from_int_and_width(val, 32)),), cst.result)
+            for val in (k, n, m)
+        ]
 
         return [
             *streamer_setup_vals,
