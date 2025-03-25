@@ -145,9 +145,9 @@ class SNAXStreamer(ABC):
             # loop bounds
             upper_bounds = op.stride_patterns.data[operand].upper_bounds.data
             # pad unused temporal bounds with 1's'
-            upper_bounds = (
+            upper_bounds = upper_bounds + (
                 (IntAttr(1),) * (streamer.temporal_dim - len(upper_bounds))
-            ) + upper_bounds
+            )
             for dim, flag in enumerate(streamer.temporal_dims):
                 bound = upper_bounds[dim].data
                 if flag == StreamerFlag.Reuse and bound > 1:
@@ -159,9 +159,9 @@ class SNAXStreamer(ABC):
             # temporal strides
             temporal_strides = op.stride_patterns.data[operand].temporal_strides.data
             # pad unused spatial strides with 0's
-            temporal_strides = (
+            temporal_strides = temporal_strides + (
                 (IntAttr(0),) * (streamer.temporal_dim - len(temporal_strides))
-            ) + temporal_strides
+            )
             for dim, flag in enumerate(streamer.temporal_dims):
                 stride = temporal_strides[dim]
                 if flag == StreamerFlag.Irrelevant:
