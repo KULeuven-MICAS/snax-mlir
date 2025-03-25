@@ -94,26 +94,21 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
 
                 # insert empty patterns for D8 and zero pattern for C
                 snax_stride_patterns.insert(2, empty_pattern)
-                new_inputs.append(op.inputs[-1])
+                new_inputs.append(op.outputs[0])
 
-                # insert zero pattern for C, using the same pattern as D32 but pointing to zero
-                # this way, the bias used by the gemm is just a bunch of zeros
+                # insert same pattern for C as for D32
                 snax_stride_patterns.insert(
                     3,
                     snax_stream.StridePattern(
                         upper_bounds=snax_stride_patterns[3].upper_bounds,
-                        temporal_strides=[0]
-                        * len(snax_stride_patterns[3].upper_bounds),
+                        temporal_strides=snax_stride_patterns[3].temporal_strides,
                         spatial_strides=[8],
                     ),
                 )
 
-                # point C to c0
-                ops_to_add.append(
-                    # zero pointer will generate 0 values
-                    ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
-                )
-                new_inputs.append(ptr.result)
+                # point C to D32
+                new_inputs.append(op.outputs[0])
+
             elif len(snax_stride_patterns) == 4:
                 # gemm
                 #
