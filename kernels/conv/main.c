@@ -41,7 +41,8 @@ int main() {
 
   for (int i = 0; i < total_results; i++) {
 
-    printf("(%d) %d -> %d\n", i, golden->aligned_data[i], computed->aligned_data[i]);
+    // printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
+    // computed->aligned_data[i]);
     if (golden->aligned_data[i] != computed->aligned_data[i]) {
       nerr++;
     }
