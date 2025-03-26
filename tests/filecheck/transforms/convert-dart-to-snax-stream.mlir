@@ -42,7 +42,7 @@ func.func @streamer_matmul(%arg0 : memref<16x16xi8>, %arg1 : memref<16x16xi8, st
   func.return
 }
 
-// CHECK:       "snax_stream.streaming_region"(%{{.*}}, %{{.*}}, %{{.*}}, %{{.*}}, %{{.*}}) <{stride_patterns = [#snax_stream.stride_pattern<ub = [2, 2, 2], ts = [8, 128, 0], ss = [8]>, #snax_stream.stride_pattern<ub = [2, 2, 2], ts = [8, 0, 128], ss = [8]>, #snax_stream.stride_pattern<ub = [0, 0, 0], ts = [0, 0, 0], ss = [0]>, #snax_stream.stride_pattern<ub = [2, 2, 2], ts = [0, 0, 0], ss = [8, 64]>, #snax_stream.stride_pattern<ub = [2, 2, 2], ts = [0, 512, 32], ss = [8, 64]>], accelerator = "snax_gemmx", operandSegmentSizes = array<i32: 4, 1>}> ({
+// CHECK:       "snax_stream.streaming_region"(%{{.*}}, %{{.*}}, %{{.*}}, %{{.*}}, %{{.*}}) <{stride_patterns = [#snax_stream.stride_pattern<ub = [2, 2, 2], ts = [8, 128, 0], ss = [8]>, #snax_stream.stride_pattern<ub = [2, 2, 2], ts = [8, 0, 128], ss = [8]>, #snax_stream.stride_pattern<ub = [0, 0, 0], ts = [0, 0, 0], ss = [0]>, #snax_stream.stride_pattern<ub = [2, 2, 2], ts = [0, 512, 32], ss = [8, 64]>, #snax_stream.stride_pattern<ub = [2, 2, 2], ts = [0, 512, 32], ss = [8, 64]>], accelerator = "snax_gemmx", operandSegmentSizes = array<i32: 4, 1>}> ({
 // CHECK-NEXT:  ^0(%{{.*}} : !dart.stream<i8>, %{{.*}} : !dart.stream<i8>, %{{.*}} : !dart.stream<i32>):
 // CHECK-NEXT:    %{{.*}} = "dart.generic"(%{{.*}}, %{{.*}}, %{{.*}}, %{{.*}}) <{library_call = "snax_gemmx"}> ({
 // CHECK-NEXT:    ^1(%{{.*}} : i8, %{{.*}} : i8, %{{.*}} : i32, %{{.*}} : i32, %{{.*}} : i32):
