@@ -46,9 +46,6 @@ alloc_result_t *_mlir_ciface_snax_alloc_l1(uint32_t size, uint32_t alignment) {
 
 void _mlir_ciface_snax_clear_l1() {
   snrt_alloc_init();
-  // keep first row of the tcdm free for zero wizardry
-  // this has a similar function to the zero register of risc-v
-  snrt_l1alloc(256);
   // memset all to 0 with DMA
   if (snrt_is_dm_core()) {
     snrt_dma_start_2d((int32_t *)0x10000040, (int32_t *)0x10000000, 0x40, 0x40,
