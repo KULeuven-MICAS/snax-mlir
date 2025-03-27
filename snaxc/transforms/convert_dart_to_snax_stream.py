@@ -64,10 +64,11 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
             # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)
             # in reverse, because we work outermost -> innermost and streamers the other way around
 
-            # do not generate stride, bound pairs for irrelevant spatial strides
-            relevant = [True] * (pattern.num_dims - template.num_dims) + template[
-                operand
-            ].pattern.A.any(axis=0).tolist()
+            # do not generate stride, bound pairs for irrelevant spatial dimensions
+            # all temporal dimensions are relevant for access patterns:
+            relevant: list[bool] = [True] * (pattern.num_dims - template.num_dims)
+            # relevant spatial strides have a component in the template matrix
+            relevant += template[operand].pattern.A.any(axis=0).tolist()
 
             access_iter = iter(
                 (int(pattern.A[0, i]), op.bounds.data[i].value.data)
