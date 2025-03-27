@@ -61,7 +61,7 @@ class Streamer:
 
     type: StreamerType
     temporal_dims: tuple[StreamerFlag, ...]
-    spatial_dims: tuple[StreamerFlag, ...]
+    spatial_dims: tuple[int, ...]
 
     opts: set[StreamerOpts]
 
@@ -69,7 +69,7 @@ class Streamer:
         self,
         type: StreamerType,
         temporal_dims: Sequence[StreamerFlag | Literal["n", "i", "r"]],
-        spatial_dims: Sequence[StreamerFlag | Literal["n", "i", "r"]],
+        spatial_dims: Sequence[int],
         opts: Iterable[StreamerOpts] = [],
     ) -> None:
         self.type = type
@@ -77,25 +77,8 @@ class Streamer:
             f if isinstance(f, StreamerFlag) else StreamerFlag(f) for f in temporal_dims
         ]
         self.temporal_dims = tuple(temporal_dims)
-        spatial_dims = [
-            f if isinstance(f, StreamerFlag) else StreamerFlag(f) for f in spatial_dims
-        ]
         self.spatial_dims = tuple(spatial_dims)
         self.opts = set(opts)
-
-    @classmethod
-    def from_dim(
-        cls, type: StreamerType, temporal_dim: int, spatial_dim: int
-    ) -> "Streamer":
-        """
-        Returns a streamer with a specified temporal dim and spatial dim
-        as integers, without any flags set.
-        """
-        return cls(
-            type,
-            (StreamerFlag.Normal,) * temporal_dim,
-            (StreamerFlag.Normal,) * spatial_dim,
-        )
 
     @property
     def temporal_dim(self):
