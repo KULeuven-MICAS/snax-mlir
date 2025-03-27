@@ -14,9 +14,6 @@ int main() {
   golden = &results[0];
   computed = &results[1];
 
-  // allocate zero row in tcdm
-  snrt_l1alloc(256);
-
   (void)snrt_mcycle();
   snrt_cluster_hw_barrier();
 

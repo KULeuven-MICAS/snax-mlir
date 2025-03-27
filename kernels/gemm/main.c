@@ -54,9 +54,6 @@ int main() {
 
     TwoDMemrefI32_t memrefD;
 
-    // allocate zero row in tcdm
-    snrt_l1alloc(256);
-
     (void)snrt_mcycle();
 
     _mlir_ciface_gemm(&memrefD, &memrefA, &memrefB, &memrefC);
