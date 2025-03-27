@@ -16,7 +16,7 @@ from snaxc.ir.dart.scheduler import (
 def test_matching_1o():
     # test matching template and schedule for 1 operand
 
-    pattern = AffineMap.from_callable(lambda i, j, k: (i, j, k))
+    pattern = AffineMap.from_callable(lambda i, j, k: (i + j + k,))
     template = Template((TemplatePattern(bounds=(4, 4, 4), pattern=pattern),))
     schedule = Schedule((SchedulePattern(bounds=(4, 4, 4), pattern=pattern),))
 
@@ -28,7 +28,7 @@ def test_matching_1o():
 def test_matching_2o():
     # test matching template and schedule for 2 operands
 
-    pattern = AffineMap.from_callable(lambda i, j, k: (i, j, k))
+    pattern = AffineMap.from_callable(lambda i, j, k: (i + j + k,))
     template = Template((TemplatePattern(bounds=(4, 4, 4), pattern=pattern),) * 2)
     schedule = Schedule((SchedulePattern(bounds=(4, 4, 4), pattern=pattern),) * 2)
 
@@ -127,9 +127,9 @@ def test_tiling_1o2_1d():
         (SchedulePattern(bounds=(2, 2, 2, 2), pattern=pattern_expected),)
     )
 
-    result = scheduler(template, schedule)
+    results = list(scheduler_backtrack(template, schedule, extra_checks=[]))
 
-    assert result == expected
+    assert expected in results
 
 
 def test_tiling_1o_1d2():

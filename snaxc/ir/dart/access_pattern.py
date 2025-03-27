@@ -3,6 +3,8 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Generic, cast
 
+import numpy as np
+from numpy.typing import NDArray
 from typing_extensions import Self, TypeVar, overload
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 
@@ -167,6 +169,47 @@ class SchedulePattern(AccessPattern):
         return type(self)(new_bounds, new_pattern)
 
 
+def same_nonzero_singular_vectors(
+    A: NDArray[np.int_], B: NDArray[np.int_], tol: float = 1e-10
+) -> bool:
+    """
+    Check if the subspaces spanned by the right singular vectors of A and B
+    corresponding to non-zero singular values are the same.
+
+    Parameters:
+    - A: First input integer matrix.
+    - B: Second input integer matrix.
+    - tol: Tolerance below which a singular value is considered zero.
+
+    Returns:
+    - True if the subspaces are the same (within tolerance), False otherwise.
+    """
+
+    # Compute SVD for A and B.
+    _, s_A, Vt_A = np.linalg.svd(A, full_matrices=False)
+    _, s_B, Vt_B = np.linalg.svd(B, full_matrices=False)
+
+    # Filter out near-zero singular values
+    mask_A = s_A > tol
+    mask_B = s_B > tol
+
+    # If the number of nonzero singular values differ, the subspaces are different.
+    if np.count_nonzero(mask_A) != np.count_nonzero(mask_B):
+        return False
+
+    # Extract the right singular vectors corresponding to non-zero singular values.
+    # Since np.linalg.svd returns V^T, we transpose to get V.
+    V_A_nonzero = Vt_A.T[:, mask_A]
+    V_B_nonzero = Vt_B.T[:, mask_B]
+
+    # Construct projection matrices for the subspaces spanned by these vectors
+    P_A = V_A_nonzero @ V_A_nonzero.T
+    P_B = V_B_nonzero @ V_B_nonzero.T
+
+    # The subspaces are considered the same if the projection matrices are close
+    return np.allclose(P_A, P_B, atol=tol)
+
+
 @dataclass(frozen=True)
 class TemplatePattern(AccessPattern):
     """
@@ -189,9 +232,10 @@ class TemplatePattern(AccessPattern):
             sp = sp.inner_dims(self.num_dims)
         elif sp.num_dims < self.num_dims:
             return False
-        if sp.pattern != self.pattern:
-            return False
-        return True
+
+        result = same_nonzero_singular_vectors(self.pattern.A, sp.pattern.A)
+
+        return result
 
 
 P = TypeVar("P", bound=AccessPattern)
