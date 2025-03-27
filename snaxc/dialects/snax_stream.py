@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Self
 
 from xdsl.dialects.builtin import ArrayAttr, IndexType, IntAttr, StringAttr
 from xdsl.ir import (
@@ -80,6 +81,33 @@ class StridePattern(ParametrizedAttribute):
                 self.spatial_strides, lambda attr: printer.print(attr.data)
             )
             printer.print_string("]")
+
+    def canonicalize(self) -> Self:
+        upper_bounds = [x.data for x in self.upper_bounds.data]
+        temporal_strides = [x.data for x in self.temporal_strides.data]
+
+        new_upper_bounds: list[int] = []
+        new_temporal_strides: list[int] = []
+
+        for ub, ts in zip(upper_bounds, temporal_strides):
+            # hardcoded zeros should pass through for disabled streamers
+            if ub == 0:
+                new_upper_bounds.append(0)
+                new_temporal_strides.append(0)
+            # upper bound of 1 can be removed
+            elif ub == 1:
+                pass
+            elif (
+                len(new_upper_bounds)
+                and new_upper_bounds[-1] * new_temporal_strides[-1] == ts
+            ):
+                # wrap two strides in 1
+                new_upper_bounds[-1] *= ub
+            else:
+                new_upper_bounds.append(ub)
+                new_temporal_strides.append(ts)
+
+        return type(self)(new_upper_bounds, new_temporal_strides, self.spatial_strides)
 
     @classmethod
     def parse_parameters(cls, parser: AttrParser) -> Sequence[Attribute]:

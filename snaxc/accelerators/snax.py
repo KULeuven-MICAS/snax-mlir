@@ -145,29 +145,34 @@ class SNAXStreamer(ABC):
             # loop bounds
             upper_bounds = op.stride_patterns.data[operand].upper_bounds.data
             # pad unused temporal bounds with 1's'
-            upper_bounds = (
+            upper_bounds = upper_bounds + (
                 (IntAttr(1),) * (streamer.temporal_dim - len(upper_bounds))
-            ) + upper_bounds
+            )
+
+            # temporal strides
+            temporal_strides = op.stride_patterns.data[operand].temporal_strides.data
+            # pad unused spatial strides with 0's
+            temporal_strides = temporal_strides + (
+                (IntAttr(0),) * (streamer.temporal_dim - len(temporal_strides))
+            )
+
+            # ops for loop bounds
             for dim, flag in enumerate(streamer.temporal_dims):
                 bound = upper_bounds[dim].data
-                if flag == StreamerFlag.Reuse and bound > 1:
+                stride = temporal_strides[dim].data
+                if flag == StreamerFlag.Reuse and bound > 1 and stride == 0:
                     # if internal reuse, bound can be set to 1
                     bound = 1
                 cst = arith.ConstantOp.from_int_and_width(bound, i32)
                 result.append(([cst], cst.result))
 
-            # temporal strides
-            temporal_strides = op.stride_patterns.data[operand].temporal_strides.data
-            # pad unused spatial strides with 0's
-            temporal_strides = (
-                (IntAttr(0),) * (streamer.temporal_dim - len(temporal_strides))
-            ) + temporal_strides
+            # ops for temporal strides
             for dim, flag in enumerate(streamer.temporal_dims):
-                stride = temporal_strides[dim]
+                stride = temporal_strides[dim].data
                 if flag == StreamerFlag.Irrelevant:
                     # Irrelevant temporal strides should be zero
                     assert stride == 0
-                cst = arith.ConstantOp.from_int_and_width(stride.data, i32)
+                cst = arith.ConstantOp.from_int_and_width(stride, i32)
                 result.append(([cst], cst.result))
 
             # address remap:

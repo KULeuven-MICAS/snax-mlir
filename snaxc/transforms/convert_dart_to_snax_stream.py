@@ -167,6 +167,10 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                 spatial_strides=[8, 64],
             )
 
+        snax_stride_patterns = [
+            pattern.canonicalize() for pattern in snax_stride_patterns
+        ]
+
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(
             inputs=new_inputs,
