@@ -27,9 +27,15 @@ def get_all_accelerators() -> dict[str, Callable[[], Accelerator]]:
 
         return GemminiAccelerator()
 
+    def get_snax_gemmx_2d():
+        from snaxc.accelerators.snax_gemmx_2d import SNAXGEMMX2DAccelerator
+
+        return SNAXGEMMX2DAccelerator()
+
     return {
         "snax_alu": get_snax_alu,
         "snax_gemmx": get_snax_gemmx,
+        "snax_gemmx_2d": get_snax_gemmx_2d,
         "snax_hwpe_mult": get_snax_hwpe_mult,
         "gemmini": get_gemmini,
     }
