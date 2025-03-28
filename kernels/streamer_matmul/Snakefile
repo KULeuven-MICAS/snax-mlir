@@ -1,6 +1,6 @@
-from util.snake.configs import get_snax_gemmx_config
+from util.snake.configs import get_snax_gemmx_3d_config
 
-config = get_snax_gemmx_config()
+config = get_snax_gemmx_3d_config()
 config["snaxoptflags"] = ",".join(
     [
         "preprocess",
@@ -16,7 +16,7 @@ config["snaxoptflags"] = ",".join(
         "set-memory-layout",
         "realize-memref-casts",
         "insert-sync-barrier",
-        "dispatch-regions{nb_cores=2}",
+        "dispatch-regions{nb_cores=3}",
         "dart-layout-resolution",
         "convert-dart-to-snax-stream",
         "convert-linalg-to-accfg",

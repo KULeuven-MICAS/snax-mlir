@@ -114,7 +114,9 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                         next_bound // applied_bound,
                     )
                 else:
-                    raise NotImplementedError()
+                    # not to worry, stride can be passed on to higher in the chain, just update the bound, stride
+                    bound = bound // spat_size
+                    stride = stride * spat_size
 
             # remaining are temporal strides
             while stride is not None and bound is not None:
