@@ -96,10 +96,11 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                     # nice, strides correspond with streamer dimension
                     stride, bound = next(access_iter)
                 elif bound < spat_size:
-                    # caution! strides of pattern don't nicely overlap with streamers, only possible
-                    # for contiguous access! Because the streamer is larger than the stride, it will
-                    # access more elements of the next stride, this is the applied stride. This should
-                    # correspond with the next stride for correct operation.
+                    # caution! the dimensions of the stride pattern don't nicely overlap with the dimensions
+                    # of the streamers, this is only allowed if the two pattern dimensions can be merged.
+                    # here, we try to let the streamer take the stride (but it will fetch too many elements).
+                    # this will result in an applied_stride and applied_bound that overlaps with the next
+                    # stride pattern dimension, it should be checked that this is still correct.
                     assert spat_size % bound == 0
                     applied_stride = stride * bound
                     applied_bound = spat_size // bound
