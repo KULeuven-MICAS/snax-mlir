@@ -206,9 +206,11 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
                 parser.parse_punctuation("=")
 
                 # Determine the spatial dimensions
-                spatial_dims: Sequence[StreamerFlag] = []
+                spatial_dims: Sequence[int] = []
                 while not parser.parse_optional_punctuation("]"):
-                    spatial_dims.append(parser.parse_str_enum(StreamerFlag))
+                    spatial_dims.append(
+                        parser.parse_integer(allow_boolean=False, allow_negative=False)
+                    )
                     parser.parse_optional_punctuation("-")
 
                 streamers.append(
@@ -230,7 +232,7 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
             f"{streamer.type.value}["
             + (f"opts={'-'.join(streamer.opts)}, " if streamer.opts else "")
             + f"temp={'-'.join(streamer.temporal_dims)}, "
-            + f"spat={'-'.join(streamer.spatial_dims)}]"
+            + f"spat={'-'.join(str(d) for d in streamer.spatial_dims)}]"
             for streamer in self.data.streamers
         ]
         printer.print_string(f"<{', '.join(streamer_strings)}>")

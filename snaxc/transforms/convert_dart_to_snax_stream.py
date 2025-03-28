@@ -16,6 +16,8 @@ from snaxc.accelerators.snax import SNAXStreamer
 from snaxc.dialects import dart, snax_stream
 from snaxc.ir.dart.affine_transform import AffineTransform
 
+TCDM_BANK_WIDTH = 8
+
 
 @dataclass
 class ConvertStreamToSnaxStreamPattern(RewritePattern):
@@ -36,29 +38,83 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
 
         snax_stride_patterns: list[snax_stream.StridePattern] = []
 
+        # FIXME: along with the mess at the bottom, very urgently a better mapping of operand -> streamer
+        # must be available
+        if op.accelerator.data == "snax_gemmx":
+            if len(op.patterns) == 3:
+                streamers = [
+                    accelerator_type.streamer_config.data.streamers[i]
+                    for i in (0, 1, 4)
+                ]
+            elif len(op.patterns) == 4:
+                streamers = [
+                    accelerator_type.streamer_config.data.streamers[i]
+                    for i in (0, 1, 3, 4)
+                ]
+            else:
+                streamers = [
+                    accelerator_type.streamer_config.data.streamers[i] for i in (3, 2)
+                ]
+        else:
+            streamers = accelerator_type.streamer_config.data.streamers
+
         for operand in range(len(op.operands)):
             pattern = AffineTransform.from_affine_map(op.patterns.data[operand].data)
 
             # Create iterator for all dimensions of the access_mem_map that returns (stride, bound)
             # in reverse, because we work outermost -> innermost and streamers the other way around
+
+            # do not generate stride, bound pairs for irrelevant spatial dimensions
+            # all temporal dimensions are relevant for access patterns:
+            relevant: list[bool] = [True] * (pattern.num_dims - template.num_dims)
+            # relevant spatial strides have a component in the template matrix
+            relevant += template[operand].pattern.A.any(axis=0).tolist()
+
             access_iter = iter(
                 (int(pattern.A[0, i]), op.bounds.data[i].value.data)
                 for i in reversed(range(pattern.num_dims))
+                if relevant[i]
             )
-
-            # Fetch the first stride
-            stride, bound = next(access_iter)
 
             temporal_strides: list[int] = []
             spatial_strides: list[int] = []
             upper_bounds: list[int] = []
 
+            # Fetch the first stride
+            stride, bound = next(access_iter)
+
+            # TCDM takes 8 contiguous bytes minimum
+            if stride * bound == TCDM_BANK_WIDTH:
+                stride, bound = next(access_iter)
+            else:
+                stride, bound = TCDM_BANK_WIDTH, (stride * bound) // TCDM_BANK_WIDTH
+
             # fill up all spatial strides
-            for _ in [x for x in template[0].bounds if x is not None]:
-                # FIXME: provide more general solution for new spatial streamer_config
-                # configuration, this works in all current cases and layouts but is far from generally correct.
-                spatial_strides = [8]
-                stride, bound = next(access_iter, (None, None))
+            for spat_size in streamers[operand].spatial_dims:
+                spatial_strides.append(stride)
+                if bound == spat_size:
+                    # nice, strides correspond with streamer dimension
+                    stride, bound = next(access_iter)
+                elif bound < spat_size:
+                    # caution! the dimensions of the stride pattern don't nicely overlap with the dimensions
+                    # of the streamers, this is only allowed if the two pattern dimensions can be merged.
+                    # here, we try to let the streamer take the stride (but it will fetch too many elements).
+                    # this will result in an applied_stride and applied_bound that overlaps with the next
+                    # stride pattern dimension, it should be checked that this is still correct.
+                    assert spat_size % bound == 0
+                    applied_stride = stride * bound
+                    applied_bound = spat_size // bound
+                    next_stride, next_bound = next(access_iter)
+                    if applied_stride != next_stride:
+                        raise RuntimeError(
+                            "Non-contiguous access is not possible for this streamer configuration"
+                        )
+                    stride, bound = (
+                        applied_stride * applied_bound,
+                        next_bound // applied_bound,
+                    )
+                else:
+                    raise NotImplementedError()
 
             # remaining are temporal strides
             while stride is not None and bound is not None:
@@ -102,7 +158,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                     snax_stream.StridePattern(
                         upper_bounds=snax_stride_patterns[3].upper_bounds,
                         temporal_strides=snax_stride_patterns[3].temporal_strides,
-                        spatial_strides=[8],
+                        spatial_strides=snax_stride_patterns[3].spatial_strides,
                     ),
                 )
 
@@ -154,18 +210,17 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                 # dummy base pointer for D32
                 new_inputs.append(op.inputs[-1])
 
-        if op.accelerator.data == "snax_gemmx":
-            # make last spatial stride patterns 2d
-            snax_stride_patterns[-2] = snax_stream.StridePattern(
-                upper_bounds=snax_stride_patterns[-2].upper_bounds,
-                temporal_strides=snax_stride_patterns[-2].temporal_strides,
-                spatial_strides=[8, 64],
-            )
-            snax_stride_patterns[-1] = snax_stream.StridePattern(
-                upper_bounds=snax_stride_patterns[-1].upper_bounds,
-                temporal_strides=snax_stride_patterns[-1].temporal_strides,
-                spatial_strides=[8, 64],
-            )
+                # make last spatial stride patterns 2d
+                snax_stride_patterns[-2] = snax_stream.StridePattern(
+                    upper_bounds=snax_stride_patterns[-2].upper_bounds,
+                    temporal_strides=snax_stride_patterns[-2].temporal_strides,
+                    spatial_strides=[8, 64],
+                )
+                snax_stride_patterns[-1] = snax_stream.StridePattern(
+                    upper_bounds=snax_stride_patterns[-1].upper_bounds,
+                    temporal_strides=snax_stride_patterns[-1].temporal_strides,
+                    spatial_strides=[8, 64],
+                )
 
         snax_stride_patterns = [
             pattern.canonicalize() for pattern in snax_stride_patterns

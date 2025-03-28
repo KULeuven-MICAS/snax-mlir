@@ -23,9 +23,9 @@ from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 
 default_streamer = StreamerConfiguration(
     [
-        Streamer.from_dim(StreamerType.Reader, 1, 1),
-        Streamer.from_dim(StreamerType.Reader, 1, 1),
-        Streamer.from_dim(StreamerType.Writer, 1, 1),
+        Streamer(StreamerType.Reader, ["n"], [4]),
+        Streamer(StreamerType.Reader, ["n"], [4]),
+        Streamer(StreamerType.Writer, ["n"], [4]),
     ]
 )
 

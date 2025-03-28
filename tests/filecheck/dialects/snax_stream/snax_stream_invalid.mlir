@@ -31,7 +31,7 @@
     name = @accelerator_with_streamers,
     fields = {}, launch_fields = {}, barrier = 0
 }> {
-    "streamer_config" = #snax.streamer_config< r[temp=n-n, spat=n-n], r[temp=n-n, spat=n-n], w[temp=n-n, spat=n-n]>
+    "streamer_config" = #snax.streamer_config< r[temp=n-n, spat=2-4], r[temp=n-n, spat=2-4], w[temp=n-n, spat=2-4]>
 } : () -> ()
 
 "snax_stream.streaming_region"() <{
@@ -49,7 +49,7 @@
     name = @accelerator_with_streamers,
     fields = {}, launch_fields = {}, barrier = 0
 }> {
-    "streamer_config" = #snax.streamer_config< r[temp=n-n, spat=n-n], r[temp=n-n, spat=n-n], w[temp=n-n, spat=n-n]>
+    "streamer_config" = #snax.streamer_config< r[temp=n-n, spat=2-4], r[temp=n-n, spat=2-4], w[temp=n-n, spat=2-4]>
 } : () -> ()
 
 "snax_stream.streaming_region"() <{
@@ -70,7 +70,7 @@
     name = @accelerator_with_streamers,
     fields = {}, launch_fields = {}, barrier = 0
 }> {
-    "streamer_config" = #snax.streamer_config< r[temp=n-n, spat=n-n], r[temp=n-n, spat=n-n], w[temp=n-n, spat=n-n]>
+    "streamer_config" = #snax.streamer_config< r[temp=n-n, spat=2-4], r[temp=n-n, spat=2-4], w[temp=n-n, spat=2-4]>
 } : () -> ()
 
 "snax_stream.streaming_region"() <{
