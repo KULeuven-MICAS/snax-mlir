@@ -1,11 +1,11 @@
-from util.snake.configs import get_snax_gemmx_3d_config
+from util.snake.configs import get_snax_gemmx_2d_config
 
-config = get_snax_gemmx_3d_config()
+config = get_snax_gemmx_2d_config()
 config["snaxoptflags"] = ",".join(
     [
         "preprocess",
         "convert-linalg-to-kernel",
-        "insert-accfg-op{accelerator=snax_gemmx}",
+        "insert-accfg-op{accelerator=snax_gemmx_2d}",
         "dispatch-kernels",
         "convert-linalg-to-dart",
         "dart-fuse-operations",

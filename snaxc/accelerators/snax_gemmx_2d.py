@@ -27,20 +27,20 @@ default_streamer = StreamerConfiguration(
         Streamer(  # A
             StreamerType.Reader,
             temporal_dims=("n", "n", "n", "n", "n", "n"),
-            spatial_dims=(8,),
-            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
+            spatial_dims=(4,),
+            opts=(StreamerOpts.HasTranspose,),
         ),
         Streamer(  # B
             StreamerType.Reader,
             temporal_dims=("n", "n", "n", "n", "n", "n"),
-            spatial_dims=(8,),
-            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
+            spatial_dims=(2,),
+            opts=(StreamerOpts.HasTranspose,),
         ),
         Streamer(  # D8
             StreamerType.Writer,
             temporal_dims=("r", "n", "n", "n", "n", "n"),
             spatial_dims=(8,),
-            opts=(StreamerOpts.HasAddressRemap,),
+            opts=(),
         ),
         Streamer(  # C
             StreamerType.Reader,
@@ -48,7 +48,6 @@ default_streamer = StreamerConfiguration(
             spatial_dims=(4, 2),
             opts=(
                 StreamerOpts.HasChannelMask,
-                StreamerOpts.HasAddressRemap,
                 StreamerOpts.HasBroadcast,
             ),
         ),
@@ -56,22 +55,22 @@ default_streamer = StreamerConfiguration(
             StreamerType.Writer,
             temporal_dims=("r", "r", "n", "n", "n", "n"),
             spatial_dims=(4, 2),
-            opts=(StreamerOpts.HasAddressRemap,),
+            opts=(),
         ),
     ],
 )
 
-SERIALIZER_RATIO = 4
+SERIALIZER_RATIO = 32
 
 
-class SNAXGEMMXAccelerator(
+class SNAXGEMMX2DAccelerator(
     SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAXPollingBarrier4
 ):
     """
     Accelerator Interface class for SNAX GEMMX accelerator
     """
 
-    name = "snax_gemmx"
+    name = "snax_gemmx_2d"
 
     supported_kernels = (
         SupportedKernel(kernel.QMacOp, (i8, i8, i32, i32, i32)),
@@ -97,9 +96,9 @@ class SNAXGEMMXAccelerator(
             # csr1: double_round (i8)
             "csr1",
             # 8 separate shift values
-            *(f"shift_{i}" for i in range(2)),
+            *(f"shift_{i}" for i in range(4)),
             # 8 separate mult values
-            *(f"mult_{i}" for i in range(8)),
+            *(f"mult_{i}" for i in range(16)),
             "temporal_loop_bound",
             "bypassSIMD",
         )
@@ -127,13 +126,13 @@ class SNAXGEMMXAccelerator(
                 "subtractions": addr_next + 3,
                 "csr0": addr_next + 4,
                 "csr1": addr_next + 5,
-                **{f"shift_{i}": addr_next + 6 + i for i in range(2)},
-                **{f"mult_{i}": addr_next + 8 + i for i in range(8)},
-                "temporal_loop_bound": addr_next + 16,
-                "bypassSIMD": addr_next + 17,
+                **{f"shift_{i}": addr_next + 6 + i for i in range(4)},
+                **{f"mult_{i}": addr_next + 10 + i for i in range(16)},
+                "temporal_loop_bound": addr_next + 26,
+                "bypassSIMD": addr_next + 27,
             },
-            {**streamer_launch, "launch_gemmx": addr_next + 18},
-            addr_next + 18,
+            {**streamer_launch, "launch_gemmx": addr_next + 28},
+            addr_next + 28,
         )
         op.attributes["streamer_config"] = self.streamer_config
         return op
@@ -209,8 +208,8 @@ class SNAXGEMMXAccelerator(
             loop_bound = c0
             csr0 = c0.result
             csr1 = c0.result
-            shift_vals = (c0.result for _ in range(2))
-            mult_vals = (c0.result for _ in range(8))
+            shift_vals = (c0.result for _ in range(4))
+            mult_vals = (c0.result for _ in range(16))
 
             if isinstance(qmac, kernel.QMacOp):
                 # get zero points for gemm
@@ -274,8 +273,8 @@ class SNAXGEMMXAccelerator(
             shift_bitlist = list(pack_bitlist((shift,) * 4, (24, 16, 8, 0)))
             ops_to_add.extend(shift_bitlist)
 
-            shift_vals = (shift_bitlist[-1].results[0] for _ in range(2))
-            mult_vals = (mult.result for _ in range(8))
+            shift_vals = (shift_bitlist[-1].results[0] for _ in range(4))
+            mult_vals = (mult.result for _ in range(16))
 
             loop_bound = prod(x.data for x in op.stride_patterns.data[0].upper_bounds)
             loop_bound = arith.ConstantOp.from_int_and_width(loop_bound, i32)
@@ -308,11 +307,11 @@ class SNAXGEMMXAccelerator(
             # matmul
             m, n, k = (AffineDimExpr(i) for i in range(3))
             template = [
-                AffineMap(3, 0, (m, k)),
-                AffineMap(3, 0, (k, n)),
-                AffineMap(3, 0, (m, n)),
+                AffineMap(2, 0, (m,)),
+                AffineMap(2, 0, (n,)),
+                AffineMap(2, 0, (m, n)),
             ]
-            template_bounds = (8, 8, 8)
+            template_bounds = (32, 16)
 
             if isinstance(generic_op.next_op, dart.GenericOp):
                 generic_op = generic_op.next_op
