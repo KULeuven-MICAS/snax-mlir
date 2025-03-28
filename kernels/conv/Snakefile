@@ -1,0 +1,67 @@
+from util.snake.configs import get_snax_gemmx_config
+
+config = get_snax_gemmx_config()
+
+config["snaxoptflags"] = ",".join(
+    [
+        "preprocess",
+        "convert-linalg-to-kernel",
+        "insert-accfg-op{accelerator=snax_gemmx}",
+        "dispatch-kernels",
+        "convert-linalg-to-dart",
+        "dart-fuse-operations",
+        "snax-bufferize",
+        "alloc-to-global",
+        "set-memory-space",
+        "dart-scheduler",
+        "set-memory-layout",
+        "realize-memref-casts",
+        "insert-sync-barrier",
+        "dispatch-regions{nb_cores=2}",
+        "dart-layout-resolution",
+        "convert-dart-to-snax-stream",
+        "convert-linalg-to-accfg",
+        "convert-accfg-to-csr",
+        "snax-copy-to-dma",
+        "memref-to-snax",
+        "snax-to-func",
+        "clear-memory-space",
+        "postprocess",
+    ]
+)
+
+
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule * from snax_rules as snax_*
+
+
+files = ["conv"]
+
+
+# Rules
+rule all:
+    input:
+        expand("{file}_traces.json", file=files),
+
+
+rule generate_conv:
+    output:
+        "conv.mlir",
+    script:
+        "conv.py"
+
+
+rule link_snax_binary:
+    input:
+        "{file}.o",
+        "main.o",
+    output:
+        "{file}.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
