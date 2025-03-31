@@ -129,7 +129,11 @@ def scheduler(
         # defaulting to pure output stationary schedules for now
         is_pure_output_stationary
     ],
+    schedule_idx: int | None = None,
 ) -> Schedule:
     # for now just return the first result of the backtracking
+    if schedule_idx is not None:
+        all = list(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
+        return all[schedule_idx]
     result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
     return result
