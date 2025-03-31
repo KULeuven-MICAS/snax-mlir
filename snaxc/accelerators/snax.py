@@ -188,7 +188,7 @@ class SNAXStreamer(ABC):
                     result.append(([c0], c0.result))
                 else:
                     # else, set to 32b111...111 (=-1) (all enabled)
-                    n1 = arith.ConstantOp.from_int_and_width(-1, i32)
+                    n1 = arith.ConstantOp.from_int_and_width(0, i32)
                     result.append(([n1], n1.result))
 
         # transpose specifications
