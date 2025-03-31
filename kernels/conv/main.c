@@ -50,8 +50,10 @@ int main() {
 
   printf("Finished, nb errors: %d\n", nerr);
 
-  if (nerr > 0)
-    return 1;
-  else
+  if (nerr > 0) {
+    snrt_mcycle();
     return 0;
+  } else {
+    return 0;
+  }
 }

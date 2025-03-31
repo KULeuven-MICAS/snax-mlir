@@ -2,25 +2,27 @@ from util.snake.configs import get_snax_gemmx_3d_config
 
 config = get_snax_gemmx_3d_config()
 
-config["snaxoptflags"] = ",".join(
+snaxoptflags = ",".join(
     [
         "preprocess",
         "convert-linalg-to-kernel",
-        "insert-accfg-op{accelerator=snax_gemmx}",
+        "insert-accfg-op{{accelerator=snax_gemmx}}",
         "dispatch-kernels",
         "convert-linalg-to-dart",
         "dart-fuse-operations",
         "snax-bufferize",
         "alloc-to-global",
         "set-memory-space",
-        "dart-scheduler",
+        "dart-scheduler{{schedule_idx={schedule_idx}}}",
         "set-memory-layout",
         "realize-memref-casts",
         "insert-sync-barrier",
-        "dispatch-regions{nb_cores=3}",
+        "dispatch-regions{{nb_cores=3}}",
         "dart-layout-resolution",
         "convert-dart-to-snax-stream",
         "convert-linalg-to-accfg",
+        "test-add-mcycle-around-launch",
+        "snax-lower-mcycle",
         "convert-accfg-to-csr",
         "snax-copy-to-dma",
         "memref-to-snax",
@@ -38,16 +40,58 @@ module snax_rules:
         config
 
 
-use rule * from snax_rules as snax_*
+use rule * from snax_rules exclude default_snax_opt_mlir as snax_*
 
 
 files = ["conv"]
+schedule_idx = range(288)
 
 
 # Rules
 rule all:
     input:
-        expand("{file}_traces.json", file=files),
+        expand(
+            "{file}_schedule-{schedule_idx}_traces.json",
+            file=files,
+            schedule_idx=schedule_idx,
+        ),
+
+
+rule aggregate:
+    input:
+        expand("conv_schedule-{schedule_idx}_traces.json", schedule_idx=schedule_idx),
+    output:
+        "summary.json",
+    run:
+        import json
+
+        results = []
+        for f in input:
+            with open(f) as fin:
+                data = json.load(fin)
+                # Count the number of sections in the first element of the outer list: data[0][0]
+            sections = len(data[0][0])
+            # Extract the cycles value from the third element (index 2) in data[0][0]
+            cycles = data[0][0][2]["cycles"]
+            results.append({"file": f, "cycles": cycles, "sections": sections})
+
+        with open(output[0], "w") as fout:
+            json.dump(results, fout, indent=4)
+
+
+rule snax_opt_mlir:
+    """
+    Apply various transformations snax-opt on mlir files.
+    Options controlled with `snaxoptflags` defined in config.
+    """
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}_schedule-{schedule_idx}.ll.mlir"),
+    params:
+        flags=lambda wc: snaxoptflags.format(schedule_idx=wc.schedule_idx),
+    shell:
+        "{config[snax-opt]} -p {params.flags} -o {output} {input}"
 
 
 rule generate_conv:
