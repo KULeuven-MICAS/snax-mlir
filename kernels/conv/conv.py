@@ -16,7 +16,7 @@ from xdsl.dialects.builtin import (
     i64,
 )
 from xdsl.dialects.func import FuncOp, ReturnOp
-from xdsl.dialects.linalg import Conv2DNchwFchwOp
+from xdsl.dialects.linalg import Conv2DNhwc_FhwcOp
 from xdsl.dialects.tensor import EmptyOp
 from xdsl.printer import Printer
 
@@ -82,9 +82,16 @@ def conv(spec: ConvSpec):
     output = compute_convolution(spec, input, weight)
 
     # reshape to the mlir conv2d op spec
-    input = input.transpose((0, 3, 1, 2))  # NHWC -> NCHW
-    weight = weight.transpose((3, 2, 0, 1))  # HWCF -> FCHW
-    output = output.transpose((0, 3, 1, 2))  # NHWC -> NCHW
+
+    # for nchw_fchw:
+    # input = input.transpose((0, 3, 1, 2))  # NHWC -> NCHW
+    # weight = weight.transpose((3, 2, 0, 1))  # HWCF -> FCHW
+    # output = output.transpose((0, 3, 1, 2))  # NHWC -> NCHW
+
+    # for nhwc_fhwc:
+    input = input.transpose((0, 1, 2, 3))  # NHWC -> NHWC
+    weight = weight.transpose((3, 0, 1, 2))  # HWCF -> FHWC
+    output = output.transpose((0, 1, 2, 3))  # NHWC -> NHWC
 
     input_type = TensorType(i8, shape=input.shape)
     weight_type = TensorType(i8, shape=weight.shape)
@@ -114,7 +121,7 @@ def conv(spec: ConvSpec):
         empty_tensor = EmptyOp([], output_type)
 
         # Specify the operation
-        result = Conv2DNchwFchwOp(
+        result = Conv2DNhwc_FhwcOp(
             (input_c.result, weight_c.result),
             (empty_tensor.results[0],),
             (output_type,),
