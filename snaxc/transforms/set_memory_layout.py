@@ -100,7 +100,21 @@ class AddCyclicMemoryLayout(RewritePattern):
 
                 # can we further tile the layout according to the remaining size?
                 # only apply tiling if the entire size is nicely divisible by the tile size for now
-                if self.tiled_layout and size_remaining % schedule_bound == 0:
+                to_tile = self.tiled_layout
+
+                # only apply tiling if entire size is nicely divisible by the tile size for now (not strictly necessary)
+                if size_remaining % schedule_bound != 0:
+                    to_tile = False
+
+                # only apply tiling if all access patterns remain hyperrectangular
+                # for example if there is one dimensions that accesses with stride=1, bound=3 and another dim with stride=1, bound=8,
+                # we cannot tile for either 8 or 3 because then the other pattern is no longer affine
+                for stride, bound in zip(
+                    schedule.pattern.A[accessed_dim, :], schedule.bounds
+                ):
+                    if stride % schedule_bound != 0 and bound != schedule_bound:
+                        to_tile = False
+                if to_tile:
                     layout_bound = schedule_bound
                 else:
                     layout_bound = size_remaining
