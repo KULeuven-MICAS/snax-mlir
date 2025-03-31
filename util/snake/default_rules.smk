@@ -1,14 +1,14 @@
-rule snax_opt_mlir:
-    """
-    Apply various transformations snax-opt on mlir files.
-    Options controlled with `snaxoptflags` defined in config.
-    """
-    input:
-        "{file}.mlir",
-    output:
-        temp("{file}.ll.mlir"),
-    shell:
-        "{config[snax-opt]} -p {config[snaxoptflags]} -o {output} {input}"
+# rule snax_opt_mlir:
+#     """
+#     Apply various transformations snax-opt on mlir files.
+#     Options controlled with `snaxoptflags` defined in config.
+#     """
+#     input:
+#         "{file}.mlir",
+#     output:
+#         temp("{file}.ll.mlir"),
+#     shell:
+#         "{config[snax-opt]} -p {config[snaxoptflags]} -o {output} {input}"
 
 
 rule translate_mlir:

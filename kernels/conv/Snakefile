@@ -2,22 +2,26 @@ from util.snake.configs import get_snax_gemmx_3d_config
 
 config = get_snax_gemmx_3d_config()
 
-snaxoptflags = ",".join(
-    [
+
+def snaxoptflags(layout, schedule_idx):
+    flags = [
         "preprocess",
         "convert-linalg-to-kernel",
-        "insert-accfg-op{{accelerator=snax_gemmx}}",
+        "insert-accfg-op{accelerator=snax_gemmx}",
         "dispatch-kernels",
         "convert-linalg-to-dart",
         "dart-fuse-operations",
         "snax-bufferize",
         "alloc-to-global",
         "set-memory-space",
-        "dart-scheduler{{schedule_idx={schedule_idx}}}",
-        "set-memory-layout",
+        f"dart-scheduler{{schedule_idx={schedule_idx}}}",
+    ]
+    if layout == "tiled":
+        flags += ["set-memory-layout"]
+    flags += [
         "realize-memref-casts",
         "insert-sync-barrier",
-        "dispatch-regions{{nb_cores=3}}",
+        "dispatch-regions{nb_cores=3}",
         "dart-layout-resolution",
         "convert-dart-to-snax-stream",
         "convert-linalg-to-accfg",
@@ -30,7 +34,7 @@ snaxoptflags = ",".join(
         "clear-memory-space",
         "postprocess",
     ]
-)
+    return ",".join(flags)
 
 
 module snax_rules:
@@ -40,26 +44,44 @@ module snax_rules:
         config
 
 
-use rule * from snax_rules exclude default_snax_opt_mlir as snax_*
+use rule * from snax_rules exclude snax_default_snax_opt_mlir as snax_*
 
 
-files = ["conv"]
-schedule_idx = range(288)
+convspecs = {
+    "conv_3x3": {
+        "idx_range": range(2),
+        "spec": {"b": 1, "ox": 16, "oy": 16, "fx": 3, "fy": 3, "c": 16, "k": 16},
+    },
+    "conv_5x5": {
+        "idx_range": range(2),
+        "spec": {"b": 1, "ox": 32, "oy": 32, "fx": 5, "fy": 5, "c": 16, "k": 16},
+    },
+}
+
+
+# Reconstruct all_traces
+all_traces = [
+    f"{name}_schedule-{idx}_layout-{layout}_traces.json"
+    for name, cs in convspecs.items()
+    for idx in cs["idx_range"]
+    for layout in ("default", "tiled")
+]
+
+
+rule print_all_traces:
+    run:
+        print(all_traces)
 
 
 # Rules
 rule all:
     input:
-        expand(
-            "{file}_schedule-{schedule_idx}_traces.json",
-            file=files,
-            schedule_idx=schedule_idx,
-        ),
+        all_traces,
 
 
 rule aggregate:
     input:
-        expand("conv_schedule-{schedule_idx}_traces.json", schedule_idx=schedule_idx),
+        all_traces,
     output:
         "summary.json",
     run:
@@ -87,18 +109,21 @@ rule snax_opt_mlir:
     input:
         "{file}.mlir",
     output:
-        temp("{file}_schedule-{schedule_idx}.ll.mlir"),
+        temp("{file}_schedule-{schedule_idx,\d+}_layout-{layout}.ll.mlir"),
     params:
-        flags=lambda wc: snaxoptflags.format(schedule_idx=wc.schedule_idx),
+        flags=lambda wc: snaxoptflags(wc.layout, wc.schedule_idx),
     shell:
         "{config[snax-opt]} -p {params.flags} -o {output} {input}"
 
 
 rule generate_conv:
     output:
-        "conv.mlir",
-    script:
-        "conv.py"
+        "{conv,[^.]+}.mlir",
+    params:
+        spec=lambda wc: convspecs[wc.conv]["spec"],
+    shell:
+        "python conv.py {params.spec[b]} {params.spec[ox]} {params.spec[oy]} "
+        "{params.spec[fx]} {params.spec[fy]} {params.spec[c]} {params.spec[k]} > {output}"
 
 
 rule link_snax_binary:

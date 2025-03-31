@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass
 from io import StringIO
 
@@ -135,14 +134,26 @@ def conv(spec: ConvSpec):
 
 
 if __name__ == "__main__":
-    # Get the name of the current Python script and replace its extension with .mlir
-    script_name = os.path.basename(__file__)
-    mlir_filename = os.path.splitext(script_name)[0] + ".mlir"
+    import sys
 
-    # Generate IR and write it to the specified MLIR file
+    # Expect 7 command-line args
+    b, ox, oy, fx, fy, c, k = map(int, sys.argv[1:8])
+    spec = ConvSpec(b, ox, oy, fx, fy, c, k)
+
     output = StringIO()
     printer = Printer(stream=output)
-    spec = ConvSpec(1, 16, 16, 3, 3, 16, 16)
     printer.print(conv(spec))
-    with open(mlir_filename, "w") as output_file:
-        output_file.write(output.getvalue())
+    print(output.getvalue())
+
+# if __name__ == "__main__":
+#     # Get the name of the current Python script and replace its extension with .mlir
+#     script_name = os.path.basename(__file__)
+#     mlir_filename = os.path.splitext(script_name)[0] + ".mlir"
+#
+#     # Generate IR and write it to the specified MLIR file
+#     output = StringIO()
+#     printer = Printer(stream=output)
+#     spec = ConvSpec(1, 16, 16, 3, 3, 16, 16)
+#     printer.print(conv(spec))
+#     with open(mlir_filename, "w") as output_file:
+#         output_file.write(output.getvalue())
