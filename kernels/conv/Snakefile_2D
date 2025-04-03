@@ -1,0 +1,136 @@
+from util.snake.configs import get_snax_gemmx_2d_config
+
+config = get_snax_gemmx_2d_config()
+
+
+def snaxoptflags(layout, schedule_idx):
+    flags = [
+        "preprocess",
+        "convert-linalg-to-kernel",
+        "insert-accfg-op{accelerator=snax_gemmx_2d}",
+        "dispatch-kernels",
+        "convert-linalg-to-dart",
+        "dart-fuse-operations",
+        "snax-bufferize",
+        "alloc-to-global",
+        "set-memory-space",
+        f"dart-scheduler{{schedule_idx={schedule_idx}}}",
+    ]
+    if layout == "tiled":
+        flags += ["set-memory-layout"]
+    flags += [
+        "realize-memref-casts",
+        "insert-sync-barrier",
+        "dispatch-regions{nb_cores=3}",
+        "dart-layout-resolution",
+        "convert-dart-to-snax-stream",
+        "convert-linalg-to-accfg",
+        "test-add-mcycle-around-launch",
+        "snax-lower-mcycle",
+        "convert-accfg-to-csr",
+        "snax-copy-to-dma",
+        "memref-to-snax",
+        "snax-to-func",
+        "clear-memory-space",
+        "postprocess",
+    ]
+    return ",".join(flags)
+
+
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule * from snax_rules exclude snax_default_snax_opt_mlir as snax_*
+
+
+convspecs = {
+    "conv_3x3": {
+        "idx_range": range(2),
+        "spec": {"b": 1, "ox": 32, "oy": 32, "fx": 3, "fy": 1, "c": 16, "k": 16},
+    },
+    "conv_5x5": {
+        "idx_range": range(2),
+        "spec": {"b": 1, "ox": 32, "oy": 32, "fx": 5, "fy": 1, "c": 16, "k": 16},
+    },
+}
+
+
+# Reconstruct all_traces
+all_traces = [
+    f"{name}_schedule-{idx}_layout-{layout}_traces.json"
+    for name, cs in convspecs.items()
+    for idx in cs["idx_range"]
+    for layout in ("default", "tiled")
+]
+
+
+rule print_all_traces:
+    run:
+        print(all_traces)
+
+
+# Rules
+rule all:
+    input:
+        all_traces,
+
+
+rule aggregate:
+    input:
+        all_traces,
+    output:
+        "summary.json",
+    run:
+        import json
+
+        results = []
+        for f in input:
+            with open(f) as fin:
+                data = json.load(fin)
+                # Count the number of sections in the first element of the outer list: data[0][0]
+            sections = len(data[0][0])
+            # Extract the cycles value from the third element (index 2) in data[0][0]
+            cycles = data[0][0][2]["cycles"]
+            results.append({"file": f, "cycles": cycles, "sections": sections})
+
+        with open(output[0], "w") as fout:
+            json.dump(results, fout, indent=4)
+
+
+rule snax_opt_mlir:
+    """
+    Apply various transformations snax-opt on mlir files.
+    Options controlled with `snaxoptflags` defined in config.
+    """
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}_schedule-{schedule_idx,\d+}_layout-{layout}.ll.mlir"),
+    params:
+        flags=lambda wc: snaxoptflags(wc.layout, wc.schedule_idx),
+    shell:
+        "{config[snax-opt]} -p {params.flags} -o {output} {input}"
+
+
+rule generate_conv:
+    output:
+        "{conv,[^.]+}.mlir",
+    params:
+        spec=lambda wc: convspecs[wc.conv]["spec"],
+    shell:
+        "python conv.py {params.spec[b]} {params.spec[ox]} {params.spec[oy]} "
+        "{params.spec[fx]} {params.spec[fy]} {params.spec[c]} {params.spec[k]} > {output}"
+
+
+rule link_snax_binary:
+    input:
+        "{file}.o",
+        "main.o",
+    output:
+        "{file}.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
