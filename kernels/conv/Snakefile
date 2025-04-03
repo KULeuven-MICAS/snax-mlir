@@ -56,6 +56,10 @@ convspecs = {
         "idx_range": range(2),
         "spec": {"b": 1, "ox": 32, "oy": 32, "fx": 5, "fy": 5, "c": 16, "k": 16},
     },
+    "conv_pw": {
+        "idx_range": range(2),
+        "spec": {"b": 1, "ox": 16, "oy": 16, "fx": 1, "fy": 1, "c": 16, "k": 16},
+    },
 }
 
 
