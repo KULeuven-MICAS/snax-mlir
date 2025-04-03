@@ -138,8 +138,8 @@ if __name__ == "__main__":
 
     # Expect 7 command-line args
     b, ox, oy, fx, fy, c, k = map(int, sys.argv[1:8])
-    spec = ConvSpec(b, ox, oy, fx, fy, c, k)
-
+    stride, dilation = map(int, sys.argv[8:10])
+    spec = ConvSpec(b, ox, oy, fx, fy, c, k, stride=stride, dilation=dilation)
     output = StringIO()
     printer = Printer(stream=output)
     printer.print(conv(spec))
