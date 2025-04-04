@@ -40,7 +40,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
 
         # FIXME: along with the mess at the bottom, very urgently a better mapping of operand -> streamer
         # must be available
-        if op.accelerator.data in ("snax_gemmx", "snax_gemmx_2d"):
+        if op.accelerator.data in ("snax_gemmx", "snax_gemmx_2d", "snax_gemmx_1d"):
             if len(op.patterns) == 3:
                 streamers = [
                     accelerator_type.streamer_config.data.streamers[i]
@@ -140,7 +140,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
         ops_to_add: list[Operation] = []
 
         assert op.accelerator
-        if op.accelerator.data in ("snax_gemmx", "snax_gemmx_2d"):
+        if op.accelerator.data in ("snax_gemmx", "snax_gemmx_2d", "snax_gemmx_1d"):
             empty_pattern = snax_stream.StridePattern(
                 upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0]
             )
