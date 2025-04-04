@@ -21,7 +21,7 @@ def snaxoptflags(layout, schedule_idx):
     flags += [
         "realize-memref-casts",
         "insert-sync-barrier",
-        "dispatch-regions{nb_cores=3}",
+        "dispatch-regions{nb_cores=2}",
         "dart-layout-resolution",
         "convert-dart-to-snax-stream",
         "convert-linalg-to-accfg",

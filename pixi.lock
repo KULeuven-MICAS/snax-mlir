@@ -115,7 +115,7 @@ environments:
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-interface-report-plugins-1.1.0-pyhdfd78af_0.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-interface-storage-plugins-3.3.0-pyhdfd78af_0.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-minimal-8.27.1-pyhdfd78af_0.tar.bz2
-      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.11.micro_v2-hb0f4dca_0.conda
+      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.12.micro_v10-hb0f4dca_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.17-h0157908_18.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tabulate-0.9.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tbb-2021.13.0-hceb3a55_1.conda
@@ -2120,18 +2120,18 @@ packages:
   - pkg:pypi/snakemake?source=hash-mapping
   size: 810266
   timestamp: 1736367856698
-- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.11.micro_v2-hb0f4dca_0.conda
-  sha256: defd7c1f852c32942d3fee2f3e1df20563bb962aea3ab02e82563c1918b24aee
-  md5: 5de20d99bbc2ec755eb385784559444d
+- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.12.micro_v10-hb0f4dca_0.conda
+  sha256: 502f0c98b1372de5c5a5a8fa5f9d0b8f2bda8d6d93b030b3d24076ae892760c9
+  md5: 12c63791bb6ae2e567f2ffe8220835b9
   depends:
   - libstdcxx >=14
   - libgcc >=14
-  size: 21016105
-  timestamp: 1743153145389
+  size: 24064126
+  timestamp: 1743758122158
 - pypi: .
   name: snax-mlir
   version: 0.2.2
-  sha256: e50090035d1cd17b7658d6dae6ff5c837e1539bafc94d547caf5c8b53a803ff4
+  sha256: 3d6ebac420c74f0e74291f0b5d651fd59dded3005760e4c1824ff932e2e9117c
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@d9106295e35f8f9af31db00178a9f82d18e46c0e
   - numpy

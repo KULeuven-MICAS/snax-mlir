@@ -54,7 +54,7 @@ def get_snax_gemmx_3d_config(snax_mlir_path: str | None = None) -> dict[str, Any
     config.update(get_default_snax_paths())
     config.update(get_default_flags(snitch_sw_path, snax_mlir_path=snax_mlir_path))
     config["num_chips"] = 1
-    config["num_harts"] = 3
+    config["num_harts"] = 2
     config["vltsim"] = (
         snax_utils_path + "/snax-kul-cluster-dse-3d-rtl/bin/snitch_cluster.vlt"
     )
@@ -70,7 +70,7 @@ def get_snax_gemmx_2d_config(snax_mlir_path: str | None = None) -> dict[str, Any
     config.update(get_default_snax_paths())
     config.update(get_default_flags(snitch_sw_path, snax_mlir_path=snax_mlir_path))
     config["num_chips"] = 1
-    config["num_harts"] = 3
+    config["num_harts"] = 2
     config["vltsim"] = (
         snax_utils_path + "/snax-kul-cluster-dse-2d-rtl/bin/snitch_cluster.vlt"
     )
