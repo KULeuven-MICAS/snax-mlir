@@ -63,6 +63,10 @@ convspecs = {
     "conv_strided": {
         "idx_range": range(1),
         "spec": {"b": 1, "ox": 16, "oy": 16, "fx": 4, "fy": 4, "c": 16, "k": 16, "stride": 2, "dilation": 1},
+    },
+    "conv_dilated": {
+        "idx_range": range(1),
+        "spec": {"b": 1, "ox": 16, "oy": 16, "fx": 5, "fy": 5, "c": 16, "k": 16, "stride": 1, "dilation": 2},
     }
 }
 
