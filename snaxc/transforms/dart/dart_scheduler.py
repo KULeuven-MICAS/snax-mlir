@@ -49,6 +49,9 @@ class AutoflowScheduler(RewritePattern):
         )
         schedule = scheduler(template, schedule, schedule_idx=self.schedule_idx)
 
+        schedule = schedule.canonicalize()
+        schedule = scheduler(template, schedule)
+
         schedule_op = dart.ScheduleOp(
             op.inputs,
             op.outputs,
