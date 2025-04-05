@@ -107,7 +107,8 @@ class AddCyclicMemoryLayout(RewritePattern):
                     to_tile = False
 
                 # only apply tiling if all access patterns remain hyperrectangular
-                # for example if there is one dimensions that accesses with stride=1, bound=3 and another dim with stride=1, bound=8,
+                # for example if there is one dimensions that accesses with stride=1,
+                # bound=3 and another dim with stride=1, bound=8
                 # we cannot tile for either 8 or 3 because then the other pattern is no longer affine
                 for stride, bound in zip(
                     schedule.pattern.A[accessed_dim, :], schedule.bounds
@@ -126,6 +127,11 @@ class AddCyclicMemoryLayout(RewritePattern):
 
                 # increase current stride
                 current_stride = current_stride * layout_bound
+
+            # fill up empty strides
+            for stride in strides:
+                if not len(stride):
+                    stride.append(Stride(current_stride, 1))
 
             layout = TiledStridedLayout(
                 [TiledStride(s) for s in strides]
