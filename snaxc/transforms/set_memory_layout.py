@@ -128,6 +128,11 @@ class AddCyclicMemoryLayout(RewritePattern):
                 # increase current stride
                 current_stride = current_stride * layout_bound
 
+            # fill up empty strides
+            for stride in strides:
+                if not len(stride):
+                    stride.append(Stride(current_stride, 1))
+
             layout = TiledStridedLayout(
                 [TiledStride(s) for s in strides]
             ).canonicalize()
