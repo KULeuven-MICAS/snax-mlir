@@ -49,7 +49,7 @@ use rule * from snax_rules exclude snax_default_snax_opt_mlir as snax_*
 
 convspecs = {
     "conv_3x3": {
-        "idx_range": range(2),
+        "idx_range": range(72),
         "spec": {
             "b": 1,
             "ox": 16,
@@ -63,7 +63,7 @@ convspecs = {
         },
     },
     "conv_5x5": {
-        "idx_range": range(2),
+        "idx_range": range(72),
         "spec": {
             "b": 1,
             "ox": 32,
@@ -77,7 +77,7 @@ convspecs = {
         },
     },
     "conv_pw": {
-        "idx_range": range(2),
+        "idx_range": range(12),
         "spec": {
             "b": 1,
             "ox": 16,
@@ -91,7 +91,7 @@ convspecs = {
         },
     },
     "conv_strided": {
-        "idx_range": range(1),
+        "idx_range": range(72),
         "spec": {
             "b": 1,
             "ox": 16,
@@ -105,7 +105,7 @@ convspecs = {
         },
     },
     "conv_dilated": {
-        "idx_range": range(1),
+        "idx_range": range(72),
         "spec": {
             "b": 1,
             "ox": 16,
@@ -129,16 +129,32 @@ all_traces = [
     for layout in ("default", "tiled")
 ]
 
+first_traces = [
+    f"{name}_schedule-{0}_layout-{layout}_traces.json"
+    for name, cs in convspecs.items()
+    for layout in ("default", "tiled")
+]
+
 
 rule print_all_traces:
     run:
         print(all_traces)
 
 
+rule print_first_traces:
+    run:
+        print(first_traces)
+
+
 # Rules
 rule all:
     input:
         all_traces,
+
+
+rule first:
+    input:
+        first_traces,
 
 
 rule aggregate:

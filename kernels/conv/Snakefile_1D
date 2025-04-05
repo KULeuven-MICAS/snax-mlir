@@ -1,13 +1,13 @@
-from util.snake.configs import get_snax_gemmx_2d_config
+from util.snake.configs import get_snax_gemmx_1d_config
 
-config = get_snax_gemmx_2d_config()
+config = get_snax_gemmx_1d_config()
 
 
 def snaxoptflags(layout, schedule_idx):
     flags = [
         "preprocess",
         "convert-linalg-to-kernel",
-        "insert-accfg-op{accelerator=snax_gemmx_2d}",
+        "insert-accfg-op{accelerator=snax_gemmx_1d}",
         "dispatch-kernels",
         "convert-linalg-to-dart",
         "dart-fuse-operations",
@@ -21,7 +21,7 @@ def snaxoptflags(layout, schedule_idx):
     flags += [
         "realize-memref-casts",
         "insert-sync-barrier",
-        "dispatch-regions{nb_cores=2}",
+        "dispatch-regions{nb_cores=3}",
         "dart-layout-resolution",
         "convert-dart-to-snax-stream",
         "convert-linalg-to-accfg",
@@ -48,57 +48,71 @@ use rule * from snax_rules exclude snax_default_snax_opt_mlir as snax_*
 
 
 convspecs = {
-    "conv_1x3": {
-        "idx_range": range(12),
+    "conv_3x3": {
+        "idx_range": range(2),
         "spec": {
             "b": 1,
-            "ox": 32,
+            "ox": 16,
             "oy": 16,
-            "fx": 1,
+            "fx": 3,
             "fy": 3,
-            "c": 8,
+            "c": 16,
             "k": 16,
             "stride": 1,
             "dilation": 1,
         },
     },
-    "conv_1x5": {
-        "idx_range": range(12),
+    "conv_5x5": {
+        "idx_range": range(2),
         "spec": {
             "b": 1,
             "ox": 32,
-            "oy": 16,
-            "fx": 1,
+            "oy": 32,
+            "fx": 5,
             "fy": 5,
-            "c": 8,
+            "c": 16,
             "k": 16,
             "stride": 1,
             "dilation": 1,
         },
     },
     "conv_pw": {
-        "idx_range": range(6),
+        "idx_range": range(2),
         "spec": {
             "b": 1,
-            "ox": 32,
+            "ox": 16,
             "oy": 16,
             "fx": 1,
             "fy": 1,
-            "c": 8,
+            "c": 16,
             "k": 16,
             "stride": 1,
             "dilation": 1,
         },
     },
-    "conv_dilated": {
-        "idx_range": range(12),
+    "conv_strided": {
+        "idx_range": range(1),
         "spec": {
             "b": 1,
-            "ox": 32,
+            "ox": 16,
             "oy": 16,
-            "fx": 1,
+            "fx": 4,
+            "fy": 4,
+            "c": 16,
+            "k": 16,
+            "stride": 2,
+            "dilation": 1,
+        },
+    },
+    "conv_dilated": {
+        "idx_range": range(1),
+        "spec": {
+            "b": 1,
+            "ox": 16,
+            "oy": 16,
+            "fx": 5,
             "fy": 5,
-            "c": 8,
+            "c": 16,
             "k": 16,
             "stride": 1,
             "dilation": 2,
@@ -106,22 +120,24 @@ convspecs = {
     },
 }
 
+
 # Reconstruct all_traces
 all_traces = [
-    f"{name}_schedule-{idx}_layout-tiled_traces.json"
+    f"{name}_schedule-{idx}_layout-{layout}_traces.json"
     for name, cs in convspecs.items()
     for idx in cs["idx_range"]
+    for layout in ("default", "tiled")
 ]
 
+first_traces = [
+    f"{name}_schedule-{0}_layout-{layout}_traces.json"
+    for name, cs in convspecs.items()
+    for layout in ("default", "tiled")
+]
 
 rule print_all_traces:
     run:
         print(all_traces)
-
-
-first_traces = [
-    f"{name}_schedule-{0}_layout-tiled_traces.json" for name, cs in convspecs.items()
-]
 
 
 rule print_first_traces:
@@ -129,16 +145,16 @@ rule print_first_traces:
         print(first_traces)
 
 
-rule first:
-    input:
-        first_traces,
-
 
 # Rules
 rule all:
     input:
         all_traces,
 
+
+rule first:
+		input:
+				first_traces,
 
 rule aggregate:
     input:
@@ -183,7 +199,7 @@ rule generate_conv:
     params:
         spec=lambda wc: convspecs[wc.conv]["spec"],
     shell:
-        "python conv_nchw.py {params.spec[b]} {params.spec[ox]} {params.spec[oy]} "
+        "python conv.py {params.spec[b]} {params.spec[ox]} {params.spec[oy]} "
         "{params.spec[fx]} {params.spec[fy]} {params.spec[c]} {params.spec[k]} "
         "{params.spec[stride]} {params.spec[dilation]} > {output}"
 
