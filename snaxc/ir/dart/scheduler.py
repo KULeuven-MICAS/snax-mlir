@@ -122,12 +122,34 @@ def is_pure_output_stationary(template: Template, schedule: Schedule):
     return first_reduction_idx > last_parallel_idx
 
 
+def is_memory_flexible_enough(template: Template, schedule: Schedule):
+    """
+    Checks whether the TCDM flexibility is sufficient to actually execute
+    the schedule.
+
+    There must be one spatial stride of 1 that doesn't need more fine-grained
+    temporal access within one bank, such that that dimension can be packed together.
+    """
+    # this check only makes sense if there are temporal dimensions:
+    if not schedule.num_dims > template.num_dims:
+        return True
+    for s in schedule:
+        # is there temporary fine-grained access for this dimension?
+        temporal = (s.pattern.A[:, 0 : -template.num_dims] % 8).any(axis=1)
+        # is the dimension spatially unrolled?
+        spatial = (s.pattern.A[:, -template.num_dims :] == 1).any(axis=1)
+        if (False, True) not in zip(temporal, spatial):
+            return False
+    return True
+
+
 def scheduler(
     template: Template,
     schedule: Schedule,
     extra_checks: Sequence[Callable[[Template, Schedule], bool]] = [
         # defaulting to pure output stationary schedules for now
-        is_pure_output_stationary
+        is_pure_output_stationary,
+        is_memory_flexible_enough,
     ],
     schedule_idx: int | None = None,
 ) -> Schedule:
