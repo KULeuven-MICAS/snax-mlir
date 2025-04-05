@@ -17,7 +17,7 @@ from xdsl.dialects.tensor import EmptyOp
 from xdsl.printer import Printer
 
 
-def matmul(m=16, n=16, k=16):
+def matmul(m=32, n=32, k=32):
     # Define Variables For Program:
 
     a_type = TensorType(i8, (m, k))
