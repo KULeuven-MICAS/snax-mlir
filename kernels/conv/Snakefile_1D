@@ -135,6 +135,7 @@ first_traces = [
     for layout in ("default", "tiled")
 ]
 
+
 rule print_all_traces:
     run:
         print(all_traces)
@@ -145,7 +146,6 @@ rule print_first_traces:
         print(first_traces)
 
 
-
 # Rules
 rule all:
     input:
@@ -153,8 +153,9 @@ rule all:
 
 
 rule first:
-		input:
-				first_traces,
+    input:
+        first_traces,
+
 
 rule aggregate:
     input:
