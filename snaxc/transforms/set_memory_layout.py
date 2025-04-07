@@ -62,6 +62,7 @@ class AddCyclicMemoryLayout(RewritePattern):
 
             # start assigning contiguous, starting from stride = 1
             current_stride = 1
+            schedule_bound_product = 1
 
             # create a list to keep strides for every dimension.
             # for non-tiled layouts, every dimension will be assigned 1 stride
@@ -120,6 +121,10 @@ class AddCyclicMemoryLayout(RewritePattern):
                 else:
                     layout_bound = size_remaining
 
+                # non contiguous stride for extra performance
+                if current_stride % schedule_bound_product != 0:
+                    current_stride += (schedule_bound_product - (current_stride % schedule_bound_product)) % 128
+
                 # assign this current stride to the relevant operand dimension
                 strides[accesses.index(1)].insert(
                     0, Stride(current_stride, layout_bound)
@@ -127,6 +132,7 @@ class AddCyclicMemoryLayout(RewritePattern):
 
                 # increase current stride
                 current_stride = current_stride * layout_bound
+                schedule_bound_product *= schedule_bound
 
             # fill up empty strides
             for stride in strides:
