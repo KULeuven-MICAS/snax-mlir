@@ -1,0 +1,510 @@
+from util.snake.configs import get_snax_gemmx_3d_config
+
+config = get_snax_gemmx_3d_config()
+
+
+def snaxoptflags(layout, schedule_idx):
+    flags = [
+        "preprocess",
+        "convert-linalg-to-kernel",
+        "insert-accfg-op{accelerator=snax_gemmx}",
+        "dispatch-kernels",
+        "convert-linalg-to-dart",
+        "dart-fuse-operations",
+        "snax-bufferize",
+        "alloc-to-global",
+        "set-memory-space",
+        f"dart-scheduler{{schedule_idx={schedule_idx}}}",
+        "set-memory-layout",
+        "realize-memref-casts",
+				"reuse-memref-allocs",
+        "insert-sync-barrier",
+        "dispatch-regions{nb_cores=2}",
+        "dart-layout-resolution",
+        "convert-dart-to-snax-stream",
+        "convert-linalg-to-accfg",
+        "snax-copy-to-dma{test_ignore_transform=true}",
+        "memref-to-snax",
+        "snax-to-func",
+        "clear-memory-space",
+				"function-constant-pinning",
+        "mlir-opt{executable=mlir-opt generic=true arguments=-cse,-canonicalize,-allow-unregistered-dialect,-mlir-print-op-generic}",
+				"accfg-dedup",
+        "convert-accfg-to-csr",
+        "postprocess",
+    ]
+    return "'" + ",".join(flags) + "'"
+
+
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule * from snax_rules exclude snax_default_snax_opt_mlir as snax_*
+
+convspecs = {
+    "conv_1": {
+        "spec": {
+            "b": 1,
+            "ox": 112,
+            "oy": 112,
+            "fx": 7,
+            "fy": 7,
+            "c": 8, # pad from 3
+            "k": 64,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 64,
+            "tile-oy": 8,
+        },
+        "idx_range": range(32),
+    },
+    "conv_2": {
+        "spec": {
+            "b": 1,
+            "ox": 56,
+            "oy": 56,
+            "fx": 1,
+            "fy": 1,
+            "c": 64,
+            "k": 64,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 64,
+            "tile-oy": 14,
+        },
+        "idx_range": range(32),
+    },
+    "conv_3": {
+        "spec": {
+            "b": 1,
+            "ox": 56,
+            "oy": 56,
+            "fx": 3,
+            "fy": 3,
+            "c": 64,
+            "k": 64,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 64,
+            "tile-oy": 8,
+        },
+        "idx_range": range(32),
+    },
+    "conv_4": {
+        "spec": {
+            "b": 1,
+            "ox": 56,
+            "oy": 56,
+            "fx": 1,
+            "fy": 1,
+            "c": 64,
+            "k": 256,
+            "stride": 1,
+            "dilation": 1,
+            "tile-k": 128,
+            "tile-oy": 8,
+        },
+        "idx_range": range(32),
+    },
+    "conv_6": {
+        "spec": {
+            "b": 1,
+            "ox": 56,
+            "oy": 56,
+            "fx": 1,
+            "fy": 1,
+            "c": 256,
+            "k": 64,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 64,
+            "tile-oy": 4,
+        },
+        "idx_range": range(32),
+    },
+    "conv_12": {
+        "spec": {
+            "b": 1,
+            "ox": 56,
+            "oy": 56,
+            "fx": 1,
+            "fy": 1,
+            "c": 256,
+            "k": 128,
+            "stride": 1,
+            "dilation": 1,
+            "tile-k": 128,
+            "tile-oy": 4,
+        },
+        "idx_range": range(32),
+    },
+    "conv_13": {
+        "spec": {
+            "b": 1,
+            "ox": 32, # pad from 28
+            "oy": 32, # pad from 28, but don't count for ideal cause they can be ignroed
+            "fx": 3,
+            "fy": 3,
+            "c": 128,
+            "k": 128,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 32,
+            "tile-oy": 2,
+        },
+        "idx_range": range(32),
+    },
+    "conv_14": {
+        "spec": {
+            "b": 1,
+            "ox": 32, # pad from 28
+            "oy": 28, # pad from 28, but don't count for ideal cause they can be ignored
+            "fx": 1,
+            "fy": 1,
+            "c": 128,
+            "k": 512,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 512,
+            "tile-oy": 2,
+        },
+        "idx_range": range(32),
+    },
+    "conv_15": {
+        "spec": {
+            "b": 1,
+            "ox": 32, # pad from 28
+            "oy": 28,
+            "fx": 1,
+            "fy": 1,
+            "c": 256,
+            "k": 512,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 128,
+            "tile-oy": 2,
+        },
+        "idx_range": range(32),
+    },
+    "conv_16": {
+        "spec": {
+            "b": 1,
+            "ox": 32, # pad from 28
+            "oy": 28,
+            "fx": 1,
+            "fy": 1,
+            "c": 512,
+            "k": 128,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 128,
+            "tile-oy": 2,
+        },
+        "idx_range": range(32),
+    },
+    "conv_17": {
+        "spec": {
+            "b": 1,
+            "ox": 32, # pad from 28
+            "oy": 28, # pad from 28, but don't count for ideal cause they can be ignored
+            "fx": 3,
+            "fy": 3,
+            "c": 128,
+            "k": 128,
+            "stride": 1,
+            "dilation": 1,
+            "tile-k": 64,
+            "tile-oy": 7,
+        },
+        "idx_range": range(32),
+    },
+    "conv_25": {
+        "spec": {
+            "b": 1,
+            "ox": 32, # pad from 28
+            "oy": 30, # pad from 28, but don't count for ideal cause they can be ignored
+            "fx": 1,
+            "fy": 1,
+            "c": 512,
+            "k": 256,
+            "stride": 1,
+            "dilation": 1,
+            "tile-k": 128,
+            "tile-oy": 3,
+        },
+        "idx_range": range(32),
+    },
+    "conv_26": {
+        "spec": {
+            "b": 1,
+            "ox": 16, # pad from 14
+            "oy": 14,
+            "fx": 3,
+            "fy": 3,
+            "c": 256,
+            "k": 256,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 16,
+            "tile-oy": 2,
+        },
+        "idx_range": range(32),
+    },
+    "conv_27": {
+        "spec": {
+            "b": 1,
+            "ox": 16, # pad from 14
+            "oy": 14,
+            "fx": 1,
+            "fy": 1,
+            "c": 256,
+            "k": 1024,
+            "stride": 1,
+            "dilation": 1,
+            "tile-k": 128,
+            "tile-oy": 14,
+        },
+        "idx_range": range(32),
+    },
+    "conv_28": {
+        "spec": {
+            "b": 1,
+            "ox": 16, # pad from 14
+            "oy": 14,
+            "fx": 1,
+            "fy": 1,
+            "c": 512,
+            "k": 1024,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 64,
+            "tile-oy": 2,
+        },
+        "idx_range": range(32),
+    },
+    "conv_29": {
+        "spec": {
+            "b": 1,
+            "ox": 16, # pad from 14
+            "oy": 15,
+            "fx": 1,
+            "fy": 1,
+            "c": 1024,
+            "k": 256,
+            "stride": 1,
+            "dilation": 1,
+            "tile-k": 64,
+            "tile-oy": 3,
+        },
+        "idx_range": range(32),
+    },
+    "conv_30": {
+        "spec": {
+            "b": 1,
+            "ox": 16, # pad from 14
+            "oy": 14,
+            "fx": 3,
+            "fy": 3,
+            "c": 256,
+            "k": 256,
+            "stride": 1,
+            "dilation": 1,
+            "tile-k": 32,
+            "tile-oy": 7,
+        },
+        "idx_range": range(32),
+    },
+    "conv_44": {
+        "spec": {
+            "b": 1,
+            "ox": 16, # pad from 14
+            "oy": 14,
+            "fx": 1,
+            "fy": 1,
+            "c": 1024,
+            "k": 512,
+            "stride": 1,
+            "dilation": 1,
+            "tile-k": 64,
+            "tile-oy": 2,
+        },
+        "idx_range": range(32),
+    },
+    "conv_46": {
+        "spec": {
+            "b": 1,
+            "ox": 8, # pad from 7
+            "oy": 7,
+            "fx": 1,
+            "fy": 1,
+            "c": 512,
+            "k": 2048,
+            "stride": 1,
+            "dilation": 1,
+            "tile-k": 128,
+            "tile-oy": 7,
+        },
+        "idx_range": range(32),
+    },
+    "conv_47": {
+        "spec": {
+            "b": 1,
+            "ox": 8, # pad from 7
+            "oy": 8,
+            "fx": 1,
+            "fy": 1,
+            "c": 1024,
+            "k": 2048,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 32,
+            "tile-oy": 2,
+        },
+        "idx_range": range(32),
+    },
+    "conv_48": {
+        "spec": {
+            "b": 1,
+            "ox": 8, # pad from 7
+            "oy": 8, # pad from 7, but don't count for ideal cause they can be ignored
+            "fx": 1,
+            "fy": 1,
+            "c": 2048,
+            "k": 512,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 16,
+            "tile-oy": 4,
+        },
+        "idx_range": range(32),
+    },
+    "conv_49": {
+        "spec": {
+            "b": 1,
+            "ox": 8, # pad from 7
+            "oy": 7,
+            "fx": 3,
+            "fy": 3,
+            "c": 512,
+            "k": 512,
+            "stride": 2,
+            "dilation": 1,
+            "tile-k": 16,
+            "tile-oy": 7,
+        },
+        "idx_range": range(32),
+    },
+    # "fc_54": {
+    #     "spec": {
+    #         "b": 1,
+    #         "ox": 8, # pad from 1
+    #         "oy": 1,
+    #         "fx": 1,
+    #         "fy": 1,
+    #         "c": 2048,
+    #         "k": 1008, # pad from 1000
+    #         "stride": 2,
+    #         "dilation": 1,
+    #         "tile-k": 48,
+    #         "tile-oy": 1,
+    #     },
+    #     "idx_range": range(32),
+    # },
+}
+
+
+config["mlirtransformflags"] = [
+    "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.conv_2d_nhwc_fhwc}, test-transform-dialect-erase-schedule, canonicalize, linalg-generalize-named-ops)'"
+]
+
+
+# Reconstruct all_traces
+all_traces = [
+    f"{name}_schedule-{idx}_layout-tiled_traces.json"
+    for name, cs in convspecs.items()
+    #for idx in cs["idx_range"]
+    for idx in [0]
+]
+
+rule print_all_traces:
+    run:
+        print(all_traces)
+
+
+# Rules
+rule all:
+    input:
+        all_traces,
+
+rule aggregate:
+    input:
+        all_traces,
+    output:
+        "summary.json",
+    run:
+        import json
+
+        results = []
+        for f in input:
+            with open(f) as fin:
+                data = json.load(fin)
+                # Count the number of sections in the first element of the outer list: data[0][0]
+            sections = len(data[0][0])
+            # Extract the cycles value from the third element (index 2) in data[0][0]
+            cycles = data[0][0][1]["cycles"]
+            results.append({"file": f, "cycles": cycles, "sections": sections})
+
+        with open(output[0], "w") as fout:
+            json.dump(results, fout, indent=4)
+
+
+rule snax_opt_mlir:
+    """
+    Apply various transformations snax-opt on mlir files.
+    Options controlled with `snaxoptflags` defined in config.
+    """
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}_schedule-{schedule_idx,\d+}_layout-{layout}.ll.mlir"),
+    params:
+        flags=lambda wc: snaxoptflags(wc.layout, wc.schedule_idx),
+    shell:
+        "{config[snax-opt]} -p {params.flags} -o {output} {input}"
+
+
+rule generate_conv:
+    output:
+        "{conv,[^.]+}.transform.mlir",
+    params:
+        spec=lambda wc: convspecs[wc.conv]["spec"],
+    shell:
+        "python conv.py {params.spec[b]} {params.spec[ox]} {params.spec[oy]} "
+        "{params.spec[fx]} {params.spec[fy]} {params.spec[c]} {params.spec[k]} "
+        "{params.spec[stride]} {params.spec[dilation]} {params.spec[tile-oy]} {params.spec[tile-k]} > {output}"
+
+
+	
+rule apply_transforms_mlir:
+    input:
+        "{file}.transform.mlir",
+    output:
+        "{file}.mlir",
+    shell:
+        "{config[mlir-opt]} {config[mlirtransformflags]} --mlir-print-op-generic --mlir-print-local-scope -o {output} {input}"
+
+
+
+
+rule link_snax_binary:
+    input:
+        "{file}.o",
+        "main.o",
+    output:
+        "{file}.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"

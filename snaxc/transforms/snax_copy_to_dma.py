@@ -191,8 +191,6 @@ class TransformDMA(RewritePattern):
         # if source is not tsl, construct representation:
         if isinstance(op.source.type.layout, TiledStridedLayoutAttr):
             tsl_source = op.source.type.layout
-        elif self.test_ignore_transform:
-            tsl_source = op.destination.type.layout
         else:
             strides = extract_strides(op.source.type)
             tile_bounds: list[list[int | None]]
@@ -216,8 +214,6 @@ class TransformDMA(RewritePattern):
         # if dest is not tsl, construct representation:
         if isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
             tsl_dest = op.destination.type.layout
-        elif self.test_ignore_transform:
-            tsl_dest = op.source.type.layout
         else:
             strides = extract_strides(op.destination.type)
             tile_bounds: list[list[int | None]]
@@ -353,7 +349,7 @@ class TransformDMA(RewritePattern):
         )
 
         # step 4: generate variables for 2D dma transfer
-        if len(remaining_strides) == 0:
+        if len(remaining_strides) == 0 or self.test_ignore_transform:
             # is actually 1d dma transfer, calculate size of transfer:
             ops_to_add, total_size_op = get_total_size_op(op.source)
             ops_to_insert.extend(ops_to_add)

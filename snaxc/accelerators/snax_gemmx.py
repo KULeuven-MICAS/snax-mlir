@@ -76,6 +76,7 @@ class SNAXGEMMXAccelerator(
     supported_kernels = (
         SupportedKernel(kernel.QMacOp, (i8, i8, i32, i32, i32)),
         SupportedKernel(kernel.MacOp, (i8, i8, i32)),
+        SupportedKernel(kernel.MacOp, (i8, i8, i8)),
         SupportedKernel(kernel.AddOp, (i32, i32, i32)),
         SupportedKernel(kernel.RescaleOp, (i32, i8)),
     )
@@ -186,6 +187,11 @@ class SNAXGEMMXAccelerator(
         if isinstance(
             qmac := generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp
         ):
+            if op.body.block.last_op.arguments[0].type.element_type.bitwidth == 8:
+                # hacky i8 output enabled
+                i8_out = True
+            else:
+                i8_out = False
             # compute knm: fix n = 1
             n = 1
             # count the number of non-reducing bounds (output stride != 0)
@@ -193,8 +199,8 @@ class SNAXGEMMXAccelerator(
                 prod(
                     bound.data
                     for bound, stride in zip(
-                        op.stride_patterns.data[-1].upper_bounds,
-                        op.stride_patterns.data[-1].temporal_strides,
+                        op.stride_patterns.data[-2].upper_bounds,
+                        op.stride_patterns.data[-2].temporal_strides,
                     )
                     if stride.data != 0
                 )
@@ -205,8 +211,14 @@ class SNAXGEMMXAccelerator(
 
             # gemm
             # bypass simd and set all related values to 0
-            bypassSIMD = c1.result  # bypass simd
-            loop_bound = c0
+            m_cst = arith.ConstantOp.from_int_and_width(m, 32)
+            ops_to_add.append(m_cst)
+            if i8_out:
+                bypassSIMD = c0.result
+                loop_bound = m_cst
+            else:
+                bypassSIMD = c1.result  # bypass simd
+                loop_bound = c0
             csr0 = c0.result
             csr1 = c0.result
             shift_vals = (c0.result for _ in range(2))

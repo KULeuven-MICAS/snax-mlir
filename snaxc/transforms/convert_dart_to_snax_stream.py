@@ -228,6 +228,35 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
             pattern.canonicalize() for pattern in snax_stride_patterns
         ]
 
+        # enable for conv 8 bit output:
+        # for pattern in snax_stride_patterns:
+        #     print(pattern)
+
+        snax_stride_patterns[2] = snax_stream.StridePattern(
+            upper_bounds=snax_stride_patterns[4].upper_bounds,
+            temporal_strides=snax_stride_patterns[4].temporal_strides,
+            spatial_strides=[8],
+        )
+
+        snax_stride_patterns[3] = snax_stream.StridePattern(
+            upper_bounds=[4] + [x.data for x in snax_stride_patterns[3].upper_bounds],
+            temporal_strides=[64]
+            + [x.data for x in snax_stride_patterns[3].temporal_strides],
+            spatial_strides=snax_stride_patterns[3].spatial_strides,
+        )
+
+        snax_stride_patterns[4] = snax_stream.StridePattern(
+            upper_bounds=[0 for _ in snax_stride_patterns[4].upper_bounds],
+            temporal_strides=snax_stride_patterns[-4].temporal_strides,
+            spatial_strides=snax_stride_patterns[-4].temporal_strides,
+        )
+
+        # print('after')
+        # for pattern in snax_stride_patterns:
+        #     print(pattern)
+
+        # breakpoint()
+
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(
             inputs=new_inputs,

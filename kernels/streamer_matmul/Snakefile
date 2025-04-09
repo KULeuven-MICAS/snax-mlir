@@ -30,7 +30,7 @@ config["snaxoptflags"] = ",".join(
 )
 
 config["mlirtransformflags"] = [
-    "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.quantized_matmul}, test-transform-dialect-erase-schedule)'"
+    "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.conv2d_nhwc_fhwc}, test-transform-dialect-erase-schedule)'"
 ]
 
 

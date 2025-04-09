@@ -5,17 +5,21 @@ import numpy as np
 import tensorflow as tf
 from numpy._typing import NDArray
 from xdsl.builder import Builder
+from xdsl.dialects import transform, builtin
 from xdsl.dialects.arith import ConstantOp
 from xdsl.dialects.builtin import (
+    DenseArrayBase,
     DenseIntOrFPElementsAttr,
+    IntegerType,
     ModuleOp,
     TensorType,
+    UnitAttr,
     i8,
     i32,
     i64,
 )
 from xdsl.dialects.func import FuncOp, ReturnOp
-from xdsl.dialects.linalg import Conv2DNchwFchwOp
+from xdsl.dialects.linalg import Conv2DNhwc_FhwcOp
 from xdsl.dialects.tensor import EmptyOp
 from xdsl.printer import Printer
 
@@ -32,6 +36,8 @@ class ConvSpec:
     groups: int = 1  # Number of groups
     stride: int = 1  # Stride
     dilation: int = 1  # Dilation
+    tile_oy: int = 1
+    tile_k: int = 1
 
 
 def generate_conv_tensors(spec: ConvSpec) -> tuple[NDArray[np.int8], NDArray[np.int8]]:
@@ -83,20 +89,20 @@ def conv(spec: ConvSpec):
     # reshape to the mlir conv2d op spec
 
     # for nchw_fchw:
-    input = input.transpose((0, 3, 1, 2))  # NHWC -> NCHW
-    weight = weight.transpose((3, 2, 0, 1))  # HWCF -> FCHW
-    output = output.transpose((0, 3, 1, 2))  # NHWC -> NCHW
+    # input = input.transpose((0, 3, 1, 2))  # NHWC -> NCHW
+    # weight = weight.transpose((3, 2, 0, 1))  # HWCF -> FCHW
+    # output = output.transpose((0, 3, 1, 2))  # NHWC -> NCHW
 
     # for nhwc_fhwc:
-    # input = input.transpose((0, 1, 2, 3))  # NHWC -> NHWC
-    # weight = weight.transpose((3, 0, 1, 2))  # HWCF -> FHWC
-    # output = output.transpose((0, 1, 2, 3))  # NHWC -> NHWC
+    input = input.transpose((0, 1, 2, 3))  # NHWC -> NHWC
+    weight = weight.transpose((3, 0, 1, 2))  # HWCF -> FHWC
+    output = output.transpose((0, 1, 2, 3))  # NHWC -> NHWC
 
     input_type = TensorType(i8, shape=input.shape)
     weight_type = TensorType(i8, shape=weight.shape)
-    output_type = TensorType(i32, shape=output.shape)
+    output_type = TensorType(i8, shape=output.shape)
 
-    res_types = [output_type, output_type]
+    res_types = [output_type]
 
     dilations = DenseIntOrFPElementsAttr.tensor_from_list([spec.dilation], i64, [2])
     strides = DenseIntOrFPElementsAttr.tensor_from_list([spec.stride], i64, [2])
@@ -112,24 +118,47 @@ def conv(spec: ConvSpec):
         weight_c = ConstantOp(
             DenseIntOrFPElementsAttr.from_list(weight_type, weight.flatten().tolist())
         )
-        golden_c = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(output_type, output.flatten().tolist())
-        )
 
         # Declare result tensor type
         empty_tensor = EmptyOp([], output_type)
 
         # Specify the operation
-        result = Conv2DNchwFchwOp(
+        result = Conv2DNhwc_FhwcOp(
             (input_c.result, weight_c.result),
             (empty_tensor.results[0],),
             (output_type,),
             {"dilations": dilations, "strides": strides},
         )
 
-        ReturnOp(result, golden_c)
+        ReturnOp(result)
 
     function = FuncOp.from_region("snax_main", [], res_types, func_body)
+
+    # Manually speficy tiling sequence
+    transform_inputs = [
+        transform.AnyOpType(),
+        transform.OperationType("linalg.conv_2d_nhwc_fhwc"),
+    ]
+
+    @Builder.implicit_region(transform_inputs)
+    def tiling_sequence(args):
+        transform.TileOp(
+            target=args[1],
+            dynamic_sizes=[],
+            scalable_sizes=DenseArrayBase.create_dense_int(IntegerType(1), [0, 0, 0, 0]),
+            static_sizes=DenseArrayBase.create_dense_int(IntegerType(64), [1, spec.tile_oy, spec.ox, spec.tile_k]),
+        )
+
+        transform.YieldOp()
+
+    function_type = builtin.FunctionType.from_lists(transform_inputs, [])
+    transform_sequence = transform.NamedSequenceOp(
+        "__transform_main", function_type, tiling_sequence
+    )
+
+    return ModuleOp(
+        [function, transform_sequence], {"transform.with_named_sequence": UnitAttr()}
+    )
     return ModuleOp([function])
 
 
@@ -139,9 +168,11 @@ if __name__ == "__main__":
     # Expect 7 command-line args
     b, ox, oy, fx, fy, c, k = map(int, sys.argv[1:8])
     stride, dilation = map(int, sys.argv[8:10])
-    spec = ConvSpec(b, ox, oy, fx, fy, c, k, stride=stride, dilation=dilation)
+    tile_oy, tile_k = map(int, sys.argv[10:12])
+    spec = ConvSpec(b, ox, oy, fx, fy, c, k, stride=stride, dilation=dilation, tile_oy=tile_oy, tile_k=tile_k)
     output = StringIO()
     printer = Printer(stream=output)
+
     printer.print(conv(spec))
     print(output.getvalue())
 

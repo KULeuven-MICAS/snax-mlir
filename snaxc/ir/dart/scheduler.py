@@ -156,6 +156,9 @@ def scheduler(
     # for now just return the first result of the backtracking
     if schedule_idx is not None:
         all = list(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
-        return all[schedule_idx]
+        # for i, s in enumerate(all):
+        #     print(f'{i}: ', s)
+        # breakpoint()
+        return all[-1]
     result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
     return result
