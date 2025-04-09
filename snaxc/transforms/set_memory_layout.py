@@ -122,8 +122,17 @@ class AddCyclicMemoryLayout(RewritePattern):
                     layout_bound = size_remaining
 
                 # non contiguous stride for extra performance
-                if current_stride % schedule_bound_product != 0:
-                    current_stride += (schedule_bound_product - (current_stride % schedule_bound_product)) % 128
+                # print('previous')
+                # print(current_stride)
+                # if (current_stride % 256) != (schedule_bound_product % 256):
+                #     current_stride += (
+                #         256 - (current_stride % 256) + (schedule_bound_product % 256)
+                #     )
+                # print('now')
+                # print(current_stride)
+                # breakpoint()
+                # if current_stride % schedule_bound_product != 0:
+                #     current_stride += (schedule_bound_product - (current_stride % schedule_bound_product)) % 512
 
                 # assign this current stride to the relevant operand dimension
                 strides[accesses.index(1)].insert(
