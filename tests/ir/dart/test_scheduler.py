@@ -241,7 +241,9 @@ def test_memory_flexibility_scheduler():
     results_without = list(scheduler_backtrack(template, schedule, extra_checks=[]))
     results_with = list(
         scheduler_backtrack(
-            template, schedule, extra_checks=[is_memory_flexible_enough]
+            template,
+            schedule,
+            extra_checks=[lambda t, s: is_memory_flexible_enough(t, s, [1])],
         )
     )
 
