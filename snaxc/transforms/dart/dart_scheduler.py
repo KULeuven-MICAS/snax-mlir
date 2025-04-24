@@ -1,8 +1,14 @@
 from dataclasses import dataclass
+from typing import cast
 
 from xdsl.context import Context
 from xdsl.dialects import builtin
-from xdsl.dialects.builtin import AffineMapAttr, ArrayAttr
+from xdsl.dialects.builtin import (
+    AffineMapAttr,
+    ArrayAttr,
+    FixedBitwidthType,
+    MemRefType,
+)
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -15,7 +21,11 @@ from snaxc.accelerators import AccContext
 from snaxc.accelerators.snax import SNAXStreamer
 from snaxc.dialects import dart
 from snaxc.ir.dart.access_pattern import Schedule, SchedulePattern
-from snaxc.ir.dart.scheduler import scheduler
+from snaxc.ir.dart.scheduler import (
+    is_memory_flexible_enough,
+    is_pure_output_stationary,
+    scheduler,
+)
 
 
 @dataclass
@@ -49,7 +59,18 @@ class AutoflowScheduler(RewritePattern):
         )
 
         schedule = schedule.canonicalize()
-        schedule = scheduler(template, schedule, schedule_idx=self.schedule_idx)
+        element_sizes = [
+            cast(MemRefType[FixedBitwidthType], oper.type).element_type.size
+            for oper in op.operands
+        ]
+        schedule = scheduler(
+            template,
+            schedule,
+            extra_checks=[
+                is_pure_output_stationary,
+                lambda t, s: is_memory_flexible_enough(t, s, element_sizes),
+            ],
+        )
 
         schedule_op = dart.ScheduleOp(
             op.inputs,
