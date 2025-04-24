@@ -162,6 +162,9 @@ def test_multiple_results():
     result = list(scheduler_backtrack(template, schedule))
     assert len(result) == 6
 
+    # test if the schedule idx returns the correct index
+    assert scheduler(template, schedule, extra_checks=[], schedule_idx=3) == result[3]
+
 
 def test_pure_output_stationary_check():
     template_pattern = AffineMap.from_callable(lambda e: (e, e, e))
