@@ -121,10 +121,16 @@ class StageOp(IRDLOperation):
 
     def __init__(
         self,
-        buffers: Sequence[SSAValue | Operation],
+        ins: Sequence[SSAValue | Operation],
+        outs: Sequence[SSAValue | Operation],
+        index: int | IntegerAttr[IndexType],
         body: Region,
     ) -> None:
-        super().__init__(operands=[buffers], regions=[body])
+        if isinstance(index, int):
+            index = IntegerAttr.from_index_int_value(index)
+        super().__init__(
+            operands=[ins, outs], regions=[body], properties={"index": index}
+        )
 
 
 Pipeline = Dialect(
