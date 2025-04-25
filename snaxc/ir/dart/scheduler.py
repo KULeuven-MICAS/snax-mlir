@@ -134,7 +134,8 @@ def is_memory_flexible_enough(
     temporal access within one bank, such that that dimension can be packed together.
     """
     TCDM_BANK_WIDTH = 8
-    # this check only makes sense if there are temporal dimensions:
+    # We can only apply this check if there are temporal dimensions to investigate
+    # their access granularity:
     if not schedule.num_dims > template.num_dims:
         return True
     for s, size in zip(schedule, element_sizes):
