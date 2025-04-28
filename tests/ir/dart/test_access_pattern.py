@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from xdsl.ir.affine import AffineDimExpr, AffineMap
+from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineMap
 
 from snaxc.ir.dart.access_pattern import (
     AccessPattern,
@@ -289,3 +289,11 @@ def test_template_matches_schedule_length_mismatch():
     schedule = Schedule([sp1, sp2])
 
     assert template.matches(schedule) is False
+
+
+def test_access_pattern_canonicalize():
+    pattern1 = AffineMap(num_dims=4, num_symbols=0, results=(AffineConstantExpr(0),))
+    tp1 = TemplatePattern((10, 1, 10, 1), pattern1)
+    pattern2 = AffineMap(num_dims=2, num_symbols=0, results=(AffineConstantExpr(0),))
+    tp2 = TemplatePattern((10, 10), pattern2)
+    assert tp1.canonicalize() == tp2
