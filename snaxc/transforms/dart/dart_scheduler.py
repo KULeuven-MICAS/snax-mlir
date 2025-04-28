@@ -27,6 +27,7 @@ class AutoflowScheduler(RewritePattern):
     """
 
     ctx: AccContext
+    schedule_idx: int | None = None
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
@@ -46,7 +47,7 @@ class AutoflowScheduler(RewritePattern):
             SchedulePattern(schedule_bounds, pattern.data)
             for pattern in op.patterns.data
         )
-        schedule = scheduler(template, schedule)
+        schedule = scheduler(template, schedule, schedule_idx=self.schedule_idx)
 
         schedule_op = dart.ScheduleOp(
             op.inputs,
@@ -66,6 +67,10 @@ class AutoflowScheduler(RewritePattern):
 class DartSchedulerPass(ModulePass):
     name = "dart-scheduler"
 
+    schedule_idx: int | None = None
+
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         assert isinstance(ctx, AccContext)
-        PatternRewriteWalker(AutoflowScheduler(ctx)).rewrite_module(op)
+        PatternRewriteWalker(AutoflowScheduler(ctx, self.schedule_idx)).rewrite_module(
+            op
+        )
