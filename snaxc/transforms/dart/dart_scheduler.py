@@ -47,10 +47,9 @@ class AutoflowScheduler(RewritePattern):
             SchedulePattern(schedule_bounds, pattern.data)
             for pattern in op.patterns.data
         )
-        schedule = scheduler(template, schedule, schedule_idx=self.schedule_idx)
 
         schedule = schedule.canonicalize()
-        schedule = scheduler(template, schedule)
+        schedule = scheduler(template, schedule, schedule_idx=self.schedule_idx)
 
         schedule_op = dart.ScheduleOp(
             op.inputs,
