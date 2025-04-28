@@ -30,6 +30,14 @@ def extract_cst_index(operand: Operand) -> int | None:
 
 @dataclass
 class ChangeForStep(RewritePattern):
+    """
+    Rewrites a for loop to use step 1.
+    Currently supported are for loops:
+        - without index_args
+        - step, ub and lb defined as constants and
+        - lb == 0
+    """
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: ForOp, rewriter: PatternRewriter) -> None:
         # iter args is not supported
