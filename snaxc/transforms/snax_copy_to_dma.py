@@ -494,6 +494,10 @@ class TransformDMA(RewritePattern):
 class SNAXCopyToDMA(ModulePass):
     """
     This pass translates memref copies to snitch DMA calls.
+
+    If you want to ignore all transformations made by the dma because it makes everything very slow, the
+    `test_ignore_transform` gives you the option to replace it by a regular 1D transfer.
+    Note that this renders the data incorrect, yet it can be helpful during debugging
     """
 
     name = "snax-copy-to-dma"
