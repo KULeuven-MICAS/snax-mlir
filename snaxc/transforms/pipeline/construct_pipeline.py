@@ -8,6 +8,7 @@ from xdsl.dialects.linalg import GenericOp
 from xdsl.dialects.memref import CopyOp
 from xdsl.dialects.scf import ForOp
 from xdsl.ir import Block, Operation, Region, SSAValue
+from xdsl.irdl import Operand
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -111,38 +112,41 @@ class ConstructPipeline(RewritePattern):
             input_buffers: list[SSAValue] = []
             output_buffers: list[SSAValue] = []
 
+            stage_block = Block([])
+
             for operation in stage:
-                if isinstance(operation, CopyOp):
-                    input_buffers.append(operation.source)
-                    output_buffers.append(operation.destination)
-
-                if isinstance(operation, GenericOp):
-                    input_buffers.extend(
-                        [o for o in operation.inputs if isinstance(o.type, MemRefType)]
-                    )
-                    output_buffers.extend(
-                        [o for o in operation.outputs if isinstance(o.type, MemRefType)]
-                    )
-
-                if isinstance(operation, StreamingRegionOpBase):
-                    input_buffers.extend(
-                        [o for o in operation.inputs if isinstance(o.type, MemRefType)]
-                    )
-                    output_buffers.extend(
-                        [o for o in operation.outputs if isinstance(o.type, MemRefType)]
-                    )
                 operation.detach()
+
+                def rewrite_operand(operand: Operand, index: int, is_input: bool):
+                    if is_input:
+                        input_buffers.append(operand)
+                        arg_insert_index = len(input_buffers) - 1
+                    else:
+                        output_buffers.append(operand)
+                        arg_insert_index = len(input_buffers) + len(output_buffers) - 1
+                    operation.operands[index] = stage_block.insert_arg(
+                        operand.type, arg_insert_index
+                    )
+
+                if isinstance(operation, CopyOp):
+                    rewrite_operand(operation.source, 0, True)
+                    rewrite_operand(operation.destination, 1, False)
+                elif isinstance(operation, GenericOp):
+                    for i, operand in enumerate(operation.operands):
+                        if isinstance(operand.type, MemRefType):
+                            rewrite_operand(operand, i, operand in operation.inputs)
+                elif isinstance(operation, StreamingRegionOpBase):
+                    for i, operand in enumerate(operation.operands):
+                        if isinstance(operand.type, MemRefType):
+                            rewrite_operand(operand, i, operand in operation.inputs)
+
+                stage_block.add_op(operation)
 
             stage_op = StageOp(
                 input_buffers,
                 output_buffers,
                 i,
-                body=Region(
-                    Block(
-                        stage,
-                        arg_types=[o.type for o in (*input_buffers, *output_buffers)],
-                    )
-                ),
+                body=Region(stage_block),
             )
 
             rewriter.insert_op(stage_op, InsertPoint.at_end(pipeline_op.body.block))
