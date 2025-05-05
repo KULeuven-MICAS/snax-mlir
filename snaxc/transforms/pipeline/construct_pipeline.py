@@ -64,7 +64,7 @@ class ConstructPipeline(RewritePattern):
         cluster_sync_ops: list[ClusterSyncOp] = []
 
         def is_stage_op(op: Operation) -> bool:
-            return isinstance(op, CopyOp | StreamingRegionOpBase)
+            return isinstance(op, CopyOp | GenericOp | StreamingRegionOpBase)
 
         while is_stage_op(next_op):
             current_stage.append(next_op)
