@@ -112,24 +112,24 @@ class ConstructPipeline(RewritePattern):
             output_buffers: list[SSAValue] = []
 
             for operation in stage:
-                if isinstance(next_op, CopyOp):
-                    input_buffers.append(next_op.source)
-                    output_buffers.append(next_op.destination)
+                if isinstance(operation, CopyOp):
+                    input_buffers.append(operation.source)
+                    output_buffers.append(operation.destination)
 
-                if isinstance(next_op, GenericOp):
+                if isinstance(operation, GenericOp):
                     input_buffers.extend(
-                        [o for o in next_op.inputs if isinstance(o.type, MemRefType)]
+                        [o for o in operation.inputs if isinstance(o.type, MemRefType)]
                     )
                     output_buffers.extend(
-                        [o for o in next_op.outputs if isinstance(o.type, MemRefType)]
+                        [o for o in operation.outputs if isinstance(o.type, MemRefType)]
                     )
 
-                if isinstance(next_op, StreamingRegionOpBase):
+                if isinstance(operation, StreamingRegionOpBase):
                     input_buffers.extend(
-                        [o for o in next_op.inputs if isinstance(o.type, MemRefType)]
+                        [o for o in operation.inputs if isinstance(o.type, MemRefType)]
                     )
                     output_buffers.extend(
-                        [o for o in next_op.outputs if isinstance(o.type, MemRefType)]
+                        [o for o in operation.outputs if isinstance(o.type, MemRefType)]
                     )
                 operation.detach()
 
