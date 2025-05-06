@@ -1,3 +1,5 @@
+// RUN: snax-opt %s -p pipeline-duplicate-buffers | filecheck %s
+
 %buffer0 = memref.alloc() : memref<1x2xi8>
 %buffer1 = memref.alloc() : memref<1x2xi8>
 %buffer2 = memref.alloc() : memref<1x2xi8>
