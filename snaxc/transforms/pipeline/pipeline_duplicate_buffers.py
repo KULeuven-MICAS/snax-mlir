@@ -72,6 +72,7 @@ class PipelineDuplicateBuffers(RewritePattern):
 
         if len(in_uses) == 0 or len(out_uses) == 0:
             # only used as input or output, so no risk of a read/write conflict
+            # in the index op, we always select this buffer as it is always safe to use.
             new_index = IndexOp(
                 index_op.input,
                 [*index_op.result_types, buffer.type],
@@ -109,8 +110,10 @@ class PipelineDuplicateBuffers(RewritePattern):
             )
 
         # this is the spot to implement double buffering. There is one in_use, and one out use.
+        # we must duplicate the buffer and select the correct one in the index op. to avoid
+        # read/write confclits
 
-        # first, we duplciate the buffer:
+        # first, we duplicate the buffer:
         buffers = [buffer.op]
         buffers.append(buffer.op.clone())
         rewriter.insert_op(buffers[1], InsertPoint.after(buffer.op))
@@ -123,6 +126,8 @@ class PipelineDuplicateBuffers(RewritePattern):
         )
         assert isinstance(yield_op := new_index.body.block.last_op, YieldOp)
 
+        # here, we insert some logic to select the first buffer on even iterations,
+        # and the second buffer on odd iterations
         cst_2 = arith.ConstantOp.from_int_and_width(2, builtin.IndexType())
         cst_0 = arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
         rem = arith.RemUIOp(new_index.body.block.args[0], cst_2)
