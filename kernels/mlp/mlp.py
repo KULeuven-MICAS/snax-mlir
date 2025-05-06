@@ -9,10 +9,9 @@ from xdsl.dialects.builtin import (
     ModuleOp,
     TensorType,
     i8,
-    i32,
 )
 from xdsl.dialects.func import FuncOp, ReturnOp
-from xdsl.dialects.linalg import QuantizedMatmulOp
+from xdsl.dialects.linalg import MatmulOp
 from xdsl.dialects.tensor import EmptyOp
 from xdsl.printer import Printer
 
@@ -26,6 +25,7 @@ The arguments are:
     output_dim: int
 """
 
+
 # TODO: This is just a simple scaling mechanism
 # Just for the sake of making the matrices within int8
 def scale_to_int8(arr):
@@ -37,6 +37,7 @@ def scale_to_int8(arr):
     # Scale to range [-128, 127]
     scaled = 255 * (arr - arr_min) / (arr_max - arr_min) - 128
     return scaled.astype(np.int8)
+
 
 # Cascade matrix multiplication function
 # Technically a multilayer perceptron (MLP) with multiple hidden layers
@@ -52,15 +53,20 @@ def cascade_matmul(batch_size, input_dim, hidden_layers_dim, output_dim):
         # Generate random weights for the current layer
         # then perform matrix multiplication
         # and scale the result to int8
-        if(i==0):
-
-            hidden_weights_list.append(np.random.randint(-128, 127, (input_dim, hidden_layers_dim[i])))
+        if i == 0:
+            hidden_weights_list.append(
+                np.random.randint(-128, 127, (input_dim, hidden_layers_dim[i]))
+            )
             # Perform matrix multiplication for the first layer
             vXM = input_vals @ hidden_weights_list[i]
             intermediate_vals.append(scale_to_int8(vXM))
         else:
-            hidden_weights_list.append(np.random.randint(-128, 127, (hidden_layers_dim[i-1], hidden_layers_dim[i])))
-            vXM = intermediate_vals[i-1] @ hidden_weights_list[i]
+            hidden_weights_list.append(
+                np.random.randint(
+                    -128, 127, (hidden_layers_dim[i - 1], hidden_layers_dim[i])
+                )
+            )
+            vXM = intermediate_vals[i - 1] @ hidden_weights_list[i]
             intermediate_vals.append(scale_to_int8(vXM))
 
     # Generate random weights for the output layer
@@ -69,7 +75,14 @@ def cascade_matmul(batch_size, input_dim, hidden_layers_dim, output_dim):
     # Perform matrix multiplication for the output layer
     output_vals = scale_to_int8(vXM)
 
-    return input_vals, hidden_weights_list, intermediate_vals, output_weights, output_vals
+    return (
+        input_vals,
+        hidden_weights_list,
+        intermediate_vals,
+        output_weights,
+        output_vals,
+    )
+
 
 # Defining types and paramters for the MLIR generation
 def mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_vals):
@@ -83,10 +96,10 @@ def mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_
         hidden_weights_types.append(TensorType(i8, hidden_weights_list[i].shape))
 
     # For the output weights
-    output_weights_type = TensorType(i32, output_weights.shape)
+    output_weights_type = TensorType(i8, output_weights.shape)
 
     # For the output values
-    output_type = TensorType(i32, output_vals.shape)
+    output_type = TensorType(i8, output_vals.shape)
 
     # Result types
     res_types = [output_type] * 2
@@ -98,19 +111,28 @@ def mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_
         # Declare constants
         # For the input weights
         input_const = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(input_type, input_vals.flatten().tolist())
+            DenseIntOrFPElementsAttr.from_list(
+                input_type, input_vals.flatten().tolist()
+            )
         )
 
         # For the hidden weights
         hidden_weight_const = []
         for i in range(len(hidden_weights_list)):
-            hidden_weight_const.append(ConstantOp(
-                    DenseIntOrFPElementsAttr.from_list(hidden_weights_types[i], hidden_weights_list[i].flatten().tolist())
-                ))
+            hidden_weight_const.append(
+                ConstantOp(
+                    DenseIntOrFPElementsAttr.from_list(
+                        hidden_weights_types[i],
+                        hidden_weights_list[i].flatten().tolist(),
+                    )
+                )
+            )
 
         # For the output weights
         output_weight_const = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(output_weights_type, output_weights.flatten().tolist())
+            DenseIntOrFPElementsAttr.from_list(
+                output_weights_type, output_weights.flatten().tolist()
+            )
         )
 
         # For the output values
@@ -122,7 +144,7 @@ def mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_
 
         # TODO: check me after but let's leave these to 0 first
         # Some needed constants
-        constants = ConstantOp.from_int_and_width(0, 32)
+        ConstantOp.from_int_and_width(0, 32)
 
         intermediate_result = []
         # Calculating the MLP process
@@ -130,15 +152,17 @@ def mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_
             # Specify the operation
             # empty_tensor = EmptyOp([], hidden_weights_types[i])
             empty_tensor = EmptyOp([], output_type)
-            if(i==0):
+            if i == 0:
                 # For the first layer
-                result = QuantizedMatmulOp(
-                    [input_const.result, hidden_weight_const[i].result, constants.result, constants.result], empty_tensor.results
+                result = MatmulOp(
+                    [input_const.result, hidden_weight_const[i].result],
+                    empty_tensor.results,
                 )
             else:
                 # For the other layers
-                result = QuantizedMatmulOp(
-                    [intermediate_result[i-1][0], hidden_weight_const[i].result, constants.result, constants.result], empty_tensor.results
+                result = MatmulOp(
+                    [intermediate_result[i - 1][0], hidden_weight_const[i].result],
+                    empty_tensor.results,
                 )
 
             # TODO: need to have a scaling function here
@@ -147,8 +171,9 @@ def mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_
 
         # For the output layer
         empty_tensor = EmptyOp([], output_weights_type)
-        final_result = QuantizedMatmulOp(
-            [intermediate_result[-1][0], output_weight_const.result, constants.result, constants.result], empty_tensor.results
+        final_result = MatmulOp(
+            [intermediate_result[-1][0], output_weight_const.result],
+            empty_tensor.results,
         )
         # Return both the computed result and the golden output
         ReturnOp(final_result, output_const)
@@ -156,16 +181,16 @@ def mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_
     function = FuncOp.from_region("snax_main", [], res_types, func_body)
     return ModuleOp([function])
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     # Debug mode
     print_data = True
 
     # Example usage
-    batch_size = 1
-    input_dim = 4
-    hidden_layers_dim = [4,8,8,4]
-    output_dim = 3
+    batch_size = 8
+    input_dim = 8
+    hidden_layers_dim = [8, 8, 8, 8]
+    output_dim = 8
 
     # Print parameters
     print(f"Batch size: {batch_size}")
@@ -174,7 +199,13 @@ if __name__ == "__main__":
     print(f"Output dimension: {output_dim}")
 
     # Call the cascade_matmul function
-    input_vals, hidden_weights_list, intermediate_vals, output_weights, output_vals = cascade_matmul(batch_size, input_dim, hidden_layers_dim, output_dim)
+    (
+        input_vals,
+        hidden_weights_list,
+        intermediate_vals,
+        output_weights,
+        output_vals,
+    ) = cascade_matmul(batch_size, input_dim, hidden_layers_dim, output_dim)
 
     # For debugging purposes
     # Print the results
@@ -201,6 +232,10 @@ if __name__ == "__main__":
     # Generate IR and write it to the specified MLIR file
     output = StringIO()
     printer = Printer(stream=output)
-    printer.print(mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_vals))
+    printer.print(
+        mlir_cascade_matmul(
+            input_vals, hidden_weights_list, output_weights, output_vals
+        )
+    )
     with open(mlir_filename, "w") as output_file:
         output_file.write(output.getvalue())
