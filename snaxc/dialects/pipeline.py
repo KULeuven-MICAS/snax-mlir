@@ -61,7 +61,7 @@ class IndexOp(IRDLOperation):
     input = operand_def(IndexType)
     outputs = var_result_def()
 
-    body = region_def()
+    body = region_def("single_block")
 
     traits = traits_def(HasParent(PipelineOp))
 
