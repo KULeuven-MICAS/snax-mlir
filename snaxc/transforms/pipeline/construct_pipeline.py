@@ -26,6 +26,26 @@ from snaxc.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
 
 @dataclass
 class ConstructPipeline(RewritePattern):
+    """
+    This pattern will construct a pipeline operation from a for loop.
+    It tries to detect a structure in the following manner:
+    ```
+    for:
+        (index_ops):
+        # some ops doing basic math or taking memref subviews
+        # generally no side-effects here
+        (stage_1):
+        # some dispatchable op (memref copy, generic, streaming region)
+        (cluster_sync)
+        (stage_2)
+        (cluster_sync)
+        ...
+    ```
+    This structure is then converted to a pipeline op, such that it can
+    be urnolled in further transformations to achieve double buffering
+    and pipelined execution of asynchronous multi-core accelerators.
+    """
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: ForOp, rewriter: PatternRewriter):
         # TODO: only apply for for loops with lb 0 and step 1
