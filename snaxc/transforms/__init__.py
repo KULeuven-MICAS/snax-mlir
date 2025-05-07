@@ -222,6 +222,11 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return RemoveMemrefCopyPass
 
+    def get_unroll_pipeline():
+        from snaxc.transforms.pipeline.unroll_pipeline import UnrollPipelinePass
+
+        return UnrollPipelinePass
+
     return {
         "accfg-config-overlap": get_accfg_config_overlap,
         "accfg-dedup": get_accfg_dedup,
@@ -263,4 +268,5 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "test-debug-to-func": get_test_debug_to_func,
         "test-insert-debugs": get_test_insert_debugs,
         "test-remove-memref-copy": get_test_remove_memref_copy,
+        "unroll-pipeline": get_unroll_pipeline,
     }
