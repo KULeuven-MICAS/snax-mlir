@@ -44,6 +44,17 @@ class PipelineOp(IRDLOperation):
     def __init__(self, body: Region) -> None:
         super().__init__(regions=[body])
 
+    @property
+    def stages(self) -> Sequence["StageOp"]:
+        """
+        Get the stages of the pipeline.
+        """
+        return [op for op in self.body.block.ops if isinstance(op, StageOp)]
+
+    @property
+    def nb_stages(self) -> int:
+        return len(self.stages)
+
 
 @irdl_op_definition
 class IndexOp(IRDLOperation):
