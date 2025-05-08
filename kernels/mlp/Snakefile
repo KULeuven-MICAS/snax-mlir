@@ -30,7 +30,6 @@ config["snaxoptflags"] = ",".join(
 )
 
 
-
 module snax_rules:
     snakefile:
         "../../util/snake/snax.smk"

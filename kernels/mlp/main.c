@@ -5,8 +5,8 @@
 
 void _mlir_ciface_snax_main(TwoDMemrefI8_t *results);
 
-void _mlir_ciface_debug_dart(int32_t _ptr_a, int32_t _ptr_b,
-                                   int32_t _ptr_c, int32_t when) {
+void _mlir_ciface_debug_dart(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr_c,
+                             int32_t when) {
   int8_t *ptr_a, *ptr_b, *ptr_c;
   ptr_a = (int8_t *)_ptr_a;
   ptr_b = (int8_t *)_ptr_b;
@@ -57,7 +57,8 @@ int main() {
   for (int i = 0; i < total_results; i++) {
 
     if (golden->aligned_data[i] != computed->aligned_data[i]) {
-      printf("(%d) %d -> %d\n", i, golden->aligned_data[i], computed->aligned_data[i]);
+      printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
+             computed->aligned_data[i]);
       nerr++;
     }
   }
