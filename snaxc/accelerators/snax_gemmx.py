@@ -5,6 +5,7 @@ from xdsl.dialects import arith, builtin
 from xdsl.dialects.builtin import i8, i32
 from xdsl.ir import BlockArgument, Operation, OpResult, SSAValue
 from xdsl.ir.affine import AffineDimExpr, AffineMap
+from xdsl.parser import IntegerType
 
 from snaxc.accelerators.dispatching import DispatchTemplate, SupportedKernel
 from snaxc.accelerators.snax import (
@@ -184,6 +185,12 @@ class SNAXGEMMXAccelerator(
         if isinstance(
             qmac := generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp
         ):
+            if qmac.operands[-1].type == builtin.IntegerType(8):
+                i8_out = True
+                last_pattern = op.stride_patterns.data[-1]
+            else:
+                i8_out = False
+                last_pattern = op.stride_patterns.data[2]
             # compute knm: fix n = 1
             n = 1
             # count the number of non-reducing bounds (output stride != 0)
@@ -191,8 +198,8 @@ class SNAXGEMMXAccelerator(
                 prod(
                     bound.data
                     for bound, stride in zip(
-                        op.stride_patterns.data[-1].upper_bounds,
-                        op.stride_patterns.data[-1].temporal_strides,
+                        last_pattern.upper_bounds,
+                        last_pattern.temporal_strides,
                     )
                     if stride.data != 0
                 )
@@ -202,12 +209,45 @@ class SNAXGEMMXAccelerator(
 
             # gemm
             # bypass simd and set all related values to 0
-            bypassSIMD = c1.result  # bypass simd
-            loop_bound = c0
-            csr0 = c0.result
-            csr1 = c0.result
-            shift_vals = (c0.result for _ in range(2))
-            mult_vals = (c0.result for _ in range(8))
+            if i8_out:
+                bypassSIMD = c0.result  # bypass simd
+            else:
+                bypassSIMD = c1.result  # bypass simd
+            if i8_out:
+                n_val = arith.ConstantOp.from_int_and_width(n, 32)
+                ops_to_add.append(n_val)
+                loop_bound = n_val
+                max_int = arith.ConstantOp.from_int_and_width(127, i32)
+                min_int = arith.ConstantOp.from_int_and_width(-128, i32)
+                ops_to_add.extend(
+                    [max_int, min_int]
+                )
+                # force values that can be negative to 8 bits
+                cst255 = arith.ConstantOp.from_int_and_width(255, 32)
+                max_int = arith.AndIOp(max_int, cst255)
+                min_int = arith.AndIOp(min_int, cst255)
+                ops_to_add.extend([cst255, max_int, min_int])
+
+                # bitpacking
+                ops_to_add.extend(
+                    pack_bitlist([min_int, max_int], [24, 16])
+                )
+                csr0 = ops_to_add[-1].results[0].op.results[0]
+                csr1 = c0.result
+                shift = arith.ConstantOp.from_int_and_width(9, i32)
+                ops_to_add.append(shift)
+                shift_bitlist = list(pack_bitlist((shift,) * 4, (24, 16, 8, 0)))
+                ops_to_add.extend(shift_bitlist)
+
+                shift_vals = (shift_bitlist[-1].results[0] for _ in range(2))
+
+            else:
+                loop_bound = c0
+                csr0 = c0.result
+                csr1 = c0.result
+                shift_vals = (c0.result for _ in range(2))
+
+            mult_vals = (c1.result for _ in range(8))
 
             if isinstance(qmac, kernel.QMacOp):
                 # get zero points for gemm
