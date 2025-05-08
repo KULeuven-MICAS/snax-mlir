@@ -186,10 +186,10 @@ class SNAXGEMMXAccelerator(
         ):
             if qmac.operands[-1].type == builtin.IntegerType(8):
                 i8_out = True
-                last_pattern = op.stride_patterns.data[-1]
+                last_pattern = op.stride_patterns.data[2]
             else:
                 i8_out = False
-                last_pattern = op.stride_patterns.data[2]
+                last_pattern = op.stride_patterns.data[-1]
             # compute knm: fix n = 1
             n = 1
             # count the number of non-reducing bounds (output stride != 0)
