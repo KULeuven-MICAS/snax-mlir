@@ -53,6 +53,7 @@ class InsertDebugStatements(RewritePattern):
         rewriter.insert_op(debug_before, InsertPoint.before(op))
         rewriter.insert_op(debug_after, InsertPoint.after(op))
 
+
 @dataclass(frozen=True)
 class InsertDebugStatementsDart(RewritePattern):
     """
@@ -60,8 +61,9 @@ class InsertDebugStatementsDart(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: dart.StreamingRegionOpBase, rewriter: PatternRewriter):
-
+    def match_and_rewrite(
+        self, op: dart.StreamingRegionOpBase, rewriter: PatternRewriter
+    ):
         kernel_name = "dart"
 
         memreftype = op.inputs[0].type
