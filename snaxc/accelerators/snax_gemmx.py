@@ -184,7 +184,7 @@ class SNAXGEMMXAccelerator(
         if isinstance(
             qmac := generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp
         ):
-            if qmac.operands[-1].type == builtin.IntegerType(8):
+            if qmac.results[0].type == builtin.IntegerType(8):
                 i8_out = True
                 last_pattern = op.stride_patterns.data[2]
             else:
