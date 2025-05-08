@@ -29,13 +29,7 @@ The arguments are:
 # TODO: This is just a simple scaling mechanism
 # Just for the sake of making the matrices within int8
 def scale_to_int8(arr):
-    arr_min = arr.min()
-    arr_max = arr.max()
-    if arr_max == arr_min:
-        return np.zeros_like(arr, dtype=np.int8)  # Avoid division by zero
-
-    # Scale to range [-128, 127]
-    scaled = 255 * (arr - arr_min) / (arr_max - arr_min) - 128
+    scaled = np.right_shift(arr, 9)
     return scaled.astype(np.int8)
 
 
@@ -43,6 +37,7 @@ def scale_to_int8(arr):
 # Technically a multilayer perceptron (MLP) with multiple hidden layers
 def cascade_matmul(batch_size, input_dim, hidden_layers_dim, output_dim):
     # Input tensor
+    np.random.seed(0)  # For reproducibility
     input_vals = np.random.randint(-128, 127, (batch_size, input_dim))
 
     # Iterate through different hidden layers
