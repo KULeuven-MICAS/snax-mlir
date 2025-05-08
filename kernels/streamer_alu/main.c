@@ -14,8 +14,26 @@ void _mlir_ciface_debug_kernel_add(int32_t _ptr_a, int32_t _ptr_b,
   ptr_c = (int64_t *)_ptr_c;
 
   if (snrt_cluster_core_idx() == 0) {
-    printf("Debugging at t = %d with A at %p, B at %p, C at %p\n", when, ptr_a,
-           ptr_b, ptr_c);
+    printf("Debugging linalg op at t = %d with A at %p, B at %p, C at %p\n",
+           when, ptr_a, ptr_b, ptr_c);
+
+    for (int i = 0; i < 5; i++) {
+      printf("i%d -> A=%d, B=%d, C=%d\n", i, (int32_t)ptr_a[i],
+             (int32_t)ptr_b[i], (int32_t)ptr_c[i]);
+    }
+  }
+}
+
+void _mlir_ciface_debug_dart(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr_c,
+                             int32_t when) {
+  int64_t *ptr_a, *ptr_b, *ptr_c;
+  ptr_a = (int64_t *)_ptr_a;
+  ptr_b = (int64_t *)_ptr_b;
+  ptr_c = (int64_t *)_ptr_c;
+
+  if (snrt_cluster_core_idx() == 0) {
+    printf("Debugging dart op at t = %d with A at %p, B at %p, C at %p\n", when,
+           ptr_a, ptr_b, ptr_c);
 
     for (int i = 0; i < 5; i++) {
       printf("i%d -> A=%d, B=%d, C=%d\n", i, (int32_t)ptr_a[i],
