@@ -42,12 +42,16 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
         # must be available
         if op.accelerator.data == "snax_gemmx":
             if len(op.patterns) == 3:
-                if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
+                if op.body.block.arg_types[-1] == dart.StreamType(
+                    builtin.IntegerType(32)
+                ):
                     streamers = [
                         accelerator_type.streamer_config.data.streamers[i]
                         for i in (0, 1, 4)
                     ]
-                elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
+                elif op.body.block.arg_types[-1] == dart.StreamType(
+                    builtin.IntegerType(8)
+                ):
                     streamers = [
                         accelerator_type.streamer_config.data.streamers[i]
                         for i in (0, 1, 2)
@@ -153,8 +157,9 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                 upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0]
             )
             if len(snax_stride_patterns) == 3:
-
-                if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
+                if op.body.block.arg_types[-1] == dart.StreamType(
+                    builtin.IntegerType(32)
+                ):
                     # matmul, int32 output
                     # insert empty patterns for D8 and zero pattern for C
                     snax_stride_patterns.insert(2, empty_pattern)
@@ -173,7 +178,9 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                     # point C to D32
                     new_inputs.append(op.outputs[0])
 
-                elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
+                elif op.body.block.arg_types[-1] == dart.StreamType(
+                    builtin.IntegerType(8)
+                ):
                     # matmul, int8 output
                     # for C32:
                     snax_stride_patterns.append(

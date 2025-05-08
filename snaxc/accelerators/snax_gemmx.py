@@ -5,7 +5,6 @@ from xdsl.dialects import arith, builtin
 from xdsl.dialects.builtin import i8, i32
 from xdsl.ir import BlockArgument, Operation, OpResult, SSAValue
 from xdsl.ir.affine import AffineDimExpr, AffineMap
-from xdsl.parser import IntegerType
 
 from snaxc.accelerators.dispatching import DispatchTemplate, SupportedKernel
 from snaxc.accelerators.snax import (
@@ -219,9 +218,7 @@ class SNAXGEMMXAccelerator(
                 loop_bound = n_val
                 max_int = arith.ConstantOp.from_int_and_width(127, i32)
                 min_int = arith.ConstantOp.from_int_and_width(-128, i32)
-                ops_to_add.extend(
-                    [max_int, min_int]
-                )
+                ops_to_add.extend([max_int, min_int])
                 # force values that can be negative to 8 bits
                 cst255 = arith.ConstantOp.from_int_and_width(255, 32)
                 max_int = arith.AndIOp(max_int, cst255)
@@ -229,9 +226,7 @@ class SNAXGEMMXAccelerator(
                 ops_to_add.extend([cst255, max_int, min_int])
 
                 # bitpacking
-                ops_to_add.extend(
-                    pack_bitlist([min_int, max_int], [24, 16])
-                )
+                ops_to_add.extend(pack_bitlist([min_int, max_int], [24, 16]))
                 csr0 = ops_to_add[-1].results[0].op.results[0]
                 csr1 = c0.result
                 shift = arith.ConstantOp.from_int_and_width(9, i32)
