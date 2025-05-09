@@ -185,8 +185,8 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                     # for C32:
                     snax_stride_patterns.append(
                         snax_stream.StridePattern(
-                            upper_bounds=snax_stride_patterns[0].upper_bounds,
-                            temporal_strides=snax_stride_patterns[0].upper_bounds,
+                            upper_bounds=snax_stride_patterns[2].upper_bounds,
+                            temporal_strides=snax_stride_patterns[2].temporal_strides,
                             spatial_strides=[64, 8],
                         )
                     )
