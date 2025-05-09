@@ -213,9 +213,9 @@ class SNAXGEMMXAccelerator(
             else:
                 bypassSIMD = c1.result  # bypass simd
             if i8_out:
-                n_val = arith.ConstantOp.from_int_and_width(n, 32)
-                ops_to_add.append(n_val)
-                loop_bound = n_val
+                m_val = arith.ConstantOp.from_int_and_width(m, 32)
+                ops_to_add.append(m_val)
+                loop_bound = m_val
                 max_int = arith.ConstantOp.from_int_and_width(127, i32)
                 min_int = arith.ConstantOp.from_int_and_width(-128, i32)
                 ops_to_add.extend([max_int, min_int])
