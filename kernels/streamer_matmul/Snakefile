@@ -44,7 +44,7 @@ module snax_rules:
 use rule * from snax_rules as snax_*
 
 
-files = ["quantized_matmul", "tiled_quantized_matmul"]
+files = ["quantized_matmul", "tiled_quantized_matmul", "matmul_i8_out"]
 
 
 # Rules
@@ -58,6 +58,13 @@ rule generate_quantized_matmul:
         "quantized_matmul.mlir",
     script:
         "quantized_matmul.py"
+
+
+rule generate_matmul_i8_out:
+    output:
+        "matmul_i8_out.mlir",
+    script:
+        "matmul_i8_out.py"
 
 
 rule generate_tiled_quantized_matmul:
@@ -76,11 +83,18 @@ rule apply_transforms_mlir:
         "{config[mlir-opt]} {config[mlirtransformflags]} --mlir-print-op-generic --mlir-print-local-scope -o {output} {input}"
 
 
+def get_main_obj(wildcards):
+    if "i8" in wildcards.file:
+        return "main_i8.o"
+    else:
+        return "main.o"
+
+
 rule link_snax_binary:
     input:
         "{file}.o",
-        "main.o",
+        main=lambda wildcards: get_main_obj(wildcards),
     output:
         "{file}.x",
     shell:
-        "{config[ld]} {config[ldflags]} {input} -o {output}"
+        "{config[ld]} {config[ldflags]} {input[0]} {input.main} -o {output}"
