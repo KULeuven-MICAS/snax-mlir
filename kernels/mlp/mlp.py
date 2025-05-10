@@ -42,7 +42,7 @@ def cascade_matmul(batch_size, input_dim, hidden_layers_dim, output_dim):
 
     # Iterate through different hidden layers
     hidden_weights_list = []
-    intermediate_vals = []
+    hidden_output_vals = []
 
     for i in range(len(hidden_layers_dim)):
         # Generate random weights for the current layer
@@ -54,41 +54,45 @@ def cascade_matmul(batch_size, input_dim, hidden_layers_dim, output_dim):
             )
             # Perform matrix multiplication for the first layer
             vXM = input_vals @ hidden_weights_list[i]
-            intermediate_vals.append(scale_to_int8(vXM))
+            hidden_output_vals.append(scale_to_int8(vXM))
         else:
             hidden_weights_list.append(
                 np.random.randint(
                     -128, 127, (hidden_layers_dim[i - 1], hidden_layers_dim[i])
                 )
             )
-            vXM = intermediate_vals[i - 1] @ hidden_weights_list[i]
-            intermediate_vals.append(scale_to_int8(vXM))
+            vXM = hidden_output_vals[i - 1] @ hidden_weights_list[i]
+            hidden_output_vals.append(scale_to_int8(vXM))
 
     # Generate random weights for the output layer
     output_weights = np.random.randint(-128, 127, (hidden_layers_dim[-1], output_dim))
-    vXM = intermediate_vals[-1] @ output_weights
+    vXM = hidden_output_vals[-1] @ output_weights
     # Perform matrix multiplication for the output layer
     output_vals = scale_to_int8(vXM)
 
     return (
         input_vals,
         hidden_weights_list,
-        intermediate_vals,
+        hidden_output_vals,
         output_weights,
         output_vals,
     )
 
 
 # Defining types and paramters for the MLIR generation
-def mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_vals):
+def mlir_cascade_matmul(
+    input_vals, hidden_weights_list, hidden_output_vals, output_weights, output_vals
+):
     # Define types For Program:
     # For the input weights
     input_type = TensorType(i8, input_vals.shape)
 
     # For the hidden weights
     hidden_weights_types = []
+    hidden_output_types = []
     for i in range(len(hidden_weights_list)):
         hidden_weights_types.append(TensorType(i8, hidden_weights_list[i].shape))
+        hidden_output_types.append(TensorType(i8, hidden_output_vals[i].shape))
 
     # For the output weights
     output_weights_type = TensorType(i8, output_weights.shape)
@@ -145,8 +149,7 @@ def mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_
         # Calculating the MLP process
         for i in range(len(hidden_layers_dim)):
             # Specify the operation
-            # empty_tensor = EmptyOp([], hidden_weights_types[i])
-            empty_tensor = EmptyOp([], output_type)
+            empty_tensor = EmptyOp([], hidden_output_types[i])
             if i == 0:
                 # For the first layer
                 result = MatmulOp(
@@ -160,12 +163,10 @@ def mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_
                     empty_tensor.results,
                 )
 
-            # TODO: need to have a scaling function here
-            # Trying out the xdsl.dialects.quant but it does not seem to be added
             intermediate_result.append(result.res)
 
         # For the output layer
-        empty_tensor = EmptyOp([], output_weights_type)
+        empty_tensor = EmptyOp([], output_type)
         final_result = MatmulOp(
             [intermediate_result[-1][0], output_weight_const.result],
             empty_tensor.results,
@@ -179,12 +180,12 @@ def mlir_cascade_matmul(input_vals, hidden_weights_list, output_weights, output_
 
 if __name__ == "__main__":
     # Debug mode
-    print_data = True
+    print_data = False
 
     # Example usage
     batch_size = 8
     input_dim = 8
-    hidden_layers_dim = [8, 8, 8, 8]
+    hidden_layers_dim = [8, 16, 32, 16, 8]
     output_dim = 8
 
     # Print parameters
@@ -197,7 +198,7 @@ if __name__ == "__main__":
     (
         input_vals,
         hidden_weights_list,
-        intermediate_vals,
+        hidden_output_vals,
         output_weights,
         output_vals,
     ) = cascade_matmul(batch_size, input_dim, hidden_layers_dim, output_dim)
@@ -212,7 +213,7 @@ if __name__ == "__main__":
             print(f"Layer {i} weights:")
             print(weights)
         print("Intermediate values:")
-        for i, intermediate in enumerate(intermediate_vals):
+        for i, intermediate in enumerate(hidden_output_vals):
             print(f"Layer {i} intermediate values:")
             print(intermediate)
         print("Output weights:")
@@ -229,7 +230,11 @@ if __name__ == "__main__":
     printer = Printer(stream=output)
     printer.print(
         mlir_cascade_matmul(
-            input_vals, hidden_weights_list, output_weights, output_vals
+            input_vals,
+            hidden_weights_list,
+            hidden_output_vals,
+            output_weights,
+            output_vals,
         )
     )
     with open(mlir_filename, "w") as output_file:
