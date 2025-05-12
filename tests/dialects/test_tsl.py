@@ -8,7 +8,7 @@ from snaxc.ir.tsl.tiled_strided_layout import TiledStridedLayout
 from snaxc.util.canonicalize_affine import canonicalize_map
 
 
-@pytest.fixture()
+@pytest.fixture
 def example_tsl_attr():
     tiledStride1 = TiledStride(
         [

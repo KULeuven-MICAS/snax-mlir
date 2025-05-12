@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from xdsl.parser.base_parser import BaseParser
-from xdsl.parser.generic_parser import ParserState
+from xdsl.parser import BaseParser, ParserState
 from xdsl.utils.exceptions import ParseError
 from xdsl.utils.mlir_lexer import MLIRTokenKind
 

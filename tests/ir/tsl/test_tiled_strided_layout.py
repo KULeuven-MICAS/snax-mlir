@@ -5,7 +5,7 @@ from snaxc.ir.tsl.tiled_stride import TiledStride
 from snaxc.ir.tsl.tiled_strided_layout import TiledStridedLayout
 
 
-@pytest.fixture()
+@pytest.fixture
 def example_tsl():
     tiledStride1 = TiledStride(
         [

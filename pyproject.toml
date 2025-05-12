@@ -34,40 +34,44 @@ nn = [
 snax-opt = "snaxc.tools.snax_opt_main:main"
 
 [tool.ruff]
+target-version = "py310"
+extend-include = ["*.pyi"]
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "PT", "TID251"]
 ignore = [
     "E741",  # https://beta.ruff.rs/docs/rules/ambiguous-variable-name/
     "PT006", # https://beta.ruff.rs/docs/rules/pytest-parametrize-names-wrong-type/
-    "PT007", # https://beta.ruff.rs/docs/rules/pytest-parametrize-values-wrong-type/
     "PT011", # https://beta.ruff.rs/docs/rules/pytest-raises-too-broad/
     "PT012", # https://beta.ruff.rs/docs/rules/pytest-raises-with-multiple-statements/
-    "PT015", # https://beta.ruff.rs/docs/rules/pytest-assert-always-false/
 ]
-target-version = "py310"
-line-length = 120
 
-[tool.ruff.flake8-tidy-imports.banned-api]
-"xdsl.parser.core".msg = "Use xdsl.parser instead."
-"xdsl.parser.attribute_parser".msg = "Use xdsl.parser instead."
-"xdsl.parser.affine_parser".msg = "Use xdsl.parser instead."
-"xdsl.ir.core".msg = "Use xdsl.ir instead."
-"xdsl.irdl.irdl".msg = "Use xdsl.irdl instead"
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"xdsl.dialects.utils.fast_math".msg = "Use xdsl.dialects.utils instead"
+"xdsl.dialects.utils.format".msg = "Use xdsl.dialects.utils instead"
 "xdsl.ir.affine.affine_expr".msg = "Use xdsl.ir.affine instead"
 "xdsl.ir.affine.affine_map".msg = "Use xdsl.ir.affine instead"
 "xdsl.ir.affine.affine_set".msg = "Use xdsl.ir.affine instead"
+"xdsl.ir.core".msg = "Use xdsl.ir instead."
+"xdsl.irdl.attributes".msg = "Use xdsl.irdl instead"
+"xdsl.irdl.common".msg = "Use xdsl.irdl instead"
+"xdsl.irdl.constraints".msg = "Use xdsl.irdl instead"
+"xdsl.irdl.operations".msg = "Use xdsl.irdl instead"
+"xdsl.parser.affine_parser".msg = "Use xdsl.parser instead."
+"xdsl.parser.attribute_parser".msg = "Use xdsl.parser instead."
+"xdsl.parser.base_parser".msg = "Use xdsl.parser instead."
+"xdsl.parser.core".msg = "Use xdsl.parser instead."
+"xdsl.parser.generic_parser".msg = "Use xdsl.parser instead."
 
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F403"]
-"tests/filecheck/frontend/programs/invalid.py" = ["F811", "F841"]
-"tests/filecheck/frontend/dialects/invalid.py" = ["F811"]
-"tests/test_declarative_assembly_format.py" = ["F811"]
-"versioneer.py" = ["ALL"]
-"_version.py" = ["ALL"]
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 10
-
 
 [tool.pyright]
 reportImportCycles = false
