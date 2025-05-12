@@ -129,6 +129,13 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return PipelineCanonicalizeFor
 
+    def get_pipeline_duplicate_buffers():
+        from snaxc.transforms.pipeline.pipeline_duplicate_buffers import (
+            PipelineDuplicateBuffersPass,
+        )
+
+        return PipelineDuplicateBuffersPass
+
     def get_postprocess_mlir():
         from snaxc.transforms.backend.postprocess_mlir import PostprocessPass
 
@@ -239,6 +246,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "insert-sync-barrier": get_insert_sync_barrier,
         "memref-to-snax": get_memref_to_snax,
         "pipeline-canonicalize-for": get_pipeline_canonicalize_for,
+        "pipeline-duplicate-buffers": get_pipeline_duplicate_buffers,
         "postprocess": get_postprocess_mlir,
         "preprocess": get_preprocess_mlir,
         "preprocess-mlperftiny": get_preprocess_mlperf_tiny,
