@@ -1,4 +1,5 @@
 from collections.abc import Callable, Iterator, Sequence
+from math import ceil
 
 import numpy as np
 
@@ -122,12 +123,39 @@ def is_pure_output_stationary(template: Template, schedule: Schedule):
     return first_reduction_idx > last_parallel_idx
 
 
+def is_memory_flexible_enough(
+    template: Template, schedule: Schedule, element_sizes: Sequence[int]
+):
+    """
+    Checks whether the TCDM flexibility is sufficient to actually execute
+    the schedule.
+
+    There must be one spatial stride of 1 that doesn't need more fine-grained
+    temporal access within one bank, such that that dimension can be packed together.
+    """
+    TCDM_BANK_WIDTH = 8
+    # We can only apply this check if there are temporal dimensions to investigate
+    # their access granularity:
+    if not schedule.num_dims > template.num_dims:
+        return True
+    for s, size in zip(schedule, element_sizes):
+        # is there temporary fine-grained access for this dimension?
+        temporal = (
+            s.pattern.A[:, 0 : -template.num_dims] % ceil(TCDM_BANK_WIDTH / size)
+        ).any(axis=1)
+        # is the dimension spatially unrolled?
+        spatial = (s.pattern.A[:, -template.num_dims :] == 1).any(axis=1)
+        if (False, True) not in zip(temporal, spatial):
+            return False
+    return True
+
+
 def scheduler(
     template: Template,
     schedule: Schedule,
     extra_checks: Sequence[Callable[[Template, Schedule], bool]] = [
         # defaulting to pure output stationary schedules for now
-        is_pure_output_stationary
+        is_pure_output_stationary,
     ],
     schedule_idx: int | None = None,
 ) -> Schedule:

@@ -7,6 +7,7 @@ from snaxc.ir.dart.access_pattern import (
     TemplatePattern,
 )
 from snaxc.ir.dart.scheduler import (
+    is_memory_flexible_enough,
     is_pure_output_stationary,
     scheduler,
     scheduler_backtrack,
@@ -20,7 +21,7 @@ def test_matching_1o():
     template = Template((TemplatePattern(bounds=(4, 4, 4), pattern=pattern),))
     schedule = Schedule((SchedulePattern(bounds=(4, 4, 4), pattern=pattern),))
 
-    resulting_schedule = scheduler(template, schedule)
+    resulting_schedule = scheduler(template, schedule, extra_checks=[])
 
     assert schedule == resulting_schedule.clear_unused_dims()
 
@@ -32,7 +33,7 @@ def test_matching_2o():
     template = Template((TemplatePattern(bounds=(4, 4, 4), pattern=pattern),) * 2)
     schedule = Schedule((SchedulePattern(bounds=(4, 4, 4), pattern=pattern),) * 2)
 
-    resulting_schedule = scheduler(template, schedule)
+    resulting_schedule = scheduler(template, schedule, extra_checks=[])
 
     assert schedule == resulting_schedule.clear_unused_dims()
 
@@ -48,7 +49,7 @@ def test_tiling_1o1_1d():
     schedule = Schedule((SchedulePattern(bounds=(4,), pattern=pattern_schedule),))
     expected = Schedule((SchedulePattern(bounds=(2, 2), pattern=pattern_expected),))
 
-    result = scheduler(template, schedule)
+    result = scheduler(template, schedule, extra_checks=[])
 
     assert result == expected
 
@@ -72,7 +73,7 @@ def test_tiling_1o1_2d():
         (SchedulePattern(bounds=(2, 2, 2, 2), pattern=pattern_expected),)
     )
 
-    result = scheduler(template, schedule)
+    result = scheduler(template, schedule, extra_checks=[])
 
     assert result == expected
 
@@ -103,7 +104,7 @@ def test_tiling_2o1_2d():
         SchedulePattern((2, 2, 2, 2), pattern) for pattern in pattern_expected
     )
 
-    result = scheduler(template, schedule)
+    result = scheduler(template, schedule, extra_checks=[])
 
     assert result == expected
 
@@ -228,3 +229,23 @@ def test_pure_output_stationary_scheduler():
     assert len(result) == 1
     # that one result being the output stationary one
     assert result[0] == schedule_output_stationary
+
+
+def test_memory_flexibility_scheduler():
+    template_pattern = AffineMap.from_callable(lambda y: (y,))
+    template = Template([TemplatePattern([4], template_pattern)])
+
+    schedule_pattern = AffineMap.from_callable(lambda x, y: (x + y,))
+    schedule = Schedule([SchedulePattern([3, 8], schedule_pattern)])
+
+    results_without = list(scheduler_backtrack(template, schedule, extra_checks=[]))
+    results_with = list(
+        scheduler_backtrack(
+            template,
+            schedule,
+            extra_checks=[lambda t, s: is_memory_flexible_enough(t, s, [1])],
+        )
+    )
+
+    assert len(results_without) == 2
+    assert len(results_with) == 0
