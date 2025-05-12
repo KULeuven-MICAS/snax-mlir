@@ -91,7 +91,6 @@ typeCheckingMode = "strict"
     "snaxc/transforms/reuse_memref_allocs.py",
     "snaxc/transforms/set_memory_layout.py",
     "snaxc/transforms/snax_copy_to_dma.py",
-    "tests/benchmark/test_snax_benchmark.py",
 ]
 
 
