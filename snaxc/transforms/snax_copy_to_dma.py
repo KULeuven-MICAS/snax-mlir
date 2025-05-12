@@ -18,7 +18,7 @@ from xdsl.dialects.memref import (
     ExtractAlignedPointerAsIndexOp,
     ExtractStridedMetaDataOp,
 )
-from xdsl.ir import Block, Region, SSAValue
+from xdsl.ir import Block, Operation, Region, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -27,18 +27,19 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.traits import SymbolTable
+from xdsl.utils.hints import isa
 
 from snaxc.dialects.tsl import TiledStridedLayoutAttr
 from snaxc.ir.tsl import TiledStridedLayout
+from snaxc.ir.tsl.stride import Stride
 
 
-def get_total_size_op(source: SSAValue):
-    assert isinstance(source.type, MemRefType)
-
+def get_total_size_op(source: SSAValue) -> tuple[list[Operation], MuliOp]:
     # step 1: extract size information to calculate total size
     # this is done by multiplying all the shape dimensions
-    ops_to_insert = []
+    ops_to_insert: list[Operation] = []
     total_size_op = None
+    assert isa(source.type, MemRefType[FixedBitwidthType])
     for dim in range(source.type.get_num_dims()):
         const_op = ConstantOp.from_int_and_width(dim, IndexType())
         ops_to_insert.append(const_op)
@@ -53,9 +54,9 @@ def get_total_size_op(source: SSAValue):
     # step 2: calculate element size to get total size in bytes
     # multiyply the # elements by the (element size // 8) to get the
     # total size in bytes
-    element_type: IntegerType = source.type.get_element_type()
-    assert isinstance(element_type, FixedBitwidthType)
+    element_type: FixedBitwidthType = source.type.get_element_type()
     element_size_op = ConstantOp.from_int_and_width(element_type.size, IndexType())
+    assert total_size_op is not None
     total_size_op = MuliOp(
         total_size_op.result,
         element_size_op.result,
@@ -77,19 +78,16 @@ class MatchSimpleCopy(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: CopyOp, rewriter: PatternRewriter):
         # only works on memrefs with nonetype layouts and equal shape and element type
-        if any(
-            [
-                not isinstance(op.source.type, MemRefType),
-                not isinstance(op.destination.type, MemRefType),
-                not isinstance(op.source.type.layout, NoneAttr),
-                not isinstance(op.destination.type.layout, NoneAttr),
-                not op.destination.type.get_shape() == op.source.type.get_shape(),
-                not op.destination.type.get_element_type()
-                == op.source.type.get_element_type(),
-                not isinstance(op.source.type.get_element_type(), IntegerType),
-            ]
-        ):
+        assert isa(op.source.type, MemRefType[FixedBitwidthType])
+        if not isinstance(op.source.type.layout, NoneAttr):
             return
+        assert isa(op.destination.type, MemRefType[FixedBitwidthType])
+        if not isinstance(op.destination.type.layout, NoneAttr):
+            return
+        assert op.source.type.get_shape() == op.destination.type.get_shape()
+        assert (
+            op.source.type.get_element_type() == op.destination.type.get_element_type()
+        )
 
         # get the size of the ops
         ops_to_insert, total_size_op = get_total_size_op(op.source)
@@ -172,8 +170,8 @@ class TransformDMA(RewritePattern):
     def match_and_rewrite(self, op: CopyOp, rewriter: PatternRewriter):
         # both operands should be memref types
         if not (
-            isinstance(op.source.type, MemRefType)
-            and isinstance(op.destination.type, MemRefType)
+            isa(op.source.type, MemRefType[FixedBitwidthType])
+            and isa(op.destination.type, MemRefType[FixedBitwidthType])
         ):
             return
 
@@ -235,7 +233,7 @@ class TransformDMA(RewritePattern):
             )
 
         # list of all ops that need to be inserted
-        ops_to_insert = []
+        ops_to_insert: list[Operation] = []
 
         # step 1: extract base addresses
         pointer_src = ExtractAlignedPointerAsIndexOp.get(op.source)
@@ -309,8 +307,6 @@ class TransformDMA(RewritePattern):
         # contain the ops for the bound, step_src and step_dst of the Stride,
         # which we need to generate.
 
-        remaining_strides = {}
-
         # first, generate the bound ops, we only need to do this for the source
         # tsl, since the destination tsl has the same bounds (constraint)
         ops_to_add, bound_ops = tsl_source.get_bound_ops(op.source)
@@ -328,28 +324,38 @@ class TransformDMA(RewritePattern):
         )
         ops_to_insert.extend(ops_to_add)
 
+        @dataclass(frozen=True)
+        class RemainingStride:
+            stride_src: Stride
+            stride_dst: Stride
+            bound_op: Operation
+            step_src_op: Operation
+            step_dst_op: Operation
+
+        remaining_strides: dict[tuple[int, int], RemainingStride] = {}
+
         # construct the dict. we only need the strides not yet present in the lcb
         for key in bound_ops.keys():
             stride = tsl_source.data.get_stride(*key)
             if stride not in lcb:
-                remaining_strides[key] = {
-                    "stride_src": tsl_source.data.get_stride(*key),
-                    "stride_dst": tsl_dest.data.get_stride(*key),
-                    "bound_op": bound_ops[key],
-                    "step_src_op": step_ops_src[key],
-                    "step_dst_op": step_ops_dst[key],
-                }
+                remaining_strides[key] = RemainingStride(
+                    stride_src=tsl_source.data.get_stride(*key),
+                    stride_dst=tsl_dest.data.get_stride(*key),
+                    bound_op=bound_ops[key],
+                    step_src_op=step_ops_src[key],
+                    step_dst_op=step_ops_dst[key],
+                )
 
         # sort the remaining strides
         # we want the nested for loop to be sorted by descending bound
-        remaining_strides = sorted(
+        remaining_strides_list: list[RemainingStride] = sorted(
             remaining_strides.values(),
-            key=lambda x: x["stride_src"].bound if x["stride_src"].bound else 0,
+            key=lambda x: x.stride_src.bound if x.stride_src.bound else 0,
             reverse=True,
         )
 
         # step 4: generate variables for 2D dma transfer
-        if len(remaining_strides) == 0 or self.test_ignore_transform:
+        if len(remaining_strides_list) == 0 or self.test_ignore_transform:
             # is actually 1d dma transfer, calculate size of transfer:
             ops_to_add, total_size_op = get_total_size_op(op.source)
             ops_to_insert.extend(ops_to_add)
@@ -364,7 +370,7 @@ class TransformDMA(RewritePattern):
             rewriter.replace_op(op, func_call)
             return
         else:
-            dma_loop = remaining_strides.pop(0)
+            dma_loop = remaining_strides_list.pop(0)
 
         # if my reasoning is correct, if there are remaining strides,
         # then the lcb cannot be dynamic
@@ -376,22 +382,22 @@ class TransformDMA(RewritePattern):
         dma_size = ConstantOp.from_int_and_width(
             lcb[-1].bound * lcb[-1].step * el_bytes, IndexType()
         )
-        dma_stride_src = dma_loop["step_src_op"]
-        dma_stride_dst = dma_loop["step_dst_op"]
-        dma_stride_bound = dma_loop["bound_op"]
+        dma_stride_src = dma_loop.step_src_op
+        dma_stride_dst = dma_loop.step_dst_op
+        dma_stride_bound = dma_loop.bound_op
         ops_to_insert.extend([dma_size])
 
         # step 5: if there are no remaining strides, insert simple 2D dma transfer
-        if len(remaining_strides) == 0:
+        if len(remaining_strides_list) == 0:
             func_call = func.CallOp(
                 "snax_dma_2d_transfer",
                 [
                     pointer_src,
                     pointer_dst,
-                    dma_size.result,
-                    dma_stride_src.result,
-                    dma_stride_dst.result,
-                    dma_stride_bound.result,
+                    dma_size.results[0],
+                    dma_stride_src.results[0],
+                    dma_stride_dst.results[0],
+                    dma_stride_bound.results[0],
                 ],
                 [],
             )
@@ -419,20 +425,20 @@ class TransformDMA(RewritePattern):
         # step 6.1: create the list of loop bounds
         lower = arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
         step = arith.ConstantOp.from_int_and_width(1, builtin.IndexType())
-        upper = [stride["bound_op"] for stride in remaining_strides]
+        upper = [stride.bound_op for stride in remaining_strides_list]
 
         ops_to_insert.extend([lower, step])
 
         # step 6.2: create nested for loop (looping from inner to outer)
         # innermost for loop has empty region
         empty_region = Region(Block([scf.YieldOp()], arg_types=(IndexType(),)))
-        for_loop = scf.ForOp(lower, upper[-1], step, [], empty_region)
+        for_loop: scf.ForOp = scf.ForOp(lower, upper[-1], step, [], empty_region)
 
-        for i in range(len(remaining_strides) - 1):
+        for i in range(len(remaining_strides_list) - 1):
             # other for loops have a region with the previous for loop as body
             region = Region(Block([for_loop, scf.YieldOp()], arg_types=(IndexType(),)))
             for_loop = scf.ForOp(
-                lower, upper[len(remaining_strides) - 2 - i], step, [], region
+                lower, upper[len(remaining_strides_list) - 2 - i], step, [], region
             )
 
         # save outermost for loop to insert at the end
@@ -442,24 +448,25 @@ class TransformDMA(RewritePattern):
 
         pointer_src = pointer_src
         pointer_dst = pointer_dst
-        for i in range(len(remaining_strides)):
+        for i in range(len(remaining_strides_list)):
             next_for_op = for_loop.body.block.first_op
             # insert the ops in the for loop body
-            ops_to_insert_for_loop = []
+            ops_to_insert_for_loop: list[Operation] = []
 
             # source indexing operations:
-            stride_src = remaining_strides[i]["step_src_op"]
+            stride_src = remaining_strides_list[i].step_src_op
             increment_src = MuliOp(for_loop.body.block.args[0], stride_src, IndexType())
             pointer_src = AddiOp(pointer_src, increment_src, IndexType())
             ops_to_insert_for_loop.extend([increment_src, pointer_src])
 
             # destination indexing operations:
-            stride_dst = remaining_strides[i]["step_dst_op"]
+            stride_dst = remaining_strides_list[i].step_dst_op
             increment_dst = MuliOp(for_loop.body.block.args[0], stride_dst, IndexType())
             pointer_dst = AddiOp(pointer_dst, increment_dst, IndexType())
             ops_to_insert_for_loop.extend([increment_dst, pointer_dst])
 
             # insert the ops in the for loop body
+            assert for_loop.body.block.first_op is not None
             for_loop.body.block.insert_ops_before(
                 ops_to_insert_for_loop, for_loop.body.block.first_op
             )
@@ -478,12 +485,14 @@ class TransformDMA(RewritePattern):
                     ],
                     [],
                 )
+                assert for_loop.body.block.last_op is not None
                 for_loop.body.block.insert_op_before(
                     func_call, for_loop.body.block.last_op
                 )
 
             # else continue with next for loop
             else:
+                assert isinstance(next_for_op, scf.ForOp)
                 for_loop = next_for_op
 
         rewriter.insert_op_before_matched_op(ops_to_insert)
