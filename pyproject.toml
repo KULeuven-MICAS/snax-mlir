@@ -90,7 +90,6 @@ typeCheckingMode = "strict"
     "snaxc/transforms/frontend/preprocess_mlperf_tiny.py",
     "snaxc/transforms/reuse_memref_allocs.py",
     "snaxc/transforms/set_memory_layout.py",
-    "snaxc/transforms/snax_copy_to_dma.py",
 ]
 
 
