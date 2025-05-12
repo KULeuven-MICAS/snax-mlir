@@ -128,6 +128,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         )
 
         return PipelineCanonicalizeFor
+
     def get_pipeline_duplicate_buffers():
         from snaxc.transforms.pipeline.pipeline_duplicate_buffers import (
             PipelineDuplicateBuffersPass,
