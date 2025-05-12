@@ -1,5 +1,5 @@
 from xdsl.dialects import builtin, scf
-from xdsl.ir import BlockArgument
+from xdsl.ir import Block, BlockArgument
 
 from snaxc.dialects import accfg
 from snaxc.inference.trace_acc_state import infer_state_of, infer_states_for_if
@@ -8,7 +8,7 @@ ACC = "acc1"
 
 
 def test_simple_setup_tracing():
-    a, b, c = tuple(BlockArgument(builtin.i32, None, i) for i in range(3))
+    a, b, c = tuple(BlockArgument(builtin.i32, Block(), i) for i in range(3))
 
     empty_setup = accfg.SetupOp([], [], ACC)
 
