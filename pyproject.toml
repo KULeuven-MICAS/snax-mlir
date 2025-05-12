@@ -89,7 +89,6 @@ typeCheckingMode = "strict"
     "snaxc/transforms/convert_linalg_to_accfg.py",
     "snaxc/transforms/frontend/preprocess_mlperf_tiny.py",
     "snaxc/transforms/reuse_memref_allocs.py",
-    "snaxc/transforms/set_memory_layout.py",
 ]
 
 
