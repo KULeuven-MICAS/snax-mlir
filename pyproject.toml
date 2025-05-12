@@ -93,7 +93,6 @@ typeCheckingMode = "strict"
     "snaxc/transforms/snax_copy_to_dma.py",
     "tests/benchmark/test_snax_benchmark.py",
     "tests/inference/test_accfg_state_tracing.py",
-    "tests/util/",
 ]
 
 
