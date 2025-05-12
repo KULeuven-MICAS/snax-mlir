@@ -1,7 +1,6 @@
 import pytest
-from xdsl.dialects.builtin import IntegerType, i32
+from xdsl.dialects.builtin import IntegerType, MemRefType, i32
 from xdsl.dialects.llvm import LLVMArrayType, LLVMPointerType, LLVMStructType
-from xdsl.dialects.memref import MemRefType
 from xdsl.utils.exceptions import VerifyException
 
 from snaxc.util.memref_descriptor import LLVMMemrefDescriptor
