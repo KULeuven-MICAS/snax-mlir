@@ -3,8 +3,7 @@ from abc import ABC, abstractmethod
 
 class Event(ABC):
     @abstractmethod
-    def to_chrome_tracing(self, hartid: int) -> dict:
-        ...
+    def to_chrome_tracing(self, hartid: int) -> dict: ...
 
 
 class DurationEvent(Event):

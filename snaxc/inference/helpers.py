@@ -174,9 +174,9 @@ def iter_ops_range(
     assert start_op is not None  # just for pyright
 
     if end_op is not None:
-        assert (
-            start_op.parent_block() is end_op.parent_block()
-        ), "Cannot iterate between operations not within the same block!"
+        assert start_op.parent_block() is end_op.parent_block(), (
+            "Cannot iterate between operations not within the same block!"
+        )
 
     yield start_op
     while start_op.next_op is not end_op:

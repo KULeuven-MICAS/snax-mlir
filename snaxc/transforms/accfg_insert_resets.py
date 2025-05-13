@@ -33,7 +33,7 @@ def ssa_val_rewrite_pattern(
     def wrapper(
         wrapped_match_and_rewrite: Callable[
             [_RewritePatternT, SSAValue, PatternRewriter], None
-        ]
+        ],
     ) -> Callable[[_RewritePatternT, Operation, PatternRewriter], None]:
         # this is the function that actually wraps the match_and_rewrite method
         def match_and_rewrite(

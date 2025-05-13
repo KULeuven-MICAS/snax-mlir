@@ -211,9 +211,9 @@ class AwaitOp(AccfgBaseOp):
         super().__init__(operands=[token])
 
     def get_acc_name(self) -> str:
-        assert isinstance(
-            self.token.type, TokenType
-        ), "Could not get accelerator name from token type, is the ACCFG IR traced?"
+        assert isinstance(self.token.type, TokenType), (
+            "Could not get accelerator name from token type, is the ACCFG IR traced?"
+        )
         return self.token.type.accelerator.data
 
 
@@ -345,9 +345,9 @@ class SetupOp(AccfgBaseOp):
             val = parser.parse_operand(f'expected value for field "{name}"')
             parser.parse_punctuation(":")
             typ = parser.parse_type()
-            assert (
-                val.type == typ
-            ), f"ssa value type mismatch! Expected {typ}, got {val.type}"
+            assert val.type == typ, (
+                f"ssa value type mismatch! Expected {typ}, got {val.type}"
+            )
             return name, val
 
         args: list[tuple[str, SSAValue]] = parser.parse_comma_separated_list(
@@ -469,9 +469,9 @@ class ResetOp(AccfgBaseOp):
         super().__init__(operands=[in_state])
 
     def get_acc_name(self) -> str:
-        assert isinstance(
-            self.in_state.type, StateType
-        ), "Could not get accelerator name from in_state type, is the ACCFG IR traced?"
+        assert isinstance(self.in_state.type, StateType), (
+            "Could not get accelerator name from in_state type, is the ACCFG IR traced?"
+        )
         return self.in_state.type.accelerator.data
 
 

@@ -64,7 +64,7 @@ class AccessPattern(ABC):
 
     def __str__(self) -> str:
         bounds = [str(b) if b else "?" for b in self.bounds]
-        return f'({", ".join(bounds)}) {str(self.pattern.to_affine_map())}'
+        return f"({', '.join(bounds)}) {str(self.pattern.to_affine_map())}"
 
     def canonicalize(self) -> Self:
         # remove dimensions with bound 1
@@ -260,12 +260,10 @@ class PatternCollection(Sequence[P], Generic[P], ABC):
         self._patterns = tuple(patterns)
 
     @overload
-    def __getitem__(self, index: int) -> P:
-        ...
+    def __getitem__(self, index: int) -> P: ...
 
     @overload
-    def __getitem__(self, index: slice) -> tuple[P]:
-        ...
+    def __getitem__(self, index: slice) -> tuple[P]: ...
 
     def __getitem__(self, index: int | slice):
         return self._patterns[index]

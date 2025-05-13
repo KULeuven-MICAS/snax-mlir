@@ -209,12 +209,12 @@ class ScopedSetupWithInputs:
         %other = arith.constant 144 : i32  // <<---- not moved
         ```
         """
-        assert (
-            pt.insert_before is not None
-        ), "can't move to end of block! (malformed IR)"
-        assert (
-            pt.insert_before.parent_block() is scope
-        ), "Can't move operations to an insertion point that is not directly in scope!"
+        assert pt.insert_before is not None, (
+            "can't move to end of block! (malformed IR)"
+        )
+        assert pt.insert_before.parent_block() is scope, (
+            "Can't move operations to an insertion point that is not directly in scope!"
+        )
 
         # don't do anything if the insertion point is one of our ops:
         if pt.insert_before in self.inputs or pt.insert_before is self.setup:
