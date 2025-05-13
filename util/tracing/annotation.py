@@ -52,8 +52,7 @@ class EventGenerator(ABC):
         return front(state.cpu_state["acc_pdata_32"])
 
     @abstractmethod
-    def cycle(self, state: TraceState) -> list[dict]:
-        ...
+    def cycle(self, state: TraceState) -> list[dict]: ...
 
 
 class BarrierEventGenerator(EventGenerator):

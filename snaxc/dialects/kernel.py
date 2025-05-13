@@ -20,8 +20,7 @@ class KernelOp(IRDLOperation, ABC):
 
 class Parsable(ABC):
     @property
-    def equivalent_region(self) -> Region:
-        ...
+    def equivalent_region(self) -> Region: ...
 
 
 class BinaryOp:

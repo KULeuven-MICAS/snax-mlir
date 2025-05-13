@@ -119,7 +119,7 @@ def output_log(output_report) -> str:
             avg_utilization += output_report[benchmark]["utilization"]
             avg_n += 1
         result += "| average | | | | | | | |"
-        result += f"{avg_utilization/avg_n} |\n\n"
+        result += f"{avg_utilization / avg_n} |\n\n"
     return result
 
 

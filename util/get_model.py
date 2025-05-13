@@ -15,7 +15,7 @@ def get_model(model: str, output_file: Path) -> None:
             model_url = "/keyword_spotting/trained_models/kws_ref_model.tflite"
         case "pretrainedResnet_quant":
             model_url = (
-                "/image_classification/trained_models/" "pretrainedResnet_quant.tflite"
+                "/image_classification/trained_models/pretrainedResnet_quant.tflite"
             )
         case "vww_96_int8":
             model_url = "/visual_wake_words/trained_models/vww_96_int8.tflite"

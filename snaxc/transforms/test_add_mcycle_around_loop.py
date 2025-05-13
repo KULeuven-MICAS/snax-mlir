@@ -26,7 +26,6 @@ class InsertMcycleForLoop(RewritePattern):
 
 
 class AddMcycleAroundLoopPass(ModulePass):
-
     """
     Pass to insert an mcycle op before and after all top-level loops inside a function
     """

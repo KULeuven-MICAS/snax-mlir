@@ -170,7 +170,7 @@ def get_rocc_inline_asm(
     }
     """
     return llvm.InlineAsmOp(
-        (f".insn r CUSTOM_{xcustom}, 0x3, " f"{func7} ,x0, $0, $1"),
+        (f".insn r CUSTOM_{xcustom}, 0x3, {func7} ,x0, $0, $1"),
         "r, r",
         [val1, val2],
         has_side_effects=True,
