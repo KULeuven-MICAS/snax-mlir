@@ -5,7 +5,7 @@ version = "0.2.2"
 requires-python = "== 3.12.*"
 
 dependencies = [
-    "xdsl @ git+https://github.com/xdslproject/xdsl.git@e9b1efb65d0873ee21442515e78f3a449b01bedb",
+    "xdsl @ git+https://github.com/xdslproject/xdsl.git@60e3b7970a3eb7fc16ab7e57c2928357bc5d0180",
     "numpy",
 ]
 
@@ -108,7 +108,7 @@ default = { features = ["dev", "nn", "viz"] }
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
-mlir = { version = "==19.1.1.c.d401987fe349a87c53fe25829215b80b70c0c1a", channel = "kuleuven-micas" }
+mlir = { version = "==20.1.1", channel = "kuleuven-micas" }
 clang = "==19.1.1"
 lld = "==19.1.1"
 snax-cluster-prebuilt = "==0.2.12"
