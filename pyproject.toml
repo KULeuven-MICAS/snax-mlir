@@ -91,7 +91,6 @@ typeCheckingMode = "strict"
     "snaxc/inference/trace_acc_state.py",
     "snaxc/transforms/accfg_dedup.py",
     "snaxc/transforms/convert_linalg_to_accfg.py",
-    "snaxc/transforms/frontend/preprocess_mlperf_tiny.py",
 ]
 
 
