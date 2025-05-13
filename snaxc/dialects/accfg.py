@@ -271,7 +271,7 @@ class SetupOp(AccfgBaseOp):
         )
 
         super().__init__(
-            operands=[vals, in_state],
+            operands=[list(vals), in_state],
             properties={
                 "param_names": ArrayAttr(param_names_tuple),
                 "accelerator": accelerator,
@@ -366,7 +366,8 @@ class SetupOp(AccfgBaseOp):
             accelerator,
             in_state,
         )
-        setup_op.out_state._type = res_typ
+        # TODO: fix this pyright error:
+        setup_op.out_state._type = res_typ  # pyright: ignore
         setup_op.attributes.update(attributes)
         return setup_op
 
