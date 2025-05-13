@@ -49,9 +49,8 @@ def uses_through_controlflow(val: SSAValue) -> Generator[Use, None, None]:
         elif isinstance(use.operation, scf.YieldOp):
             # assume yield argument order is the same as the parent ops results
             # haven't checked this yet, but seems reasonable to me.
-            yield from uses_through_controlflow(
-                use.operation.parent_op().results[use.index]
-            )
+            assert (parent_op := use.operation.parent_op()) is not None
+            yield from uses_through_controlflow(parent_op.results[use.index])
 
 
 def get_insertion_points_where_val_dangles(
