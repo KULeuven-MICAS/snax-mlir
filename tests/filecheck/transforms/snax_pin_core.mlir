@@ -109,5 +109,3 @@ builtin.module {
 // CHECK-NEXT:   }
 // CHECK-NEXT:   func.func private @snax_cluster_core_idx() -> i32
 // CHECK-NEXT: }
-
-

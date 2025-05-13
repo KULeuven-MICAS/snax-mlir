@@ -237,5 +237,3 @@
 // CHECK-NEXT:    "func.return"(%arg2) : (memref<?x128xi32, "L3">) -> ()
 // CHECK-NEXT:  }) : () -> ()
 // CHECK-NEXT:}) : () -> ()
-
-

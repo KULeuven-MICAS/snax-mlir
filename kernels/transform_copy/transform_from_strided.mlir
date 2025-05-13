@@ -4,4 +4,3 @@ builtin.module {
     func.return
   }
 }
-

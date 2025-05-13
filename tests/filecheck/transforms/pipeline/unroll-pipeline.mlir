@@ -90,4 +90,3 @@ scf.for %i = %lb to %ub step %step {
 // CHECK-NEXT  "snax.cluster_sync_op"() : () -> ()
 // CHECK-NEXT  "test.op"(%7) {wizard} : (index) -> ()
 // CHECK-NEXT  "snax.cluster_sync_op"() : () -> ()
-

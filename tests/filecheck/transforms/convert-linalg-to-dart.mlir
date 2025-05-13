@@ -42,5 +42,3 @@
 //CHECK-NEXT:   }) : (!dart.stream<i32>, !dart.stream<i32>) -> !dart.stream<i32>
 //CHECK-NEXT:   dart.yield %12 : !dart.stream<i32>
 //CHECK-NEXT: }) : (tensor<16x16xi32>, tensor<16x16xi32>, tensor<16x16xi32>) -> tensor<16x16xi32>
-
-
