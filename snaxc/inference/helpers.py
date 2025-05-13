@@ -20,7 +20,7 @@ def has_accfg_effects(op: Operation) -> bool:
     # check if op is marked as effecting
     effects_attr = op.attributes.get("accfg.effects", None)
     if isinstance(effects_attr, accfg.EffectsAttr):
-        return effects_attr.effects != accfg.EffectsEnum.NONE
+        return effects_attr.data != accfg.EffectsEnum.NONE
 
     # ops that may affect state are function calls
     # all function calls that *don't* effect must be marked
