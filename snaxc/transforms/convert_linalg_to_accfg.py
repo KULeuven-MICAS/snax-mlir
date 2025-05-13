@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from xdsl.context import Context
 from xdsl.dialects import builtin, func, linalg, scf
-from xdsl.ir import Block, Operation, OpResult, Region, SSAValue
+from xdsl.ir import Block, BlockArgument, Operation, OpResult, Region, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -75,7 +75,7 @@ class ConnectStatesThroughControlFlowPattern(RewritePattern):
     It currently handles scf.if and scf.for, but not more.
     """
 
-    walked_funcs: set[str] = field(default_factory=set)
+    walked_funcs: set[str] = field(default_factory=set[str])
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter, /):
@@ -214,7 +214,7 @@ def _weave_states_in_region(
 
                     # create or find the loop-carried block arguments we need to generate
                     # and populate the inner_state with them:
-                    created_block_args = []
+                    created_block_args: list[BlockArgument] = []
                     for accel in updated_accelerators:
                         arg = find_existing_block_arg(op.body.block, accel)
                         if arg is None:
