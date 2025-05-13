@@ -223,7 +223,7 @@
 // CHECK-NEXT:    %11 = "memref.alloc"(%10) <{alignment = 64 : i64, operandSegmentSizes = array<i32: 1, 0>}> : (index) -> memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, "L1">
 // CHECK-NEXT:    "memref.copy"(%arg1, %8) : (memref<128x128xi8, "L3">, memref<128x128xi8, #tsl.tsl<[?, 8] -> (256, 1), [?, 8] -> (?, 8), offset: 64>, "L1">) -> ()
 // CHECK-NEXT:    "memref.copy"(%arg0, %7) : (memref<?x128xi8, "L3">, memref<?x128xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, "L1">) -> ()
-// CHECK-NEXT:    "linalg.generic"(%7, %8, %0, %1, %11) <{indexing_maps = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> (d0, d1)>], iterator_types = [#linalg.iterator_type<parallel>, #linalg.iterator_type<parallel>, #linalg.iterator_type<reduction>], operandSegmentSizes = array<i32: 4, 1>}> ({
+// CHECK-NEXT:    "linalg.generic"(%7, %8, %0, %1, %11) <{indexing_maps = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> (d0, d1)>], iterator_types = [#linalg.iterator_type<parallel>, #linalg.iterator_type<parallel>, #linalg.iterator_type<reduction>], operandSegmentSizes = array<i32: 4, 1>, library_call = "snax_gemm"}> ({
 // CHECK-NEXT:    ^1(%arg3 : i8, %arg4 : i8, %arg5 : i32, %arg6 : i32, %arg7 : i32):
 // CHECK-NEXT:      %12 = "arith.extsi"(%arg3) : (i8) -> i32
 // CHECK-NEXT:      %13 = "arith.subi"(%12, %arg5) <{overflowFlags = #arith.overflow<none>}> : (i32, i32) -> i32
@@ -232,7 +232,7 @@
 // CHECK-NEXT:      %16 = "arith.muli"(%13, %15) <{overflowFlags = #arith.overflow<none>}> : (i32, i32) -> i32
 // CHECK-NEXT:      %17 = "arith.addi"(%arg7, %16) <{overflowFlags = #arith.overflow<none>}> : (i32, i32) -> i32
 // CHECK-NEXT:      "linalg.yield"(%17) : (i32) -> ()
-// CHECK-NEXT:    }) {library_call = "snax_gemm"} : (memref<?x128xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, "L1">, memref<128x128xi8, #tsl.tsl<[?, 8] -> (256, 1), [?, 8] -> (?, 8), offset: 64>, "L1">, i32, i32, memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, "L1">) -> ()
+// CHECK-NEXT:    }) : (memref<?x128xi8, #tsl.tsl<[?, 8] -> (?, 8), [?, 8] -> (256, 1)>, "L1">, memref<128x128xi8, #tsl.tsl<[?, 8] -> (256, 1), [?, 8] -> (?, 8), offset: 64>, "L1">, i32, i32, memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, "L1">) -> ()
 // CHECK-NEXT:    "memref.copy"(%11, %arg2) : (memref<?x128xi32, #tsl.tsl<[?, 8] -> (256, 4), [?, 8] -> (?, 32)>, "L1">, memref<?x128xi32, "L3">) -> ()
 // CHECK-NEXT:    "func.return"(%arg2) : (memref<?x128xi32, "L3">) -> ()
 // CHECK-NEXT:  }) : () -> ()
