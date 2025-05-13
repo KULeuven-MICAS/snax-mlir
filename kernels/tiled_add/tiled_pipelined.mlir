@@ -5,7 +5,7 @@
     affine_map<(n) -> (n)>
   ],
   iterator_types = ["parallel"],
-  library_call = "snax_alu" 
+  library_call = "snax_alu"
 }
 
 func.func private @snax_cluster_core_idx() -> i32
@@ -18,9 +18,9 @@ func.func public @streamer_add_tiled(%A: memref<128xi64, "L3">,
     %is_compute_core = arith.cmpi eq, %which_core_id, %compute_core_constant : i32
     %is_dm_core = arith.cmpi eq, %which_core_id, %dm_core_constant : i32
     %all_good = arith.constant 0 : i32
-    // This code is run on both cores, note that only the DM core actually runs this, 
+    // This code is run on both cores, note that only the DM core actually runs this,
     // and that a barrier is called inside!
-    %A_L1 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<128xi64, "L1"> 
+    %A_L1 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<128xi64, "L1">
     %B_L1 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<128xi64, "L1">
     %D_L1 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<128xi64, "L1">
     %tile_size = arith.constant 16 : index

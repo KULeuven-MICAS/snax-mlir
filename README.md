@@ -10,7 +10,7 @@ We very happily welcome active collaborations and pull requests though!_
 General flow:
 ```mermaid
 graph LR
-    A[Input MLIR] --> B(mlir-opt) --> C(snax-opt) --> D(mlir-opt)--> E(mlir-translate) 
+    A[Input MLIR] --> B(mlir-opt) --> C(snax-opt) --> D(mlir-opt)--> E(mlir-translate)
     B --> D
     E --> F(clang) --> G[RISC-V SNAX Executable]
 ```
@@ -35,9 +35,9 @@ This repository has various requirements based on what you want to do:
 
 * Development with `snax-opt` on `xdsl`.
 * For testing, the required packages can be installed with `pip install '-e.[dev]'. Currently all tests are performed with python 3.10.
-* End-to-end compilation of kernels requires all the above packages, and a per-platform customized version of the `snitch_runtime` (`libSnRuntime.a`). 
+* End-to-end compilation of kernels requires all the above packages, and a per-platform customized version of the `snitch_runtime` (`libSnRuntime.a`).
 Furthermore you will need `tensorflow-cpu` (only required for importing MLPerf Tiny Benchmarks in MLIR, installed with `pip install '-e.[nn]'`), `clang`, `mlir-opt`, `mlir-translate` and `make`.
-* Running RTL simulations of compiled kernels requires all above dependences, and a build of a verilated model. 
+* Running RTL simulations of compiled kernels requires all above dependences, and a build of a verilated model.
 The requirements in this case are specified at [KULeuven-MICAS/snax_cluster](https://github.com/KULeuven-MICAS/snax_cluster).
 Tracing requires a custom version of [`spike-dasm`](https://github.com/pulp-platform/riscv-isa-sim).
 

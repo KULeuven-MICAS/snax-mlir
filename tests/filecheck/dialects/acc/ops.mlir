@@ -18,7 +18,7 @@ func.func @test() {
     }> {"test_attr" = 100 : i64} : (i32, i32) -> !accfg.state<"acc1">
 
     %token = "accfg.launch"(%zero, %state) <{
-        param_names = ["launch"], 
+        param_names = ["launch"],
         accelerator = "acc1"
     }>: (i32, !accfg.state<"acc1">) -> !accfg.token<"acc1">
 

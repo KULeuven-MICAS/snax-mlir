@@ -8,7 +8,7 @@ include ../../runtime/Makefile.rules
 TESTS += generated.x
 
 # Don't remove memref copies if performing correctness checks
-ifdef NO_CHECK 
+ifdef NO_CHECK
 REMOVE_MEMREF_COPY=test-remove-memref-copy,
 else
 REMOVE_MEMREF_COPY=

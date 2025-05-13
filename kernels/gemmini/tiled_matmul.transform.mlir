@@ -4,8 +4,8 @@ module attributes{transform.with_named_sequence}{
      linalg.quantized_matmul ins(%arg0, %arg1, %c0_i32, %c0_i32 : memref<128x128xi8>, memref<128x128xi8>, i32, i32) outs(%arg2 : memref<128x128xi32>)
      return
   }
-  
-  
+
+
   transform.named_sequence @__transform_main (%arg0: !transform.any_op,
     %arg1: !transform.op<"linalg.quantized_matmul">){
       // The actual tiling transformation takes tile sizes as attributes.
