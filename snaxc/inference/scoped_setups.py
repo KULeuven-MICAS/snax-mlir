@@ -94,7 +94,7 @@ def get_scoped_setup_inputs(
             )
             return None
         # if it's an operation
-        elif isinstance(val.owner, Operation):
+        else:
             # we check that it's effect free
             if is_side_effect_free(val.owner):
                 if val.owner in inputs:
@@ -149,7 +149,7 @@ class ScopedSetupWithInputs:
 
         Returns a new scoped setup.
         """
-        ops = []
+        ops: list[Operation] = []
         # map the old inputs to the new inputs
         mapper: dict[SSAValue, SSAValue] = dict(
             zip(self.dependent_vars, new_dependent_vars, strict=True)

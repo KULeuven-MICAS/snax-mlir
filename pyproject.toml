@@ -87,7 +87,6 @@ typeCheckingMode = "strict"
     "snaxc/dialects/accfg.py",
     "snaxc/inference/dataflow.py",
     "snaxc/inference/helpers.py",
-    "snaxc/inference/scoped_setups.py",
 ]
 
 
