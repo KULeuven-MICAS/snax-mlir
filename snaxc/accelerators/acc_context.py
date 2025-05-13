@@ -17,7 +17,7 @@ class AccContext(Context):
     """
 
     _registered_accelerators: dict[str, Callable[[], Accelerator]] = field(
-        default_factory=dict
+        default_factory=dict[str, Callable[[], Accelerator]]
     )
 
     def clone(self) -> "AccContext":
@@ -26,6 +26,7 @@ class AccContext(Context):
             self._loaded_dialects.copy(),
             self._loaded_ops.copy(),
             self._loaded_attrs.copy(),
+            self._loaded_types.copy(),
             self._registered_dialects.copy(),
             self._registered_accelerators.copy(),
         )

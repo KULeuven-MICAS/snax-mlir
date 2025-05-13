@@ -1,16 +1,13 @@
-from typing import cast
-
 from xdsl.context import Context
 from xdsl.dialects import builtin, memref
 from xdsl.dialects.arith import AddiOp, ConstantOp, MuliOp, SubiOp
 from xdsl.dialects.builtin import (
     FixedBitwidthType,
     IndexType,
-    MemRefType,
     NoneAttr,
     UnrealizedConversionCastOp,
 )
-from xdsl.ir import Attribute, Operation, OpResult
+from xdsl.ir import Operation, OpResult
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -30,24 +27,21 @@ class AllocOpRewrite(RewritePattern):
         """Swap memref.alloc op with snax.alloc, for now, we support
         NoneType layouts and TSL Layouts, and a memory space of L1"""
 
-        # get the memref type
-        memref_type = cast(MemRefType[Attribute], alloc_op.memref.type)
-
         # get the element type
-        element_type = memref_type.get_element_type()
+        element_type = alloc_op.memref.type.get_element_type()
 
         if not isinstance(element_type, builtin.IntegerType | builtin.AnyFloat):
             return
 
         # get the memory space
-        memory_space = memref_type.memory_space
+        memory_space = alloc_op.memref.type.memory_space
 
         # if the memory space is not L1, conversion to snax is not possible
         if memory_space != L1:
             return
 
         # get the layout
-        layout = memref_type.layout
+        layout = alloc_op.memref.type.layout
 
         # create an operation to get the # bytes that needs
         # to be allocated
@@ -64,7 +58,7 @@ class AllocOpRewrite(RewritePattern):
             assert isinstance(size, OpResult)
             alloc_args.append(size.op)
 
-        for shape in memref_type.shape.data:
+        for shape in alloc_op.memref.type.shape.data:
             if shape.data == -1:
                 # dynamic op
                 shape_ops.append(alloc_args.pop(0))
@@ -78,7 +72,7 @@ class AllocOpRewrite(RewritePattern):
 
         if isinstance(layout, NoneAttr):
             # get size based on shape
-            shape = memref_type.shape
+            shape = alloc_op.memref.type.shape
 
             # multiply all the dimensions with the element width
             # to get the size we need to allocate
@@ -147,13 +141,15 @@ class AllocOpRewrite(RewritePattern):
 
         # create snax alloc op
         snax_alloc = snax.Alloc(
-            memref_type.get_num_dims(),
+            alloc_op.memref.type.get_num_dims(),
             total_size_op,
             shape_ops_arg,
             memory_space,
             alloc_op.alignment,
         )
-        conversion_cast_op = UnrealizedConversionCastOp.get([snax_alloc], [memref_type])
+        conversion_cast_op = UnrealizedConversionCastOp.get(
+            [snax_alloc], [alloc_op.memref.type]
+        )
         rewriter.replace_matched_op(
             [*ops_to_add, snax_alloc, conversion_cast_op],
             new_results=conversion_cast_op.outputs,

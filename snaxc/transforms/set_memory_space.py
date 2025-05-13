@@ -1,5 +1,3 @@
-from typing import cast
-
 from xdsl.context import Context
 from xdsl.dialects import builtin, func, linalg, memref
 from xdsl.ir import Attribute, Operation, SSAValue
@@ -56,8 +54,12 @@ class InitFuncMemorySpace(RewritePattern):
         )
 
         # Change region of function to use new argument types
-        for arg in op.args:
-            arg.type = change_to_memory_space(arg.type)
+        block = op.body.blocks.first
+        assert block is not None
+        for arg in block.args:
+            new_arg = block.insert_arg(change_to_memory_space(arg.type), arg.index)
+            arg.replace_by(new_arg)
+            block.erase_arg(arg)
 
         # Define new function op with new type and copy region contents
         new_op = func.FuncOp(
@@ -75,8 +77,7 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.GetGlobalOp, rewriter: PatternRewriter):
         # global variables should go in memory space L3
-        memref_type = cast(builtin.MemRefType[Attribute], op.memref.type)
-        memspace = memref_type.memory_space
+        memspace = op.memref.type.memory_space
 
         # If memory space is already L3, don't do anything
         if memspace == L3:
@@ -84,9 +85,9 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
 
         # otherwise, create new memref type with correct memory space
         new_memref_type = builtin.MemRefType(
-            memref_type.element_type,
-            memref_type.get_shape(),
-            memref_type.layout,
+            op.memref.type.element_type,
+            op.memref.type.get_shape(),
+            op.memref.type.layout,
             L3,
         )
 
@@ -101,8 +102,7 @@ class InitMemRefAllocMemorySpace(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.AllocOp, rewriter: PatternRewriter):
         # allocs should go in memory space L1
-        memref_type = cast(builtin.MemRefType[Attribute], op.memref.type)
-        memspace = memref_type.memory_space
+        memspace = op.memref.type.memory_space
 
         if memspace == L1:
             # good, nothing left to do
@@ -110,11 +110,11 @@ class InitMemRefAllocMemorySpace(RewritePattern):
 
         # create new alloc op
         new_op = memref.AllocOp.get(
-            memref_type.element_type,
+            op.memref.type.element_type,
             op.alignment,
-            memref_type.get_shape(),
+            op.memref.type.get_shape(),
             dynamic_sizes=op.dynamic_sizes,
-            layout=memref_type.layout,
+            layout=op.memref.type.layout,
             memory_space=L1,
         )
 
