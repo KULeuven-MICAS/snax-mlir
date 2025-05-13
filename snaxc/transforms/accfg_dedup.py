@@ -90,7 +90,7 @@ class ElideEmptySetupOps(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
-        if len(op.values) == 0 and op.in_state is not None and op.out_state is not None:
+        if len(op.values) == 0 and op.in_state is not None:
             op.out_state.replace_by(op.in_state)
             rewriter.erase_matched_op()
 
@@ -256,7 +256,7 @@ class AccfgDeduplicate(ModulePass):
     hoist: bool = True
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        patterns = [
+        patterns: list[RewritePattern] = [
             SimplifyRedundantSetupCalls(),
             PullSetupOpsOutOfLoops(),
             MergeSetupOps(),
