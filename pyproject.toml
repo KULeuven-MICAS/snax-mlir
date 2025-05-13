@@ -85,7 +85,6 @@ typeCheckingMode = "strict"
 ]
 "exclude" = [
     "snaxc/dialects/accfg.py",
-    "snaxc/inference/dataflow.py",
 ]
 
 
