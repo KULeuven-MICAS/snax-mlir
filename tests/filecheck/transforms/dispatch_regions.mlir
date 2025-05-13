@@ -205,7 +205,7 @@ func.func public @func() {
 	"test.op"() ({
 		"test.op"() : () -> ()
 		"test.termop"() : () -> ()
-	}): () -> () 
+	}): () -> ()
 	func.return
 }
 
@@ -238,7 +238,7 @@ func.func public @func() {
 		"memref.copy"(%0, %1) : (memref<16x16xi8>, memref<16x16xi8>) -> ()
 		"test.op"() : () -> ()
 		"test.termop"() : () -> ()
-	}): () -> () 
+	}): () -> ()
 	func.return
 }
 

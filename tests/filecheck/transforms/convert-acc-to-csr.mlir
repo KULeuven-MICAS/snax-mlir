@@ -165,7 +165,7 @@ builtin.module {
 
   func.func public @test() {
     %t = arith.constant 32 : i32
-    %9 = "accfg.setup"(%t,%t,%t,%t,%t,%t,%t,%t,%t,%t) <{"accelerator" = "gemmini", "operandSegmentSizes" = array<i32: 10, 0>, 
+    %9 = "accfg.setup"(%t,%t,%t,%t,%t,%t,%t,%t,%t,%t) <{"accelerator" = "gemmini", "operandSegmentSizes" = array<i32: 10, 0>,
     "param_names" = [ "k_LOOP_WS_CONFIG_BOUNDS.rs1",
         "k_LOOP_WS_CONFIG_ADDRS_AB.rs1",
         "k_LOOP_WS_CONFIG_ADDRS_DC.rs1",

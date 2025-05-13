@@ -8,7 +8,7 @@ func.func public @streamer_add_tiled(%A: memref<128xi64, "L3">,
     %is_compute_core = arith.cmpi eq, %which_core_id, %compute_core_constant : i32
     %is_dm_core = arith.cmpi eq, %which_core_id, %dm_core_constant : i32
     %all_good = arith.constant 0 : i32
-    // This code is run on both cores, note that only the DM core actually runs this, 
+    // This code is run on both cores, note that only the DM core actually runs this,
     // and that a barrier is called inside!
     %A_L1 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<128xi64, "L1">
     %B_L1 = "memref.alloc"() <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 0, 0>}> : () -> memref<128xi64, "L1">
@@ -34,8 +34,8 @@ func.func public @streamer_add_tiled(%A: memref<128xi64, "L3">,
     "scf.if"(%is_compute_core) ({
       // Wait for input to come from DM core
       "snax.cluster_sync_op"() : () -> ()
-      linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"], library_call = "snax_alu"} 
-			ins(%A_L1, %B_L1 : memref<128xi64, "L1">, memref<128xi64, "L1">) 
+      linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"], library_call = "snax_alu"}
+			ins(%A_L1, %B_L1 : memref<128xi64, "L1">, memref<128xi64, "L1">)
 			outs(%D_L1 : memref<128xi64, "L1">) {
       ^bb0(%a: i64, %b: i64, %d: i64):
         %r0 = arith.addi %a, %b : i64

@@ -1,4 +1,4 @@
-// RUN: snax-opt %s -p function-constant-pinning | filecheck %s 
+// RUN: snax-opt %s -p function-constant-pinning | filecheck %s
 
 builtin.module {
   func.func public @simple_mult(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>) {

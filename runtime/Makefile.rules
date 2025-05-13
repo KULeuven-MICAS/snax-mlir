@@ -83,7 +83,7 @@ MLIRPREPROCFLAGS = --pass-pipeline='builtin.module(func.func(tosa-to-linalg-name
 MLIRPREPROCFLAGS += --mlir-print-op-generic
 MLIRPREPROCFLAGS += --mlir-print-local-scope
 
-MLIRPREPROC2FLAGS = --tosa-to-arith="include-apply-rescale" 
+MLIRPREPROC2FLAGS = --tosa-to-arith="include-apply-rescale"
 MLIRPREPROC2FLAGS += --empty-tensor-to-alloc-tensor
 
 MLIRPREPROC3FLAGS += --linalg-generalize-named-ops

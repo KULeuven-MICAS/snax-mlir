@@ -23,7 +23,7 @@ builtin.module {
 
   func.func public @test() {
     %t = arith.constant 32 : i64
-    %9 = "accfg.setup"(%t,%t,%t,%t,%t,%t,%t,%t,%t) <{"accelerator" = "gemmini", "operandSegmentSizes" = array<i32: 9, 0>, 
+    %9 = "accfg.setup"(%t,%t,%t,%t,%t,%t,%t,%t,%t) <{"accelerator" = "gemmini", "operandSegmentSizes" = array<i32: 9, 0>,
     "param_names" = [ "k_LOOP_WS_CONFIG_BOUNDS.rs1",
         "k_LOOP_WS_CONFIG_ADDRS_AB.rs1",
         "k_LOOP_WS_CONFIG_ADDRS_DC.rs1",
@@ -43,7 +43,7 @@ builtin.module {
 
     // An arbitrary new value
     %n = arith.constant 31 : i64
-    %11 = "accfg.setup"(%n,%n,%n,%n,%n,%9) <{"accelerator" = "gemmini", "operandSegmentSizes" = array<i32: 5, 1>, 
+    %11 = "accfg.setup"(%n,%n,%n,%n,%n,%9) <{"accelerator" = "gemmini", "operandSegmentSizes" = array<i32: 5, 1>,
         "param_names" = [ "k_LOOP_WS_CONFIG_BOUNDS.rs1", // rs1 set, but rs2 not
         "k_LOOP_WS_CONFIG_ADDRS_AB.rs1",  // Both rs1 and rs2 set
         "k_LOOP_WS_CONFIG_ADDRS_AB.rs2",

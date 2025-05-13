@@ -80,7 +80,7 @@ enableTypeIgnoreComments = false
 enableExperimentalFeatures = true
 typeCheckingMode = "strict"
 "include" = [
-    "snaxc", 
+    "snaxc",
     "tests",
 ]
 "exclude" = [
