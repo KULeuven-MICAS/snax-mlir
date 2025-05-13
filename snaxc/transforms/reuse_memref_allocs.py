@@ -148,7 +148,6 @@ class MoveMemrefDims(RewritePattern):
             if before_loop(dim_op):
                 return True
             memref_op = dim_op.source.owner
-            assert isinstance(memref_op, Operation)
             index = dim_op.index.owner
             assert isinstance(dim_op.index.owner, arith.ConstantOp)
             assert isa(dim_op.index.owner.value, IntegerAttr[IndexType])
@@ -174,7 +173,7 @@ class MoveMemrefDims(RewritePattern):
                         magic_numbers += 1
                 return subview.sizes[magic_numbers]
 
-        def memref_op_outside_loop(memref_op: Operation, index: int) -> bool:
+        def memref_op_outside_loop(memref_op: Operation | Block, index: int) -> bool:
             if isinstance(memref_op, Block):
                 # This happens when the dim is called on an input argument
                 return True
@@ -242,15 +241,14 @@ class MoveMemrefDims(RewritePattern):
             if can_be_constant(expr.map.data.results[0]) and not can_be_constant(
                 expr.map.data.results[0]
             ):
+                assert isinstance(expr.map.data.results[0], AffineConstantExpr)
                 return get_constant_value_from_other_constant(
-                    # TODO: look into this, this seems completely illegal?
-                    expr.map.data.results[0].value  # pyright: ignore
+                    expr.map.data.results[0].value
                 )
             if can_be_constant(expr.map.data.results[0]):
-                assert isinstance(expr.map.data.results[0], int | arith.ConstantOp)
+                assert isinstance(expr.map.data.results[0], AffineConstantExpr)
                 return get_constant_value_from_other_constant(
-                    # TODO: look into this, this seems completely illegal?
-                    expr.map.data.results[0].value  # pyright: ignore
+                    expr.map.data.results[0].value
                 )
             raise RuntimeError("no constant value found")
 
