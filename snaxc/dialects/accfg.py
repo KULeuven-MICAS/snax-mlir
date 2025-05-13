@@ -366,7 +366,7 @@ class SetupOp(AccfgBaseOp):
             accelerator,
             in_state,
         )
-        setup_op.out_state.type = res_typ
+        setup_op.out_state._type = res_typ
         setup_op.attributes.update(attributes)
         return setup_op
 

@@ -6,7 +6,7 @@ from xdsl.ir import Attribute
 from xdsl.parser import StringAttr
 from xdsl.utils.exceptions import VerifyException
 from xdsl.utils.hints import isa
-from xdsl.utils.test_value import TestSSAValue
+from xdsl.utils.test_value import create_ssa_value
 
 from snaxc.dialects.snax import Alloc, LayoutCast
 from snaxc.util.memref_descriptor import LLVMMemrefDescriptor
@@ -19,7 +19,7 @@ def test_memref_memory_space_cast():
     source_type = MemRefType(
         i32, [10, 2], layout=layout_1, memory_space=builtin.StringAttr("L1")
     )
-    source_ssa = TestSSAValue(source_type)
+    source_ssa = create_ssa_value(source_type)
 
     dest_type = MemRefType(i32, [10, 2], memory_space=builtin.StringAttr("L1"))
 
@@ -58,7 +58,7 @@ def test_memref_memory_space_cast():
         LayoutCast(source_ssa, dest_type_other_space).verify()
 
     type_nolayout = MemRefType(i32, [10, 2], memory_space=builtin.StringAttr("L1"))
-    TestSSAValue(type_nolayout)
+    create_ssa_value(type_nolayout)
 
     # Test helper function
     memory_layout_cast = LayoutCast.from_type_and_target_layout(source_ssa, layout_2)
@@ -69,8 +69,8 @@ def test_memref_memory_space_cast():
 
 
 def test_snax_alloc():
-    size = TestSSAValue(i32)
-    shape = [TestSSAValue(i32), TestSSAValue(i32)]
+    size = create_ssa_value(i32)
+    shape = [create_ssa_value(i32), create_ssa_value(i32)]
     dim = 2
     alloc_a = Alloc(dim, size, shape, memory_space=builtin.StringAttr("L1"))
 

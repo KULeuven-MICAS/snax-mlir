@@ -92,7 +92,7 @@ class LayoutCast(IRDLOperation):
 
     def verify_(self) -> None:
         source = cast(MemRefType[Attribute], self.source.type)
-        dest = cast(MemRefType[Attribute], self.dest.type)
+        dest = self.dest.type
         if source.get_shape() != dest.get_shape():
             raise VerifyException(
                 "Expected source and destination to have the same shape."

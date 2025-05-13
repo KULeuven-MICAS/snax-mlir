@@ -33,9 +33,9 @@ class ClearMemorySpace(ModulePass):
 
         for op_in_module in op.walk():
             for operand in op_in_module.operands:
-                operand.type = clear_memory_space(operand.type)
+                operand._type = clear_memory_space(operand.type)  # pyright: ignore
             for result in op_in_module.results:
-                result.type = clear_memory_space(result.type)
+                result._type = clear_memory_space(result.type)  # pyright: ignore
 
             if isinstance(op_in_module, func.FuncOp):
                 # special case for func ops because func ops do not have

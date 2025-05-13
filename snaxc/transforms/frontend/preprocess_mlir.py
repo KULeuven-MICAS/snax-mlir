@@ -26,7 +26,6 @@ MLIR_PREPOC_FLAGS: tuple[tuple[str, ...], ...] = (
         "--mlir-print-local-scope",
     ),
     (
-        "--test-linalg-transform-patterns=test-generalize-pad-tensor",
         "--linalg-generalize-named-ops",
         "--mlir-print-op-generic",
         "--mlir-print-local-scope",

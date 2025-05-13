@@ -227,7 +227,6 @@ class PreprocessMLPerfTiny(ModulePass):
 
     mlir_bufferization_pass = MLIROptPass(
         arguments=(
-            "--test-linalg-transform-patterns=test-generalize-pad-tensor",
             "--linalg-generalize-named-ops",
             "--empty-tensor-to-alloc-tensor",
             "--one-shot-bufferize=bufferize-function-boundaries allow-return-allocs-from-loops"
