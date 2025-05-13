@@ -1,27 +1,21 @@
 name: lit-tests
-
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   python-tests:
-
     runs-on: ubuntu-24.04
-
     steps:
-    - uses: actions/checkout@v3
-    - uses: prefix-dev/setup-pixi@v0.8.1
-      with:
-        cache: true
-        cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
-    - name: Test with lit
-      shell: bash
-      run: |
-        pixi run lit tests/filecheck -v
-
+      - uses: actions/checkout@v3
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+      - name: Test with lit
+        shell: bash
+        run: |
+          pixi run lit tests/filecheck -v
