@@ -1,4 +1,6 @@
+from collections.abc import Sequence
 from dataclasses import dataclass, field
+from typing import cast
 
 from xdsl.builder import Builder
 from xdsl.context import Context
@@ -14,6 +16,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.rewriter import InsertPoint
 from xdsl.transforms.mlir_opt import MLIROptPass
+from xdsl.utils.hints import isa
 
 from snaxc.dialects import snax
 from snaxc.transforms.alloc_to_global import AllocToGlobal
@@ -87,7 +90,7 @@ class RemoveZeroInits(RewritePattern):
             return
 
         # erase the op
-        rewriter._replace_all_uses_with(op.results[0], op.outputs[0])
+        op.results[0].replace_by(op.outputs[0])
         rewriter.erase_matched_op()
 
 
@@ -97,7 +100,9 @@ class RemoveTransposeConstants(RewritePattern):
     It then constant folds this operation by transforming the weight directly.
     """
 
-    def transpose_tuple(self, array_tuple: tuple, cols: int, rows: int):
+    def transpose_tuple(
+        self, array_tuple: Sequence[int], cols: int, rows: int
+    ) -> Sequence[int]:
         # Transpose using list comprehension
         transposed_tuple = tuple(
             array_tuple[i + j * rows] for i in range(rows) for j in range(cols)
@@ -125,11 +130,13 @@ class RemoveTransposeConstants(RewritePattern):
             return
 
         # is input constant?
-        if not isinstance(op.inputs[0], OpResult):
+        if not isinstance(opresult := op.inputs[0], OpResult):
             return
-        if not isinstance((const_op := op.inputs[0].op), arith.ConstantOp):
+        if not isinstance(const_op := opresult.op, arith.ConstantOp):
             return
-        if not isinstance((const_type := op.inputs[0].type), builtin.TensorType):
+        if not isa(
+            (const_type := op.inputs[0].type), builtin.TensorType[builtin.IntegerType]
+        ):
             return
         if not isinstance(
             (dense_attr := const_op.value), builtin.DenseIntOrFPElementsAttr
@@ -138,10 +145,10 @@ class RemoveTransposeConstants(RewritePattern):
 
         # transpose const op
         transposed_data = self.transpose_tuple(
-            dense_attr.data.data, *const_type.get_shape()
+            cast(Sequence[int], dense_attr.get_values()), *const_type.get_shape()
         )
         transposed_dense_attr = builtin.DenseIntOrFPElementsAttr.create_dense_int(
-            op.outputs[0].type, transposed_data
+            const_type, transposed_data
         )
 
         # create new const_op
@@ -151,7 +158,7 @@ class RemoveTransposeConstants(RewritePattern):
         rewriter.insert_op(new_const_op, InsertPoint.before(const_op))
 
         # replace uses of transform with new const op
-        rewriter._replace_all_uses_with(op.results[0], new_const_op.results[0])
+        op.results[0].replace_by(new_const_op.results[0])
 
         # delete const op and linalg op
         rewriter.erase_matched_op()
@@ -185,9 +192,7 @@ class OrganizeGetGlobals(RewritePattern):
     ):
         assert getglobal.parent
         for firstuser in getglobal.parent.walk():
-            if firstuser in {x.operation for x in getglobal.memref.uses} and isinstance(
-                firstuser, Operation
-            ):
+            if firstuser in {x.operation for x in getglobal.memref.uses}:
                 while firstuser.parent != getglobal.parent:
                     assert firstuser.parent
                     firstuser = firstuser.parent
