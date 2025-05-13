@@ -7,7 +7,7 @@
 }) : () -> ()
 
 //CHECK: "builtin.module"() ({
-//CHECK-NEXT:   %0 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>}> {alignment = 64 : i64} : () -> memref<64xi32>
+//CHECK-NEXT:   %0 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>, alignment = 64 : i64}> : () -> memref<64xi32>
 //CHECK-NEXT:   "test.op"(%0) : (memref<64xi32>) -> ()
 //CHECK-NEXT: }) : () -> ()
 
@@ -65,9 +65,9 @@
 //CHECK: "builtin.module"() ({
 //CHECK-NEXT:   "func.func"() <{sym_name = "simple_mult", function_type = (memref<64xi32, "L3">, memref<64xi32, "L3">, memref<64xi32, "L3">) -> (), sym_visibility = "public"}> ({
 //CHECK-NEXT:   ^0(%arg0 : memref<64xi32, "L3">, %arg1 : memref<64xi32, "L3">, %arg2 : memref<64xi32, "L3">):
-//CHECK-NEXT:     %0 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>}> {alignment = 64 : i64} : () -> memref<64xi32, "L1">
-//CHECK-NEXT:     %1 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>}> {alignment = 64 : i64} : () -> memref<64xi32, "L1">
-//CHECK-NEXT:     %2 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>}> {alignment = 64 : i64} : () -> memref<64xi32, "L1">
+//CHECK-NEXT:     %0 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>, alignment = 64 : i64}> : () -> memref<64xi32, "L1">
+//CHECK-NEXT:     %1 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>, alignment = 64 : i64}> : () -> memref<64xi32, "L1">
+//CHECK-NEXT:     %2 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>, alignment = 64 : i64}> : () -> memref<64xi32, "L1">
 //CHECK-NEXT:     "memref.copy"(%arg0, %0) : (memref<64xi32, "L3">, memref<64xi32, "L1">) -> ()
 //CHECK-NEXT:     "memref.copy"(%arg1, %1) : (memref<64xi32, "L3">, memref<64xi32, "L1">) -> ()
 //CHECK-NEXT:     "snax.cluster_sync_op"() : () -> ()
@@ -115,10 +115,10 @@
 //CHECK: "builtin.module"() ({
 //CHECK-NEXT:   "func.func"() <{sym_name = "simple_mult", function_type = (memref<64xi32, "L3">, memref<64xi32, "L3">, memref<64xi32, "L3">) -> (), sym_visibility = "public"}> ({
 //CHECK-NEXT:   ^0(%arg0 : memref<64xi32, "L3">, %arg1 : memref<64xi32, "L3">, %arg2 : memref<64xi32, "L3">):
-//CHECK-NEXT:     %0 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>}> {alignment = 64 : i64} : () -> memref<64xi32, "L1">
-//CHECK-NEXT:     %1 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>}> {alignment = 64 : i64} : () -> memref<64xi32, "L1">
-//CHECK-NEXT:     %2 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>}> {alignment = 64 : i64} : () -> memref<64xi32, "L1">
-//CHECK-NEXT:     %3 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>}> {alignment = 64 : i64} : () -> memref<64xi32, "L1">
+//CHECK-NEXT:     %0 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>, alignment = 64 : i64}> : () -> memref<64xi32, "L1">
+//CHECK-NEXT:     %1 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>, alignment = 64 : i64}> : () -> memref<64xi32, "L1">
+//CHECK-NEXT:     %2 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>, alignment = 64 : i64}> : () -> memref<64xi32, "L1">
+//CHECK-NEXT:     %3 = "memref.alloc"() <{operandSegmentSizes = array<i32: 0, 0>, alignment = 64 : i64}> : () -> memref<64xi32, "L1">
 //CHECK-NEXT:     "memref.copy"(%arg0, %0) : (memref<64xi32, "L3">, memref<64xi32, "L1">) -> ()
 //CHECK-NEXT:     "memref.copy"(%arg1, %1) : (memref<64xi32, "L3">, memref<64xi32, "L1">) -> ()
 //CHECK-NEXT:     "memref.copy"(%arg1, %3) : (memref<64xi32, "L3">, memref<64xi32, "L1">) -> ()

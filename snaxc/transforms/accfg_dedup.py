@@ -11,6 +11,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.rewriter import InsertPoint
 from xdsl.traits import is_side_effect_free
 
 from snaxc.dialects import accfg
@@ -153,7 +154,7 @@ class PullSetupOpsOutOfLoops(RewritePattern):
             in_state=get_initial_value_for_scf_for_lcv(loop_op, op.in_state),
         )
         # insert the new setup op before the loop
-        rewriter.insert_op_before(loop_invariant_setups, loop_op)
+        rewriter.insert_op(loop_invariant_setups, InsertPoint.before(loop_op))
 
         # replace loop_invariant_setups.in_state with loop_invariant_setups.out_state in the iter_args of loop_op
         # loop_invariant_setups.in_state is the previous input state to the for loop (as determined by a call
@@ -226,9 +227,9 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
 
             # insert a copy of the setup op but replace the
             # original in_state with the yielded state of the region
-            rewriter.insert_op_before(
+            rewriter.insert_op(
                 new_setup := op.clone(value_mapper={op.in_state: new_in_state}),
-                yield_op,
+                InsertPoint.before(yield_op),
             )
             # replace the yield op with a new yield op that yields the
             # newly produced state

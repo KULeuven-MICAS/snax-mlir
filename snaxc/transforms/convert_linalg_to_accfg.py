@@ -10,6 +10,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.rewriter import InsertPoint
 
 from snaxc.accelerators import AccContext
 from snaxc.dialects import accfg
@@ -204,7 +205,7 @@ def _weave_states_in_region(
                             # create empty setup op
                             empty_setup = accfg.SetupOp([], [], acc_name)
                             # insert op before the scf.for
-                            rewriter.insert_op_before(empty_setup, op)
+                            rewriter.insert_op(empty_setup, InsertPoint.before(op))
                             # register it as an input
                             state[acc_name] = empty_setup.out_state
 
