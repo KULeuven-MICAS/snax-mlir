@@ -4,12 +4,12 @@ from snaxc.ir.tsl.stride import Stride
 from snaxc.ir.tsl.tiled_stride import TiledStride
 
 
-@pytest.fixture()
+@pytest.fixture
 def example_strides():
     return (Stride(1, 4), Stride(4, 6), Stride(24, 2), Stride(None, None))
 
 
-@pytest.fixture()
+@pytest.fixture
 def example_tiled_strides(example_strides: tuple[Stride, ...]):
     stride1, stride2, stride3, dynamic_stride = example_strides
     tiledStride1 = TiledStride([stride2, stride1])
