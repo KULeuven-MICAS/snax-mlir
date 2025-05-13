@@ -68,7 +68,7 @@ def infer_states_for_if(op: scf.IfOp, state: SSAValue) -> tuple[State, State]:
     assert state in op.results, "Expected state to be one of the scf.if results!"
     idx = op.results.index(state)
 
-    states = []
+    states: list[State] = []
     for region in op.regions:
         # we know the last op must be the yield
         yield_op = region.block.last_op
@@ -77,7 +77,7 @@ def infer_states_for_if(op: scf.IfOp, state: SSAValue) -> tuple[State, State]:
         # scf.if has results, so [idx] must be defined
         states.append(infer_state_of(yield_op.operands[idx]))
     assert len(states) == 2
-    return tuple(states)
+    return states[0], states[1]
 
 
 def state_intersection(a: State, b: State) -> State:
