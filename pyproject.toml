@@ -88,7 +88,6 @@ typeCheckingMode = "strict"
     "snaxc/inference/dataflow.py",
     "snaxc/inference/helpers.py",
     "snaxc/inference/scoped_setups.py",
-    "snaxc/inference/trace_acc_state.py",
 ]
 
 
