@@ -129,4 +129,3 @@
 // CHECK-NEXT:    %32 = "snax.alloc"(%31, %1, %0) <{memory_space = "L1", alignment = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:    %33 = builtin.unrealized_conversion_cast %32 : !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)> to memref<8x?xi32, #tsl.tsl<[2, 4] -> (16, 4), [?, 4] -> (?, 32)>, "L1">
 // CHECK-NEXT:  }
-

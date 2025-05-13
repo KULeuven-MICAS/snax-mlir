@@ -25,4 +25,3 @@ func.func public @streamer_add(%arg0 : memref<16xi64>, %arg1 : memref<16xi64>, %
 // CHECK-NEXT:    }) : (!dart.stream<i64>, !dart.stream<i64>) -> !dart.stream<i64>
 // CHECK-NEXT:    dart.yield %6 : !dart.stream<i64>
 // CHECK-NEXT:  }) : (index, index, index) -> ()
-

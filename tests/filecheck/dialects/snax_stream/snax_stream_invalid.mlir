@@ -84,8 +84,3 @@
 }) : () -> ()
 
 // CHECK: Operation does not verify: Spatial stride pattern exceeds streamer dimensionality
-
-
-
-
-

@@ -71,4 +71,3 @@ builtin.module {
 // CHECK:     func.return
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
-

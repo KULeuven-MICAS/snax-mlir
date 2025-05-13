@@ -226,4 +226,3 @@
 // CHECK-NEXT:    }
 // CHECK-NEXT:    func.func private @snax_dma_2d_transfer(index, index, index, index, index, index) -> ()
 // CHECK-NEXT:  }
-
