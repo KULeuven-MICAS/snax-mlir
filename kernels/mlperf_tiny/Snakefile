@@ -24,7 +24,7 @@ use rule * from default_rules exclude compile_llvm_module, snax_opt_mlir as defa
 use rule * from tf_rules as tf_*
 
 
-nets = ["pretrainedResnet_quant", "kws_ref_model", "vww_96_int8", "ad01_int8"]
+nets = ["resnet18_int8", "kws_int8", "mobilenet_int8", "anomaly_int8"]
 extensions = [".o"]
 
 
@@ -35,13 +35,11 @@ rule all:
 
 rule get_mlperf_tiny_model:
     output:
-        "{network}.tflite",
-    # We need to constrain this wildcard to inform snakemake of the limited
-    # possibilties this function can make
+        "{network}.mlir",
     wildcard_constraints:
         network="|".join(nets),
-    run:
-        get_model(wildcards.network, output[0])
+    shell:
+        "wget -O {output[0]} https://github.com/kuleuven-micas/mlir-networks/releases/latest/download/mlperf_tiny_{output[0]}"
 
 
 rule snax_opt_mlir:
