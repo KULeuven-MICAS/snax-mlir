@@ -18,3 +18,14 @@ class SnaxMemory:
 # define the available memory spaces in the SNAX Cluster
 L1 = SnaxMemory(StringAttr("L1"), capacity=65536, start=0x10000000)
 L3 = SnaxMemory(StringAttr("L3"), capacity=int(1e9), start=0x80000000)
+TEST = SnaxMemory(StringAttr("Test"), capacity=100, start=0)
+
+_memory_registry: dict[StringAttr, SnaxMemory] = {
+    L1.attribute: L1,
+    L3.attribute: L3,
+    TEST.attribute: TEST,
+}
+
+
+def get_memory(attr: StringAttr) -> SnaxMemory:
+    return _memory_registry[attr]
