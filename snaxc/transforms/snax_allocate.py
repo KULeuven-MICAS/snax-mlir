@@ -1,9 +1,12 @@
+from collections import defaultdict
 from dataclasses import dataclass
+from typing import cast
 
+from minimalloc import Buffer, Problem  # pyright: ignore[reportMissingTypeStubs]
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, llvm
 from xdsl.ir import Operation, OpResult, Sequence, SSAValue
-from xdsl.parser import IndexType, IntegerAttr
+from xdsl.parser import IndexType, IntegerAttr, StringAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -210,6 +213,102 @@ class StaticAllocs(RewritePattern):
         rewriter.replace_matched_op(ops_to_insert, created_struct.results)
 
 
+class MiniMallocate(RewritePattern):
+    """
+    Pattern to assign static allocations based on the minimalloc algorithm.
+
+    For this to work, all allocations must be top level ops in a func op.
+    Lifetime is determined by the index of the first and last op it is used in.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter):
+        buffers: list[Buffer] = []
+        buffer_ops: dict[str, snax.Alloc] = {}
+        uses: dict[Operation, list[Buffer]] = defaultdict(list)
+
+        def get_top_level_op(op: Operation) -> Operation:
+            next_op = op
+            while next_op.parent_op() is not func_op:
+                next_op = next_op.parent_op()
+                assert next_op is not None
+            return next_op
+
+        # Determine lifetime of all buffers
+        for i, op in enumerate(func_op.body.block.ops):
+            if isinstance(op, snax.Alloc):
+                # create new buffer
+                if not isinstance(op.size, OpResult):
+                    raise RuntimeError(
+                        "Static allocations should have a statically known size."
+                    )
+                if not isinstance(op.size.op, arith.ConstantOp):
+                    raise RuntimeError(
+                        "Static allocations should have a statically known size."
+                    )
+                if op.memory_space is None:
+                    raise RuntimeError("Allocations need a defined memory space")
+
+                size_attr = op.size.op.value
+                assert isa(size_attr, IntegerAttr[IndexType])
+                size = size_attr.value.data
+
+                alignment_attr = op.alignment
+                if alignment_attr is None:
+                    alignment = 0
+                else:
+                    alignment = alignment_attr.value.data
+
+                buffer = Buffer(str(hash(op)), i, i, size, alignment)
+                buffers.append(buffer)
+                buffer_ops[buffer.id] = op
+
+                # add uses to the use list
+                for use in op.results[0].uses:
+                    use_op = get_top_level_op(use.operation)
+                    uses[use_op].append(buffer)
+
+            if op in uses:
+                # udpate lifetime of buffer
+                for buffer in uses[op]:
+                    buffer.end_time = i
+
+        # Lifetime of the buffers is now determined, run the minimalloc algorithm for every memory space
+        pointer_result: dict[str, int] = {}
+        memory_spaces = set(
+            get_memory(cast(StringAttr, buffer_ops[buffer.id].memory_space))
+            for buffer in buffers
+        )
+        for memory in memory_spaces:
+            buffers_subset = [
+                buffer
+                for buffer in buffers
+                if buffer_ops[buffer.id].memory_space == memory.attribute
+            ]
+            problem = Problem(buffers_subset, memory.capacity)
+            solution = problem.solve()
+            for buffer, offset in zip(buffers_subset, solution):
+                pointer_result[buffer.id] = offset + memory.start
+
+        # Now, generate constant ops for the pointers
+        for buffer in buffers:
+            pointer_cst = arith.ConstantOp.from_int_and_width(
+                pointer_result[buffer.id], builtin.i32
+            )
+            pointer = llvm.IntToPtrOp(pointer_cst, llvm.LLVMPointerType.opaque())
+
+            ops_to_insert: list[Operation] = [pointer_cst, pointer]
+
+            created_struct, ops_to_insert_struct = create_memref_struct(
+                buffer_ops[buffer.id], pointer.output
+            )
+            ops_to_insert.extend(ops_to_insert_struct)
+
+            rewriter.replace_op(
+                buffer_ops[buffer.id], ops_to_insert, created_struct.results
+            )
+
+
 @dataclass(frozen=True)
 class SnaxAllocatePass(ModulePass):
     name = "snax-allocate"
@@ -217,10 +316,12 @@ class SnaxAllocatePass(ModulePass):
     mode: str = "dynamic"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        if self.mode not in ("dynamic", "static"):
+        if self.mode not in ("dynamic", "static", "minimalloc"):
             raise RuntimeError(f"unsupported allocation strategy: {self.mode}")
         match self.mode:
             case "dynamic":
                 PatternRewriteWalker(DynamicAllocs()).rewrite_module(op)
             case "static":
                 PatternRewriteWalker(StaticAllocs()).rewrite_module(op)
+            case "minimalloc":
+                PatternRewriteWalker(MiniMallocate()).rewrite_module(op)
