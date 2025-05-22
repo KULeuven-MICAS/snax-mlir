@@ -57,7 +57,7 @@ class AllocToFunc(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, alloc_op: snax.Alloc, rewriter: PatternRewriter):
         ## only supporting L1 allocation for now
-        if alloc_op.memory_space != L1:
+        if alloc_op.memory_space != L1.attribute:
             return
 
         def dense_array(pos: Sequence[int] | Sequence[builtin.IntAttr]):

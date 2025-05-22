@@ -42,7 +42,7 @@ class InitFuncMemorySpace(RewritePattern):
                         t.element_type,
                         t.get_shape(),
                         t.layout,
-                        L3,
+                        L3.attribute,
                     )
             return t
 
@@ -80,7 +80,7 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
         memspace = op.memref.type.memory_space
 
         # If memory space is already L3, don't do anything
-        if memspace == L3:
+        if memspace == L3.attribute:
             return
 
         # otherwise, create new memref type with correct memory space
@@ -88,7 +88,7 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
             op.memref.type.element_type,
             op.memref.type.get_shape(),
             op.memref.type.layout,
-            L3,
+            L3.attribute,
         )
 
         # create new get_global op
@@ -104,7 +104,7 @@ class InitMemRefAllocMemorySpace(RewritePattern):
         # allocs should go in memory space L1
         memspace = op.memref.type.memory_space
 
-        if memspace == L1:
+        if memspace == L1.attribute:
             # good, nothing left to do
             return
 
@@ -115,7 +115,7 @@ class InitMemRefAllocMemorySpace(RewritePattern):
             op.memref.type.get_shape(),
             dynamic_sizes=op.dynamic_sizes,
             layout=op.memref.type.layout,
-            memory_space=L1,
+            memory_space=L1.attribute,
         )
 
         # replace op
@@ -135,7 +135,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
             x
             for x in op.operands
             if isinstance(memref_type := x.type, builtin.MemRefType)
-            and memref_type.memory_space != L1
+            and memref_type.memory_space != L1.attribute
         )
 
         if not operands_to_memory_cast:
@@ -150,7 +150,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
                     and isinstance(
                         use_type := use.operation.dest.type, builtin.MemRefType
                     )
-                    and use_type.memory_space == L1
+                    and use_type.memory_space == L1.attribute
                 ):
                     cast_op = use.operation
                     break
@@ -158,7 +158,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
             assert isa(optype := operand.type, builtin.MemRefType[Attribute])
             if cast_op is None:
                 cast_op = memref.MemorySpaceCastOp.from_type_and_target_space(
-                    operand, optype, L1
+                    operand, optype, L1.attribute
                 )
                 rewriter.insert_op_before_matched_op(cast_op)
 
