@@ -80,6 +80,11 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return ConvertTosaToKernelPass
 
+    def get_dart_bufferize():
+        from snaxc.transforms.dart.dart_bufferize import DartBufferize
+
+        return DartBufferize
+
     def get_dart_fuse_operations():
         from snaxc.transforms.dart.dart_fuse_operations import DartFuseOperationsPass
 
@@ -244,6 +249,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "convert-tosa-to-kernel": get_convert_tosa_to_kernel,
         "dart-fuse-operations": get_dart_fuse_operations,
         "dart-layout-resolution": get_dart_layout_resolution,
+        "dart_bufferize": get_dart_bufferize,
         "dart-scheduler": get_dart_scheduler,
         "dispatch-kernels": get_dispatch_kernels,
         "dispatch-regions": get_dispatch_regions,
