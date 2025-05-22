@@ -14,7 +14,55 @@ from snaxc.dialects import snax
 from snaxc.util.snax_memory import L1
 
 
-class AllocToFunc(RewritePattern):
+def dense_array(pos: Sequence[int] | Sequence[builtin.IntAttr]):
+    return builtin.DenseArrayBase.create_dense_int(builtin.i64, pos)
+
+
+def create_memref_struct(
+    alloc_op: snax.Alloc,
+    pointer: SSAValue,
+    aligned_pointer: SSAValue | None = None,
+) -> tuple[Operation, Sequence[Operation]]:
+    # default aligned pointer to base pointer
+    if aligned_pointer is None:
+        aligned_pointer = pointer
+
+    ops_to_insert: list[Operation] = []
+
+    llvm_struct = llvm.UndefOp(alloc_op.result.type)
+    ops_to_insert.append(llvm_struct)
+
+    # insert pointer
+    llvm_struct = llvm.InsertValueOp(dense_array([0]), llvm_struct.res, pointer)
+    ops_to_insert.append(llvm_struct)
+
+    # insert aligned pointer
+    llvm_struct = llvm.InsertValueOp(dense_array([1]), llvm_struct.res, aligned_pointer)
+    ops_to_insert.append(llvm_struct)
+
+    # insert offset 0
+    cst_zero = arith.ConstantOp.from_int_and_width(0, builtin.i32)
+    llvm_struct = llvm.InsertValueOp(dense_array([2]), llvm_struct.res, cst_zero.result)
+    ops_to_insert.extend([cst_zero, llvm_struct])
+
+    # use shape operands to populate shape of memref descriptor
+    for i, shape_op in enumerate(alloc_op.shapes):
+        if isinstance(shape_op.type, builtin.IndexType):
+            # we must cast to integer for valid llvm op
+            shape_op = builtin.UnrealizedConversionCastOp.get([shape_op], [builtin.i32])
+            ops_to_insert.append(shape_op)
+        else:
+            assert isinstance(shape_op, Operation)
+
+        llvm_struct = llvm.InsertValueOp(
+            dense_array([3, i]), llvm_struct.res, shape_op.results[0]
+        )
+        ops_to_insert.append(llvm_struct)
+
+    return llvm_struct, ops_to_insert
+
+
+class DynamicAllocs(RewritePattern):
     """Swap snax.alloc with function call
 
     This function implements the snax.allocs
@@ -33,9 +81,6 @@ class AllocToFunc(RewritePattern):
         ## only supporting L1 allocation for now
         if alloc_op.memory_space != L1.attribute:
             return
-
-        def dense_array(pos: Sequence[int] | Sequence[builtin.IntAttr]):
-            return builtin.DenseArrayBase.create_dense_int(builtin.i64, pos)
 
         ops_to_insert: list[Operation] = []
 
@@ -76,44 +121,10 @@ class AllocToFunc(RewritePattern):
         )
         ops_to_insert.extend([pointer_op, aligned_pointer_op])
 
-        # create the memref descriptor struct
-        llvm_struct = llvm.UndefOp(alloc_op.result.type)
-        ops_to_insert.append(llvm_struct)
-
-        # insert pointer
-        llvm_struct = llvm.InsertValueOp(
-            dense_array([0]), llvm_struct.res, pointer_op.res
+        _, ops_to_insert_struct = create_memref_struct(
+            alloc_op, pointer_op.res, aligned_pointer_op.res
         )
-        ops_to_insert.append(llvm_struct)
-
-        # insert aligned pointer
-        llvm_struct = llvm.InsertValueOp(
-            dense_array([1]), llvm_struct.res, aligned_pointer_op.res
-        )
-        ops_to_insert.append(llvm_struct)
-
-        # insert offset
-        cst_zero = arith.ConstantOp.from_int_and_width(0, builtin.i32)
-        llvm_struct = llvm.InsertValueOp(
-            dense_array([2]), llvm_struct.res, SSAValue.get(cst_zero)
-        )
-        ops_to_insert.extend([cst_zero, llvm_struct])
-
-        # use shape operands to populate shape of memref descriptor
-        for i, shape_op in enumerate(alloc_op.shapes):
-            if isinstance(shape_op.type, builtin.IndexType):
-                # we must cast to integer for valid llvm op
-                shape_op = builtin.UnrealizedConversionCastOp.get(
-                    [shape_op], [builtin.i32]
-                )
-                ops_to_insert.append(shape_op)
-            else:
-                assert isinstance(shape_op, Operation)
-
-            llvm_struct = llvm.InsertValueOp(
-                dense_array([3, i]), llvm_struct.res, shape_op.results[0]
-            )
-            ops_to_insert.append(llvm_struct)
+        ops_to_insert.extend(ops_to_insert_struct)
 
         module_op = alloc_op.get_toplevel_object()
         assert isinstance(module_op, builtin.ModuleOp)
@@ -132,5 +143,7 @@ class AllocToFunc(RewritePattern):
 class SnaxAllocatePass(ModulePass):
     name = "snax-allocate"
 
+    mode: str = "dynamic"
+
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(AllocToFunc()).rewrite_module(op)
+        PatternRewriteWalker(DynamicAllocs()).rewrite_module(op)
