@@ -37,7 +37,7 @@ class AllocOpRewrite(RewritePattern):
         memory_space = alloc_op.memref.type.memory_space
 
         # if the memory space is not L1, conversion to snax is not possible
-        if memory_space != L1:
+        if memory_space != L1.attribute:
             return
 
         # get the layout
