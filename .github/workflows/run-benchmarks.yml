@@ -27,4 +27,4 @@ jobs:
           path: benchmarks/${{ matrix.kernel }}/output
     strategy:
       matrix:
-        kernel: [dense_matmul]
+        kernel: [dense_matmul, tiled_matmul]

@@ -1,79 +1,97 @@
 import pathlib
 from io import StringIO
 
-from xdsl.builder import ImplicitBuilder
-from xdsl.dialects import arith, builtin, func, linalg, transform
-from xdsl.dialects.builtin import i8
-from xdsl.ir import Block, Region
+import numpy as np
+from xdsl.builder import Builder
+from xdsl.dialects import builtin, transform
+from xdsl.dialects.arith import ConstantOp
+from xdsl.dialects.builtin import (
+    DenseIntOrFPElementsAttr,
+    ModuleOp,
+    TensorType,
+    UnitAttr,
+    i8,
+    i32,
+)
+from xdsl.dialects.func import FuncOp, ReturnOp
+from xdsl.dialects.linalg import QuantizedMatmulOp
+from xdsl.dialects.tensor import EmptyOp
+from xdsl.parser import DenseArrayBase, IntegerType
 from xdsl.printer import Printer
 
 from util.snax_benchmark import SNAXBenchmark
 
 
 def create_tiled_matrix_multiply(k, m, n, tiling_factors):
-    """
-    Generate IR in the form of:
-    ```
-    builtin.module {
-      func.func @streamer_matmul(%arg0 : memref<16x16xi8>, %arg1 : memref<16x16xi8,
-                                 strided<[1, 16]>>, %arg2 : memref<16x16xi32>) {
-        %0 = arith.constant 0 : i32
-        linalg.quantized_matmul ins(%arg0, %arg1, %0, %0 : memref<16x16xi8>,
-                                    memref<16x16xi8, strided<[1, 16]>>, i32, i32)
-                                outs(%arg2 : memref<16x16xi32>)
-        func.return
-      }
-      "transform.sequence"() <{"failure_propagation_mode" = 1 : i32,
-                               "operandSegmentSizes" = array<i32: 0, 0>}> ({
-      ^0(%arg0 : !transform.any_op, %arg1 : !transform.op<"linalg.quantized_matmul">):
-        "transform.yield"() : () -> ()
-      }) : () -> ()
-    }
-    ```
-    """
+    # Define Variables For Program:
 
-    def get_2d_memref_type(typ, dim_one, dim_two, transpose=False):
-        layout = (
-            builtin.StridedLayoutAttr([1, dim_one]) if transpose else builtin.NoneAttr()
+    a_type = TensorType(i8, (m, k))
+    a_vals = np.random.randint(-127, 128, (m, k))
+
+    b_type = TensorType(i8, (k, n))
+    b_vals = np.random.randint(-127, 128, (k, n))
+
+    output_type = TensorType(i32, (m, n))
+    golden_vals = a_vals @ b_vals
+
+    res_types = [output_type] * 2
+
+    # Define Program:
+    @Builder.implicit_region([])
+    def func_body(_) -> None:
+        # Declare constants
+        a = ConstantOp(
+            DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist())
         )
-        return builtin.MemRefType(typ, [dim_one, dim_two], layout=layout)
+        b = ConstantOp(
+            DenseIntOrFPElementsAttr.from_list(b_type, b_vals.flatten().tolist())
+        )
+        golden = ConstantOp(
+            DenseIntOrFPElementsAttr.from_list(
+                output_type, golden_vals.flatten().tolist()
+            )
+        )
 
-    input_types = [
-        get_2d_memref_type(i8, k, m),
-        get_2d_memref_type(i8, m, n, transpose=True),
-        get_2d_memref_type(builtin.i32, k, n),
-    ]
+        c0 = ConstantOp.from_int_and_width(0, 32)
 
-    b = Block(arg_types=(input_types))
+        # Declare result tensor type
+        empty_tensor = EmptyOp([], output_type)
 
-    with ImplicitBuilder(b) as (arg0, arg1, arg2):
-        c0 = arith.ConstantOp.from_int_and_width(0, 32)
-        linalg.QuantizedMatmulOp([arg0, arg1, c0.result, c0.result], [arg2])
-        func.ReturnOp()
+        # Specify the operation
+        result = QuantizedMatmulOp(
+            (a.result, b.result, c0.result, c0.result), empty_tensor.results
+        )
 
-    region = Region(b)
+        # Return both the computed result and the golden output
+        ReturnOp(result, golden)
 
-    function = func.FuncOp.from_region("streamer_matmul", input_types, [], region)
+    function = FuncOp.from_region("snax_main", [], res_types, func_body)
 
-    failurePropagationMode = builtin.IntegerAttr(1, builtin.IntegerType(32))
-
-    input_types_t = [
+    # Manually speficy tiling sequence
+    transform_inputs = [
         transform.AnyOpType(),
         transform.OperationType("linalg.quantized_matmul"),
     ]
-    b_t = Block(arg_types=input_types_t)
 
-    with ImplicitBuilder(b_t) as (arg0, arg1):
-        (transform.TileOp(arg1, [], tiling_factors, scalable_sizes=tiling_factors))
+    @Builder.implicit_region(transform_inputs)
+    def tiling_sequence(args):
+        transform.TileOp(
+            target=args[1],
+            dynamic_sizes=[],
+            scalable_sizes=DenseArrayBase.create_dense_int(IntegerType(1), [0, 0]),
+            static_sizes=DenseArrayBase.create_dense_int(IntegerType(64), [8, 8]),
+        )
+
         transform.YieldOp()
 
-    region_t = Region(b_t)
+    function_type = builtin.FunctionType.from_lists(transform_inputs, [])
+    transform_sequence = transform.NamedSequenceOp(
+        "__transform_main", function_type, tiling_sequence
+    )
 
-    transform_sequence = transform.SequenceOp(failurePropagationMode, [], [], region_t)
-
-    module = builtin.ModuleOp([function, transform_sequence])
-
-    return module
+    return ModuleOp(
+        [function, transform_sequence], {"transform.with_named_sequence": UnitAttr()}
+    )
 
 
 def write_module_to_file(module, file):
