@@ -1,6 +1,9 @@
+from dataclasses import dataclass
+
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, llvm
-from xdsl.ir import Operation, Sequence, SSAValue
+from xdsl.ir import Operation, OpResult, Sequence, SSAValue
+from xdsl.parser import IndexType, IntegerAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -9,9 +12,10 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.traits import SymbolTable
+from xdsl.utils.hints import isa
 
 from snaxc.dialects import snax
-from snaxc.util.snax_memory import L1
+from snaxc.util.snax_memory import L1, SnaxMemory, get_memory
 
 
 def dense_array(pos: Sequence[int] | Sequence[builtin.IntAttr]):
@@ -121,7 +125,7 @@ class DynamicAllocs(RewritePattern):
         )
         ops_to_insert.extend([pointer_op, aligned_pointer_op])
 
-        _, ops_to_insert_struct = create_memref_struct(
+        created_struct, ops_to_insert_struct = create_memref_struct(
             alloc_op, pointer_op.res, aligned_pointer_op.res
         )
         ops_to_insert.extend(ops_to_insert_struct)
@@ -129,7 +133,7 @@ class DynamicAllocs(RewritePattern):
         module_op = alloc_op.get_toplevel_object()
         assert isinstance(module_op, builtin.ModuleOp)
 
-        rewriter.replace_matched_op(ops_to_insert)
+        rewriter.replace_matched_op(ops_to_insert, created_struct.results)
 
         func_op = func.FuncOp.external(
             "snax_alloc_l1",
@@ -140,10 +144,83 @@ class DynamicAllocs(RewritePattern):
         SymbolTable.insert_or_update(module_op, func_op)
 
 
+class StaticAllocs(RewritePattern):
+    """
+    Simple static allocation scheme.
+    This pass starts allocating at the base pointer of the memory space,
+    and keeps incrementing the address by the size of the allocation.
+    No allocations are ever freed, so the address space is never reused.
+    """
+
+    current_addresses: dict[SnaxMemory, int] = {}
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: snax.Alloc, rewriter: PatternRewriter):
+        if not isinstance(op.size, OpResult):
+            raise RuntimeError(
+                "Static allocations should have a statically known size."
+            )
+        if not isinstance(op.size.op, arith.ConstantOp):
+            raise RuntimeError(
+                "Static allocations should have a statically known size."
+            )
+        if op.memory_space is None:
+            raise RuntimeError("Allocations need a defined memory space")
+
+        size_attr = op.size.op.value
+        assert isa(size_attr, IntegerAttr[IndexType])
+        size = size_attr.value.data
+
+        alignment_attr = op.alignment
+        if alignment_attr is None:
+            alignment = 0
+        else:
+            alignment = alignment_attr.value.data
+
+        # get the memory space
+        assert isinstance(op.memory_space, builtin.StringAttr)
+        memory = get_memory(op.memory_space)
+
+        if memory not in self.current_addresses:
+            self.current_addresses[memory] = memory.start
+
+        current_address = self.current_addresses[memory]
+
+        if current_address % alignment != 0:
+            # align the address
+            current_address += alignment - (current_address % alignment)
+
+        next_address = current_address + size
+
+        if next_address > memory.start + memory.capacity:
+            raise RuntimeError(
+                f"Memory space {memory.attribute.data} is full, cannot allocate {size} bytes"
+            )
+
+        self.current_addresses[memory] = next_address
+
+        pointer_cst = arith.ConstantOp.from_int_and_width(current_address, builtin.i32)
+        pointer = llvm.IntToPtrOp(pointer_cst, llvm.LLVMPointerType.opaque())
+
+        ops_to_insert: list[Operation] = [pointer_cst, pointer]
+
+        created_struct, ops_to_insert_struct = create_memref_struct(op, pointer.output)
+        ops_to_insert.extend(ops_to_insert_struct)
+
+        rewriter.replace_matched_op(ops_to_insert, created_struct.results)
+
+
+@dataclass(frozen=True)
 class SnaxAllocatePass(ModulePass):
     name = "snax-allocate"
 
     mode: str = "dynamic"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(DynamicAllocs()).rewrite_module(op)
+        if self.mode not in ("dynamic", "static"):
+            raise RuntimeError(f"unsupported allocation strategy: {self.mode}")
+        match self.mode:
+            case "dynamic":
+                PatternRewriteWalker(DynamicAllocs()).rewrite_module(op)
+            case "static":
+                PatternRewriteWalker(StaticAllocs()).rewrite_module(op)
