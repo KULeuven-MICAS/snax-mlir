@@ -38,7 +38,7 @@
 // CHECK-NEXT:   %22 = builtin.unrealized_conversion_cast %0 : index to i32
 // CHECK-NEXT:   %23 = "llvm.insertvalue"(%21, %22) <{position = array<i64: 3, 1>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, i32) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 //
-//                     Third allocation at 20:
+//                     Third allocation at 42:
 // CHECK-NEXT:   %24 = arith.constant 42 : i32
 // CHECK-NEXT:   %25 = "llvm.inttoptr"(%24) : (i32) -> !llvm.ptr<!llvm.ptr>
 // CHECK-NEXT:   %26 = "llvm.mlir.undef"() : () -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
