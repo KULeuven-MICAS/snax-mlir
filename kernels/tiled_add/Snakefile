@@ -38,6 +38,7 @@ def get_snax_opt_flags(options):
             "snax-copy-to-dma",
             "memref-to-snax",
             "snax-to-func",
+            "snax-allocate",
             "clear-memory-space",
             "snax-lower-mcycle",
             "postprocess",

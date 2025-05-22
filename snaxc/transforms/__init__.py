@@ -178,6 +178,11 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return SetMemorySpace
 
+    def get_snax_allocate():
+        from snaxc.transforms.snax_allocate import SnaxAllocatePass
+
+        return SnaxAllocatePass
+
     def get_snax_bufferize():
         from snaxc.transforms.snax_bufferize import SnaxBufferize
 
@@ -263,6 +268,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "preprocess-mlperftiny": get_preprocess_mlperf_tiny,
         "realize-memref-casts": get_realize_memref_casts,
         "reuse-memref-allocs": get_reuse_memref_allocs,
+        "snax-allocate": get_snax_allocate,
         "set-memory-layout": get_set_memory_layout,
         "set-memory-space": get_set_memory_space,
         "snax-bufferize": get_snax_bufferize,

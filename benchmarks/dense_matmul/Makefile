@@ -20,7 +20,7 @@ else
 REMOVE_MEMREF_COPY=
 endif
 
-SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-dart,dart-fuse-operations,snax-bufferize,alloc-to-global,set-memory-space,dart-scheduler,set-memory-layout,realize-memref-casts,${REMOVE_MEMREF_COPY}insert-sync-barrier,dispatch-regions{nb_cores=2},dart-layout-resolution,convert-dart-to-snax-stream,convert-linalg-to-accfg,test-add-mcycle-around-launch,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,snax-lower-mcycle,clear-memory-space
+SNAXOPTFLAGS = -p convert-linalg-to-kernel,insert-accfg-op{accelerator=snax_gemmx},dispatch-kernels,convert-linalg-to-dart,dart-fuse-operations,snax-bufferize,alloc-to-global,set-memory-space,dart-scheduler,set-memory-layout,realize-memref-casts,${REMOVE_MEMREF_COPY}insert-sync-barrier,dispatch-regions{nb_cores=2},dart-layout-resolution,convert-dart-to-snax-stream,convert-linalg-to-accfg,test-add-mcycle-around-launch,convert-accfg-to-csr,snax-copy-to-dma,memref-to-snax,snax-to-func,snax-allocate,snax-lower-mcycle,clear-memory-space
 
 GEN_DATA_OPTS += --m=${SIZE_M}
 GEN_DATA_OPTS += --n=${SIZE_N}

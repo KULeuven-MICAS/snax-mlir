@@ -79,6 +79,7 @@ def get_mlperf_tiny_config() -> dict[str, Any]:
                     "snax-copy-to-dma",
                     "memref-to-snax",
                     "snax-to-func",
+                    "snax-allocate",
                     "clear-memory-space",
                     "postprocess",
                 ]
