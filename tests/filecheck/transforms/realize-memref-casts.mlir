@@ -216,3 +216,36 @@ func.func @mnist(%arg0 : memref<?x128xi8, "L3">, %arg1 : memref<128x128xi8, "L3"
 // CHECK-NEXT:     func.return %arg2 : memref<?x128xi32, "L3">
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
+// -----
+
+%0 = "test.op"() : () -> memref<64xi32, "L1">
+%1 = "memref.memory_space_cast"(%0) : (memref<64xi32, "L1">) -> memref<64xi32, "L1">
+"test.op"(%1) : (memref<64xi32, "L1">) -> ()
+
+// CHECK:      builtin.module {
+// CHECK-NEXT:   %0 = "test.op"() : () -> memref<64xi32, "L1">
+// CHECK-NEXT:   "test.op"(%0) : (memref<64xi32, "L1">) -> ()
+// CHECK-NEXT: }
+
+// -----
+
+%0 = "test.op"() : () -> memref<64xi32, "L1">
+%1 = "snax.layout_cast"(%0) : (memref<64xi32, "L1">) -> memref<64xi32, "L1">
+"test.op"(%1) : (memref<64xi32, "L1">) -> ()
+
+// CHECK:      builtin.module {
+// CHECK-NEXT:   %0 = "test.op"() : () -> memref<64xi32, "L1">
+// CHECK-NEXT:   "test.op"(%0) : (memref<64xi32, "L1">) -> ()
+// CHECK-NEXT: }
+
+// -----
+
+%0 = "test.op"() : () -> memref<64xi32, "L1">
+%1 = "memref.memory_space_cast"(%0) : (memref<64xi32, "L1">) -> memref<64xi32, "L1">
+%2 = "snax.layout_cast"(%1) : (memref<64xi32, "L1">) -> memref<64xi32, "L1">
+"test.op"(%2) : (memref<64xi32, "L1">) -> ()
+
+// CHECK:      builtin.module {
+// CHECK-NEXT:   %0 = "test.op"() : () -> memref<64xi32, "L1">
+// CHECK-NEXT:   "test.op"(%0) : (memref<64xi32, "L1">) -> ()
+// CHECK-NEXT: }
