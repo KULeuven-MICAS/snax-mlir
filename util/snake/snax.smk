@@ -59,3 +59,34 @@ rule aggregate_json:
         temp("{file}_traces.json"),
     run:
         merge_json(input, output[0])
+
+
+rule perfetto_traces:
+    """
+    Use trace_to_perfetto to generate visual traces for the simulation.
+    """
+    input:
+        dasm_traces=expand(
+            "{file}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}.dasm",
+            file=["{file}"],
+            num_chips=range(config["num_chips"]),
+            num_harts=range(config["num_harts"]),
+        ),
+        json_traces=expand(
+            "{file}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}_perf.json",
+            file=["{file}"],
+            num_chips=range(config["num_chips"]),
+            num_harts=range(config["num_harts"]),
+        ),
+        elf="{file}.x",
+    output:
+        "{file}_perfetto_traces.json",
+    shell:
+        """
+        python {config[trace_to_perfetto]} \
+            --inputs {input.json_traces} \
+            --traces {input.dasm_traces} \
+            --elf {input.elf} \
+            --accelerator snax_gemmx \
+            --output {output}
+        """
