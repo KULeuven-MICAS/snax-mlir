@@ -126,7 +126,6 @@ class RealizeMemrefCasts(RewritePattern):
                 new_constant_op = arith.ConstantOp(new_constant, new_constant.type)
                 rewriter.replace_op(const_source, new_constant_op)
 
-
         # now perform casting by inserting memref copies and allocs
         source_type = source_op.source.type
         assert isa(source_type, builtin.MemRefType[Attribute])
