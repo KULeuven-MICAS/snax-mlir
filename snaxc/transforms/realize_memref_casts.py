@@ -1,7 +1,12 @@
+import warnings
+from typing import cast
+
+import numpy as np
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, linalg, memref
 from xdsl.dialects.memref import MemorySpaceCastOp
 from xdsl.ir import Attribute, Operation, OpResult
+from xdsl.parser import BytesAttr, DenseIntOrFPElementsAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -14,10 +19,70 @@ from xdsl.utils.hints import isa
 
 from snaxc.dialects import dart
 from snaxc.dialects.snax import LayoutCast
+from snaxc.dialects.tsl import TiledStridedLayoutAttr
 
 
 def is_cast_op(op: Operation) -> bool:
     return isinstance(op, MemorySpaceCastOp) or isinstance(op, LayoutCast)
+
+
+def transform_constant(
+    source: arith.ConstantOp, dest_layout: Attribute, rewriter: PatternRewriter
+):
+    """
+    Transform a constant op to a new layout.
+    """
+    if not isa(
+        memref_type := source.result.type, builtin.MemRefType[builtin.FixedBitwidthType]
+    ):
+        raise NotImplementedError("Can only handle memref types")
+
+    source_layout = memref_type.layout
+    if source_layout == dest_layout:
+        # no further transformation needed
+        return
+
+    assert isinstance(source.value, DenseIntOrFPElementsAttr)
+
+    if not isinstance(source_layout, builtin.NoneAttr):
+        warnings.warn("Failed to transform constant op, source layout is not None")
+        return
+
+    if not isinstance(dest_layout, TiledStridedLayoutAttr):
+        warnings.warn("failed to transform constant op, dest layout is not tsl")
+        return
+
+    if not dest_layout.data.is_dense():
+        warnings.warn("failed to transform constant op, dest layout is not contiguous")
+        return
+
+    if dest_layout.data.is_dynamic():
+        warnings.warn("failed to transform constant op, dest layout dynamic")
+        return
+
+    strides = [stride for _, _, stride in dest_layout.data]
+    bounds = cast(list[int], [stride.bound for stride in strides])
+    order = np.argsort(cast(list[int], [stride.step for stride in strides]))
+    # get data:
+    values = np.frombuffer(
+        source.value.data.data, dtype=np.dtype(source.value.get_element_type().format)
+    )
+    # transform data:
+    values = values.reshape(bounds).transpose(order[::-1])
+    # update constant op:
+
+    new_type = builtin.MemRefType(
+        memref_type.element_type,
+        memref_type.shape,
+        dest_layout,
+        memref_type.memory_space,
+    )
+
+    new_value = DenseIntOrFPElementsAttr([new_type, BytesAttr(values.tobytes())])
+
+    new_constant = arith.ConstantOp(new_value, new_type)
+
+    rewriter.replace_op(source, new_constant)
 
 
 class RealizeMemrefCasts(RewritePattern):
@@ -52,6 +117,14 @@ class RealizeMemrefCasts(RewritePattern):
             source_op.source.op, MemorySpaceCastOp | LayoutCast
         ):
             source_op = source_op.source.op
+
+        # look for constant op that may be transformed as well
+        if (
+            isinstance(source_op.source, OpResult)
+            and isinstance(const_source := source_op.source.op, arith.ConstantOp)
+            and isinstance(op.dest.type, builtin.MemRefType)
+        ):
+            transform_constant(const_source, op.dest.type.layout, rewriter)
 
         # now perform casting by inserting memref copies and allocs
         source_type = source_op.source.type
