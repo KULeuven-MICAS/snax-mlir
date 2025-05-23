@@ -15,6 +15,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.rewriter import InsertPoint
+from xdsl.traits import SymbolTable
 from xdsl.utils.hints import isa
 
 from snaxc.dialects import dart
@@ -125,6 +126,17 @@ class RealizeMemrefCasts(RewritePattern):
             if new_constant is not None:
                 new_constant_op = arith.ConstantOp(new_constant, new_constant.type)
                 rewriter.replace_op(const_source, new_constant_op)
+
+        # look for global op that may be transformed as well
+        if (
+            isinstance(source_op.source, OpResult)
+            and isinstance(const_source := source_op.source.op, memref.GetGlobalOp)
+            and isinstance(op.dest.type, builtin.MemRefType)
+        ):
+            global_op = SymbolTable.lookup_symbol(op, const_source.name_)
+            assert global_op is not None
+            const_source.name
+            breakpoint()
 
         # now perform casting by inserting memref copies and allocs
         source_type = source_op.source.type
