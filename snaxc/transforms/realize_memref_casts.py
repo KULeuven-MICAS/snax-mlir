@@ -27,45 +27,43 @@ def is_cast_op(op: Operation) -> bool:
 
 
 def transform_constant(
-    source: arith.ConstantOp, dest_layout: Attribute, rewriter: PatternRewriter
-):
+    source: DenseIntOrFPElementsAttr, dest_layout: Attribute
+) -> DenseIntOrFPElementsAttr | None:
     """
     Transform a constant op to a new layout.
     """
     if not isa(
-        memref_type := source.result.type, builtin.MemRefType[builtin.FixedBitwidthType]
+        memref_type := source.type, builtin.MemRefType[builtin.FixedBitwidthType]
     ):
         raise NotImplementedError("Can only handle memref types")
 
     source_layout = memref_type.layout
     if source_layout == dest_layout:
         # no further transformation needed
-        return
-
-    assert isinstance(source.value, DenseIntOrFPElementsAttr)
+        return None
 
     if not isinstance(source_layout, builtin.NoneAttr):
         warnings.warn("Failed to transform constant op, source layout is not None")
-        return
+        return None
 
     if not isinstance(dest_layout, TiledStridedLayoutAttr):
         warnings.warn("failed to transform constant op, dest layout is not tsl")
-        return
+        return None
 
     if not dest_layout.data.is_dense():
         warnings.warn("failed to transform constant op, dest layout is not contiguous")
-        return
+        return None
 
     if dest_layout.data.is_dynamic():
         warnings.warn("failed to transform constant op, dest layout dynamic")
-        return
+        return None
 
     strides = [stride for _, _, stride in dest_layout.data]
     bounds = cast(list[int], [stride.bound for stride in strides])
     order = np.argsort(cast(list[int], [stride.step for stride in strides]))
     # get data:
     values = np.frombuffer(
-        source.value.data.data, dtype=np.dtype(source.value.get_element_type().format)
+        source.data.data, dtype=np.dtype(source.get_element_type().format)
     )
     # transform data:
     values = values.reshape(bounds).transpose(order[::-1])
@@ -80,9 +78,7 @@ def transform_constant(
 
     new_value = DenseIntOrFPElementsAttr([new_type, BytesAttr(values.tobytes())])
 
-    new_constant = arith.ConstantOp(new_value, new_type)
-
-    rewriter.replace_op(source, new_constant)
+    return new_value
 
 
 class RealizeMemrefCasts(RewritePattern):
@@ -124,7 +120,12 @@ class RealizeMemrefCasts(RewritePattern):
             and isinstance(const_source := source_op.source.op, arith.ConstantOp)
             and isinstance(op.dest.type, builtin.MemRefType)
         ):
-            transform_constant(const_source, op.dest.type.layout, rewriter)
+            assert isinstance(const_source.value, DenseIntOrFPElementsAttr)
+            new_constant = transform_constant(const_source.value, op.dest.type.layout)
+            if new_constant is not None:
+                new_constant_op = arith.ConstantOp(new_constant, new_constant.type)
+                rewriter.replace_op(const_source, new_constant_op)
+
 
         # now perform casting by inserting memref copies and allocs
         source_type = source_op.source.type
