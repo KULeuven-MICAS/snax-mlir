@@ -59,6 +59,12 @@ class RealizeMemrefCasts(RewritePattern):
         dest_type = op.dest.type
         assert isa(dest_type, builtin.MemRefType[Attribute])
 
+        if source_type == dest_type:
+            # canonicalize away unnecessary cast
+            op.dest.replace_by(op.source)
+            rewriter.erase_matched_op()
+            return
+
         # create allocation
 
         # create memref.dim operations for dynamic dimensions
