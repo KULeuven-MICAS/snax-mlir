@@ -15,6 +15,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.rewriter import InsertPoint
+from xdsl.traits import SymbolTable
 from xdsl.utils.hints import isa
 
 from snaxc.dialects import dart
@@ -32,10 +33,16 @@ def transform_constant(
     """
     Transform a constant op to a new layout.
     """
-    if not isa(
-        memref_type := source.type, builtin.MemRefType[builtin.FixedBitwidthType]
-    ):
-        raise NotImplementedError("Can only handle memref types")
+    if isa(memref_type := source.type, builtin.MemRefType[builtin.FixedBitwidthType]):
+        pass
+
+    elif isinstance(source.type, builtin.TensorType):
+        memref_type = builtin.MemRefType(
+            source.type.get_element_type(), source.type.get_shape()
+        )
+
+    else:
+        raise NotImplementedError("Can only handle memref and tensor types")
 
     source_layout = memref_type.layout
     if source_layout == dest_layout:
@@ -125,6 +132,72 @@ class RealizeMemrefCasts(RewritePattern):
             if new_constant is not None:
                 new_constant_op = arith.ConstantOp(new_constant, new_constant.type)
                 rewriter.replace_op(const_source, new_constant_op)
+
+        # look for global op that may be transformed as well
+        if (
+            isinstance(source_op.source, OpResult)
+            and isinstance(const_source := source_op.source.op, memref.GetGlobalOp)
+            and isinstance(op.dest.type, builtin.MemRefType)
+            and isinstance(
+                global_op := SymbolTable.lookup_symbol(op, const_source.name_),
+                memref.GlobalOp,
+            )
+            and isa(
+                global_op.initial_value,
+                DenseIntOrFPElementsAttr[builtin.AnyDenseElement],
+            )
+        ):
+            new_constant = transform_constant(
+                global_op.initial_value, op.dest.type.layout
+            )
+            if new_constant is not None:
+                # create new global and get global op with new name
+                # global op initial data should be a tensor type:
+                new_constant_tensor = DenseIntOrFPElementsAttr(
+                    [
+                        builtin.TensorType(
+                            new_constant.type.get_element_type(),
+                            new_constant.type.get_shape(),
+                        ),
+                        new_constant.data,
+                    ]
+                )
+                new_sym_name = const_source.name_.string_value() + "_transformed"
+                new_global_op = memref.GlobalOp.get(
+                    builtin.StringAttr(new_sym_name),
+                    new_constant.type,
+                    new_constant_tensor,
+                    global_op.sym_visibility,
+                    global_op.constant,
+                    global_op.alignment,
+                )
+
+                # global get type should inherit only the new layout
+                assert isinstance(new_constant.type, builtin.MemRefType)
+                get_type = builtin.MemRefType(
+                    const_source.memref.type.get_element_type(),
+                    const_source.memref.type.get_shape(),
+                    new_constant.type.layout,
+                    const_source.memref.type.memory_space,
+                )
+                new_global_get_op = memref.GetGlobalOp(new_sym_name, get_type)
+
+                # insert the global op in the symbol table
+                symbol_table_op = global_op.parent_op()
+                assert symbol_table_op is not None
+                symbol_table = symbol_table_op.get_trait(SymbolTable)
+                assert symbol_table is not None
+
+                # insert new global op with new layout
+                replaced = symbol_table.insert_or_update(symbol_table_op, new_global_op)
+                # assert we have not replaced an existing op
+                assert replaced is None
+
+                # delete old global op
+                rewriter.erase_op(global_op)
+
+                # replace old global get op with new one
+                rewriter.replace_op(const_source, new_global_get_op)
 
         # now perform casting by inserting memref copies and allocs
         source_type = source_op.source.type
