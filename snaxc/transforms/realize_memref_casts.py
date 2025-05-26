@@ -199,6 +199,61 @@ class RealizeMemrefCasts(RewritePattern):
                 # replace old global get op with new one
                 rewriter.replace_op(const_source, new_global_get_op)
 
+        # look for global without data that can have constant data
+        if (
+            isinstance(source_op.source, OpResult)
+            and isinstance(const_source := source_op.source.op, memref.GetGlobalOp)
+            and isinstance(op.dest.type, builtin.MemRefType)
+            and isinstance(
+                global_op := SymbolTable.lookup_symbol(op, const_source.name_),
+                memref.GlobalOp,
+            )
+            and isinstance(global_op.initial_value, builtin.UnitAttr)
+        ):
+            new_sym_name = const_source.name_.string_value() + "_transformed"
+            global_type = global_op.type
+            assert isa(global_type, builtin.MemRefType[Attribute])
+            new_type = builtin.MemRefType(
+                global_type.get_element_type(),
+                global_type.get_shape(),
+                op.dest.type.layout,
+                global_type.memory_space,
+            )
+            new_global_op = memref.GlobalOp.get(
+                builtin.StringAttr(new_sym_name),
+                new_type,
+                builtin.UnitAttr(),
+                global_op.sym_visibility,
+                global_op.constant,
+                global_op.alignment,
+            )
+
+            # global get type should inherit only the new layout
+            get_type = builtin.MemRefType(
+                const_source.memref.type.get_element_type(),
+                const_source.memref.type.get_shape(),
+                op.dest.type.layout,
+                const_source.memref.type.memory_space,
+            )
+            new_global_get_op = memref.GetGlobalOp(new_sym_name, get_type)
+
+            # insert the global op in the symbol table
+            symbol_table_op = global_op.parent_op()
+            assert symbol_table_op is not None
+            symbol_table = symbol_table_op.get_trait(SymbolTable)
+            assert symbol_table is not None
+
+            # insert new global op with new layout
+            replaced = symbol_table.insert_or_update(symbol_table_op, new_global_op)
+            # assert we have not replaced an existing op
+            assert replaced is None
+
+            # delete old global op
+            rewriter.erase_op(global_op)
+
+            # replace old global get op with new one
+            rewriter.replace_op(const_source, new_global_get_op)
+
         # now perform casting by inserting memref copies and allocs
         source_type = source_op.source.type
         assert isa(source_type, builtin.MemRefType[Attribute])
