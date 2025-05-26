@@ -209,6 +209,10 @@ class RealizeMemrefCasts(RewritePattern):
                 memref.GlobalOp,
             )
             and isinstance(global_op.initial_value, builtin.UnitAttr)
+            and not any(
+                isinstance(use.operation, func.ReturnOp)
+                for use in const_source.memref.uses
+            )
         ):
             new_sym_name = const_source.name_.string_value() + "_transformed"
             global_type = global_op.type
