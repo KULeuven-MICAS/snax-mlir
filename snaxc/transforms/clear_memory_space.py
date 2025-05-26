@@ -1,5 +1,5 @@
 from xdsl.context import Context
-from xdsl.dialects import builtin, func
+from xdsl.dialects import builtin, func, memref
 from xdsl.ir import Attribute, BlockArgument
 from xdsl.passes import ModulePass
 from xdsl.utils.hints import isa
@@ -66,3 +66,10 @@ class ClearMemorySpace(ModulePass):
                     for old_arg, new_arg in zip(old_args, new_args):
                         old_arg.replace_by(new_arg)
                     op_in_module.body.block._args = tuple(new_args)  # pyright: ignore
+
+            if isinstance(op_in_module, memref.GlobalOp):
+                memref_type = op_in_module.type
+                if isa(memref_type, builtin.MemRefType[Attribute]) and not isinstance(
+                    memref_type.layout, builtin.NoneAttr
+                ):
+                    op_in_module.type = clear_memory_space(memref_type)
