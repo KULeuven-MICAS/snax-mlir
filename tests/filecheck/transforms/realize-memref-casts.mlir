@@ -285,3 +285,16 @@ func.func @mnist(%arg0 : memref<?x128xi8, "L3">, %arg1 : memref<128x128xi8, "L3"
 // CHECK-NEXT:   "test.op"(%0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L3">) -> ()
 // CHECK-NEXT:   "memref.global"() <{sym_name = "global_transformed", type = memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>>, initial_value = dense<[[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]]> : tensor<4x4xi8>, sym_visibility = "private", constant, alignment = 64 : i64}> : () -> ()
 // CHECK-NEXT: }
+
+// -----
+
+"memref.global"() <{alignment = 64 : i64, constant, initial_value, sym_name = "global", sym_visibility = "private", type = memref<4x4xi8>}> : () -> ()
+%0 = memref.get_global @global : memref<4x4xi8, "L3">
+%1 = "snax.layout_cast"(%0) : (memref<4x4xi8, "L3">) -> memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L3">
+"test.op"(%1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L3">) -> ()
+
+// CHECK:      builtin.module {
+// CHECK-NEXT:   %0 = memref.get_global @global_transformed : memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L3">
+// CHECK-NEXT:   "test.op"(%0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L3">) -> ()
+// CHECK-NEXT:   "memref.global"() <{sym_name = "global_transformed", type = memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>>, initial_value, sym_visibility = "private", constant, alignment = 64 : i64}> : () -> ()
+// CHECK-NEXT: }
