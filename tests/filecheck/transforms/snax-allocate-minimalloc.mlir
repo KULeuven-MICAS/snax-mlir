@@ -21,10 +21,10 @@ builtin.module {
 //
 //                    First allocation at 0:
 // CHECK-NEXT:     %2 = arith.constant 0 : i32
-// CHECK-NEXT:     %3 = "llvm.inttoptr"(%2) : (i32) -> !llvm.ptr<!llvm.ptr>
+// CHECK-NEXT:     %3 = "llvm.inttoptr"(%2) : (i32) -> !llvm.ptr
 // CHECK-NEXT:     %4 = "llvm.mlir.undef"() : () -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
-// CHECK-NEXT:     %5 = "llvm.insertvalue"(%4, %3) <{position = array<i64: 0>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr<!llvm.ptr>) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
-// CHECK-NEXT:     %6 = "llvm.insertvalue"(%5, %3) <{position = array<i64: 1>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr<!llvm.ptr>) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:     %5 = "llvm.insertvalue"(%4, %3) <{position = array<i64: 0>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:     %6 = "llvm.insertvalue"(%5, %3) <{position = array<i64: 1>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:     %7 = arith.constant 0 : i32
 // CHECK-NEXT:     %8 = "llvm.insertvalue"(%6, %7) <{position = array<i64: 2>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, i32) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:     %9 = builtin.unrealized_conversion_cast %0 : index to i32
@@ -34,10 +34,10 @@ builtin.module {
 //
 //                    Second allocation at 20:
 // CHECK-NEXT:     %13 = arith.constant 20 : i32
-// CHECK-NEXT:     %14 = "llvm.inttoptr"(%13) : (i32) -> !llvm.ptr<!llvm.ptr>
+// CHECK-NEXT:     %14 = "llvm.inttoptr"(%13) : (i32) -> !llvm.ptr
 // CHECK-NEXT:     %15 = "llvm.mlir.undef"() : () -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
-// CHECK-NEXT:     %16 = "llvm.insertvalue"(%15, %14) <{position = array<i64: 0>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr<!llvm.ptr>) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
-// CHECK-NEXT:     %17 = "llvm.insertvalue"(%16, %14) <{position = array<i64: 1>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr<!llvm.ptr>) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:     %16 = "llvm.insertvalue"(%15, %14) <{position = array<i64: 0>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:     %17 = "llvm.insertvalue"(%16, %14) <{position = array<i64: 1>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:     %18 = arith.constant 0 : i32
 // CHECK-NEXT:     %19 = "llvm.insertvalue"(%17, %18) <{position = array<i64: 2>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, i32) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:     %20 = builtin.unrealized_conversion_cast %0 : index to i32
@@ -49,10 +49,10 @@ builtin.module {
 //
 //                    Third allocation back at 0:
 // CHECK-NEXT:     %24 = arith.constant 0 : i32
-// CHECK-NEXT:     %25 = "llvm.inttoptr"(%24) : (i32) -> !llvm.ptr<!llvm.ptr>
+// CHECK-NEXT:     %25 = "llvm.inttoptr"(%24) : (i32) -> !llvm.ptr
 // CHECK-NEXT:     %26 = "llvm.mlir.undef"() : () -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
-// CHECK-NEXT:     %27 = "llvm.insertvalue"(%26, %25) <{position = array<i64: 0>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr<!llvm.ptr>) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
-// CHECK-NEXT:     %28 = "llvm.insertvalue"(%27, %25) <{position = array<i64: 1>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr<!llvm.ptr>) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:     %27 = "llvm.insertvalue"(%26, %25) <{position = array<i64: 0>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:     %28 = "llvm.insertvalue"(%27, %25) <{position = array<i64: 1>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, !llvm.ptr) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:     %29 = arith.constant 0 : i32
 // CHECK-NEXT:     %30 = "llvm.insertvalue"(%28, %29) <{position = array<i64: 2>}> : (!llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>, i32) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
 // CHECK-NEXT:     %31 = builtin.unrealized_conversion_cast %0 : index to i32
