@@ -2,25 +2,6 @@ from util.snake.configs import get_snax_mac_config
 
 config = get_snax_mac_config()
 
-config["snaxoptflags"] = ",".join(
-    [
-        "preprocess",
-        "dispatch-kernels",
-        "set-memory-space",
-        "set-memory-layout",
-        "realize-memref-casts",
-        "reuse-memref-allocs",
-        "insert-sync-barrier",
-        "dispatch-regions",
-        "snax-copy-to-dma",
-        "memref-to-snax",
-        "snax-to-func",
-        "snax-allocate",
-        "clear-memory-space",
-        "postprocess",
-    ]
-)
-
 
 module snax_rules:
     snakefile:
@@ -32,17 +13,57 @@ module snax_rules:
 use rule * from snax_rules as snax_*
 
 
+def get_snax_opt_flags(alloc_mode):
+    result = ",".join(
+        [
+            "preprocess",
+            "dispatch-kernels",
+            "set-memory-space",
+            "set-memory-layout",
+            "realize-memref-casts",
+            "reuse-memref-allocs",
+            "insert-sync-barrier",
+            "dispatch-regions",
+            "snax-copy-to-dma",
+            "memref-to-snax",
+            "snax-to-func",
+            "canonicalize",
+            f"snax-allocate{{mode={alloc_mode}}}",
+            "clear-memory-space",
+            "postprocess",
+        ]
+    )
+    return result
+
+
+rule compile_snax:
+    """
+    Apply various transformations snax-opt on mlir files.
+    Options controlled with `snaxoptflags` defined in config.
+    """
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}_{alloc_mode}.ll.mlir"),
+    params:
+        optflags=lambda wildcards: get_snax_opt_flags(wildcards.alloc_mode),
+    shell:
+        "{config[snax-opt]} -p {params.optflags} -o {output} {input}"
+
+
 # Rules
 rule all:
     input:
-        "func_traces.json",
+        "func_dynamic_traces.json",
+        "func_static_traces.json",
+        "func_minimalloc_traces.json",
 
 
 rule compile_snax_binary:
     input:
-        "func.o",
+        "{file}.o",
         "main.o",
     output:
-        "func.x",
+        "{file}.x",
     shell:
         "{config[ld]} {config[ldflags]} {input} -o {output}"
