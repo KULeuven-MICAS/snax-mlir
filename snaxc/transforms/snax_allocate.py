@@ -234,6 +234,9 @@ class MiniMallocate(RewritePattern):
                 assert next_op is not None
             return next_op
 
+        if len(func_op.body.blocks) != 1:
+            return
+
         # Determine lifetime of all buffers
         for i, op in enumerate(func_op.body.block.ops):
             if isinstance(op, snax.Alloc):
@@ -267,6 +270,10 @@ class MiniMallocate(RewritePattern):
                 for use in op.results[0].uses:
                     use_op = get_top_level_op(use.operation)
                     uses[use_op].append(buffer)
+                    if isinstance(use.operation, builtin.UnrealizedConversionCastOp):
+                        for cast_use in use.operation.results[0].uses:
+                            cast_use_op = get_top_level_op(cast_use.operation)
+                            uses[cast_use_op].append(buffer)
 
             if op in uses:
                 # udpate lifetime of buffer
