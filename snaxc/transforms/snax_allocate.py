@@ -203,7 +203,7 @@ class StaticAllocs(RewritePattern):
         self.current_addresses[memory] = next_address
 
         pointer_cst = arith.ConstantOp.from_int_and_width(current_address, builtin.i32)
-        pointer = llvm.IntToPtrOp(pointer_cst, llvm.LLVMPointerType.opaque())
+        pointer = llvm.IntToPtrOp(pointer_cst)
 
         ops_to_insert: list[Operation] = [pointer_cst, pointer]
 
@@ -295,7 +295,7 @@ class MiniMallocate(RewritePattern):
             pointer_cst = arith.ConstantOp.from_int_and_width(
                 pointer_result[buffer.id], builtin.i32
             )
-            pointer = llvm.IntToPtrOp(pointer_cst, llvm.LLVMPointerType.opaque())
+            pointer = llvm.IntToPtrOp(pointer_cst)
 
             ops_to_insert: list[Operation] = [pointer_cst, pointer]
 
