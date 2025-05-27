@@ -175,12 +175,19 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                         ),
                     )
 
-                    # point C to D32
-                    new_inputs.append(op.outputs[0])
+                    # point C to 0
+                    ops_to_add.append(
+                        # zero pointer will generate 0 values
+                        ptr := arith.ConstantOp.from_int_and_width(
+                            0, builtin.IndexType()
+                        )
+                    )
+                    new_inputs.append(ptr.result)
 
                 elif op.body.block.arg_types[-1] == dart.StreamType(
                     builtin.IntegerType(8)
                 ):
+                    new_inputs.append(new_outputs.pop())
                     # matmul, int8 output
                     # for C32:
                     snax_stride_patterns.append(
@@ -190,7 +197,13 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                             spatial_strides=[64, 8],
                         )
                     )
-                    new_inputs.append(op.outputs[0])
+                    ops_to_add.append(
+                        # zero pointer will generate 0 values
+                        ptr := arith.ConstantOp.from_int_and_width(
+                            0, builtin.IndexType()
+                        )
+                    )
+                    new_inputs.append(ptr.result)
                     # for D32
                     snax_stride_patterns.append(
                         snax_stream.StridePattern(
