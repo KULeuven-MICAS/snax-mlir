@@ -197,15 +197,12 @@ class HandleFuncReturns(RewritePattern):
 
             if not isa(func_op_output, builtin.MemRefType[Attribute]):
                 new_arguments.append(func_return_output)
-                continue
-            if not isa(
+            elif not isa(
                 func_return_output_type := func_return_output.type,
                 builtin.MemRefType[Attribute],
             ):
                 new_arguments.append(func_return_output)
-                continue
-
-            if func_op_output.memory_space != func_return_output_type.memory_space:
+            elif func_op_output.memory_space != func_return_output_type.memory_space:
                 # create cast op
                 cast_op = memref.MemorySpaceCastOp.from_type_and_target_space(
                     func_return_output,
@@ -217,6 +214,8 @@ class HandleFuncReturns(RewritePattern):
                 # replace return value with cast
                 new_arguments.append(cast_op)
                 changes_made = True
+            else:
+                new_arguments.append(func_return_output)
 
         if not changes_made:
             return
