@@ -258,6 +258,26 @@ class RealizeMemrefCasts(RewritePattern):
             # replace old global get op with new one
             rewriter.replace_op(const_source, new_global_get_op)
 
+        # look for an alloc that can be allocated with the correct layout direclty
+        if (
+            isinstance(source_op.source, OpResult)
+            and isinstance(alloc_op := source_op.source.op, memref.AllocOp)
+            and isinstance(op.dest.type, builtin.MemRefType)
+            # alloc op may only be uses by layout cast ops:
+            and all(
+                isinstance(use.operation, LayoutCast) for use in alloc_op.memref.uses
+            )
+        ):
+            new_alloc_op = memref.AllocOp.get(
+                alloc_op.memref.type.get_element_type(),
+                alloc_op.alignment,
+                alloc_op.memref.type.get_shape(),
+                alloc_op.dynamic_sizes,
+                op.dest.type.layout,
+                alloc_op.memref.type.memory_space,
+            )
+            rewriter.replace_op(alloc_op, new_alloc_op)
+
         # now perform casting by inserting memref copies and allocs
         source_type = source_op.source.type
         assert isa(source_type, builtin.MemRefType[Attribute])
