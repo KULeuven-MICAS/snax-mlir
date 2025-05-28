@@ -28,6 +28,23 @@ func.func public @test(%arg0 : memref<64xi32>) -> memref<64xi32> {
 
 // -----
 
+func.func public @test() -> (memref<64xi32>, memref<64xi32>) {
+  %0 = memref.get_global @constant : memref<64xi32>
+  %1 = memref.alloc() {alignment = 64 : i64} : memref<64xi32>
+  func.return %0, %1: memref<64xi32>, memref<64xi32>
+}
+
+// CHECK:      builtin.module {
+// CHECK-NEXT:   func.func public @test() -> (memref<64xi32, "L3">, memref<64xi32, "L3">) {
+// CHECK-NEXT:     %0 = memref.get_global @constant : memref<64xi32, "L3">
+// CHECK-NEXT:     %1 = memref.alloc() {alignment = 64 : i64} : memref<64xi32, "L1">
+// CHECK-NEXT:     %2 = "memref.memory_space_cast"(%1) : (memref<64xi32, "L1">) -> memref<64xi32, "L3">
+// CHECK-NEXT:     func.return %0, %2 : memref<64xi32, "L3">, memref<64xi32, "L3">
+// CHECK-NEXT:   }
+// CHECK-NEXT: }
+
+// -----
+
 func.func public @simple_mult(%arg0 : memref<64xi32>, %arg1 : memref<64xi32>, %arg2 : memref<64xi32>) {
   linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%arg0, %arg1 : memref<64xi32>, memref<64xi32>) outs(%arg2 : memref<64xi32>) {
   ^0(%arg3 : i32, %arg4 : i32, %arg5 : i32):
