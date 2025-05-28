@@ -298,3 +298,79 @@ func.func @mnist(%arg0 : memref<?x128xi8, "L3">, %arg1 : memref<128x128xi8, "L3"
 // CHECK-NEXT:   "test.op"(%0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L3">) -> ()
 // CHECK-NEXT:   "memref.global"() <{sym_name = "global_transformed", type = memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>>, initial_value, sym_visibility = "private", constant, alignment = 64 : i64}> : () -> ()
 // CHECK-NEXT: }
+
+
+// -----
+
+// an alloc with a layout cast
+
+%0 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, "L1">
+%1 = "snax.layout_cast"(%0) : (memref<4x4xi8, "L1">) -> memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">
+"test.op"(%1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+
+// the alloc is replaced by a new alloc with the transformed layout
+
+// CHECK:      builtin.module {
+// CHECK-NEXT:   %0 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">
+// CHECK-NEXT:   "test.op"(%0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT: }
+
+// -----
+
+// an alloc with a layout cast, but the alloc is used in a different op
+
+%0 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, "L1">
+"test.op"(%0) : (memref<4x4xi8, "L1">) -> ()
+%1 = "snax.layout_cast"(%0) : (memref<4x4xi8, "L1">) -> memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">
+"test.op"(%1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+
+// the alloc is unchanged as the test op needs the original layout
+
+// CHECK:      builtin.module {
+// CHECK-NEXT:   %0 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, "L1">
+// CHECK-NEXT:   "test.op"(%0) : (memref<4x4xi8, "L1">) -> ()
+// CHECK-NEXT:   %1 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">
+// CHECK-NEXT:   "memref.copy"(%0, %1) : (memref<4x4xi8, "L1">, memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT:   "test.op"(%1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT:   "memref.copy"(%1, %0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">, memref<4x4xi8, "L1">) -> ()
+// CHECK-NEXT: }
+
+// -----
+
+
+// an alloc with two equal layout casts
+
+%0 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, "L1">
+%1 = "snax.layout_cast"(%0) : (memref<4x4xi8, "L1">) -> memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">
+"test.op"(%1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+%2 = "snax.layout_cast"(%0) : (memref<4x4xi8, "L1">) -> memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">
+"test.op"(%2) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+
+// the alloc is replaced by a new alloc with the transformed layout
+
+// CHECK:      builtin.module {
+// CHECK-NEXT:   %0 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">
+// CHECK-NEXT:   "test.op"(%0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT:   "test.op"(%0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT: }
+
+// -----
+
+// an alloc with two different layout casts
+
+%0 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, "L1">
+%1 = "snax.layout_cast"(%0) : (memref<4x4xi8, "L1">) -> memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">
+"test.op"(%1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+%2 = "snax.layout_cast"(%0) : (memref<4x4xi8, "L1">) -> memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">
+"test.op"(%2) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+
+// the alloc is replaced by a new alloc with the transformed layout, a transformation is applied for the first cast, but not the second one
+
+// CHECK:      builtin.module {
+// CHECK-NEXT:   %0 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">
+// CHECK-NEXT:   %1 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">
+// CHECK-NEXT:   "memref.copy"(%0, %1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">, memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT:   "test.op"(%1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT:   "memref.copy"(%1, %0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">, memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT:   "test.op"(%0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT: }
