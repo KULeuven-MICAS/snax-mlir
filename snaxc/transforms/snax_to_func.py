@@ -1,5 +1,6 @@
 from xdsl.context import Context
 from xdsl.dialects import builtin, func
+from xdsl.dialects.memref import DeallocOp
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -37,6 +38,12 @@ class ClearL1ToFunc(RewritePattern):
         rewriter.replace_matched_op(func_call)
 
 
+class EraseDeallocs(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: DeallocOp, rewriter: PatternRewriter):
+        rewriter.erase_matched_op()
+
+
 class SNAXToFunc(ModulePass):
     name = "snax-to-func"
 
@@ -51,3 +58,4 @@ class SNAXToFunc(ModulePass):
             SymbolTable.insert_or_update(op, func_op)
 
         PatternRewriteWalker(ClearL1ToFunc()).rewrite_module(op)
+        PatternRewriteWalker(EraseDeallocs()).rewrite_module(op)

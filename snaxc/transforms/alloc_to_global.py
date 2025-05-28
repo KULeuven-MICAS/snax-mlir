@@ -10,6 +10,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.traits import SymbolTable
+from xdsl.utils.hints import isa
 
 
 class AllocToGlobal(RewritePattern):
@@ -42,9 +43,14 @@ class AllocToGlobal(RewritePattern):
         assert SymbolTable.lookup_symbol(module_op, global_sym_name) is None
 
         # create global
+        # potential memory space cannot be set in global
+        assert isa(memref_type := op.results[0].type, builtin.MemRefType)
         memref_global = memref.GlobalOp.get(
             builtin.StringAttr(global_sym_name),
-            op.results[0].type,
+            # do not copy memory space:
+            builtin.MemRefType(
+                memref_type.element_type, memref_type.shape, memref_type.layout
+            ),
             initial_value=builtin.UnitAttr(),
         )
         SymbolTable.insert_or_update(module_op, memref_global)
