@@ -33,6 +33,7 @@ nn = [
 
 [project.scripts]
 snax-opt = "snaxc.tools.snax_opt_main:main"
+snaxc = "snaxc.tools.snaxc_main:main"
 
 [tool.ruff]
 target-version = "py310"
