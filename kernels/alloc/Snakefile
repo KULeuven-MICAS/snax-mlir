@@ -13,29 +13,6 @@ module snax_rules:
 use rule * from snax_rules as snax_*
 
 
-def get_snax_opt_flags(alloc_mode):
-    result = ",".join(
-        [
-            "preprocess",
-            "dispatch-kernels",
-            "set-memory-space",
-            "set-memory-layout",
-            "realize-memref-casts",
-            "reuse-memref-allocs",
-            "insert-sync-barrier",
-            "dispatch-regions",
-            "snax-copy-to-dma",
-            "memref-to-snax",
-            "snax-to-func",
-            "canonicalize",
-            f"snax-allocate{{mode={alloc_mode}}}",
-            "clear-memory-space",
-            "postprocess",
-        ]
-    )
-    return result
-
-
 rule compile_snax:
     """
     Apply various transformations snax-opt on mlir files.
@@ -45,10 +22,8 @@ rule compile_snax:
         "{file}.mlir",
     output:
         temp("{file}_{alloc_mode}.ll.mlir"),
-    params:
-        optflags=lambda wildcards: get_snax_opt_flags(wildcards.alloc_mode),
     shell:
-        "{config[snax-opt]} -p {params.optflags} -o {output} {input}"
+        "{config[snaxc]} --alloc-mode={wildcards.alloc_mode} -o {output} {input}"
 
 
 # Rules

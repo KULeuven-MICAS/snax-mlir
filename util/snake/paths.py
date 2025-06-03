@@ -9,6 +9,7 @@ def get_default_paths() -> dict[str, str]:
         "mlir-opt": "mlir-opt",
         "mlir-translate": "mlir-translate",
         "snax-opt": "snax-opt",
+        "snaxc": "snaxc",
     }
 
 
