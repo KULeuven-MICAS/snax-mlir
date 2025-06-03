@@ -2,15 +2,30 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-from xdsl.context import Context
 from xdsl.dialects import get_all_dialects
 from xdsl.dialects.builtin import ModuleOp
 from xdsl.parser import Parser
 from xdsl.passes import ModulePass, PipelinePass
 from xdsl.printer import Printer
 from xdsl.tools.command_line_tool import CommandLineTool
+from xdsl.transforms.canonicalize import CanonicalizePass
 
+from snaxc.accelerators.acc_context import AccContext
 from snaxc.dialects import get_all_snax_dialects
+from snaxc.transforms.backend.postprocess_mlir import PostprocessPass
+from snaxc.transforms.clear_memory_space import ClearMemorySpace
+from snaxc.transforms.dispatch_kernels import DispatchKernels
+from snaxc.transforms.dispatch_regions import DispatchRegions
+from snaxc.transforms.frontend.preprocess_mlir import PreprocessPass
+from snaxc.transforms.insert_sync_barrier import InsertSyncBarrier
+from snaxc.transforms.memref_to_snax import MemrefToSNAX
+from snaxc.transforms.realize_memref_casts import RealizeMemrefCastsPass
+from snaxc.transforms.reuse_memref_allocs import ReuseMemrefAllocs
+from snaxc.transforms.set_memory_layout import SetMemoryLayout
+from snaxc.transforms.set_memory_space import SetMemorySpace
+from snaxc.transforms.snax_allocate import SnaxAllocatePass
+from snaxc.transforms.snax_copy_to_dma import SNAXCopyToDMA
+from snaxc.transforms.snax_to_func import SNAXToFunc
 
 
 class SNAXCMain(CommandLineTool):
@@ -19,7 +34,7 @@ class SNAXCMain(CommandLineTool):
         description: str = "SNAX-MLIR Compiler",
         args: Sequence[str] | None = None,
     ):
-        self.ctx = Context(allow_unregistered=True)
+        self.ctx = AccContext(allow_unregistered=True)
         self.register_all_dialects()
 
         # arg handling
@@ -87,6 +102,13 @@ class SNAXCMain(CommandLineTool):
             help="Print operations with the generic format",
         )
 
+        arg_parser.add_argument(
+            "--alloc-mode",
+            choices=["static", "dynamic", "minimalloc"],
+            default="minimalloc",
+            help="Select memory allocation scheme",
+        )
+
     def setup_pipeline(self):
         """
         Creates a pipeline that consists of all the passes specified.
@@ -104,7 +126,26 @@ class SNAXCMain(CommandLineTool):
                 printer.print_op(module)
                 print("\n\n\n")
 
-        self.pipeline = PipelinePass(tuple(), callback)
+        self.pipeline = PipelinePass(
+            (
+                PreprocessPass(),
+                DispatchKernels(),
+                SetMemorySpace(),
+                SetMemoryLayout(),
+                RealizeMemrefCastsPass(),
+                ReuseMemrefAllocs(),
+                InsertSyncBarrier(),
+                DispatchRegions(),
+                SNAXCopyToDMA(),
+                MemrefToSNAX(),
+                SNAXToFunc(),
+                CanonicalizePass(),
+                SnaxAllocatePass(self.args.alloc_mode),
+                ClearMemorySpace(),
+                PostprocessPass(),
+            ),
+            callback,
+        )
 
 
 def main():
