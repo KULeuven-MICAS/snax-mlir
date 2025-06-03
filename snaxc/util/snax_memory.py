@@ -25,7 +25,3 @@ _memory_registry: dict[StringAttr, SnaxMemory] = {
     L3.attribute: L3,
     TEST.attribute: TEST,
 }
-
-
-def get_memory(attr: StringAttr) -> SnaxMemory:
-    return _memory_registry[attr]

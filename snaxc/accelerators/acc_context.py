@@ -3,11 +3,12 @@ from dataclasses import dataclass, field
 
 from xdsl.context import Context
 from xdsl.ir import Operation
-from xdsl.parser import ModuleOp
+from xdsl.parser import ModuleOp, StringAttr
 from xdsl.traits import SymbolTable
 
 from snaxc.accelerators.accelerator import Accelerator
 from snaxc.dialects.accfg import AcceleratorOp
+from snaxc.util.snax_memory import L1, L3, TEST, SnaxMemory
 
 
 @dataclass
@@ -20,6 +21,14 @@ class AccContext(Context):
         default_factory=dict[str, Callable[[], Accelerator]]
     )
 
+    _memories: dict[StringAttr, SnaxMemory] = field(
+        default_factory=lambda: {
+            L3.attribute: L3,
+            L1.attribute: L1,
+            TEST.attribute: TEST,
+        }
+    )
+
     def clone(self) -> "AccContext":
         return AccContext(
             self.allow_unregistered,
@@ -29,6 +38,7 @@ class AccContext(Context):
             self._loaded_types.copy(),
             self._registered_dialects.copy(),
             self._registered_accelerators.copy(),
+            self._memories.copy(),
         )
 
     def register_accelerator(
@@ -84,6 +94,15 @@ class AccContext(Context):
         Returns the names of all registered accelerators. Not valid across mutations of this object.
         """
         return self._registered_accelerators.keys()
+
+    def get_memory(self, name: StringAttr) -> SnaxMemory:
+        """
+        Get a memory space by its name.
+        Raises KeyError if the memory space is not registered.
+        """
+        if name not in self._memories:
+            raise KeyError(f"Memory space '{name}' is not registered")
+        return self._memories[name]
 
 
 def find_accelerator_op(op: Operation, accelerator_str: str) -> AcceleratorOp | None:

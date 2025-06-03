@@ -1,5 +1,6 @@
 from collections import defaultdict
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import cast
 
 from minimalloc import Buffer, Problem  # pyright: ignore[reportMissingTypeStubs]
@@ -17,8 +18,9 @@ from xdsl.pattern_rewriter import (
 from xdsl.traits import SymbolTable
 from xdsl.utils.hints import isa
 
+from snaxc.accelerators.acc_context import AccContext
 from snaxc.dialects import snax
-from snaxc.util.snax_memory import L1, SnaxMemory, get_memory
+from snaxc.util.snax_memory import L1, SnaxMemory
 
 
 def dense_array(pos: Sequence[int] | Sequence[builtin.IntAttr]):
@@ -147,6 +149,7 @@ class DynamicAllocs(RewritePattern):
         SymbolTable.insert_or_update(module_op, func_op)
 
 
+@dataclass
 class StaticAllocs(RewritePattern):
     """
     Simple static allocation scheme.
@@ -155,7 +158,11 @@ class StaticAllocs(RewritePattern):
     No allocations are ever freed, so the address space is never reused.
     """
 
-    current_addresses: dict[SnaxMemory, int] = {}
+    get_memory: Callable[[StringAttr], SnaxMemory]
+
+    current_addresses: dict[SnaxMemory, int] = field(
+        default_factory=dict[SnaxMemory, int]
+    )
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: snax.Alloc, rewriter: PatternRewriter):
@@ -182,7 +189,7 @@ class StaticAllocs(RewritePattern):
 
         # get the memory space
         assert isinstance(op.memory_space, builtin.StringAttr)
-        memory = get_memory(op.memory_space)
+        memory = self.get_memory(op.memory_space)
 
         if memory not in self.current_addresses:
             self.current_addresses[memory] = memory.start
@@ -213,6 +220,7 @@ class StaticAllocs(RewritePattern):
         rewriter.replace_matched_op(ops_to_insert, created_struct.results)
 
 
+@dataclass
 class MiniMallocate(RewritePattern):
     """
     Pattern to assign static allocations based on the minimalloc algorithm.
@@ -220,6 +228,8 @@ class MiniMallocate(RewritePattern):
     For this to work, all allocations must be top level ops in a func op.
     Lifetime is determined by the index of the first and last op it is used in.
     """
+
+    get_memory: Callable[[StringAttr], SnaxMemory]
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter):
@@ -283,7 +293,7 @@ class MiniMallocate(RewritePattern):
         # Lifetime of the buffers is now determined, run the minimalloc algorithm for every memory space
         pointer_result: dict[str, int] = {}
         memory_spaces = set(
-            get_memory(cast(StringAttr, buffer_ops[buffer.id].memory_space))
+            self.get_memory(cast(StringAttr, buffer_ops[buffer.id].memory_space))
             for buffer in buffers
         )
         for memory in memory_spaces:
@@ -325,10 +335,12 @@ class SnaxAllocatePass(ModulePass):
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         if self.mode not in ("dynamic", "static", "minimalloc"):
             raise RuntimeError(f"unsupported allocation strategy: {self.mode}")
+        assert isinstance(ctx, AccContext)
+        get_memory = ctx.get_memory
         match self.mode:
             case "dynamic":
                 PatternRewriteWalker(DynamicAllocs()).rewrite_module(op)
             case "static":
-                PatternRewriteWalker(StaticAllocs()).rewrite_module(op)
+                PatternRewriteWalker(StaticAllocs(get_memory)).rewrite_module(op)
             case "minimalloc":
-                PatternRewriteWalker(MiniMallocate()).rewrite_module(op)
+                PatternRewriteWalker(MiniMallocate(get_memory)).rewrite_module(op)
