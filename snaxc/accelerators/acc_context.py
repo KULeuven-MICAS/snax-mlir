@@ -95,6 +95,9 @@ class AccContext(Context):
         """
         return self._registered_accelerators.keys()
 
+    def register_memory(self, memory: SnaxMemory) -> None:
+        self._memories[memory.attribute] = memory
+
     def get_memory(self, name: StringAttr) -> SnaxMemory:
         """
         Get a memory space by its name.

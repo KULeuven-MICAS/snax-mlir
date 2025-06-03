@@ -2,6 +2,7 @@ import argparse
 import sys
 from collections.abc import Sequence
 
+import yaml
 from xdsl.dialects import get_all_dialects
 from xdsl.dialects.builtin import ModuleOp
 from xdsl.parser import Parser
@@ -12,6 +13,7 @@ from xdsl.transforms.canonicalize import CanonicalizePass
 
 from snaxc.accelerators.acc_context import AccContext
 from snaxc.dialects import get_all_snax_dialects
+from snaxc.tools.config_parser import parse_config
 from snaxc.transforms.backend.postprocess_mlir import PostprocessPass
 from snaxc.transforms.clear_memory_space import ClearMemorySpace
 from snaxc.transforms.dispatch_kernels import DispatchKernels
@@ -34,14 +36,13 @@ class SNAXCMain(CommandLineTool):
         description: str = "SNAX-MLIR Compiler",
         args: Sequence[str] | None = None,
     ):
-        self.ctx = AccContext(allow_unregistered=True)
-        self.register_all_dialects()
-
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
         self.register_all_arguments(arg_parser)
         self.args = arg_parser.parse_args(args=args)
 
+        self.load_config()
+        self.register_all_dialects()
         self.setup_pipeline()
 
     def register_all_dialects(self):
@@ -52,6 +53,17 @@ class SNAXCMain(CommandLineTool):
         all_dialects.update(get_all_snax_dialects())
         for dialect_name, dialect_factory in all_dialects.items():
             self.ctx.register_dialect(dialect_name, dialect_factory)
+
+    def load_config(self):
+        # read config file
+        if self.args.config is not None:
+            with open(self.args.config) as f:
+                config = yaml.safe_load(f)
+            context = parse_config(config)
+            context.allow_unregistered = True
+            self.ctx = context
+        else:
+            self.ctx = AccContext(allow_unregistered=True)
 
     def run(self):
         # read file
@@ -86,6 +98,13 @@ class SNAXCMain(CommandLineTool):
 
         arg_parser.add_argument(
             "-o", "--output-file", type=str, required=True, help="path to output file"
+        )
+
+        arg_parser.add_argument(
+            "-c",
+            "--config",
+            type=str,
+            help="path to the accelerator configuration file",
         )
 
         arg_parser.add_argument(
