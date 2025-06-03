@@ -1,6 +1,6 @@
 from collections import defaultdict
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import cast
 
 from minimalloc import Buffer, Problem  # pyright: ignore[reportMissingTypeStubs]
@@ -160,7 +160,9 @@ class StaticAllocs(RewritePattern):
 
     get_memory: Callable[[StringAttr], SnaxMemory]
 
-    current_addresses: dict[SnaxMemory, int] = {}
+    current_addresses: dict[SnaxMemory, int] = field(
+        default_factory=dict[SnaxMemory, int]
+    )
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: snax.Alloc, rewriter: PatternRewriter):

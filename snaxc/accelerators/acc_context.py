@@ -21,11 +21,13 @@ class AccContext(Context):
         default_factory=dict[str, Callable[[], Accelerator]]
     )
 
-    _memories: dict[StringAttr, SnaxMemory] = {
-        L3.attribute: L3,
-        L1.attribute: L1,
-        TEST.attribute: TEST,
-    }
+    _memories: dict[StringAttr, SnaxMemory] = field(
+        default_factory=lambda: {
+            L3.attribute: L3,
+            L1.attribute: L1,
+            TEST.attribute: TEST,
+        }
+    )
 
     def clone(self) -> "AccContext":
         return AccContext(
