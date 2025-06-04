@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Any
 
 from util.snake.flags import (
@@ -48,6 +49,7 @@ def get_snax_gemmx_config(snax_mlir_path: str | None = None) -> dict[str, Any]:
 def get_snax_alu_config(snax_mlir_path: str | None = None) -> dict[str, Any]:
     # use CONDA_PREFIX to access pixi env
     snax_utils_path = os.environ["CONDA_PREFIX"] + "/snax-utils"
+    utils_dir = Path(__file__).resolve().parent.parent
     snitch_sw_path = snax_utils_path + "/snax-alu"
     config: dict[str, Any] = {}
     config.update(get_default_paths())
@@ -56,6 +58,7 @@ def get_snax_alu_config(snax_mlir_path: str | None = None) -> dict[str, Any]:
     config["num_chips"] = 1
     config["num_harts"] = 2
     config["vltsim"] = snax_utils_path + "/snax-alu-rtl/bin/snitch_cluster.vlt"
+    config["snaxc-config"] = utils_dir / "ssot" / "snax_alu.yaml"
     return config
 
 

@@ -3,12 +3,12 @@ from dataclasses import dataclass, field
 
 from xdsl.context import Context
 from xdsl.ir import Operation
-from xdsl.parser import ModuleOp, StringAttr
+from xdsl.parser import ModuleOp
 from xdsl.traits import SymbolTable
 
 from snaxc.accelerators.accelerator import Accelerator
 from snaxc.dialects.accfg import AcceleratorOp
-from snaxc.util.snax_memory import L1, L3, TEST, SnaxMemory
+from snaxc.util.snax_memory import SnaxMemory
 
 
 @dataclass
@@ -21,13 +21,7 @@ class AccContext(Context):
         default_factory=dict[str, Callable[[], Accelerator]]
     )
 
-    _memories: dict[StringAttr, SnaxMemory] = field(
-        default_factory=lambda: {
-            L3.attribute: L3,
-            L1.attribute: L1,
-            TEST.attribute: TEST,
-        }
-    )
+    _memories: dict[str, SnaxMemory] = field(default_factory=dict[str, SnaxMemory])
 
     def clone(self) -> "AccContext":
         return AccContext(
@@ -96,9 +90,9 @@ class AccContext(Context):
         return self._registered_accelerators.keys()
 
     def register_memory(self, memory: SnaxMemory) -> None:
-        self._memories[memory.attribute] = memory
+        self._memories[memory.attribute.data] = memory
 
-    def get_memory(self, name: StringAttr) -> SnaxMemory:
+    def get_memory(self, name: str) -> SnaxMemory:
         """
         Get a memory space by its name.
         Raises KeyError if the memory space is not registered.

@@ -1,6 +1,6 @@
-from util.snake.configs import get_snax_mac_config
+from util.snake.configs import get_snax_alu_config
 
-config = get_snax_mac_config()
+config = get_snax_alu_config()
 
 
 module snax_rules:
@@ -23,7 +23,7 @@ rule compile_snax:
     output:
         temp("{file}_{alloc_mode}.ll.mlir"),
     shell:
-        "{config[snaxc]} --alloc-mode={wildcards.alloc_mode} -o {output} {input}"
+        "{config[snaxc]} --alloc-mode={wildcards.alloc_mode} -c {config[snaxc-config]} -o {output} {input}"
 
 
 # Rules

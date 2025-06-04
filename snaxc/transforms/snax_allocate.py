@@ -158,7 +158,7 @@ class StaticAllocs(RewritePattern):
     No allocations are ever freed, so the address space is never reused.
     """
 
-    get_memory: Callable[[StringAttr], SnaxMemory]
+    get_memory: Callable[[str], SnaxMemory]
 
     current_addresses: dict[SnaxMemory, int] = field(
         default_factory=dict[SnaxMemory, int]
@@ -189,7 +189,7 @@ class StaticAllocs(RewritePattern):
 
         # get the memory space
         assert isinstance(op.memory_space, builtin.StringAttr)
-        memory = self.get_memory(op.memory_space)
+        memory = self.get_memory(op.memory_space.data)
 
         if memory not in self.current_addresses:
             self.current_addresses[memory] = memory.start
@@ -229,7 +229,7 @@ class MiniMallocate(RewritePattern):
     Lifetime is determined by the index of the first and last op it is used in.
     """
 
-    get_memory: Callable[[StringAttr], SnaxMemory]
+    get_memory: Callable[[str], SnaxMemory]
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter):
@@ -293,7 +293,7 @@ class MiniMallocate(RewritePattern):
         # Lifetime of the buffers is now determined, run the minimalloc algorithm for every memory space
         pointer_result: dict[str, int] = {}
         memory_spaces = set(
-            self.get_memory(cast(StringAttr, buffer_ops[buffer.id].memory_space))
+            self.get_memory(cast(StringAttr, buffer_ops[buffer.id].memory_space).data)
             for buffer in buffers
         )
         for memory in memory_spaces:
