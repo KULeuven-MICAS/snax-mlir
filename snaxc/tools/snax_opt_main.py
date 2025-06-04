@@ -8,6 +8,7 @@ from xdsl.xdsl_opt_main import xDSLOptMain
 from snaxc.accelerators import AccContext, get_all_accelerators
 from snaxc.dialects import get_all_snax_dialects
 from snaxc.transforms import get_all_snax_passes
+from snaxc.util.snax_memory import L1, L3, TEST
 
 
 class SNAXOptMain(xDSLOptMain):
@@ -21,11 +22,13 @@ class SNAXOptMain(xDSLOptMain):
         self.available_targets = {}
 
         self.ctx: AccContext = AccContext()
+
         self.register_all_dialects()
         self.register_all_accelerators()
         self.register_all_frontends()
         self.register_all_passes()
         self.register_all_targets()
+        self.register_all_memories()
 
         # arg handling
         arg_parser = argparse.ArgumentParser(description=description)
@@ -55,6 +58,11 @@ class SNAXOptMain(xDSLOptMain):
     def register_all_accelerators(self):
         for accelerator_name, accelerator_factory in get_all_accelerators().items():
             self.ctx.register_accelerator(accelerator_name, accelerator_factory)
+
+    def register_all_memories(self):
+        self.ctx.register_memory(L1)
+        self.ctx.register_memory(L3)
+        self.ctx.register_memory(TEST)
 
 
 def main():
