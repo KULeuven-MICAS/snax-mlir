@@ -52,7 +52,12 @@ def parse_memory(config: dict[str, Any]) -> SnaxMemory:
 
 
 def parse_cluster(config: dict[str, Any]) -> Cluster:
+    cores = [
+        core_name
+        for core_name in config.keys()
+        if re.fullmatch(r"core_(\d+)", core_name)
+    ]
     return Cluster(
         memory=parse_memory(config["memory"]),
-        cores=[Core(accelerators=list(core.keys())) for core in config["cores"]],
+        cores=[Core(accelerators=config[core]) for core in cores],
     )
