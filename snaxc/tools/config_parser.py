@@ -6,6 +6,7 @@ from xdsl.dialects.builtin import StringAttr
 from xdsl.utils.hints import isa
 
 from snaxc.accelerators.acc_context import AccContext
+from snaxc.accelerators.snax_alu import SNAXAluAccelerator
 from snaxc.accelerators.snax_gemmx import SNAXGEMMXAccelerator
 from snaxc.util.snax_memory import SnaxMemory
 
@@ -36,9 +37,13 @@ def parse_config(config: Any) -> AccContext:
             context.register_memory(cluster.memory)
             for core in cluster.cores:
                 for accelerator in core.accelerators:
-                    if accelerator == "gemmx":
+                    if accelerator == "snax_gemmx":
                         context.register_accelerator(
                             SNAXGEMMXAccelerator.name, lambda: SNAXGEMMXAccelerator()
+                        )
+                    elif accelerator == "snax_alu":
+                        context.register_accelerator(
+                            SNAXAluAccelerator.name, lambda: SNAXAluAccelerator()
                         )
         else:
             raise ValueError(f"Unknown config key: {key}")
@@ -52,7 +57,12 @@ def parse_memory(config: dict[str, Any]) -> SnaxMemory:
 
 
 def parse_cluster(config: dict[str, Any]) -> Cluster:
+    cores = [
+        core_name
+        for core_name in config.keys()
+        if re.fullmatch(r"core_(\d+)", core_name)
+    ]
     return Cluster(
         memory=parse_memory(config["memory"]),
-        cores=[Core(accelerators=list(core.keys())) for core in config["cores"]],
+        cores=[Core(accelerators=config[core]) for core in cores],
     )
