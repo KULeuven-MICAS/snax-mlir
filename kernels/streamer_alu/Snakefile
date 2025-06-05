@@ -1,35 +1,6 @@
 from util.snake.configs import get_snax_alu_config
 
 config = get_snax_alu_config()
-config["snaxoptflags"] = ",".join(
-    [
-        "preprocess",
-        "insert-accfg-op{accelerator=snax_alu}",
-        "convert-linalg-to-kernel",
-        "dispatch-kernels",
-        "convert-linalg-to-dart",
-        "test-insert-debugs",
-        "set-memory-space",
-        "dart-scheduler",
-        "set-memory-layout",
-        "test-insert-debugs",
-        "realize-memref-casts",
-        "reuse-memref-allocs",
-        "insert-sync-barrier",
-        "dispatch-regions",
-        "dart-layout-resolution",
-        "convert-dart-to-snax-stream",
-        "convert-linalg-to-accfg",
-        "convert-accfg-to-csr",
-        "snax-copy-to-dma",
-        "memref-to-snax",
-        "snax-to-func",
-        "snax-allocate",
-        "test-debug-to-func",
-        "clear-memory-space",
-        "postprocess",
-    ]
-)
 
 
 module snax_rules:
@@ -39,7 +10,20 @@ module snax_rules:
         config
 
 
-use rule * from snax_rules as snax_*
+use rule * from snax_rules exclude snax_opt_mlir as snax_*
+
+
+rule compile_snax:
+    """
+    Apply various transformations snax-opt on mlir files.
+    Options controlled with `snaxoptflags` defined in config.
+    """
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}.ll.mlir"),
+    shell:
+        "{config[snaxc]} --debug -c {config[snaxc-config]} -o {output} {input}"
 
 
 files = ["streamer_add", "streamer_add_stream"]
