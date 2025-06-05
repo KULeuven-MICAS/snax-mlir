@@ -11,4 +11,4 @@
 
 // but a very simple 1d transfer applied:
 
-// CHECK: func.call @snax_dma_1d_transfer(%0, %1, %26) : (index, index, index) -> ()
+// CHECK: func.call @snax_dma_1d_transfer(%0, %1, %{{.*}}) : (index, index, index) -> ()
