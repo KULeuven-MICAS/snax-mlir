@@ -145,6 +145,13 @@ class SNAXCMain(CommandLineTool):
             help="insert debugging function calls around accelerator operations",
         )
 
+        arg_parser.add_argument(
+            "--no-frontend",
+            default=False,
+            action="store_true",
+            help="disable all frontend passes",
+        )
+
     def setup_pipeline(self):
         """
         Creates a pipeline that consists of all the passes specified.
@@ -169,7 +176,8 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline: list[ModulePass] = []
 
         # Frontend passes:
-        pass_pipeline.append(PreprocessPass())
+        if not self.args.no_frontend:
+            pass_pipeline.append(PreprocessPass())
 
         # Insert accfg operations based on accelerators registered in the AccContext:
         for accelerator in self.ctx.registered_accelerator_names:

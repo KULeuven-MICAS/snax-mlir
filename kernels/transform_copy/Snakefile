@@ -1,22 +1,6 @@
-from util.snake.configs import get_snax_mac_config
+from util.snake.configs import get_snax_alu_config
 
-config = get_snax_mac_config()
-config["snaxoptflags"] = ",".join(
-    [
-        "dispatch-kernels",
-        "set-memory-space",
-        "set-memory-layout",
-        "realize-memref-casts",
-        "reuse-memref-allocs",
-        "insert-sync-barrier",
-        "snax-copy-to-dma",
-        "memref-to-snax",
-        "snax-to-func",
-        "snax-allocate",
-        "clear-memory-space",
-        "postprocess",
-    ]
-)
+config = get_snax_alu_config()
 
 
 module snax_rules:
@@ -26,7 +10,20 @@ module snax_rules:
         config
 
 
-use rule * from snax_rules as snax_*
+use rule * from snax_rules exclude snax_opt_mlir as snax_*
+
+
+rule compile_snax:
+    """
+    Apply various transformations snax-opt on mlir files.
+    Options controlled with `snaxoptflags` defined in config.
+    """
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}.ll.mlir"),
+    shell:
+        "{config[snaxc]} --no-frontend -c {config[snaxc-config]} -o {output} {input}"
 
 
 from gendata import create_files
