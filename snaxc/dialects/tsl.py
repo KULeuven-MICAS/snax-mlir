@@ -187,6 +187,7 @@ class TiledStridedLayoutAttr(MemRefLayoutAttr, Data[TiledStridedLayout]):
                 if tsl.get_stride(dim, depth).step is None:
                     # dynamic stride, assign to result of metadata op
                     stride = MuliOp(metadata_op.strides[dim], element_size_op)
+                    result.append(stride)
                     result_mapping[(dim, depth)] = stride
 
         # optional bytes correction
@@ -214,12 +215,13 @@ class TiledStridedLayoutAttr(MemRefLayoutAttr, Data[TiledStridedLayout]):
         # the max static stride multiplied by the bound of that Stride
         # can be used as a starting value for the dynamic strides
         max_stride_op = ConstantOp.from_int_and_width(max_value, IndexType())
+        result.append(max_stride_op)
         dynamic_step = MuliOp(
             bound_ops[max_key],
             max_stride_op,
             IndexType(),
         )
-        result.append(max_stride_op)
+        result.append(dynamic_step)
 
         # assign strides right to left
         for dim in reversed(range(tsl.dimension())):
@@ -244,7 +246,7 @@ class TiledStridedLayoutAttr(MemRefLayoutAttr, Data[TiledStridedLayout]):
                         # else, follow contiguity assumption
                         step_op = dynamic_step
                     dynamic_step = MuliOp(step_op, bound_ops[(dim, depth)], IndexType())
-                    result.append(step_op)
+                    result.append(dynamic_step)
                     result_mapping[(dim, depth)] = step_op
         return result, result_mapping
 
