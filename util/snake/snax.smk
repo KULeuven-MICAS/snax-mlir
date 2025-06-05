@@ -1,6 +1,5 @@
 from util.tracing.merge_json import merge_json
 
-
 rule translate_mlir:
     """
     Translate MLIR LLVM dialect to actual LLVM.
