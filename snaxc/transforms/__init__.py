@@ -112,6 +112,11 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return DispatchRegions
 
+    def get_frontend_transform():
+        from snaxc.transforms.frontend.frontend_transform import FrontendTransformPass
+
+        return FrontendTransformPass
+
     def get_insert_accfg_op():
         from snaxc.transforms.insert_accfg_op import InsertAccOp
 
@@ -258,6 +263,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "dart-scheduler": get_dart_scheduler,
         "dispatch-kernels": get_dispatch_kernels,
         "dispatch-regions": get_dispatch_regions,
+        "frontend-transform": get_frontend_transform,
         "insert-accfg-op": get_insert_accfg_op,
         "insert-sync-barrier": get_insert_sync_barrier,
         "memref-to-snax": get_memref_to_snax,
