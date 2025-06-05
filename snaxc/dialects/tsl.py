@@ -187,6 +187,7 @@ class TiledStridedLayoutAttr(MemRefLayoutAttr, Data[TiledStridedLayout]):
                 if tsl.get_stride(dim, depth).step is None:
                     # dynamic stride, assign to result of metadata op
                     stride = MuliOp(metadata_op.strides[dim], element_size_op)
+                    result.append(stride)
                     result_mapping[(dim, depth)] = stride
 
         # optional bytes correction

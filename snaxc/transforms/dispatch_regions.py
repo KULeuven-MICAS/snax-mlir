@@ -101,6 +101,9 @@ class DispatchRegionsRewriter(RewritePattern):
             rewriter.insert_op(
                 call_and_condition_dm, InsertPoint.at_start(func_op.body.blocks[0])
             )
+        else:
+            comparison_dm.erase()
+            cst_1.erase()
 
         ## dispatch compute core ops, insert function call
         # in dominator block if changes made
@@ -122,6 +125,9 @@ class DispatchRegionsRewriter(RewritePattern):
                     [func_call, *condition_compute],
                     InsertPoint.at_start(func_op.body.blocks[0]),
                 )
+        else:
+            comparison_compute.erase()
+            cst_0.erase()
 
 
 class InsertFunctionDeclaration(RewritePattern):
