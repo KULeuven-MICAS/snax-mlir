@@ -326,14 +326,25 @@ class MiniMallocate(RewritePattern):
             )
 
 
+def allocs_are_static(module_op: builtin.ModuleOp) -> bool:
+    """Check if all snax.alloc ops in the module are static."""
+    for op in module_op.walk():
+        if isinstance(op, snax.Alloc):
+            if not isinstance(op.size, OpResult):
+                return False
+            if not isinstance(op.size.op, arith.ConstantOp):
+                return False
+    return True
+
+
 @dataclass(frozen=True)
 class SnaxAllocatePass(ModulePass):
     name = "snax-allocate"
 
-    mode: str = "dynamic"
+    mode: str = "auto"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        if self.mode not in ("dynamic", "static", "minimalloc"):
+        if self.mode not in ("dynamic", "static", "minimalloc", "auto"):
             raise RuntimeError(f"unsupported allocation strategy: {self.mode}")
         assert isinstance(ctx, AccContext)
         get_memory = ctx.get_memory
@@ -344,3 +355,10 @@ class SnaxAllocatePass(ModulePass):
                 PatternRewriteWalker(StaticAllocs(get_memory)).rewrite_module(op)
             case "minimalloc":
                 PatternRewriteWalker(MiniMallocate(get_memory)).rewrite_module(op)
+            case "auto":
+                # auto-detect the mode based on the presence of snax.alloc ops
+                if allocs_are_static(op):
+                    # use minimalloc for static allocations
+                    PatternRewriteWalker(MiniMallocate(get_memory)).rewrite_module(op)
+                else:
+                    PatternRewriteWalker(DynamicAllocs()).rewrite_module(op)
