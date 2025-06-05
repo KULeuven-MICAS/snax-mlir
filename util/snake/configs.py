@@ -66,6 +66,8 @@ def get_mlperf_tiny_config() -> dict[str, Any]:
     config: dict[str, Any] = {}
     config.update(get_default_paths())
     config.update({"clangflags": get_clang_flags()})
+    config["num_chips"] = 1
+    config["num_harts"] = 2
     config.update(
         {
             "snaxoptflags": ",".join(

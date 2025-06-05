@@ -26,19 +26,6 @@ config["mliroptflags"] = [
 ]
 
 
-module snax_rules:
-    snakefile:
-        "../../util/snake/snax.smk"
-    config:
-        config
-
-
-use rule preprocess_mlir from snax_rules as default_preprocess_mlir
-
-
-use rule translate_mlir from snax_rules as default_translate_mlir
-
-
 rule all:
     input:
         "tiled_matmul.o",
@@ -74,6 +61,18 @@ rule postprocess_mlir:
         "{file}.ll.mlir",
     shell:
         "{config[mlir-opt]} --test-lower-to-llvm -o {output} {input}"
+
+
+rule translate_mlir:
+    """
+    Translate MLIR LLVM dialect to actual LLVM.
+    """
+    input:
+        "{file}.ll.mlir",
+    output:
+        temp("{file}.ll"),
+    shell:
+        "{config[mlir-translate]} --mlir-to-llvmir -o {output} {input}"
 
 
 rule compile_llvm_module:
