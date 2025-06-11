@@ -195,7 +195,8 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(DispatchKernels())
         pass_pipeline.append(ConvertLinalgToDart())
         pass_pipeline.append(DartFuseOperationsPass())
-        pass_pipeline.append(SnaxBufferize())
+        if not self.args.no_frontend:
+            pass_pipeline.append(SnaxBufferize())
         if self.args.debug:
             pass_pipeline.append(InsertDebugPass())
         pass_pipeline.append(SetMemorySpace())
