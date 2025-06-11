@@ -1,5 +1,6 @@
 from xdsl.context import Context
 from xdsl.dialects import builtin
+from xdsl.dialects.memref import DeallocOp
 from xdsl.ir import Operation
 from xdsl.passes import ModulePass
 from xdsl.rewriter import InsertPoint, Rewriter
@@ -52,4 +53,8 @@ class InsertSyncBarrier(ModulePass):
                     if dispatch_to_compute(op_in_module) and not dispatch_to_compute(
                         op_use.operation
                     ):
+                        ops_to_sync.append(op_use.operation)
+
+                    if isinstance(op_use.operation, DeallocOp):
+                        # if the operation is a sync op, clear the list
                         ops_to_sync.append(op_use.operation)
