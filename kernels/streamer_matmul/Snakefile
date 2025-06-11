@@ -3,6 +3,7 @@ from util.snake.configs import get_snax_gemmx_config
 config = get_snax_gemmx_config()
 config["snaxoptflags"] = ",".join(
     [
+        "frontend-transform",
         "preprocess",
         "convert-linalg-to-kernel",
         "insert-accfg-op{accelerator=snax_gemmx}",
@@ -66,18 +67,9 @@ rule generate_matmul_i8_out:
 
 rule generate_tiled_quantized_matmul:
     output:
-        "tiled_quantized_matmul.transform.mlir",
+        "tiled_quantized_matmul.mlir",
     script:
         "tiled_quantized_matmul.py"
-
-
-rule apply_transforms_mlir:
-    input:
-        "{file}.transform.mlir",
-    output:
-        "{file}.mlir",
-    shell:
-        "{config[snax-opt]} -p frontend-transform -o {output} {input}"
 
 
 def get_main_obj(wildcards):
