@@ -69,7 +69,5 @@ class ClearMemorySpace(ModulePass):
 
             if isinstance(op_in_module, memref.GlobalOp):
                 memref_type = op_in_module.type
-                if isa(memref_type, builtin.MemRefType[Attribute]) and not isinstance(
-                    memref_type.layout, builtin.NoneAttr
-                ):
+                if isa(memref_type, builtin.MemRefType[Attribute]):
                     op_in_module.type = clear_memory_space(memref_type)
