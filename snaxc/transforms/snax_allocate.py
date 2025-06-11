@@ -6,6 +6,7 @@ from typing import cast
 from minimalloc import Buffer, Problem  # pyright: ignore[reportMissingTypeStubs]
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, llvm
+from xdsl.dialects.memref import DeallocOp
 from xdsl.ir import Operation, OpResult, Sequence, SSAValue
 from xdsl.parser import IndexType, IntegerAttr, StringAttr
 from xdsl.passes import ModulePass
@@ -15,7 +16,8 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.traits import SymbolTable
+from xdsl.rewriter import InsertPoint
+from xdsl.traits import IsTerminator, SymbolTable
 from xdsl.utils.hints import isa
 
 from snaxc.accelerators.acc_context import AccContext
@@ -289,6 +291,18 @@ class MiniMallocate(RewritePattern):
                 # udpate lifetime of buffer
                 for buffer in uses[op]:
                     buffer.end_time = i
+
+        # Insert Dealloc Ops
+        last_uses: list[tuple[SSAValue, Operation]] = []
+        func_ops = [x for x in func_op.body.block.ops]
+        for buffer in buffers:
+            memref_op = next(iter(buffer_ops[buffer.id].results[0].uses)).operation
+            assert isinstance(memref_op, builtin.UnrealizedConversionCastOp)
+            last_uses.append((memref_op.results[0], func_ops[buffer.end_time]))
+        for value, op in last_uses:
+            # do not insert dealloc if last use is terminator (such as func.return)
+            if not op.has_trait(IsTerminator):
+                rewriter.insert_op(DeallocOp.get(value), InsertPoint.after(op))
 
         # Lifetime of the buffers is now determined, run the minimalloc algorithm for every memory space
         pointer_result: dict[str, int] = {}

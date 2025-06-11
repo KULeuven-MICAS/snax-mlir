@@ -214,9 +214,9 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(ConvertAccfgToCsrPass())
         pass_pipeline.append(SNAXCopyToDMA())
         pass_pipeline.append(MemrefToSNAX())
-        pass_pipeline.append(SNAXToFunc())
         pass_pipeline.append(CanonicalizePass())
         pass_pipeline.append(SnaxAllocatePass(self.args.alloc_mode))
+        pass_pipeline.append(SNAXToFunc())
         pass_pipeline.append(AllocToGlobalPass())
         if self.args.debug:
             pass_pipeline.append(DebugToFuncPass())
