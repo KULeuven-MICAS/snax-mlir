@@ -92,7 +92,7 @@ def matmul(m=16, n=16, k=16):
 if __name__ == "__main__":
     # Get the name of the current Python script and replace its extension with .mlir
     script_name = os.path.basename(__file__)
-    mlir_filename = os.path.splitext(script_name)[0] + ".transform.mlir"
+    mlir_filename = os.path.splitext(script_name)[0] + ".mlir"
 
     # Generate IR and write it to the specified MLIR file
     output = StringIO()
