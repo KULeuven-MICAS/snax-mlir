@@ -6,9 +6,11 @@ from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, linalg, memref
 from xdsl.dialects.memref import MemorySpaceCastOp
 from xdsl.ir import Attribute, Operation, OpResult
+from xdsl.irdl import Operand
 from xdsl.parser import BytesAttr, DenseIntOrFPElementsAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
+    GreedyRewritePatternApplier,
     PatternRewriter,
     PatternRewriteWalker,
     RewritePattern,
@@ -88,6 +90,191 @@ def transform_constant(
     return new_value
 
 
+def get_source_operand(op: MemorySpaceCastOp | LayoutCast) -> Operand:
+    """
+    Find the source of a chain of layout / memory space casts.
+    """
+    # if the source of the memref cast is another layout_cast op,
+    # combine them all together
+    source_op = op
+    while isinstance(source_op.source, OpResult) and isinstance(
+        source_op.source.op, MemorySpaceCastOp | LayoutCast
+    ):
+        source_op = source_op.source.op
+    return source_op.source
+
+
+class DeleteUnusedLayoutCasts(RewritePattern):
+    """
+    Remove unused layout casts.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(
+        self, op: MemorySpaceCastOp | LayoutCast, rewriter: PatternRewriter
+    ):
+        if not op.dest.uses:
+            # if the cast is not used anymore, we can remove it
+            rewriter.erase_matched_op()
+            return
+
+
+class ApplyLayoutCastArithConstant(RewritePattern):
+    """
+    If a layout transformation is applied to an arith.constant, check that we cannot
+    just statically transform the constant.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: LayoutCast, rewriter: PatternRewriter):
+        # find arith.constant source
+        source = get_source_operand(op)
+        if not isinstance(source, OpResult):
+            return
+        if not isinstance(const_source := source.op, arith.ConstantOp):
+            return
+
+        # apply transformation
+        assert isinstance(const_source.value, DenseIntOrFPElementsAttr)
+        new_constant = transform_constant(const_source.value, op.dest.type.layout)
+        if new_constant is None:
+            # failed to transform
+            return
+        new_constant_op = arith.ConstantOp(new_constant, new_constant.type)
+        rewriter.replace_op(const_source, new_constant_op)
+
+        # layout cast becomes unnecessary
+        op.dest.replace_by(op.source)
+        rewriter.erase_matched_op()
+
+
+class ApplyLayoutCastMemrefAlloc(RewritePattern):
+    """
+    If a layout transformation is applied to a memref.alloc, check that we cannot
+    just statically transform the allocation.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: LayoutCast, rewriter: PatternRewriter):
+        # find memref.alloc source
+        source = get_source_operand(op)
+        if not isinstance(source, OpResult):
+            return
+        if not isinstance(alloc_op := source.op, memref.AllocOp):
+            return
+        # alloc op may only be used by layout cast ops
+        if not all(
+            isinstance(use.operation, LayoutCast) for use in alloc_op.memref.uses
+        ):
+            return
+
+        # apply transformation by allocating with the correct layout
+        new_alloc_op = memref.AllocOp.get(
+            alloc_op.memref.type.get_element_type(),
+            alloc_op.alignment,
+            alloc_op.memref.type.get_shape(),
+            alloc_op.dynamic_sizes,
+            op.dest.type.layout,
+            alloc_op.memref.type.memory_space,
+        )
+        rewriter.replace_op(alloc_op, new_alloc_op)
+
+        # layout cast becomes unnecessary
+        op.dest.replace_by(op.source)
+        rewriter.erase_matched_op()
+
+
+class ApplyLayoutCastMemrefGlobal(RewritePattern):
+    """
+    If a layout transformation is applied to an memref.global, check that we cannot
+    just statically transform the global.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: LayoutCast, rewriter: PatternRewriter):
+        # find memref.global source
+        source = get_source_operand(op)
+        if not isinstance(source, OpResult):
+            return
+        if not isinstance(const_source := source.op, memref.GetGlobalOp):
+            return
+        global_op = SymbolTable.lookup_symbol(op, const_source.name_)
+        if not isinstance(global_op, memref.GlobalOp):
+            return
+
+        # apply transformation
+        if isa(
+            global_op.initial_value, DenseIntOrFPElementsAttr[builtin.AnyDenseElement]
+        ):  # global op with initial value
+            new_constant = transform_constant(
+                global_op.initial_value, op.dest.type.layout
+            )
+            if new_constant is None:
+                # transformation failed
+                return
+            new_type = new_constant.type
+            new_constant = DenseIntOrFPElementsAttr(
+                [
+                    builtin.TensorType(
+                        new_constant.type.get_element_type(),
+                        new_constant.type.get_shape(),
+                    ),
+                    new_constant.data,
+                ]
+            )
+        else:  # uninitialized global
+            new_constant = builtin.UnitAttr()
+            assert isa(global_op.type, builtin.MemRefType[builtin.AnyDenseElement])
+            new_type = builtin.MemRefType(
+                global_op.type.get_element_type(),
+                global_op.type.get_shape(),
+                op.dest.type.layout,
+                global_op.type.memory_space,
+            )
+
+        # create new global and get global op with new name
+        # global op initial data should be a tensor type:
+        new_sym_name = const_source.name_.string_value() + "_transformed"
+        new_global_op = memref.GlobalOp.get(
+            builtin.StringAttr(new_sym_name),
+            new_type,
+            new_constant,
+            global_op.sym_visibility,
+            global_op.constant,
+            global_op.alignment,
+        )
+
+        # global get type should inherit only the new layout
+        get_type = builtin.MemRefType(
+            const_source.memref.type.get_element_type(),
+            const_source.memref.type.get_shape(),
+            op.dest.type.layout,
+            const_source.memref.type.memory_space,
+        )
+        new_global_get_op = memref.GetGlobalOp(new_sym_name, get_type)
+
+        # insert the global op in the symbol table
+        symbol_table_op = global_op.parent_op()
+        assert symbol_table_op is not None
+        symbol_table = symbol_table_op.get_trait(SymbolTable)
+        assert symbol_table is not None
+
+        # insert new global op with new layout
+        replaced = symbol_table.insert_or_update(symbol_table_op, new_global_op)
+        # assert we have not replaced an existing op
+        assert replaced is None
+
+        # delete old global op
+        rewriter.erase_op(global_op)
+
+        # replace old global get op with new one
+        rewriter.replace_op(const_source, new_global_get_op)
+
+        # layout cast becomes unnecessary
+        op.dest.replace_by(op.source)
+        rewriter.erase_matched_op()
+
+
 class RealizeMemrefCasts(RewritePattern):
     """
     A rewrite pattern for realizing memref casts.
@@ -120,163 +307,6 @@ class RealizeMemrefCasts(RewritePattern):
             source_op.source.op, MemorySpaceCastOp | LayoutCast
         ):
             source_op = source_op.source.op
-
-        # look for constant op that may be transformed as well
-        if (
-            isinstance(source_op.source, OpResult)
-            and isinstance(const_source := source_op.source.op, arith.ConstantOp)
-            and isinstance(op.dest.type, builtin.MemRefType)
-        ):
-            assert isinstance(const_source.value, DenseIntOrFPElementsAttr)
-            new_constant = transform_constant(const_source.value, op.dest.type.layout)
-            if new_constant is not None:
-                new_constant_op = arith.ConstantOp(new_constant, new_constant.type)
-                rewriter.replace_op(const_source, new_constant_op)
-
-        # look for global op that may be transformed as well
-        if (
-            isinstance(source_op.source, OpResult)
-            and isinstance(const_source := source_op.source.op, memref.GetGlobalOp)
-            and isinstance(op.dest.type, builtin.MemRefType)
-            and isinstance(
-                global_op := SymbolTable.lookup_symbol(op, const_source.name_),
-                memref.GlobalOp,
-            )
-            and isa(
-                global_op.initial_value,
-                DenseIntOrFPElementsAttr[builtin.AnyDenseElement],
-            )
-        ):
-            new_constant = transform_constant(
-                global_op.initial_value, op.dest.type.layout
-            )
-            if new_constant is not None:
-                # create new global and get global op with new name
-                # global op initial data should be a tensor type:
-                new_constant_tensor = DenseIntOrFPElementsAttr(
-                    [
-                        builtin.TensorType(
-                            new_constant.type.get_element_type(),
-                            new_constant.type.get_shape(),
-                        ),
-                        new_constant.data,
-                    ]
-                )
-                new_sym_name = const_source.name_.string_value() + "_transformed"
-                new_global_op = memref.GlobalOp.get(
-                    builtin.StringAttr(new_sym_name),
-                    new_constant.type,
-                    new_constant_tensor,
-                    global_op.sym_visibility,
-                    global_op.constant,
-                    global_op.alignment,
-                )
-
-                # global get type should inherit only the new layout
-                assert isinstance(new_constant.type, builtin.MemRefType)
-                get_type = builtin.MemRefType(
-                    const_source.memref.type.get_element_type(),
-                    const_source.memref.type.get_shape(),
-                    new_constant.type.layout,
-                    const_source.memref.type.memory_space,
-                )
-                new_global_get_op = memref.GetGlobalOp(new_sym_name, get_type)
-
-                # insert the global op in the symbol table
-                symbol_table_op = global_op.parent_op()
-                assert symbol_table_op is not None
-                symbol_table = symbol_table_op.get_trait(SymbolTable)
-                assert symbol_table is not None
-
-                # insert new global op with new layout
-                replaced = symbol_table.insert_or_update(symbol_table_op, new_global_op)
-                # assert we have not replaced an existing op
-                assert replaced is None
-
-                # delete old global op
-                rewriter.erase_op(global_op)
-
-                # replace old global get op with new one
-                rewriter.replace_op(const_source, new_global_get_op)
-
-        # look for global without data that can have constant data
-        if (
-            isinstance(source_op.source, OpResult)
-            and isinstance(const_source := source_op.source.op, memref.GetGlobalOp)
-            and isinstance(op.dest.type, builtin.MemRefType)
-            and isinstance(
-                global_op := SymbolTable.lookup_symbol(op, const_source.name_),
-                memref.GlobalOp,
-            )
-            and isinstance(global_op.initial_value, builtin.UnitAttr)
-            and not any(
-                isinstance(use.operation, func.ReturnOp)
-                for use in const_source.memref.uses
-            )
-        ):
-            new_sym_name = const_source.name_.string_value() + "_transformed"
-            global_type = global_op.type
-            assert isa(global_type, builtin.MemRefType[Attribute])
-            new_type = builtin.MemRefType(
-                global_type.get_element_type(),
-                global_type.get_shape(),
-                op.dest.type.layout,
-                global_type.memory_space,
-            )
-            new_global_op = memref.GlobalOp.get(
-                builtin.StringAttr(new_sym_name),
-                new_type,
-                builtin.UnitAttr(),
-                global_op.sym_visibility,
-                global_op.constant,
-                global_op.alignment,
-            )
-
-            # global get type should inherit only the new layout
-            get_type = builtin.MemRefType(
-                const_source.memref.type.get_element_type(),
-                const_source.memref.type.get_shape(),
-                op.dest.type.layout,
-                const_source.memref.type.memory_space,
-            )
-            new_global_get_op = memref.GetGlobalOp(new_sym_name, get_type)
-
-            # insert the global op in the symbol table
-            symbol_table_op = global_op.parent_op()
-            assert symbol_table_op is not None
-            symbol_table = symbol_table_op.get_trait(SymbolTable)
-            assert symbol_table is not None
-
-            # insert new global op with new layout
-            replaced = symbol_table.insert_or_update(symbol_table_op, new_global_op)
-            # assert we have not replaced an existing op
-            assert replaced is None
-
-            # delete old global op
-            rewriter.erase_op(global_op)
-
-            # replace old global get op with new one
-            rewriter.replace_op(const_source, new_global_get_op)
-
-        # look for an alloc that can be allocated with the correct layout direclty
-        if (
-            isinstance(source_op.source, OpResult)
-            and isinstance(alloc_op := source_op.source.op, memref.AllocOp)
-            and isinstance(op.dest.type, builtin.MemRefType)
-            # alloc op may only be uses by layout cast ops:
-            and all(
-                isinstance(use.operation, LayoutCast) for use in alloc_op.memref.uses
-            )
-        ):
-            new_alloc_op = memref.AllocOp.get(
-                alloc_op.memref.type.get_element_type(),
-                alloc_op.alignment,
-                alloc_op.memref.type.get_shape(),
-                alloc_op.dynamic_sizes,
-                op.dest.type.layout,
-                alloc_op.memref.type.memory_space,
-            )
-            rewriter.replace_op(alloc_op, new_alloc_op)
 
         # now perform casting by inserting memref copies and allocs
         source_type = source_op.source.type
@@ -372,4 +402,14 @@ class RealizeMemrefCastsPass(ModulePass):
     name = "realize-memref-casts"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
+        PatternRewriteWalker(
+            GreedyRewritePatternApplier(
+                [
+                    ApplyLayoutCastArithConstant(),
+                    ApplyLayoutCastMemrefAlloc(),
+                    ApplyLayoutCastMemrefGlobal(),
+                    DeleteUnusedLayoutCasts(),
+                ]
+            )
+        ).rewrite_module(op)
         PatternRewriteWalker(RealizeMemrefCasts(), walk_reverse=True).rewrite_module(op)
