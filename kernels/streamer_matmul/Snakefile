@@ -30,10 +30,6 @@ config["snaxoptflags"] = ",".join(
     ]
 )
 
-config["mlirtransformflags"] = [
-    "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.quantized_matmul}, test-transform-dialect-erase-schedule)'"
-]
-
 
 module snax_rules:
     snakefile:
@@ -81,7 +77,7 @@ rule apply_transforms_mlir:
     output:
         "{file}.mlir",
     shell:
-        "{config[mlir-opt]} {config[mlirtransformflags]} --mlir-print-op-generic --mlir-print-local-scope -o {output} {input}"
+        "{config[snax-opt]} -p frontend-transform -o {output} {input}"
 
 
 def get_main_obj(wildcards):

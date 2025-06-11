@@ -1,4 +1,5 @@
 import os
+from collections.abc import Sequence
 from io import StringIO
 
 import numpy as np
@@ -16,6 +17,7 @@ from xdsl.dialects.builtin import (
 from xdsl.dialects.func import FuncOp, ReturnOp
 from xdsl.dialects.linalg import QuantizedMatmulOp
 from xdsl.dialects.tensor import EmptyOp
+from xdsl.ir import SSAValue
 from xdsl.parser import DenseArrayBase, IntegerType
 from xdsl.printer import Printer
 
@@ -66,23 +68,18 @@ def matmul(m=16, n=16, k=16):
     function = FuncOp.from_region("snax_main", [], res_types, func_body)
 
     # Manually speficy tiling sequence
-    transform_inputs = [
-        transform.AnyOpType(),
-        transform.OperationType("linalg.quantized_matmul"),
-    ]
-
-    @Builder.implicit_region(transform_inputs)
-    def tiling_sequence(args):
+    @Builder.implicit_region([transform.AnyOpType()])
+    def tiling_sequence(args: Sequence[SSAValue]):
+        matmul_op = transform.MatchOp(args[0], ["linalg.quantized_matmul"])
         transform.TileOp(
-            target=args[1],
+            target=matmul_op.result,
             dynamic_sizes=[],
             scalable_sizes=DenseArrayBase.create_dense_int(IntegerType(1), [0, 0]),
             static_sizes=DenseArrayBase.create_dense_int(IntegerType(64), [8, 8]),
         )
-
         transform.YieldOp()
 
-    function_type = builtin.FunctionType.from_lists(transform_inputs, [])
+    function_type = builtin.FunctionType.from_lists([transform.AnyOpType()], [])
     transform_sequence = transform.NamedSequenceOp(
         "__transform_main", function_type, tiling_sequence
     )
