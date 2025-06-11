@@ -17,7 +17,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.rewriter import InsertPoint
-from xdsl.traits import SymbolTable
+from xdsl.traits import IsTerminator, SymbolTable
 from xdsl.utils.hints import isa
 
 from snaxc.accelerators.acc_context import AccContext
@@ -300,7 +300,9 @@ class MiniMallocate(RewritePattern):
             assert isinstance(memref_op, builtin.UnrealizedConversionCastOp)
             last_uses.append((memref_op.results[0], func_ops[buffer.end_time]))
         for value, op in last_uses:
-            rewriter.insert_op(DeallocOp.get(value), InsertPoint.after(op))
+            # do not insert dealloc if last use is terminator (such as func.return)
+            if not op.has_trait(IsTerminator):
+                rewriter.insert_op(DeallocOp.get(value), InsertPoint.after(op))
 
         # Lifetime of the buffers is now determined, run the minimalloc algorithm for every memory space
         pointer_result: dict[str, int] = {}
