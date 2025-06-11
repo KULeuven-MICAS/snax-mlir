@@ -28,9 +28,6 @@ int main() {
   memrefO.stride[0] = DATA_LEN;
   memrefO.stride[1] = 1;
 
-  // allocate zero row in tcdm
-  snrt_l1alloc(256);
-
   (void)snrt_mcycle();
 
   _mlir_ciface_rescale(&memrefA, &memrefO);
