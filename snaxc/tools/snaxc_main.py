@@ -14,6 +14,7 @@ from xdsl.transforms.canonicalize import CanonicalizePass
 from snaxc.accelerators.acc_context import AccContext
 from snaxc.dialects import get_all_snax_dialects
 from snaxc.tools.config_parser import parse_config
+from snaxc.transforms.alloc_to_global import AllocToGlobalPass
 from snaxc.transforms.backend.postprocess_mlir import PostprocessPass
 from snaxc.transforms.clear_memory_space import ClearMemorySpace
 from snaxc.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
@@ -21,10 +22,12 @@ from snaxc.transforms.convert_dart_to_snax_stream import ConvertDartToSnaxStream
 from snaxc.transforms.convert_linalg_to_accfg import ConvertLinalgToAccPass
 from snaxc.transforms.convert_linalg_to_kernel import ConvertLinalgToKernel
 from snaxc.transforms.dart.convert_linalg_to_dart import ConvertLinalgToDart
+from snaxc.transforms.dart.dart_fuse_operations import DartFuseOperationsPass
 from snaxc.transforms.dart.dart_layout_resolution import DartLayoutResolutionPass
 from snaxc.transforms.dart.dart_scheduler import DartSchedulerPass
 from snaxc.transforms.dispatch_kernels import DispatchKernels
 from snaxc.transforms.dispatch_regions import DispatchRegions
+from snaxc.transforms.frontend.frontend_transform import FrontendTransformPass
 from snaxc.transforms.frontend.preprocess_mlir import PreprocessPass
 from snaxc.transforms.insert_accfg_op import InsertAccOp
 from snaxc.transforms.insert_sync_barrier import InsertSyncBarrier
@@ -34,6 +37,7 @@ from snaxc.transforms.reuse_memref_allocs import ReuseMemrefAllocs
 from snaxc.transforms.set_memory_layout import SetMemoryLayout
 from snaxc.transforms.set_memory_space import SetMemorySpace
 from snaxc.transforms.snax_allocate import SnaxAllocatePass
+from snaxc.transforms.snax_bufferize import SnaxBufferize
 from snaxc.transforms.snax_copy_to_dma import SNAXCopyToDMA
 from snaxc.transforms.snax_to_func import SNAXToFunc
 from snaxc.transforms.test.debug_to_func import DebugToFuncPass
@@ -175,6 +179,9 @@ class SNAXCMain(CommandLineTool):
 
         pass_pipeline: list[ModulePass] = []
 
+        # Transform passes:
+        pass_pipeline.append(FrontendTransformPass())
+
         # Frontend passes:
         if not self.args.no_frontend:
             pass_pipeline.append(PreprocessPass())
@@ -187,6 +194,9 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(ConvertLinalgToKernel())
         pass_pipeline.append(DispatchKernels())
         pass_pipeline.append(ConvertLinalgToDart())
+        pass_pipeline.append(DartFuseOperationsPass())
+        if not self.args.no_frontend:
+            pass_pipeline.append(SnaxBufferize())
         if self.args.debug:
             pass_pipeline.append(InsertDebugPass())
         pass_pipeline.append(SetMemorySpace())
@@ -207,6 +217,7 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(SNAXToFunc())
         pass_pipeline.append(CanonicalizePass())
         pass_pipeline.append(SnaxAllocatePass(self.args.alloc_mode))
+        pass_pipeline.append(AllocToGlobalPass())
         if self.args.debug:
             pass_pipeline.append(DebugToFuncPass())
         pass_pipeline.append(ClearMemorySpace())
