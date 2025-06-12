@@ -204,6 +204,7 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(SetMemoryLayout())
         if self.args.debug:
             pass_pipeline.append(InsertDebugPass())
+        pass_pipeline.append(AllocToGlobalPass())
         pass_pipeline.append(RealizeMemrefCastsPass())
         pass_pipeline.append(ReuseMemrefAllocs())
         pass_pipeline.append(MemrefToSNAX())
@@ -217,7 +218,6 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(ConvertAccfgToCsrPass())
         pass_pipeline.append(SNAXCopyToDMA())
         pass_pipeline.append(SNAXToFunc())
-        pass_pipeline.append(AllocToGlobalPass())
         if self.args.debug:
             pass_pipeline.append(DebugToFuncPass())
         pass_pipeline.append(ClearMemorySpace())

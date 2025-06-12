@@ -9,7 +9,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.traits import SymbolTable
+from xdsl.traits import IsTerminator, SymbolTable
 
 
 class AllocToGlobal(RewritePattern):
@@ -25,6 +25,10 @@ class AllocToGlobal(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: memref.AllocOp, rewriter: PatternRewriter):
+        # check if it is used in a terminator operation
+        if not any(use.operation.has_trait(IsTerminator) for use in op.memref.uses):
+            return
+
         # get module op
         module_op = op
         while not isinstance(module_op, builtin.ModuleOp):
