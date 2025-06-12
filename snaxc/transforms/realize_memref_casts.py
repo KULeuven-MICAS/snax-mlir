@@ -119,6 +119,32 @@ class DeleteUnusedLayoutCasts(RewritePattern):
             return
 
 
+class UpdateMemrefLayoutCasts(RewritePattern):
+    """
+    Update layout casts from which the input layout has changed.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: MemorySpaceCastOp, rewriter: PatternRewriter):
+        if not isa(op.source.type, builtin.MemRefType[Attribute]):
+            return
+        if not isinstance(op.dest.type, builtin.MemRefType):
+            return
+        if op.dest.type.layout == op.source.type.layout:
+            return
+        new_cast = MemorySpaceCastOp(
+            op.source,
+            builtin.MemRefType(
+                op.dest.type.get_element_type(),
+                op.dest.type.get_shape(),
+                op.source.type.layout,
+                op.dest.type.memory_space,
+            ),
+        )
+        rewriter.replace_matched_op(new_cast)
+        breakpoint()
+
+
 class ApplyLayoutCastArithConstant(RewritePattern):
     """
     If a layout transformation is applied to an arith.constant, check that we cannot
@@ -162,9 +188,10 @@ class ApplyLayoutCastMemrefAlloc(RewritePattern):
             return
         if not isinstance(alloc_op := source.op, memref.AllocOp):
             return
-        # alloc op may only be used by layout cast ops
+        # alloc op may only be used by cast ops
         if not all(
-            isinstance(use.operation, LayoutCast) for use in alloc_op.memref.uses
+            isinstance(use.operation, LayoutCast | MemorySpaceCastOp)
+            for use in alloc_op.memref.uses
         ):
             return
 
@@ -409,6 +436,7 @@ class RealizeMemrefCastsPass(ModulePass):
                     ApplyLayoutCastMemrefAlloc(),
                     ApplyLayoutCastMemrefGlobal(),
                     DeleteUnusedLayoutCasts(),
+                    UpdateMemrefLayoutCasts(),
                 ]
             )
         ).rewrite_module(op)
