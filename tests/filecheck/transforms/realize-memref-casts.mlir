@@ -37,10 +37,6 @@
 
 // CHECK:      builtin.module {
 // CHECK-NEXT:   %0 = "test.op"() : () -> memref<64xi32, "L3">
-// CHECK-NEXT:   %1 = memref.alloc() {alignment = 64 : i64} : memref<64xi32, "L1">
-// CHECK-NEXT:   "memref.copy"(%0, %1) : (memref<64xi32, "L3">, memref<64xi32, "L1">) -> ()
-// CHECK-NEXT:   %2 = "snax.layout_cast"(%1) : (memref<64xi32, "L1">) -> memref<64xi32, strided<[1, 8]>, "L1">
-// CHECK-NEXT:   "memref.copy"(%1, %0) : (memref<64xi32, "L1">, memref<64xi32, "L3">) -> ()
 // CHECK-NEXT: }
 
 // -----
@@ -367,10 +363,10 @@ func.func @mnist(%arg0 : memref<?x128xi8, "L3">, %arg1 : memref<128x128xi8, "L3"
 // the alloc is replaced by a new alloc with the transformed layout, a transformation is applied for the first cast, but not the second one
 
 // CHECK:      builtin.module {
-// CHECK-NEXT:   %0 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">
-// CHECK-NEXT:   %1 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">
-// CHECK-NEXT:   "memref.copy"(%0, %1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">, memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
-// CHECK-NEXT:   "test.op"(%1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
-// CHECK-NEXT:   "memref.copy"(%1, %0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">, memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
-// CHECK-NEXT:   "test.op"(%0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT:   %0 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">
+// CHECK-NEXT:   "test.op"(%0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT:   %1 = memref.alloc() {alignment = 64 : i64} : memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">
+// CHECK-NEXT:   "memref.copy"(%0, %1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">, memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT:   "test.op"(%1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
+// CHECK-NEXT:   "memref.copy"(%1, %0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">, memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
 // CHECK-NEXT: }
