@@ -1,6 +1,10 @@
+from math import prod
+from typing import cast
+
 from xdsl.context import Context
 from xdsl.dialects import builtin, func, memref
 from xdsl.ir import Attribute, BlockArgument
+from xdsl.parser import MemRefType
 from xdsl.passes import ModulePass
 from xdsl.utils.hints import isa
 
@@ -36,6 +40,18 @@ class ClearMemorySpace(ModulePass):
                 operand._type = clear_memory_space(operand.type)  # pyright: ignore
             for result in op_in_module.results:
                 result._type = clear_memory_space(result.type)  # pyright: ignore
+
+            if isinstance(op_in_module, memref.SubviewOp):
+                if op_in_module.result.type.layout == builtin.NoneAttr():
+                    shape = cast(MemRefType[Attribute], op_in_module.source.type).get_shape()
+                    strides = [prod(shape[i + 1 :]) for i in range(len(shape))]
+                    layout = builtin.StridedLayoutAttr(strides, offset=None)
+                    op_in_module.result._type = MemRefType(  # pyright: ignore
+                        op_in_module.result._type.get_element_type(),  # pyright: ignore
+                        op_in_module.result._type.get_shape(),  # pyright: ignore
+                        layout,  # pyright: ignore
+                        op_in_module.result._type.memory_space,  # pyright: ignore
+                    )
 
             if isinstance(op_in_module, func.FuncOp):
                 # special case for func ops because func ops do not have
