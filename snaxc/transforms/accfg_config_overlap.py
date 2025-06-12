@@ -72,9 +72,7 @@ class BlockLevelSetupAwaitOverlapPattern(RewritePattern):
             return
 
         # if all the ops between launch and setup are input ops, then there's nothing to move!
-        if all(
-            between_op in inputs.inputs for between_op in iter_ops_range(launch, op)
-        ):
+        if all(between_op in inputs.inputs for between_op in iter_ops_range(launch, op)):
             return
 
         # and move the setup and inputs to be right behind the launch
@@ -137,15 +135,11 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
             return
 
         # only apply if there is a launch op in the same block:
-        if not any(
-            isinstance(use.operation, accfg.LaunchOp) for use in op.out_state.uses
-        ):
+        if not any(isinstance(use.operation, accfg.LaunchOp) for use in op.out_state.uses):
             return
         if not all(
             launch.operation.parent_block() is op.parent_block()
-            for launch in filter(
-                lambda x: isinstance(x.operation, accfg.LaunchOp), op.out_state.uses
-            )
+            for launch in filter(lambda x: isinstance(x.operation, accfg.LaunchOp), op.out_state.uses)
         ):
             return
 
@@ -154,16 +148,11 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
         assert isinstance(yield_op, scf.YieldOp)
 
         # if the setup ops input is not the loop-carried state var, don't apply optimization
-        if (
-            not isinstance(op.in_state.owner, Block)
-            or op.in_state.owner.parent_op() is not for_op
-        ):
+        if not isinstance(op.in_state.owner, Block) or op.in_state.owner.parent_op() is not for_op:
             return
         # grab the index in iter_args, that our state occupies
         assert isinstance(op.in_state, BlockArgument)
-        iter_arg_idx = (
-            op.in_state.index - 1
-        )  # -1 because the first block arg is the loop index
+        iter_arg_idx = op.in_state.index - 1  # -1 because the first block arg is the loop index
 
         # also, if there is another launch between us and the loop start, abort
         if any(isinstance(prev_op, accfg.LaunchOp) for prev_op in previous_ops_of(op)):
@@ -179,9 +168,7 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
             return
 
         # 2. We insert a copy of the setup op before the loop, replacing dependencies with the loop inputs (%lb)
-        setup_before = inputs.copy_with_new_dependent_vals(
-            (for_op.lb, *for_op.iter_args)
-        )
+        setup_before = inputs.copy_with_new_dependent_vals((for_op.lb, *for_op.iter_args))
         setup_before.insert_at_position(
             rewriter,
             InsertPoint.before(for_op),
@@ -195,9 +182,7 @@ class LoopLevelSetupAwaitOverlapPattern(RewritePattern):
             next_i := arith.AddiOp(for_op.body.block.args[0], for_op.step),
             InsertPoint.before(yield_op),
         )
-        setup_at_end = inputs.copy_with_new_dependent_vals(
-            (next_i.result, *yield_op.operands)
-        )
+        setup_at_end = inputs.copy_with_new_dependent_vals((next_i.result, *yield_op.operands))
         setup_at_end.insert_at_position(
             rewriter,
             InsertPoint.before(yield_op),

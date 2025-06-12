@@ -60,10 +60,7 @@ class MergeSetupOps(RewritePattern):
         prev_op = op.prev_op
         while prev_op is not None:
             # if we encounter a setup op for the same accelerator, we continue
-            if (
-                isinstance(prev_op, accfg.SetupOp)
-                and prev_op.accelerator == op.accelerator
-            ):
+            if isinstance(prev_op, accfg.SetupOp) and prev_op.accelerator == op.accelerator:
                 break
             # if we encounter an op with side effects, we abort
             if not is_side_effect_free(prev_op):
@@ -77,9 +74,7 @@ class MergeSetupOps(RewritePattern):
         rewriter.erase_op(prev_op, safe_erase=False)
 
         rewriter.replace_matched_op(
-            accfg.SetupOp(
-                state.values(), state.keys(), op.accelerator, prev_op.in_state
-            ),
+            accfg.SetupOp(state.values(), state.keys(), op.accelerator, prev_op.in_state),
         )
 
 
@@ -160,11 +155,7 @@ class PullSetupOpsOutOfLoops(RewritePattern):
         # loop_invariant_setups.in_state is the previous input state to the for loop (as determined by a call
         # to get_initial_value_for_scf_for_lcv)
         loop_op.operands = tuple(
-            (
-                val
-                if val != loop_invariant_setups.in_state
-                else loop_invariant_setups.out_state
-            )
+            (val if val != loop_invariant_setups.in_state else loop_invariant_setups.out_state)
             for val in loop_op.operands
         )
 
@@ -195,9 +186,7 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
         # grab all launch op uses of the SSA value produced by the scf.if
         # this will only find things that happen *after* the scf.if, so nothing
         # inside the scf.if regions.
-        uses = tuple(
-            use for use in op.in_state.uses if isinstance(use.operation, accfg.LaunchOp)
-        )
+        uses = tuple(use for use in op.in_state.uses if isinstance(use.operation, accfg.LaunchOp))
         # if we have some launch ops, we need to investigate further:
         for use in uses:
             # grab the launch operation

@@ -135,12 +135,8 @@ def _weave_states_in_region(
                 # special case for scf.if ops
                 elif isinstance(op, scf.IfOp):
                     # grab the computed state for both sides:
-                    if_state = _weave_states_in_region(
-                        op.true_region, state.copy(), rewriter
-                    )
-                    else_state = _weave_states_in_region(
-                        op.false_region, state.copy(), rewriter
-                    )
+                    if_state = _weave_states_in_region(op.true_region, state.copy(), rewriter)
+                    else_state = _weave_states_in_region(op.false_region, state.copy(), rewriter)
 
                     # calculate the delta:
                     delta = calc_if_state_delta(state, if_state, else_state)
@@ -159,14 +155,10 @@ def _weave_states_in_region(
                         if not branch.blocks:
                             branch.add_block(Block([scf.YieldOp(*added_vals)]))
                         else:
-                            assert (
-                                branch.block.last_op is not None
-                            )  # we know there is a yield op
+                            assert branch.block.last_op is not None  # we know there is a yield op
                             rewriter.replace_op(
                                 branch.block.last_op,
-                                scf.YieldOp(
-                                    *branch.block.last_op.operands, *added_vals
-                                ),
+                                scf.YieldOp(*branch.block.last_op.operands, *added_vals),
                             )
                     # then, insert a new if with additional return values:
                     num_scf_results = len(op.results)
@@ -190,9 +182,7 @@ def _weave_states_in_region(
                 elif isinstance(op, scf.ForOp):
                     # go through the for loop body find all accelerators that are touched
                     # the order of this tuple is important
-                    updated_accelerators = tuple(
-                        sorted(find_all_acc_names_in_region(op.body))
-                    )
+                    updated_accelerators = tuple(sorted(find_all_acc_names_in_region(op.body)))
 
                     # check which states got new uses:
                     # no state change in loop => nothing to do
@@ -227,15 +217,11 @@ def _weave_states_in_region(
                         inner_state[accel] = arg
 
                     # weave vals with input states
-                    after_for_state = _weave_states_in_region(
-                        op.body, inner_state, rewriter
-                    )
+                    after_for_state = _weave_states_in_region(op.body, inner_state, rewriter)
 
                     # get a list of all initial states of accelerators that were changed int the loop.
                     input_states: list[SSAValue] = [
-                        state[acc_name]
-                        for acc_name in updated_accelerators
-                        if state[acc_name] not in op.operands
+                        state[acc_name] for acc_name in updated_accelerators if state[acc_name] not in op.operands
                     ]
                     # and add the input states as initial loop-carried states
                     op.operands = (*op.operands, *input_states)
@@ -277,16 +263,10 @@ class ConvertLinalgToAccPass(ModulePass):
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         assert isinstance(ctx, AccContext)
-        PatternRewriteWalker(ConvertLinalgToAcceleratorPattern(op, ctx)).rewrite_module(
-            op
-        )
-        PatternRewriteWalker(
-            ConvertSnaxStreamToAcceleratorPattern(op, ctx)
-        ).rewrite_module(op)
+        PatternRewriteWalker(ConvertLinalgToAcceleratorPattern(op, ctx)).rewrite_module(op)
+        PatternRewriteWalker(ConvertSnaxStreamToAcceleratorPattern(op, ctx)).rewrite_module(op)
         # run these strictly sequentially, otherwise stuff breaks
-        PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
-            op
-        )
+        PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(op)
 
 
 class TraceStatesPass(ModulePass):
@@ -297,6 +277,4 @@ class TraceStatesPass(ModulePass):
     name = "accfg-trace-states"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(
-            op
-        )
+        PatternRewriteWalker(ConnectStatesThroughControlFlowPattern()).rewrite_module(op)

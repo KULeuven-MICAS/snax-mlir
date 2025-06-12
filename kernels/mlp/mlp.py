@@ -49,18 +49,12 @@ def cascade_matmul(batch_size, input_dim, hidden_layers_dim, output_dim):
         # then perform matrix multiplication
         # and scale the result to int8
         if i == 0:
-            hidden_weights_list.append(
-                np.random.randint(-128, 127, (input_dim, hidden_layers_dim[i]))
-            )
+            hidden_weights_list.append(np.random.randint(-128, 127, (input_dim, hidden_layers_dim[i])))
             # Perform matrix multiplication for the first layer
             vXM = input_vals @ hidden_weights_list[i]
             hidden_output_vals.append(scale_to_int8(vXM))
         else:
-            hidden_weights_list.append(
-                np.random.randint(
-                    -128, 127, (hidden_layers_dim[i - 1], hidden_layers_dim[i])
-                )
-            )
+            hidden_weights_list.append(np.random.randint(-128, 127, (hidden_layers_dim[i - 1], hidden_layers_dim[i])))
             vXM = hidden_output_vals[i - 1] @ hidden_weights_list[i]
             hidden_output_vals.append(scale_to_int8(vXM))
 
@@ -80,9 +74,7 @@ def cascade_matmul(batch_size, input_dim, hidden_layers_dim, output_dim):
 
 
 # Defining types and paramters for the MLIR generation
-def mlir_cascade_matmul(
-    input_vals, hidden_weights_list, hidden_output_vals, output_weights, output_vals
-):
+def mlir_cascade_matmul(input_vals, hidden_weights_list, hidden_output_vals, output_weights, output_vals):
     # Define types For Program:
     # For the input weights
     input_type = TensorType(i8, input_vals.shape)
@@ -109,11 +101,7 @@ def mlir_cascade_matmul(
     def func_body(_) -> None:
         # Declare constants
         # For the input weights
-        input_const = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(
-                input_type, input_vals.flatten().tolist()
-            )
-        )
+        input_const = ConstantOp(DenseIntOrFPElementsAttr.from_list(input_type, input_vals.flatten().tolist()))
 
         # For the hidden weights
         hidden_weight_const = []
@@ -129,17 +117,11 @@ def mlir_cascade_matmul(
 
         # For the output weights
         output_weight_const = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(
-                output_weights_type, output_weights.flatten().tolist()
-            )
+            DenseIntOrFPElementsAttr.from_list(output_weights_type, output_weights.flatten().tolist())
         )
 
         # For the output values
-        output_const = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(
-                output_type, output_vals.flatten().tolist()
-            )
-        )
+        output_const = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, output_vals.flatten().tolist()))
 
         # TODO: check me after but let's leave these to 0 first
         # Some needed constants

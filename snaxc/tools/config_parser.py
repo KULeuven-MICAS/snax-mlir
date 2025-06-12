@@ -38,13 +38,9 @@ def parse_config(config: Any) -> AccContext:
             for core in cluster.cores:
                 for accelerator in core.accelerators:
                     if accelerator == "snax_gemmx":
-                        context.register_accelerator(
-                            SNAXGEMMXAccelerator.name, lambda: SNAXGEMMXAccelerator()
-                        )
+                        context.register_accelerator(SNAXGEMMXAccelerator.name, lambda: SNAXGEMMXAccelerator())
                     elif accelerator == "snax_alu":
-                        context.register_accelerator(
-                            SNAXAluAccelerator.name, lambda: SNAXAluAccelerator()
-                        )
+                        context.register_accelerator(SNAXAluAccelerator.name, lambda: SNAXAluAccelerator())
         else:
             raise ValueError(f"Unknown config key: {key}")
 
@@ -57,11 +53,7 @@ def parse_memory(config: dict[str, Any]) -> SnaxMemory:
 
 
 def parse_cluster(config: dict[str, Any]) -> Cluster:
-    cores = [
-        core_name
-        for core_name in config.keys()
-        if re.fullmatch(r"core_(\d+)", core_name)
-    ]
+    cores = [core_name for core_name in config.keys() if re.fullmatch(r"core_(\d+)", core_name)]
     return Cluster(
         memory=parse_memory(config["memory"]),
         cores=[Core(accelerators=config[core]) for core in cores],

@@ -53,16 +53,10 @@ class AutoflowScheduler(RewritePattern):
 
         # First, run the stream scheduling algorithm
         schedule_bounds = tuple(op.get_static_pattern_bounds())
-        schedule = Schedule(
-            SchedulePattern(schedule_bounds, pattern.data)
-            for pattern in op.patterns.data
-        )
+        schedule = Schedule(SchedulePattern(schedule_bounds, pattern.data) for pattern in op.patterns.data)
 
         schedule = schedule.canonicalize()
-        element_sizes = [
-            cast(MemRefType[FixedBitwidthType], oper.type).element_type.size
-            for oper in op.operands
-        ]
+        element_sizes = [cast(MemRefType[FixedBitwidthType], oper.type).element_type.size for oper in op.operands]
         schedule = scheduler(
             template,
             schedule,
@@ -94,6 +88,4 @@ class DartSchedulerPass(ModulePass):
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         assert isinstance(ctx, AccContext)
-        PatternRewriteWalker(AutoflowScheduler(ctx, self.schedule_idx)).rewrite_module(
-            op
-        )
+        PatternRewriteWalker(AutoflowScheduler(ctx, self.schedule_idx)).rewrite_module(op)

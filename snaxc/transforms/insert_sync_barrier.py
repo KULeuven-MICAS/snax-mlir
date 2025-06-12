@@ -45,14 +45,10 @@ class InsertSyncBarrier(ModulePass):
                     # is used on another core - if yes, there must be a synchronisation
                     # barrier between the two ops
 
-                    if dispatch_to_dm(op_in_module) and not dispatch_to_dm(
-                        op_use.operation
-                    ):
+                    if dispatch_to_dm(op_in_module) and not dispatch_to_dm(op_use.operation):
                         ops_to_sync.append(op_use.operation)
 
-                    if dispatch_to_compute(op_in_module) and not dispatch_to_compute(
-                        op_use.operation
-                    ):
+                    if dispatch_to_compute(op_in_module) and not dispatch_to_compute(op_use.operation):
                         ops_to_sync.append(op_use.operation)
 
                     if isinstance(op_use.operation, DeallocOp):

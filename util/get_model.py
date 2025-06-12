@@ -14,9 +14,7 @@ def get_model(model: str, output_file: Path) -> None:
         case "kws_ref_model":
             model_url = "/keyword_spotting/trained_models/kws_ref_model.tflite"
         case "pretrainedResnet_quant":
-            model_url = (
-                "/image_classification/trained_models/pretrainedResnet_quant.tflite"
-            )
+            model_url = "/image_classification/trained_models/pretrainedResnet_quant.tflite"
         case "vww_96_int8":
             model_url = "/visual_wake_words/trained_models/vww_96_int8.tflite"
         case _:
@@ -32,9 +30,7 @@ def get_model(model: str, output_file: Path) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Download quantized MLPerf Tiny models"
-    )
+    parser = argparse.ArgumentParser(description="Download quantized MLPerf Tiny models")
     parser.add_argument(
         "network",
         choices=[

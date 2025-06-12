@@ -23,9 +23,7 @@ def test_llvmmemrefdescriptor_init():
 def test_llvmmemrefdescriptor_from_rank_and_integer_type():
     rank = 2
     integer_type = i32
-    memref_descriptor = LLVMMemrefDescriptor.from_rank_and_integer_type(
-        rank, integer_type
-    )
+    memref_descriptor = LLVMMemrefDescriptor.from_rank_and_integer_type(rank, integer_type)
 
     assert isinstance(memref_descriptor.descriptor, LLVMStructType)
     assert len(memref_descriptor.descriptor.types.data) == 5
@@ -108,9 +106,7 @@ def test_llvmmemrefdescriptor_verify_invalid_shape_and_strides_type():
             LLVMPointerType.opaque(),
             i32,
             LLVMArrayType.from_size_and_type(2, i32),
-            LLVMArrayType.from_size_and_type(
-                2, LLVMPointerType.opaque()
-            ),  # Invalid type
+            LLVMArrayType.from_size_and_type(2, LLVMPointerType.opaque()),  # Invalid type
         ]
     )
     memref_descriptor = LLVMMemrefDescriptor(descriptor)

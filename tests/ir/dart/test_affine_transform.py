@@ -19,9 +19,7 @@ def test_affine_transform_initialization_valid():
 def test_affine_transform_initialization_invalid_dimensions():
     A = np.array([[1, 2], [3, 4]])
     b = np.array([5])  # Incompatible size
-    with pytest.raises(
-        ValueError, match="Matrix A and vector b must have compatible dimensions."
-    ):
+    with pytest.raises(ValueError, match="Matrix A and vector b must have compatible dimensions."):
         AffineTransform(A, b)
 
 

@@ -83,9 +83,7 @@ class DispatchTemplatePattern(RewritePattern):
         if isinstance(matched_accelerator, SNAXStreamer):
             suffix = "_stream"
             # check if no dynamic operands
-            for operand in (
-                o.type for o in linalg_op.operands if isinstance(o.type, ShapedType)
-            ):
+            for operand in (o.type for o in linalg_op.operands if isinstance(o.type, ShapedType)):
                 if -1 in operand.get_shape():
                     suffix = ""
                     break

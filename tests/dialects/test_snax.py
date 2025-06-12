@@ -16,9 +16,7 @@ def test_memref_memory_space_cast():
     layout_1 = StridedLayoutAttr(strides=(2, 4, 6), offset=8)
     layout_2 = StridedLayoutAttr(strides=(2, 8, 16), offset=4)
 
-    source_type = MemRefType(
-        i32, [10, 2], layout=layout_1, memory_space=builtin.StringAttr("L1")
-    )
+    source_type = MemRefType(i32, [10, 2], layout=layout_1, memory_space=builtin.StringAttr("L1"))
     source_ssa = create_ssa_value(source_type)
 
     dest_type = MemRefType(i32, [10, 2], memory_space=builtin.StringAttr("L1"))
@@ -28,9 +26,7 @@ def test_memref_memory_space_cast():
     assert memory_layout_cast.source is source_ssa
     assert memory_layout_cast.dest.type is dest_type
 
-    dest_type_other_element = MemRefType(
-        i64, [10, 2], layout=layout_2, memory_space=builtin.StringAttr("L1")
-    )
+    dest_type_other_element = MemRefType(i64, [10, 2], layout=layout_2, memory_space=builtin.StringAttr("L1"))
 
     with pytest.raises(
         VerifyException,
@@ -38,18 +34,12 @@ def test_memref_memory_space_cast():
     ):
         LayoutCast(source_ssa, dest_type_other_element).verify()
 
-    dest_type_other_shape = MemRefType(
-        i32, [10, 4], layout=layout_2, memory_space=builtin.StringAttr("L1")
-    )
+    dest_type_other_shape = MemRefType(i32, [10, 4], layout=layout_2, memory_space=builtin.StringAttr("L1"))
 
-    with pytest.raises(
-        VerifyException, match="Expected source and destination to have the same shape."
-    ):
+    with pytest.raises(VerifyException, match="Expected source and destination to have the same shape."):
         LayoutCast(source_ssa, dest_type_other_shape).verify()
 
-    dest_type_other_space = MemRefType(
-        i32, [10, 2], layout=layout_2, memory_space=builtin.StringAttr("L_other")
-    )
+    dest_type_other_space = MemRefType(i32, [10, 2], layout=layout_2, memory_space=builtin.StringAttr("L_other"))
 
     with pytest.raises(
         VerifyException,

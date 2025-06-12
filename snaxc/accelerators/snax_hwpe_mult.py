@@ -41,19 +41,13 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
 
             return [
                 *ops_to_insert,
-                setup := accfg.SetupOp(
-                    [val for _, val in args], self.fields, self.name
-                ),
-                launch_val := arith.ConstantOp(
-                    builtin.IntegerAttr.from_int_and_width(0, 5)
-                ),
+                setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
+                launch_val := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(0, 5)),
                 token := accfg.LaunchOp([launch_val], self.launch_fields, setup),
                 accfg.AwaitOp(token),
             ]
 
-    def _generate_setup_vals(
-        self, op: linalg.GenericOp
-    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def _generate_setup_vals(self, op: linalg.GenericOp) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         """
         Produce a `Sequence[Operation], SSAValue` tuple
         for each field that contains:
@@ -86,9 +80,7 @@ class SNAXHWPEMultAccelerator(SNAXAccelerator, SNAXPollingBarrier):
                             ref.type.element_type.size, builtin.IndexType()
                         ),
                         byte_offset := arith.MuliOp(metadata.offset, el_bytes),
-                        ptr_plus_byte_offset := arith.AddiOp(
-                            ptr, byte_offset, builtin.IndexType()
-                        ),
+                        ptr_plus_byte_offset := arith.AddiOp(ptr, byte_offset, builtin.IndexType()),
                         ptr_i32 := arith.IndexCastOp(ptr_plus_byte_offset, builtin.i32),
                     ],
                     ptr_i32.result,

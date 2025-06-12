@@ -53,9 +53,7 @@ class Accelerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def lower_acc_launch(
-        launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
-    ) -> Sequence[Operation]:
+    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         """
         Based on the accfg.accelerator op, return the necessary sequence of
         lower-level operations to perform an
@@ -65,9 +63,7 @@ class Accelerator(ABC):
 
     @staticmethod
     @abstractmethod
-    def lower_acc_setup(
-        setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp
-    ) -> Sequence[Operation]:
+    def lower_acc_setup(setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         """
         Based on the accfg.accelerator op and the accfg.SetupOp,
         return the necessary sequence of lower-level operations to perform

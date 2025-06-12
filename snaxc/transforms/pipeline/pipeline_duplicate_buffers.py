@@ -90,9 +90,7 @@ class PipelineDuplicateBuffers(RewritePattern):
             return
 
         if len(in_uses) != 1 or len(out_uses) != 1:
-            raise NotImplementedError(
-                "multiple in/out uses of buffer is not yet supported"
-            )
+            raise NotImplementedError("multiple in/out uses of buffer is not yet supported")
 
         in_use = in_uses[0]
         in_op = cast(StageOp, in_use.operation)
@@ -100,14 +98,10 @@ class PipelineDuplicateBuffers(RewritePattern):
         out_op = cast(StageOp, out_use.operation)
 
         if in_op.index.value.data != out_op.index.value.data + 1:
-            raise NotImplementedError(
-                "non-subsequent in/out uses of buffer is not yet supported"
-            )
+            raise NotImplementedError("non-subsequent in/out uses of buffer is not yet supported")
 
         if not isinstance(buffer, OpResult) or not isinstance(buffer.op, AllocOp):
-            raise NotImplementedError(
-                "buffer should be the result of a memref.alloc operation"
-            )
+            raise NotImplementedError("buffer should be the result of a memref.alloc operation")
 
         # this is the spot to implement double buffering. There is one in_use, and one out use.
         # we must duplicate the buffer and select the correct one in the index op. to avoid
@@ -134,9 +128,7 @@ class PipelineDuplicateBuffers(RewritePattern):
         selection_index = arith.CmpiOp(cst_0, rem, "eq")
         selection = arith.SelectOp(selection_index, buffers[0], buffers[1])
         new_yield = YieldOp(*yield_op.operands, selection)
-        rewriter.replace_op(
-            yield_op, [cst_2, cst_0, rem, selection_index, selection, new_yield]
-        )
+        rewriter.replace_op(yield_op, [cst_2, cst_0, rem, selection_index, selection, new_yield])
         rewriter.replace_op(index_op, new_index, new_results=new_index.results[:-1])
 
         # replace all uses of the buffer with the result from the index op

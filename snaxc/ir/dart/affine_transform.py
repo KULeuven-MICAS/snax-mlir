@@ -50,9 +50,7 @@ class AffineTransform:
                         AffineBinaryOpKind.CeilDiv,
                         AffineBinaryOpKind.Mod,
                     ):
-                        raise ValueError(
-                            "Affine map is not a pure linear transformation"
-                        )
+                        raise ValueError("Affine map is not a pure linear transformation")
 
         # generate a list with n zeros and a 1 at index d:
         # [0, 0, 0, 1]
@@ -81,9 +79,7 @@ class AffineTransform:
             expr = AffineConstantExpr(int(self.b[result]))
             for dim in range(self.num_dims):
                 if self.A[result, dim] != 0:
-                    expr += AffineConstantExpr(
-                        int(self.A[result, dim])
-                    ) * AffineDimExpr(dim)
+                    expr += AffineConstantExpr(int(self.A[result, dim])) * AffineDimExpr(dim)
             results.append(expr)
         return AffineMap(self.num_dims, 0, tuple(results))
 
@@ -101,15 +97,11 @@ class AffineTransform:
         """
         if x.ndim == 1:  # Single vector
             if x.shape[0] != self.A.shape[1]:
-                raise ValueError(
-                    "Input vector x must have a dimension matching the number of columns in A."
-                )
+                raise ValueError("Input vector x must have a dimension matching the number of columns in A.")
             return self.A @ x + self.b
         elif x.ndim == 2:  # Batch of vectors
             if x.shape[1] != self.A.shape[1]:
-                raise ValueError(
-                    "Input vectors in batch must have a dimension matching the number of columns in A."
-                )
+                raise ValueError("Input vectors in batch must have a dimension matching the number of columns in A.")
             return (self.A @ x.T).T + self.b
         else:
             raise ValueError("Input x must be 1D (vector) or 2D (batch of vectors).")
@@ -120,9 +112,7 @@ class AffineTransform:
         The result represents the application of `other` followed by `self`.
         """
         if self.A.shape[1] != other.A.shape[0]:
-            raise ValueError(
-                "Matrix dimensions of the transformations do not align for composition."
-            )
+            raise ValueError("Matrix dimensions of the transformations do not align for composition.")
         new_A = self.A @ other.A
         new_b = self.A @ other.b + self.b
         return type(self)(new_A, new_b)

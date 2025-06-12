@@ -124,8 +124,7 @@ class StageOp(IRDLOperation):
     irdl_options = [AttrSizedOperandSegments(as_property=True)]
 
     assembly_format = (
-        "$index (` ins` `(` $ins^ `:` type($ins) `)`)?"
-        + "(` outs` `(` $outs^ `:` type($outs) `)`)? $body attr-dict"
+        "$index (` ins` `(` $ins^ `:` type($ins) `)`)?" + "(` outs` `(` $outs^ `:` type($outs) `)`)? $body attr-dict"
     )
 
     traits = traits_def(NoTerminator(), HasParent(PipelineOp))
@@ -139,9 +138,7 @@ class StageOp(IRDLOperation):
     ) -> None:
         if isinstance(index, int):
             index = IntegerAttr.from_index_int_value(index)
-        super().__init__(
-            operands=[ins, outs], regions=[body], properties={"index": index}
-        )
+        super().__init__(operands=[ins, outs], regions=[body], properties={"index": index})
 
 
 Pipeline = Dialect(

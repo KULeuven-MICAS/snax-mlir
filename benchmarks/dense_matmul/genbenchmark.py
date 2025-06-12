@@ -46,21 +46,15 @@ def create_matrix_multiply(m, n, k, add_c: bool = False):
     def func_body(args: tuple[BlockArgument, ...]) -> None:
         c0 = arith.ConstantOp.from_int_and_width(0, 32)
         empty_tensor = tensor.EmptyOp([], (arg_types[-1]))
-        result = linalg.QuantizedMatmulOp(
-            [args[0], args[1], c0.result, c0.result], [empty_tensor.tensor]
-        )
+        result = linalg.QuantizedMatmulOp([args[0], args[1], c0.result, c0.result], [empty_tensor.tensor])
         if add_c:
             empty_tensor_2 = tensor.EmptyOp([], (arg_types[-1]))
-            newresult = linalg.AddOp(
-                [args[2], result.results[0]], [empty_tensor_2.tensor]
-            )
+            newresult = linalg.AddOp([args[2], result.results[0]], [empty_tensor_2.tensor])
             func.ReturnOp(newresult)
         else:
             func.ReturnOp(result)
 
-    function = func.FuncOp.from_region(
-        "streamer_matmul", arg_types, res_types, func_body
-    )
+    function = func.FuncOp.from_region("streamer_matmul", arg_types, res_types, func_body)
 
     module = builtin.ModuleOp([function])
 
@@ -110,9 +104,7 @@ def output_log(output_report) -> str:
             result += f"| {output_report[benchmark]['m']} "
             result += f"| {output_report[benchmark]['n']} "
             result += f"| {output_report[benchmark]['k']} "
-            result += (
-                f"| {'yes' if output_report[benchmark]['plots_available'] else 'no'} "
-            )
+            result += f"| {'yes' if output_report[benchmark]['plots_available'] else 'no'} "
             result += f"| {output_report[benchmark]['cycles']} "
             result += f"| {output_report[benchmark]['ideal']} "
             result += f"| {output_report[benchmark]['utilization']} | \n"
@@ -123,9 +115,7 @@ def output_log(output_report) -> str:
     return result
 
 
-def output_log_benchmark(
-    benchmark_name: str, utilization: dict[str, int], to_plot: bool
-) -> str:
+def output_log_benchmark(benchmark_name: str, utilization: dict[str, int], to_plot: bool) -> str:
     result: str = ""
     result += f"# results for {benchmark_name}\n\n"
     dt_string = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -199,9 +189,7 @@ if __name__ == "__main__":
         }
         output_report[bm.benchmark] = results
 
-        bm.generate_output_log(
-            lambda name: output_log_benchmark(name, results, to_plot)
-        )
+        bm.generate_output_log(lambda name: output_log_benchmark(name, results, to_plot))
 
     with open("output/index.md", "w") as file:
         file.write(output_log(output_report))

@@ -30,9 +30,7 @@ class TiledStride:
         self.strides = list(strides)
 
     @staticmethod
-    def from_stride(
-        simple_stride: int | None, tile_bounds: list[int | None]
-    ) -> TiledStride:
+    def from_stride(simple_stride: int | None, tile_bounds: list[int | None]) -> TiledStride:
         """Create a TiledStride representation from a simple stride
         (not tiled), and a given set of tile bounds
 
@@ -51,17 +49,11 @@ class TiledStride:
         for bound in reversed(tile_bounds[1:]):
             steps = [bound * steps[0] if bound and steps[0] else None, *steps]
 
-        return TiledStride(
-            [Stride(step, bound) for step, bound in zip(steps, tile_bounds)]
-        )
+        return TiledStride([Stride(step, bound) for step, bound in zip(steps, tile_bounds)])
 
     def __str__(self) -> str:
-        strides = ", ".join(
-            str(stride.step) if stride.step else "?" for stride in self.strides
-        )
-        bounds = ", ".join(
-            str(stride.bound) if stride.bound else "?" for stride in self.strides
-        )
+        strides = ", ".join(str(stride.step) if stride.step else "?" for stride in self.strides)
+        bounds = ", ".join(str(stride.bound) if stride.bound else "?" for stride in self.strides)
         return f"[{bounds}] -> ({strides})"
 
     def __iter__(self) -> Iterator[tuple[int, Stride]]:

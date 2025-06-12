@@ -7,9 +7,9 @@ from collections.abc import Sequence
 
 def merge_json(file_list: Sequence[str], output_file: str):
     prefix = ""
-    traces: defaultdict[
-        int, defaultdict[int, list[dict[str, int | float | str | None]]]
-    ] = defaultdict(lambda: defaultdict(list))
+    traces: defaultdict[int, defaultdict[int, list[dict[str, int | float | str | None]]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
     for filename in file_list:
         match = re.match(r"(.*)_trace_chip_(\d{2})_hart_(\d{5})_perf\.json", filename)
         if match:
@@ -24,15 +24,10 @@ def merge_json(file_list: Sequence[str], output_file: str):
             # Append the fragments to the corresponding chip and hart
             traces[chip_id][hart_id].extend(fragments)
         else:
-            raise RuntimeError(
-                f"Filename '{filename}' doesn't match the expected regex"
-            )
+            raise RuntimeError(f"Filename '{filename}' doesn't match the expected regex")
 
     # Convert the defaultdict to a nested list structure
-    result = [
-        [chip_harts[hart_id] for hart_id in sorted(chip_harts)]
-        for _, chip_harts in sorted(traces.items())
-    ]
+    result = [[chip_harts[hart_id] for hart_id in sorted(chip_harts)] for _, chip_harts in sorted(traces.items())]
 
     # Use prefix for output file if not explicitly provided
     output_file = output_file or f"{prefix}_traces.json"
@@ -43,9 +38,7 @@ def merge_json(file_list: Sequence[str], output_file: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Merge JSON files containing chip and hart traces."
-    )
+    parser = argparse.ArgumentParser(description="Merge JSON files containing chip and hart traces.")
     parser.add_argument(
         "files",
         metavar="FILE",
@@ -59,8 +52,7 @@ if __name__ == "__main__":
         "--output",
         metavar="OUTPUT_FILE",
         default=None,
-        help="Name of the output JSON file."
-        "Defaults to '<prefix>_aggregated.json' based on input filenames.",
+        help="Name of the output JSON file.Defaults to '<prefix>_aggregated.json' based on input filenames.",
     )
 
     args = parser.parse_args()

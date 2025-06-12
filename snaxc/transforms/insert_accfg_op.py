@@ -36,7 +36,5 @@ class InsertAccOp(ModulePass):
         assert t is not None
         acc_string = acc_op.name_prop.string_value()
         if t.lookup_symbol(op, acc_string) is not None:
-            raise RuntimeError(
-                f"Cannot insert op: @{acc_string}, already present in symbol table."
-            )
+            raise RuntimeError(f"Cannot insert op: @{acc_string}, already present in symbol table.")
         t.insert_or_update(op, acc_op)

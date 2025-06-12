@@ -24,6 +24,4 @@ class RemoveMemrefCopyPass(ModulePass):
     """
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(
-            RemoveMemrefCopyPattern(), apply_recursively=False
-        ).rewrite_module(op)
+        PatternRewriteWalker(RemoveMemrefCopyPattern(), apply_recursively=False).rewrite_module(op)

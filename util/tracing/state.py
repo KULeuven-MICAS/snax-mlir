@@ -1,8 +1,6 @@
 import re
 
-CYCLE_REGEX = re.compile(
-    r"\s*([0-9]+) ([0-9]+)\s+[0-9]+\s+(0x[0-9a-fz]+)\s+DASM\(([0-9a-fz]+)\)\s*#;(.*)"
-)
+CYCLE_REGEX = re.compile(r"\s*([0-9]+) ([0-9]+)\s+[0-9]+\s+(0x[0-9a-fz]+)\s+DASM\(([0-9a-fz]+)\)\s*#;(.*)")
 
 
 class Instruction:

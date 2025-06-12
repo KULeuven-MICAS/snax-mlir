@@ -170,27 +170,19 @@ class LaunchOp(AccfgBaseOp):
         # that the state and my accelerator match
         assert isinstance(self.state.type, StateType)
         if self.state.type.accelerator != self.accelerator:
-            raise VerifyException(
-                "The state's accelerator does not match the launch accelerator!"
-            )
+            raise VerifyException("The state's accelerator does not match the launch accelerator!")
         # that the token and my accelerator match
         assert isinstance(self.token.type, TokenType)
         if self.token.type.accelerator != self.accelerator:
-            raise VerifyException(
-                "The token's accelerator does not match the launch accelerator!"
-            )
+            raise VerifyException("The token's accelerator does not match the launch accelerator!")
 
         # that the token is used
-        if len(self.token.uses) != 1 or not isinstance(
-            next(iter(self.token.uses)).operation, AwaitOp
-        ):
+        if len(self.token.uses) != 1 or not isinstance(next(iter(self.token.uses)).operation, AwaitOp):
             raise VerifyException("Launch token must be used by exactly one await op")
 
         # that len(values) == len(param_names)
         if len(self.values) != len(self.param_names):
-            raise ValueError(
-                "Must have received same number of values as parameter names"
-            )
+            raise ValueError("Must have received same number of values as parameter names")
         # TODO: allow use in control flow
 
     def get_acc_name(self) -> str:
@@ -289,16 +281,11 @@ class SetupOp(AccfgBaseOp):
                 raise VerifyException("Input and output state accelerators must match")
         assert isinstance(self.out_state.type, StateType)
         if self.accelerator != self.out_state.type.accelerator:
-            raise VerifyException(
-                "Output state accelerator and accelerator the "
-                "operations property must match"
-            )
+            raise VerifyException("Output state accelerator and accelerator the operations property must match")
 
         # that len(values) == len(param_names)
         if len(self.values) != len(self.param_names):
-            raise ValueError(
-                "Must have received same number of values as parameter names"
-            )
+            raise ValueError("Must have received same number of values as parameter names")
 
     def print(self, printer: Printer):
         printer.print(" ")
@@ -345,14 +332,10 @@ class SetupOp(AccfgBaseOp):
             val = parser.parse_operand(f'expected value for field "{name}"')
             parser.parse_punctuation(":")
             typ = parser.parse_type()
-            assert val.type == typ, (
-                f"ssa value type mismatch! Expected {typ}, got {val.type}"
-            )
+            assert val.type == typ, f"ssa value type mismatch! Expected {typ}, got {val.type}"
             return name, val
 
-        args: list[tuple[str, SSAValue]] = parser.parse_comma_separated_list(
-            Parser.Delimiter.PAREN, parse_itm
-        )
+        args: list[tuple[str, SSAValue]] = parser.parse_comma_separated_list(Parser.Delimiter.PAREN, parse_itm)
 
         attributes = {}
         if parser.parse_optional_keyword("attrs"):
@@ -409,27 +392,17 @@ class AcceleratorOp(AccfgBaseOp):
         barrier: int | IntegerAttr,
     ):
         if not isinstance(fields, DictionaryAttr):
-            fields = DictionaryAttr(
-                {name: IntegerAttr(val, i32) for name, val in fields.items()}
-            )
+            fields = DictionaryAttr({name: IntegerAttr(val, i32) for name, val in fields.items()})
 
         if not isinstance(launch_fields, DictionaryAttr):
-            launch_fields = DictionaryAttr(
-                {name: IntegerAttr(val, i32) for name, val in launch_fields.items()}
-            )
+            launch_fields = DictionaryAttr({name: IntegerAttr(val, i32) for name, val in launch_fields.items()})
 
         super().__init__(
             properties={
-                "name": (
-                    SymbolRefAttr(name) if not isinstance(name, SymbolRefAttr) else name
-                ),
+                "name": (SymbolRefAttr(name) if not isinstance(name, SymbolRefAttr) else name),
                 "fields": fields,
                 "launch_fields": launch_fields,
-                "barrier": (
-                    IntegerAttr(barrier, i32)
-                    if not isinstance(barrier, IntegerAttr)
-                    else barrier
-                ),
+                "barrier": (IntegerAttr(barrier, i32) if not isinstance(barrier, IntegerAttr) else barrier),
             }
         )
 

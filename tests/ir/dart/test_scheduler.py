@@ -57,21 +57,13 @@ def test_tiling_1o1_1d():
 def test_tiling_1o1_2d():
     # test tiling 2 dimensions for 1 operand
 
-    pattern_template = AffineMap.from_callable(
-        lambda a, b, c, d: (2 * a + b + 2 * c + d,)
-    )
+    pattern_template = AffineMap.from_callable(lambda a, b, c, d: (2 * a + b + 2 * c + d,))
     pattern_schedule = AffineMap.from_callable(lambda b, d: (b + d,))
-    pattern_expected = AffineMap.from_callable(
-        lambda a, b, c, d: (2 * a + b + 2 * c + d,)
-    )
+    pattern_expected = AffineMap.from_callable(lambda a, b, c, d: (2 * a + b + 2 * c + d,))
 
-    template = Template(
-        (TemplatePattern(bounds=(None, 2, None, 2), pattern=pattern_template),)
-    )
+    template = Template((TemplatePattern(bounds=(None, 2, None, 2), pattern=pattern_template),))
     schedule = Schedule((SchedulePattern(bounds=(4, 4), pattern=pattern_schedule),))
-    expected = Schedule(
-        (SchedulePattern(bounds=(2, 2, 2, 2), pattern=pattern_expected),)
-    )
+    expected = Schedule((SchedulePattern(bounds=(2, 2, 2, 2), pattern=pattern_expected),))
 
     result = scheduler(template, schedule, extra_checks=[])
 
@@ -94,15 +86,9 @@ def test_tiling_2o1_2d():
         AffineMap.from_callable(lambda a, b, c, d: (2 * c + d,)),
     )
 
-    template = Template(
-        TemplatePattern((None, 2, None, 2), pattern) for pattern in pattern_template
-    )
-    schedule = Schedule(
-        SchedulePattern((4, 4), pattern) for pattern in pattern_schedule
-    )
-    expected = Schedule(
-        SchedulePattern((2, 2, 2, 2), pattern) for pattern in pattern_expected
-    )
+    template = Template(TemplatePattern((None, 2, None, 2), pattern) for pattern in pattern_template)
+    schedule = Schedule(SchedulePattern((4, 4), pattern) for pattern in pattern_schedule)
+    expected = Schedule(SchedulePattern((2, 2, 2, 2), pattern) for pattern in pattern_expected)
 
     result = scheduler(template, schedule, extra_checks=[])
 
@@ -112,21 +98,13 @@ def test_tiling_2o1_2d():
 def test_tiling_1o2_1d():
     # test tiling 1 dimension for 2 operands with 1 dimensions
 
-    pattern_template = AffineMap.from_callable(
-        lambda a, b, c, d: (2 * a + b, 2 * c + d)
-    )
+    pattern_template = AffineMap.from_callable(lambda a, b, c, d: (2 * a + b, 2 * c + d))
     pattern_schedule = AffineMap.from_callable(lambda b, d: (b, d))
-    pattern_expected = AffineMap.from_callable(
-        lambda a, b, c, d: (2 * a + b, 2 * c + d)
-    )
+    pattern_expected = AffineMap.from_callable(lambda a, b, c, d: (2 * a + b, 2 * c + d))
 
-    template = Template(
-        (TemplatePattern(bounds=(None, 2, None, 2), pattern=pattern_template),)
-    )
+    template = Template((TemplatePattern(bounds=(None, 2, None, 2), pattern=pattern_template),))
     schedule = Schedule((SchedulePattern(bounds=(4, 4), pattern=pattern_schedule),))
-    expected = Schedule(
-        (SchedulePattern(bounds=(2, 2, 2, 2), pattern=pattern_expected),)
-    )
+    expected = Schedule((SchedulePattern(bounds=(2, 2, 2, 2), pattern=pattern_expected),))
 
     results = list(scheduler_backtrack(template, schedule, extra_checks=[]))
 
@@ -139,9 +117,7 @@ def test_tiling_1o_1d2():
     pattern_schedule = AffineMap.from_callable(lambda c: (c,))
     pattern_expected = AffineMap.from_callable(lambda a, b, c: (4 * a + 2 * b + c,))
 
-    template = Template(
-        (TemplatePattern(bounds=(None, 2, 2), pattern=pattern_template),)
-    )
+    template = Template((TemplatePattern(bounds=(None, 2, 2), pattern=pattern_template),))
     schedule = Schedule((SchedulePattern(bounds=(8,), pattern=pattern_schedule),))
     expected = Schedule((SchedulePattern(bounds=(2, 2, 2), pattern=pattern_expected),))
 
@@ -188,14 +164,10 @@ def test_pure_output_stationary_check():
         (AffineMap.from_callable(lambda _a, b, _c, d, e: (e, b + e, 2 * d + e)), False),
     ]
 
-    template = Template(
-        (TemplatePattern([1] * template_pattern.num_dims, template_pattern),)
-    )
+    template = Template((TemplatePattern([1] * template_pattern.num_dims, template_pattern),))
 
     for schedule_pattern, expected_result in schedule_checks:
-        schedule = Schedule(
-            (SchedulePattern([1] * schedule_pattern.num_dims, schedule_pattern),)
-        )
+        schedule = Schedule((SchedulePattern([1] * schedule_pattern.num_dims, schedule_pattern),))
         assert is_pure_output_stationary(template, schedule) is expected_result
 
 
@@ -207,12 +179,8 @@ def test_pure_output_stationary_scheduler():
     schedule = Schedule([SchedulePattern([8, 8], schedule_pattern)])
 
     # the expected output stationary schedule
-    output_stationary_pattern = AffineMap.from_callable(
-        lambda y0, x, y1: (4 * y0 + y1,)
-    )
-    schedule_output_stationary = Schedule(
-        [SchedulePattern([2, 8, 4], output_stationary_pattern)]
-    )
+    output_stationary_pattern = AffineMap.from_callable(lambda y0, x, y1: (4 * y0 + y1,))
+    schedule_output_stationary = Schedule([SchedulePattern([2, 8, 4], output_stationary_pattern)])
 
     # if we run the scheduler without constraints, there are 2 valid schedules:
     result = list(scheduler_backtrack(template, schedule, extra_checks=[]))
@@ -221,11 +189,7 @@ def test_pure_output_stationary_scheduler():
     assert schedule_output_stationary in result
 
     # if we run the scheduler with the pure output stationary constraint, there is 1:
-    result = list(
-        scheduler_backtrack(
-            template, schedule, extra_checks=[is_pure_output_stationary]
-        )
-    )
+    result = list(scheduler_backtrack(template, schedule, extra_checks=[is_pure_output_stationary]))
     assert len(result) == 1
     # that one result being the output stationary one
     assert result[0] == schedule_output_stationary

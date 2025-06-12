@@ -42,33 +42,16 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
         # must be available
         if op.accelerator.data == "snax_gemmx":
             if len(op.patterns) == 3:
-                if op.body.block.arg_types[-1] == dart.StreamType(
-                    builtin.IntegerType(32)
-                ):
-                    streamers = [
-                        accelerator_type.streamer_config.data.streamers[i]
-                        for i in (0, 1, 4)
-                    ]
-                elif op.body.block.arg_types[-1] == dart.StreamType(
-                    builtin.IntegerType(8)
-                ):
-                    streamers = [
-                        accelerator_type.streamer_config.data.streamers[i]
-                        for i in (0, 1, 2)
-                    ]
+                if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
+                    streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (0, 1, 4)]
+                elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
+                    streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (0, 1, 2)]
                 else:
-                    raise NotImplementedError(
-                        "Unsupported type for snax_gemmx accelerator"
-                    )
+                    raise NotImplementedError("Unsupported type for snax_gemmx accelerator")
             elif len(op.patterns) == 4:
-                streamers = [
-                    accelerator_type.streamer_config.data.streamers[i]
-                    for i in (0, 1, 3, 4)
-                ]
+                streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (0, 1, 3, 4)]
             else:
-                streamers = [
-                    accelerator_type.streamer_config.data.streamers[i] for i in (3, 2)
-                ]
+                streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (3, 2)]
         else:
             streamers = accelerator_type.streamer_config.data.streamers
 
@@ -120,9 +103,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                     applied_bound = spat_size // bound
                     next_stride, next_bound = next(access_iter)
                     if applied_stride != next_stride:
-                        raise RuntimeError(
-                            "Non-contiguous access is not possible for this streamer configuration"
-                        )
+                        raise RuntimeError("Non-contiguous access is not possible for this streamer configuration")
                     stride, bound = (
                         applied_stride * applied_bound,
                         next_bound // applied_bound,
@@ -157,9 +138,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                 upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0]
             )
             if len(snax_stride_patterns) == 3:
-                if op.body.block.arg_types[-1] == dart.StreamType(
-                    builtin.IntegerType(32)
-                ):
+                if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
                     # matmul, int32 output
                     # insert empty patterns for D8 and zero pattern for C
                     snax_stride_patterns.insert(2, empty_pattern)
@@ -178,15 +157,11 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                     # point C to 0
                     ops_to_add.append(
                         # zero pointer will generate 0 values
-                        ptr := arith.ConstantOp.from_int_and_width(
-                            0, builtin.IndexType()
-                        )
+                        ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
                     )
                     new_inputs.append(ptr.result)
 
-                elif op.body.block.arg_types[-1] == dart.StreamType(
-                    builtin.IntegerType(8)
-                ):
+                elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
                     new_inputs.append(new_outputs.pop())
                     # matmul, int8 output
                     # for C32:
@@ -199,9 +174,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                     )
                     ops_to_add.append(
                         # zero pointer will generate 0 values
-                        ptr := arith.ConstantOp.from_int_and_width(
-                            0, builtin.IndexType()
-                        )
+                        ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
                     )
                     new_inputs.append(ptr.result)
                     # for D32
@@ -240,14 +213,10 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                 # read zeros from tcdm (must make sure there are zeros at these addresses)
                 # in the new streamer this can be fixed with byte masking
                 snax_stride_patterns.insert(0, zero_pattern)
-                ops_to_add.append(
-                    ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
-                )
+                ops_to_add.append(ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType()))
                 new_inputs.insert(0, ptr.result)
                 snax_stride_patterns.insert(1, zero_pattern)
-                ops_to_add.append(
-                    ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
-                )
+                ops_to_add.append(ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType()))
                 new_inputs.insert(1, ptr.result)
 
                 # flip D8 and C such that they are in the right order
@@ -271,9 +240,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                     spatial_strides=[8, 64],
                 )
 
-        snax_stride_patterns = [
-            pattern.canonicalize() for pattern in snax_stride_patterns
-        ]
+        snax_stride_patterns = [pattern.canonicalize() for pattern in snax_stride_patterns]
 
         # now create snax_streaming region op
         new_op = snax_stream.StreamingRegionOp(

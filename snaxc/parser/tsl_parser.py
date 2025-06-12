@@ -49,9 +49,7 @@ class TSLParser(BaseParser):
         self._parse_token(MLIRTokenKind.ARROW, "Expected arrow")
         steps = self._parse_step()
         if len(steps) != len(bounds):
-            raise ParseError(
-                self._current_token.span, "Expected same number of steps and bounds"
-            )
+            raise ParseError(self._current_token.span, "Expected same number of steps and bounds")
         # construct the tiledstrides
         return TiledStride([Stride(step, bound) for step, bound in zip(steps, bounds)])
 

@@ -77,9 +77,7 @@ class AllocOpRewrite(RewritePattern):
             # multiply all the dimensions with the element width
             # to get the size we need to allocate
             assert isinstance(element_type, FixedBitwidthType)
-            element_size_op = ConstantOp.from_int_and_width(
-                element_type.size, IndexType()
-            )
+            element_size_op = ConstantOp.from_int_and_width(element_type.size, IndexType())
             total_size_op = element_size_op
             ops_to_add.append(element_size_op)
 
@@ -97,9 +95,7 @@ class AllocOpRewrite(RewritePattern):
             # use shape ops to generate tsl bound ops
             insert_ops, bound_ops = layout.get_bound_ops(shape_ops)
             ops_to_add.extend(insert_ops)
-            insert_ops, step_ops = layout.get_step_ops(
-                bound_ops, alloc_op.memref, in_bytes=True
-            )
+            insert_ops, step_ops = layout.get_step_ops(bound_ops, alloc_op.memref, in_bytes=True)
             ops_to_add.extend(insert_ops)
 
             cst_1 = ConstantOp.from_int_and_width(1, IndexType())
@@ -120,9 +116,7 @@ class AllocOpRewrite(RewritePattern):
 
             # add final + element_width
             assert isinstance(element_type, FixedBitwidthType)
-            element_size_op = ConstantOp.from_int_and_width(
-                element_type.size, IndexType()
-            )
+            element_size_op = ConstantOp.from_int_and_width(element_type.size, IndexType())
             stride_max = AddiOp(stride_max, element_size_op)
             ops_to_add.extend([element_size_op, stride_max])
 
@@ -147,9 +141,7 @@ class AllocOpRewrite(RewritePattern):
             memory_space,
             alloc_op.alignment,
         )
-        conversion_cast_op = UnrealizedConversionCastOp.get(
-            [snax_alloc], [alloc_op.memref.type]
-        )
+        conversion_cast_op = UnrealizedConversionCastOp.get([snax_alloc], [alloc_op.memref.type])
         rewriter.replace_matched_op(
             [*ops_to_add, snax_alloc, conversion_cast_op],
             new_results=conversion_cast_op.outputs,

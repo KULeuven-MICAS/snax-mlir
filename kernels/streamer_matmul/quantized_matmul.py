@@ -36,17 +36,9 @@ def matmul(m=16, n=16, k=16):
     @Builder.implicit_region([])
     def func_body(_) -> None:
         # Declare constants
-        a = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist())
-        )
-        b = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(b_type, b_vals.flatten().tolist())
-        )
-        golden = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(
-                output_type, golden_vals.flatten().tolist()
-            )
-        )
+        a = ConstantOp(DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist()))
+        b = ConstantOp(DenseIntOrFPElementsAttr.from_list(b_type, b_vals.flatten().tolist()))
+        golden = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, golden_vals.flatten().tolist()))
 
         c0 = ConstantOp.from_int_and_width(0, 32)
 
@@ -54,9 +46,7 @@ def matmul(m=16, n=16, k=16):
         empty_tensor = EmptyOp([], output_type)
 
         # Specify the operation
-        result = QuantizedMatmulOp(
-            [a.result, b.result, c0.result, c0.result], empty_tensor.results
-        )
+        result = QuantizedMatmulOp([a.result, b.result, c0.result, c0.result], empty_tensor.results)
 
         # Return both the computed result and the golden output
         ReturnOp(result, golden)

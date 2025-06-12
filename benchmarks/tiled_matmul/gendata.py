@@ -8,9 +8,7 @@ from util.gendata import create_data, create_header
 
 
 def create_test_data(n, m, k, ones=False, random_shape=False):
-    print(
-        f"Creating test data with n={n}, m={m}, k={k}, ones={ones}, random_shape={random_shape}"
-    )
+    print(f"Creating test data with n={n}, m={m}, k={k}, ones={ones}, random_shape={random_shape}")
     # Reset random seed for reproducible behavior
 
     np.random.seed(0)
@@ -37,12 +35,8 @@ def create_test_data(n, m, k, ones=False, random_shape=False):
         A = np.ones(shape=A_size, dtype=np.dtype("int8"))
         B = np.ones(shape=B_size, dtype=np.dtype("int8"))
     else:
-        A = np.random.randint(
-            low_bound, high_bound, size=A_size, dtype=np.dtype("int8")
-        )
-        B = np.random.randint(
-            low_bound, high_bound, size=B_size, dtype=np.dtype("int8")
-        )
+        A = np.random.randint(low_bound, high_bound, size=A_size, dtype=np.dtype("int8"))
+        B = np.random.randint(low_bound, high_bound, size=B_size, dtype=np.dtype("int8"))
 
     # Make sure the product is possible!
     assert A.shape[1] == B.shape[0]
@@ -73,16 +67,12 @@ def create_test_data(n, m, k, ones=False, random_shape=False):
 
 if __name__ == "__main__":
     # Set up the argument parser
-    parser = argparse.ArgumentParser(
-        description="Generate test data with specified parameters."
-    )
+    parser = argparse.ArgumentParser(description="Generate test data with specified parameters.")
     # Adding arguments
     parser.add_argument("--n", type=int, default=16, help="Value for n (default: 16)")
     parser.add_argument("--m", type=int, default=16, help="Value for m (default: 16)")
     parser.add_argument("--k", type=int, default=16, help="Value for k (default: 16)")
-    parser.add_argument(
-        "--ones", action="store_true", help="Use ones flag (default: False)"
-    )
+    parser.add_argument("--ones", action="store_true", help="Use ones flag (default: False)")
     parser.add_argument(
         "--random_shape",
         action="store_true",
@@ -93,6 +83,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Call the function with parsed arguments
-    create_test_data(
-        n=args.n, m=args.m, k=args.k, ones=args.ones, random_shape=args.random_shape
-    )
+    create_test_data(n=args.n, m=args.m, k=args.k, ones=args.ones, random_shape=args.random_shape)

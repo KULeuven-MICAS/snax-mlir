@@ -18,9 +18,7 @@ def example_tiled_strides(example_strides: tuple[Stride, ...]):
     return tiledStride1, tiledStride2, tiledStride3
 
 
-def test_tiled_stride_constructor(
-    example_strides: tuple[Stride, ...], example_tiled_strides: tuple[TiledStride, ...]
-):
+def test_tiled_stride_constructor(example_strides: tuple[Stride, ...], example_tiled_strides: tuple[TiledStride, ...]):
     stride1, stride2, stride3, _ = example_strides
     tiledStride1, tiledStride2, _ = example_tiled_strides
     assert tiledStride1.strides[0] == stride2
@@ -54,9 +52,7 @@ def test_tiled_stride_str(example_tiled_strides: tuple[TiledStride, ...]):
     assert str(tiledStride3) == "[?, 4] -> (?, 1)"
 
 
-def test_tiled_stride_iter(
-    example_strides: tuple[Stride, ...], example_tiled_strides: tuple[TiledStride, ...]
-):
+def test_tiled_stride_iter(example_strides: tuple[Stride, ...], example_tiled_strides: tuple[TiledStride, ...]):
     stride1, stride2, stride3, _ = example_strides
     strides = [stride3, stride2, stride1]
 

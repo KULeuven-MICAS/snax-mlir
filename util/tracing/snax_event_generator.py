@@ -64,9 +64,7 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
         self.state = None
         self.acc = acc_op
         self.fields = {val.value.data for val in self.acc.fields.data.values()}
-        self.launch_fields = {
-            val.value.data for val in self.acc.launch_fields.data.values()
-        }
+        self.launch_fields = {val.value.data for val in self.acc.launch_fields.data.values()}
         self.barrier_addr = self.acc.barrier.value.data
 
     def cycle(self, state: TraceState) -> list[DurationEvent]:

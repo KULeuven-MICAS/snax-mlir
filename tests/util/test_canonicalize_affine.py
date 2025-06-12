@@ -50,6 +50,4 @@ def test_canonicalize():
     assert canonicalize_expr(d0 % c1) == c0
 
     # test map:
-    assert canonicalize_map(AffineMap(2, 0, (c1 * d1, d0 + c0))) == AffineMap(
-        2, 0, (d1, d0)
-    )
+    assert canonicalize_map(AffineMap(2, 0, (c1 * d1, d0 + c0))) == AffineMap(2, 0, (d1, d0))

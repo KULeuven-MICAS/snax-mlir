@@ -17,15 +17,9 @@ from snaxc.dialects import dart
 @dataclass
 class BufferizeStreamingRegion(RewritePattern):
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: dart.OperationOp, rewriter: PatternRewriter
-    ) -> None:
+    def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter) -> None:
         # check for operands that need to be bufferized:
-        operands_to_buffer = tuple(
-            operand
-            for operand in op.operands
-            if isinstance(operand.type, builtin.TensorType)
-        )
+        operands_to_buffer = tuple(operand for operand in op.operands if isinstance(operand.type, builtin.TensorType))
 
         # if not tensor operands, return
         if not operands_to_buffer:

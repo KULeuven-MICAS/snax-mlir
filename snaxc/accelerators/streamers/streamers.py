@@ -73,9 +73,7 @@ class Streamer:
         opts: Iterable[StreamerOpts] = [],
     ) -> None:
         self.type = type
-        temporal_dims = [
-            f if isinstance(f, StreamerFlag) else StreamerFlag(f) for f in temporal_dims
-        ]
+        temporal_dims = [f if isinstance(f, StreamerFlag) else StreamerFlag(f) for f in temporal_dims]
         self.temporal_dims = tuple(temporal_dims)
         self.spatial_dims = tuple(spatial_dims)
         self.opts = set(opts)

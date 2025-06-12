@@ -38,10 +38,7 @@ class TiledStridedLayout:
         Returns:
             TiledStridedLayout: A TiledStridedLayout object
         """
-        tstrides = [
-            TiledStride.from_stride(stride, bounds)
-            for stride, bounds in zip(strides, tile_bounds)
-        ]
+        tstrides = [TiledStride.from_stride(stride, bounds) for stride, bounds in zip(strides, tile_bounds)]
         return TiledStridedLayout(tstrides, offset=offset)
 
     def __str__(self) -> str:
@@ -79,9 +76,7 @@ class TiledStridedLayout:
         return self.tstrides[dim].strides[depth]
 
     def canonicalize(self) -> Self:
-        return type(self)(
-            [tstride.canonicalize() for tstride in self.tstrides], self.offset
-        )
+        return type(self)([tstride.canonicalize() for tstride in self.tstrides], self.offset)
 
     def all_values(self) -> NDArray[np.int_]:
         """
@@ -92,9 +87,7 @@ class TiledStridedLayout:
         for _, _, stride in self:
             next_stride = np.array(stride.all_values(), dtype=np.int_)
             # for every stride, add a dimension and broadcast sum
-            result = np.squeeze(
-                np.expand_dims(result, -1) + np.expand_dims(next_stride, 0)
-            )
+            result = np.squeeze(np.expand_dims(result, -1) + np.expand_dims(next_stride, 0))
 
         # flatten multi-dimensional array
         result = result.flatten()
@@ -127,9 +120,7 @@ class TiledStridedLayout:
         """Check if the Tiled Strided Layout has the same tile bounds as another"""
         return self.tile_bounds() == other.tile_bounds()
 
-    def largest_common_contiguous_block(
-        self, other: TiledStridedLayout, starting_stride: int = 1
-    ) -> list[Stride]:
+    def largest_common_contiguous_block(self, other: TiledStridedLayout, starting_stride: int = 1) -> list[Stride]:
         """
         Get the largest common contiguous block between two Tiled Strided Layouts.
         Stops searching when it hits a dynamic Stride, so it finds the largest static
@@ -163,9 +154,7 @@ class TiledStridedLayout:
                     # must order such that in the case of strides with
                     # equal steps = current_stride, the one with fixed
                     # bound None is not chosen
-                    for dim, depth, stride_self in sorted(
-                        self_strides, key=lambda x: x[2].bound is None
-                    )
+                    for dim, depth, stride_self in sorted(self_strides, key=lambda x: x[2].bound is None)
                     if stride_self.step == current_stride
                 ),
                 None,

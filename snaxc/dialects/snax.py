@@ -94,17 +94,11 @@ class LayoutCast(IRDLOperation):
         source = cast(MemRefType[Attribute], self.source.type)
         dest = self.dest.type
         if source.get_shape() != dest.get_shape():
-            raise VerifyException(
-                "Expected source and destination to have the same shape."
-            )
+            raise VerifyException("Expected source and destination to have the same shape.")
         if source.get_element_type() != dest.get_element_type():
-            raise VerifyException(
-                "Expected source and destination to have the same element type."
-            )
+            raise VerifyException("Expected source and destination to have the same element type.")
         if source.memory_space != dest.memory_space:
-            raise VerifyException(
-                "Expected source and destination to have the same memory space."
-            )
+            raise VerifyException("Expected source and destination to have the same memory space.")
 
 
 @irdl_op_definition
@@ -208,14 +202,10 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
                 # Determine the spatial dimensions
                 spatial_dims: Sequence[int] = []
                 while not parser.parse_optional_punctuation("]"):
-                    spatial_dims.append(
-                        parser.parse_integer(allow_boolean=False, allow_negative=False)
-                    )
+                    spatial_dims.append(parser.parse_integer(allow_boolean=False, allow_negative=False))
                     parser.parse_optional_punctuation("-")
 
-                streamers.append(
-                    Streamer(streamer_type, temporal_dims, spatial_dims, opts)
-                )
+                streamers.append(Streamer(streamer_type, temporal_dims, spatial_dims, opts))
 
                 if not parser.parse_optional_punctuation(","):
                     break

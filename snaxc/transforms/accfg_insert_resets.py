@@ -31,14 +31,10 @@ def ssa_val_rewrite_pattern(
     """
 
     def wrapper(
-        wrapped_match_and_rewrite: Callable[
-            [_RewritePatternT, SSAValue, PatternRewriter], None
-        ],
+        wrapped_match_and_rewrite: Callable[[_RewritePatternT, SSAValue, PatternRewriter], None],
     ) -> Callable[[_RewritePatternT, Operation, PatternRewriter], None]:
         # this is the function that actually wraps the match_and_rewrite method
-        def match_and_rewrite(
-            self: _RewritePatternT, op: Operation, rewriter: PatternRewriter
-        ):
+        def match_and_rewrite(self: _RewritePatternT, op: Operation, rewriter: PatternRewriter):
             for val in itertools.chain(
                 op.results,
                 *(block.args for region in op.regions for block in region.blocks),
@@ -70,10 +66,7 @@ class InsertResetsForDanglingStatesPattern(RewritePattern):
         uses = tuple(uses_through_controlflow(val))
         # abort if any use is a reset or another setup op (or returned from control flow)
         # if it's returned from control flow, we should instead worry about the return value.
-        if any(
-            isinstance(use.operation, accfg.ResetOp | accfg.SetupOp | scf.YieldOp)
-            for use in uses
-        ):
+        if any(isinstance(use.operation, accfg.ResetOp | accfg.SetupOp | scf.YieldOp) for use in uses):
             return
 
         # if reset_after_await is given, reset after the tokens of the launch ops are no longer dangling
@@ -103,6 +96,4 @@ class InsertResetsPass(ModulePass):
     reset_after_await: bool = False
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(
-            InsertResetsForDanglingStatesPattern(self.reset_after_await)
-        ).rewrite_module(op)
+        PatternRewriteWalker(InsertResetsForDanglingStatesPattern(self.reset_after_await)).rewrite_module(op)

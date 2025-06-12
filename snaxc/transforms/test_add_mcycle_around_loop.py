@@ -33,6 +33,4 @@ class AddMcycleAroundLoopPass(ModulePass):
     name = "test-add-mcycle-around-loop"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(
-            InsertMcycleForLoop(), apply_recursively=False
-        ).rewrite_module(op)
+        PatternRewriteWalker(InsertMcycleForLoop(), apply_recursively=False).rewrite_module(op)

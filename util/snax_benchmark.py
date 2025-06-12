@@ -66,10 +66,7 @@ class SNAXBenchmark:
             file = dst_folder / (self.binary + "_events.json")
         input_filenames = self.log_dir.glob(__class__.input_file.format(hart="*"))
         inputs = [open(input_file, "rb") for input_file in input_filenames]
-        trace_filenames = [
-            str(path)
-            for path in self.log_dir.glob(__class__.trace_file.format(hart="*"))
-        ]
+        trace_filenames = [str(path) for path in self.log_dir.glob(__class__.trace_file.format(hart="*"))]
 
         if not dst_folder.exists():
             dst_folder.mkdir(parents=True)
@@ -101,9 +98,7 @@ class SNAXBenchmark:
 
     def copy_logs(self, folder: str):
         self.announce("Copying logs")
-        shutil.copytree(
-            src=self.log_dir, dst=self.export_dir / folder, dirs_exist_ok=True
-        )
+        shutil.copytree(src=self.log_dir, dst=self.export_dir / folder, dirs_exist_ok=True)
 
     def copy_plots(self):
         self.announce("Copying plots to output folder")
@@ -117,9 +112,7 @@ class SNAXBenchmark:
 
     def copy_results(self):
         self.announce("Copying results to output folder")
-        archive_path = shutil.make_archive(
-            self.benchmark + "_results", "gztar", self.export_dir
-        )
+        archive_path = shutil.make_archive(self.benchmark + "_results", "gztar", self.export_dir)
         output_folder = pathlib.Path(self.output_dir)
         if not output_folder.exists():
             output_folder.mkdir(parents=True)

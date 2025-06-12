@@ -62,9 +62,7 @@ default_streamer = StreamerConfiguration(
 )
 
 
-class SNAXGEMMXAccelerator(
-    SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAXPollingBarrier4
-):
+class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAXPollingBarrier4):
     """
     Accelerator Interface class for SNAX GEMMX accelerator
     """
@@ -78,9 +76,7 @@ class SNAXGEMMXAccelerator(
         SupportedKernel(kernel.RescaleOp, (i32, i8)),
     )
 
-    def __init__(
-        self, streamer_config: StreamerConfiguration = default_streamer
-    ) -> None:
+    def __init__(self, streamer_config: StreamerConfiguration = default_streamer) -> None:
         super().__init__(streamer_config)
 
         self.fields = (
@@ -149,21 +145,13 @@ class SNAXGEMMXAccelerator(
 
             return [
                 *ops_to_insert,
-                setup := accfg.SetupOp(
-                    [val for _, val in args], self.fields, self.name
-                ),
-                launch_val := arith.ConstantOp(
-                    builtin.IntegerAttr.from_int_and_width(1, 5)
-                ),
-                token := accfg.LaunchOp(
-                    [launch_val, launch_val], self.launch_fields, setup
-                ),
+                setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
+                launch_val := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(1, 5)),
+                token := accfg.LaunchOp([launch_val, launch_val], self.launch_fields, setup),
                 accfg.AwaitOp(token),
             ]
 
-    def _generate_setup_vals(
-        self, op: snax_stream.StreamingRegionOp
-    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def _generate_setup_vals(self, op: snax_stream.StreamingRegionOp) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         """
         Produce a `Sequence[Operation], SSAValue` tuple
         for each field that contains:
@@ -181,9 +169,7 @@ class SNAXGEMMXAccelerator(
 
         assert isinstance(generic_op := op.body.block.first_op, dart.GenericOp)
 
-        if isinstance(
-            qmac := generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp
-        ):
+        if isinstance(qmac := generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp):
             if qmac.results[0].type == builtin.IntegerType(8):
                 i8_out = True
                 last_pattern = op.stride_patterns.data[2]
@@ -277,16 +263,12 @@ class SNAXGEMMXAccelerator(
 
             max_int = arith.ConstantOp.from_int_and_width(rescale.max_int.value, i32)
             min_int = arith.ConstantOp.from_int_and_width(rescale.min_int.value, i32)
-            double_round = arith.ConstantOp.from_int_and_width(
-                rescale.double_round.value, i32
-            )
+            double_round = arith.ConstantOp.from_int_and_width(rescale.double_round.value, i32)
             shift = arith.ConstantOp.from_int_and_width(rescale.shift.value, i32)
             mult = arith.ConstantOp.from_int_and_width(rescale.multiplier.value, i32)
             zp_in = arith.ConstantOp.from_int_and_width(rescale.input_zp.value, i32)
             zp_out = arith.ConstantOp.from_int_and_width(rescale.output_zp.value, i32)
-            ops_to_add.extend(
-                [max_int, min_int, double_round, shift, mult, zp_in, zp_out]
-            )
+            ops_to_add.extend([max_int, min_int, double_round, shift, mult, zp_in, zp_out])
 
             # force values that can be negative to 8 bits
             cst255 = arith.ConstantOp.from_int_and_width(255, 32)
@@ -297,9 +279,7 @@ class SNAXGEMMXAccelerator(
             ops_to_add.extend([cst255, max_int, min_int, zp_in, zp_out])
 
             # bitpacking
-            ops_to_add.extend(
-                pack_bitlist([min_int, max_int, zp_out, zp_in], [24, 16, 8, 0])
-            )
+            ops_to_add.extend(pack_bitlist([min_int, max_int, zp_out, zp_in], [24, 16, 8, 0]))
             csr0 = ops_to_add[-1].results[0].op.results[0]
             csr1 = double_round.result
 
@@ -317,8 +297,7 @@ class SNAXGEMMXAccelerator(
             raise NotImplementedError()
 
         knm: list[tuple[tuple[Operation], OpResult]] = [
-            (((cst := arith.ConstantOp.from_int_and_width(val, 32)),), cst.result)
-            for val in (k, n, m)
+            (((cst := arith.ConstantOp.from_int_and_width(val, 32)),), cst.result) for val in (k, n, m)
         ]
 
         return [

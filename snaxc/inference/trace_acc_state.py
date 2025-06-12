@@ -43,16 +43,12 @@ def infer_state_of(state_var: SSAValue) -> State:
         case scf.ForOp() as for_op:
             yield_op = for_op.body.block.last_op
             assert isinstance(yield_op, scf.YieldOp)
-            assert (
-                state_var in for_op.results
-            )  # this must be true because state_var.owner == for_op
+            assert state_var in for_op.results  # this must be true because state_var.owner == for_op
             return infer_state_of(yield_op.operands[for_op.results.index(state_var)])
         case Block() as block:
             match block.parent_op():
                 case scf.ForOp() as for_op:
-                    assert isinstance(
-                        state_var, BlockArgument
-                    )  # must be a block argument for owner to be a block!
+                    assert isinstance(state_var, BlockArgument)  # must be a block argument for owner to be a block!
                     return infer_state_of(for_op.iter_args[state_var.index - 1])
                 case _:
                     return {}

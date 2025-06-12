@@ -156,9 +156,7 @@ def process_traces(
             events += map(lambda e: e.to_chrome_tracing(hartid), f.result())
     else:
         # Run sequentially for debugging purposes
-        for hartid, result in enumerate(
-            futures
-        ):  # `result` is already the output of `worker`
+        for hartid, result in enumerate(futures):  # `result` is already the output of `worker`
             events += map(lambda e: e.to_chrome_tracing(hartid), result)
 
     # Create and write the TraceViewer JSON object

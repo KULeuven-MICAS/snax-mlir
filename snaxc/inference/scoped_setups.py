@@ -151,9 +151,7 @@ class ScopedSetupWithInputs:
         """
         ops: list[Operation] = []
         # map the old inputs to the new inputs
-        mapper: dict[SSAValue, SSAValue] = dict(
-            zip(self.dependent_vars, new_dependent_vars, strict=True)
-        )
+        mapper: dict[SSAValue, SSAValue] = dict(zip(self.dependent_vars, new_dependent_vars, strict=True))
         # for each operation that calculates the setup input:
         for op in self.inputs:
             # clone it, replacing the old inputs with the new inputs
@@ -163,9 +161,7 @@ class ScopedSetupWithInputs:
                 mapper[old] = new
             ops.append(new_op)
 
-        return ScopedSetupWithInputs(
-            self.setup.clone(value_mapper=mapper), new_dependent_vars, tuple(ops)
-        )
+        return ScopedSetupWithInputs(self.setup.clone(value_mapper=mapper), new_dependent_vars, tuple(ops))
 
     def erase(self, replacement_state: SSAValue, rewriter: PatternRewriter):
         """
@@ -209,9 +205,7 @@ class ScopedSetupWithInputs:
         %other = arith.constant 144 : i32  // <<---- not moved
         ```
         """
-        assert pt.insert_before is not None, (
-            "can't move to end of block! (malformed IR)"
-        )
+        assert pt.insert_before is not None, "can't move to end of block! (malformed IR)"
         assert pt.insert_before.parent_block() is scope, (
             "Can't move operations to an insertion point that is not directly in scope!"
         )
@@ -220,9 +214,7 @@ class ScopedSetupWithInputs:
         if pt.insert_before in self.inputs or pt.insert_before is self.setup:
             return
 
-        positions: dict[Operation, int] = dict(
-            (op, i) for i, op in enumerate(scope.ops)
-        )
+        positions: dict[Operation, int] = dict((op, i) for i, op in enumerate(scope.ops))
 
         insertion_point_position = positions[pt.insert_before]
 
