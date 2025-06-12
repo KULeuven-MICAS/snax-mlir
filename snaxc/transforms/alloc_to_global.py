@@ -14,7 +14,10 @@ from xdsl.traits import IsTerminator, SymbolTable
 
 class AllocToGlobal(RewritePattern):
     """
-    Convert all static allocs to empty statically scheduled memref globals
+    Convert memref allocs to empty statically scheduled memref globals
+
+    Will only apply to allocs without a specified memory space that
+    are used in a terminator operation such as a func.return.
 
     Warning: using this pattern multiple times in a lowering flow may lead
     to over
@@ -27,6 +30,9 @@ class AllocToGlobal(RewritePattern):
     def match_and_rewrite(self, op: memref.AllocOp, rewriter: PatternRewriter):
         # check if it is used in a terminator operation
         if not any(use.operation.has_trait(IsTerminator) for use in op.memref.uses):
+            return
+        # check if layout attribute is not set
+        if op.memref.type.memory_space != builtin.NoneAttr():
             return
 
         # get module op
