@@ -370,3 +370,13 @@ func.func @mnist(%arg0 : memref<?x128xi8, "L3">, %arg1 : memref<128x128xi8, "L3"
 // CHECK-NEXT:   "test.op"(%1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
 // CHECK-NEXT:   "memref.copy"(%1, %0) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (10, 2), [2, 2] -> (4, 1)>, "L1">, memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>, "L1">) -> ()
 // CHECK-NEXT: }
+
+// -----
+
+// a layout cast on a memref subview
+
+"memref.global"() <{alignment = 64 : i64, constant, initial_value, sym_name = "global", sym_visibility = "private", type = memref<16x16xi8>}> : () -> ()
+%0 = memref.get_global @global : memref<16x16xi8>
+%1 = memref.subview %0[0, 0] [8, 16] [1, 1] : memref<16x16xi8> to memref<8x16xi8, strided<[16, 1], offset: 0>>
+%2 = "snax.layout_cast"(%1) : (memref<8x16xi8, strided<[16, 1], offset: 0>>) -> memref<8x16xi8, #tsl.tsl<[8] -> (8), [2, 8] -> (64, 1)>>
+"test.op"(%1) : (memref<4x4xi8, #tsl.tsl<[2, 2] -> (8, 2), [2, 2] -> (4, 1)>>) -> ()

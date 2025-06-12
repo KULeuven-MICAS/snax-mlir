@@ -1,13 +1,14 @@
 import warnings
+from math import prod
 from typing import cast
 
 import numpy as np
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, linalg, memref
-from xdsl.dialects.memref import MemorySpaceCastOp
+from xdsl.dialects.memref import MemorySpaceCastOp, SubviewOp
 from xdsl.ir import Attribute, Operation, OpResult
 from xdsl.irdl import Operand
-from xdsl.parser import BytesAttr, DenseIntOrFPElementsAttr
+from xdsl.parser import BytesAttr, DenseIntOrFPElementsAttr, MemRefType
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     GreedyRewritePatternApplier,
@@ -23,6 +24,9 @@ from xdsl.utils.hints import isa
 from snaxc.dialects import dart
 from snaxc.dialects.snax import LayoutCast
 from snaxc.dialects.tsl import TiledStridedLayoutAttr
+from snaxc.ir.tsl.stride import Stride
+from snaxc.ir.tsl.tiled_stride import TiledStride
+from snaxc.ir.tsl.tiled_strided_layout import TiledStridedLayout
 
 
 def is_cast_op(op: Operation) -> bool:
@@ -132,6 +136,149 @@ class UpdateMemrefLayoutCasts(RewritePattern):
             ),
         )
         rewriter.replace_matched_op(new_cast)
+
+
+class ApplyLayoutCastSubviewGlobal(RewritePattern):
+    """
+    If a layout transformation is applied to a subview of a memref.global
+    and the subview is the only op using that global, transform the global.
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: LayoutCast, rewriter: PatternRewriter):
+        # find memref.subview of memref.global source
+        source = get_source_operand(op)
+        if not isinstance(source, OpResult):
+            return
+        if not isinstance(subview := source.op, SubviewOp):
+            return
+        if not isinstance(subview.source, OpResult):
+            return
+        if not isinstance(const_source := subview.source.op, memref.GetGlobalOp):
+            return
+        # global op can only have one use, this subview:
+        if len(subview.source.uses) != 1:
+            return
+        global_op = SymbolTable.lookup_symbol(op, const_source.name_)
+        if not isinstance(global_op, memref.GlobalOp):
+            return
+
+        # determine a new layout for the global such that
+        # the subview has an easier job to do
+        if not isinstance(layout := op.dest.type.layout, TiledStridedLayoutAttr):
+            return
+        # can only handle static layouts
+        if layout.data.is_dynamic():
+            return
+        # with static source shape
+        const_type = subview.source.type
+        assert isa(const_type, builtin.MemRefType[Attribute])
+        const_shape = const_type.get_shape()
+        if not all(x > 0 for x in const_shape):
+            return
+
+        # and unset layout
+        if not isinstance(const_type.layout, builtin.NoneAttr):
+            return
+
+        # find current strides
+        current_stride = max(cast(int, stride.bound) * cast(int, stride.step) for _, _, stride in layout.data)
+        new_tstrides: list[TiledStride] = []
+
+        for tstride, shape in zip(layout.data.tstrides, const_shape):
+            remaining_size = shape // prod(cast(int, stride.bound) for _, stride in tstride)
+            # make copy
+            new_strides = [Stride(stride.step, stride.bound) for stride in tstride.strides]
+            if remaining_size > 1:
+                new_strides.insert(0, Stride(current_stride, remaining_size))
+                current_stride *= remaining_size
+            new_tstrides.append(TiledStride(new_strides))
+
+        new_layout = TiledStridedLayoutAttr(TiledStridedLayout(new_tstrides, layout.data.offset))
+
+        # apply transformation
+        if isa(
+            global_op.initial_value, DenseIntOrFPElementsAttr[builtin.AnyDenseElement]
+        ):  # global op with initial value
+            new_constant = transform_constant(global_op.initial_value, new_layout)
+            if new_constant is None:
+                # transformation failed
+                return
+            new_type = new_constant.type
+            new_constant = DenseIntOrFPElementsAttr(
+                [
+                    builtin.TensorType(
+                        new_constant.type.get_element_type(),
+                        new_constant.type.get_shape(),
+                    ),
+                    new_constant.data,
+                ]
+            )
+        else:  # uninitialized global
+            new_constant = builtin.UnitAttr()
+            assert isa(global_op.type, builtin.MemRefType[builtin.AnyDenseElement])
+            new_type = builtin.MemRefType(
+                global_op.type.get_element_type(),
+                global_op.type.get_shape(),
+                new_layout,
+                global_op.type.memory_space,
+            )
+
+        # create new global and get global op with new name
+        # global op initial data should be a tensor type:
+        new_sym_name = const_source.name_.string_value() + "_transformed"
+        new_global_op = memref.GlobalOp.get(
+            builtin.StringAttr(new_sym_name),
+            new_type,
+            new_constant,
+            global_op.sym_visibility,
+            global_op.constant,
+            global_op.alignment,
+        )
+
+        # global get type should inherit only the new layout
+        get_type = builtin.MemRefType(
+            const_source.memref.type.get_element_type(),
+            const_source.memref.type.get_shape(),
+            new_layout,
+            const_source.memref.type.memory_space,
+        )
+        new_global_get_op = memref.GetGlobalOp(new_sym_name, get_type)
+
+        # insert the global op in the symbol table
+        symbol_table_op = global_op.parent_op()
+        assert symbol_table_op is not None
+        symbol_table = symbol_table_op.get_trait(SymbolTable)
+        assert symbol_table is not None
+
+        # insert new global op with new layout
+        replaced = symbol_table.insert_or_update(symbol_table_op, new_global_op)
+        # assert we have not replaced an existing op
+        assert replaced is None
+
+        # delete old global op
+        rewriter.erase_op(global_op)
+
+        # replace old global get op with new one
+        rewriter.replace_op(const_source, new_global_get_op)
+
+        # the subview now directly generates the correct layout
+        subview_type = subview.result.type
+        new_result_type = MemRefType(
+            subview_type.get_element_type(), subview_type.get_shape(), layout, subview_type.memory_space
+        )
+        new_subview = SubviewOp(
+            subview.source,
+            subview.offsets,
+            subview.sizes,
+            subview.strides,
+            subview.static_offsets,
+            subview.static_sizes,
+            subview.static_strides,
+            new_result_type,
+        )
+
+        rewriter.replace_op(subview, new_subview)
 
 
 class ApplyLayoutCastArithConstant(RewritePattern):
@@ -423,6 +570,7 @@ class RealizeMemrefCastsPass(ModulePass):
                     ApplyLayoutCastArithConstant(),
                     ApplyLayoutCastMemrefAlloc(),
                     ApplyLayoutCastMemrefGlobal(),
+                    ApplyLayoutCastSubviewGlobal(),
                     DeleteUnusedLayoutCasts(),
                     UpdateMemrefLayoutCasts(),
                 ]
