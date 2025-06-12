@@ -199,12 +199,12 @@ class SNAXCMain(CommandLineTool):
             pass_pipeline.append(SnaxBufferize())
         if self.args.debug:
             pass_pipeline.append(InsertDebugPass())
+        pass_pipeline.append(AllocToGlobalPass())
         pass_pipeline.append(SetMemorySpace())
         pass_pipeline.append(DartSchedulerPass())
         pass_pipeline.append(SetMemoryLayout())
         if self.args.debug:
             pass_pipeline.append(InsertDebugPass())
-        pass_pipeline.append(AllocToGlobalPass())
         pass_pipeline.append(RealizeMemrefCastsPass())
         pass_pipeline.append(ReuseMemrefAllocs())
         pass_pipeline.append(MemrefToSNAX())
