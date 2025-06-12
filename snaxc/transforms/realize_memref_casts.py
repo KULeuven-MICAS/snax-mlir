@@ -17,7 +17,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.rewriter import InsertPoint
-from xdsl.traits import SymbolTable
+from xdsl.traits import IsTerminator, SymbolTable
 from xdsl.utils.hints import isa
 
 from snaxc.dialects import dart
@@ -158,7 +158,11 @@ class ApplyLayoutCastArithConstant(RewritePattern):
             return
         if not isinstance(const_source := source.op, arith.ConstantOp):
             return
-
+        # check if it is used in a terminator operation
+        if any(
+            use.operation.has_trait(IsTerminator) for use in const_source.result.uses
+        ):
+            return
         # apply transformation
         assert isinstance(const_source.value, DenseIntOrFPElementsAttr)
         new_constant = transform_constant(const_source.value, op.dest.type.layout)
@@ -186,6 +190,9 @@ class ApplyLayoutCastMemrefAlloc(RewritePattern):
         if not isinstance(source, OpResult):
             return
         if not isinstance(alloc_op := source.op, memref.AllocOp):
+            return
+        # check if it is used in a terminator operation
+        if any(use.operation.has_trait(IsTerminator) for use in alloc_op.memref.uses):
             return
         # alloc op may only be used by cast ops
         if not all(
@@ -223,6 +230,11 @@ class ApplyLayoutCastMemrefGlobal(RewritePattern):
         if not isinstance(source, OpResult):
             return
         if not isinstance(const_source := source.op, memref.GetGlobalOp):
+            return
+        # check if it is used in a terminator operation
+        if any(
+            use.operation.has_trait(IsTerminator) for use in const_source.memref.uses
+        ):
             return
         global_op = SymbolTable.lookup_symbol(op, const_source.name_)
         if not isinstance(global_op, memref.GlobalOp):
