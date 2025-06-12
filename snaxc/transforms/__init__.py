@@ -75,6 +75,11 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return ConvertLinalgToKernel
 
+    def get_convert_memref_to_arith():
+        from snaxc.transforms.convert_memref_to_arith import ConvertMemrefToArithPass
+
+        return ConvertMemrefToArithPass
+
     def get_convert_tosa_to_kernel():
         from snaxc.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 
@@ -256,6 +261,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "convert-linalg-to-accfg": get_convert_linalg_to_accfg,
         "convert-linalg-to-dart": get_convert_linalg_to_dart,
         "convert-linalg-to-kernel": get_convert_linalg_to_kernel,
+        "convert-memref-to-arith": get_convert_memref_to_arith,
         "convert-tosa-to-kernel": get_convert_tosa_to_kernel,
         "dart-fuse-operations": get_dart_fuse_operations,
         "dart-layout-resolution": get_dart_layout_resolution,
