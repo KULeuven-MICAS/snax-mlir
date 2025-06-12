@@ -142,7 +142,6 @@ class UpdateMemrefLayoutCasts(RewritePattern):
             ),
         )
         rewriter.replace_matched_op(new_cast)
-        breakpoint()
 
 
 class ApplyLayoutCastArithConstant(RewritePattern):
