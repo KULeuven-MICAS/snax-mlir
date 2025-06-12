@@ -35,9 +35,7 @@ class AccContext(Context):
             self._memories.copy(),
         )
 
-    def register_accelerator(
-        self, name: str, accelerator_factory: Callable[[], Accelerator]
-    ) -> None:
+    def register_accelerator(self, name: str, accelerator_factory: Callable[[], Accelerator]) -> None:
         """
         Register an accelerator without loading it.
         The accelerator is only loaded in the context
@@ -65,9 +63,7 @@ class AccContext(Context):
             raise Exception(f"Accelerator {name} is not registered")
         return accelerator
 
-    def get_acc_op_from_module(
-        self, name: str, module: ModuleOp
-    ) -> tuple[AcceleratorOp, Accelerator]:
+    def get_acc_op_from_module(self, name: str, module: ModuleOp) -> tuple[AcceleratorOp, Accelerator]:
         """
         Perform a symbol table lookup for the accelerator op in the IR
         and then get the corresponding the Accelerator interface from

@@ -182,9 +182,7 @@ class MoveMemrefDims(RewritePattern):
                 if isinstance(subview_size, int):
                     return True
                 new_op = subview_size.owner
-                if isinstance(new_op, arith.ConstantOp) or isinstance(
-                    new_op, affine.MinOp
-                ):
+                if isinstance(new_op, arith.ConstantOp) or isinstance(new_op, affine.MinOp):
                     return True
                 elif isinstance(new_op, memref.DimOp):
                     return dimension_outside_loop(new_op)
@@ -197,9 +195,7 @@ class MoveMemrefDims(RewritePattern):
             Check if the Dim operation is used by an operation that is not an Alloc or Subview operation.
             """
             for use in dim_op.results[0].uses:
-                if not isinstance(use.operation, memref.AllocOp) and not isinstance(
-                    use.operation, memref.SubviewOp
-                ):
+                if not isinstance(use.operation, memref.AllocOp) and not isinstance(use.operation, memref.SubviewOp):
                     return True
             return False
 
@@ -238,18 +234,12 @@ class MoveMemrefDims(RewritePattern):
             """
             Returns the constant value of the expression.
             """
-            if can_be_constant(expr.map.data.results[0]) and not can_be_constant(
-                expr.map.data.results[0]
-            ):
+            if can_be_constant(expr.map.data.results[0]) and not can_be_constant(expr.map.data.results[0]):
                 assert isinstance(expr.map.data.results[0], AffineConstantExpr)
-                return get_constant_value_from_other_constant(
-                    expr.map.data.results[0].value
-                )
+                return get_constant_value_from_other_constant(expr.map.data.results[0].value)
             if can_be_constant(expr.map.data.results[0]):
                 assert isinstance(expr.map.data.results[0], AffineConstantExpr)
-                return get_constant_value_from_other_constant(
-                    expr.map.data.results[0].value
-                )
+                return get_constant_value_from_other_constant(expr.map.data.results[0].value)
             raise RuntimeError("no constant value found")
 
         def get_new_dim_op(
@@ -277,13 +267,9 @@ class MoveMemrefDims(RewritePattern):
             if isinstance(memref_op, memref.SubviewOp):
                 subview_size = get_subview_dim(memref_op, index)
                 if isinstance(subview_size, int):
-                    return arith.ConstantOp.from_int_and_width(
-                        subview_size, IndexType()
-                    )
+                    return arith.ConstantOp.from_int_and_width(subview_size, IndexType())
                 new_op = subview_size.owner
-                if isinstance(new_op, arith.ConstantOp) or isinstance(
-                    new_op, affine.MinOp
-                ):
+                if isinstance(new_op, arith.ConstantOp) or isinstance(new_op, affine.MinOp):
                     return new_op
                 else:
                     assert isinstance(new_op, memref.DimOp)

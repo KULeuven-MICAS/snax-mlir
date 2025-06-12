@@ -28,12 +28,7 @@ def has_accfg_effects(op: Operation) -> bool:
         return True
 
     # Recurse into children to check them according to the same rules
-    if any(
-        has_accfg_effects(op)
-        for region in op.regions
-        for block in region.blocks
-        for op in block.ops
-    ):
+    if any(has_accfg_effects(op) for region in op.regions for block in region.blocks for op in block.ops):
         return True
     # all other ops are assumed to not have effects
     return False
@@ -45,9 +40,7 @@ def get_initial_value_for_scf_for_lcv(loop: scf.ForOp, var: SSAValue) -> SSAValu
     return the SSA value that is passed as the initial value to it.
     """
     if var not in loop.body.block.args:
-        raise ValueError(
-            f"Given value {var} not a block argument of the for loop {loop}!"
-        )
+        raise ValueError(f"Given value {var} not a block argument of the for loop {loop}!")
     idx = loop.body.block.args.index(var) - 1
     return loop.iter_args[idx]
 
@@ -150,9 +143,7 @@ def previous_ops_of(op: Operation) -> Generator[Operation, None, None]:
         op = op.prev_op
 
 
-def iter_ops_range(
-    start_op: Operation | None, end_op: Operation | None
-) -> Generator[Operation, None, None]:
+def iter_ops_range(start_op: Operation | None, end_op: Operation | None) -> Generator[Operation, None, None]:
     """
     Create an iterator that goes from start_op (inclusive) to end_op (exclusive).
 

@@ -55,9 +55,7 @@ def generate_conv_tensors(spec: ConvSpec) -> tuple[NDArray[np.int8], NDArray[np.
     return input_tensor, weight_tensor
 
 
-def compute_convolution(
-    spec: ConvSpec, input_tensor: NDArray[np.int8], weight_tensor: NDArray[np.int8]
-):
+def compute_convolution(spec: ConvSpec, input_tensor: NDArray[np.int8], weight_tensor: NDArray[np.int8]):
     """
     Perform convolution using TensorFlow.
     """
@@ -100,15 +98,9 @@ def conv(spec: ConvSpec):
     @Builder.implicit_region([])
     def func_body(_) -> None:
         # Declare constants
-        input_c = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(input_type, input.flatten().tolist())
-        )
-        weight_c = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(weight_type, weight.flatten().tolist())
-        )
-        golden_c = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(output_type, output.flatten().tolist())
-        )
+        input_c = ConstantOp(DenseIntOrFPElementsAttr.from_list(input_type, input.flatten().tolist()))
+        weight_c = ConstantOp(DenseIntOrFPElementsAttr.from_list(weight_type, weight.flatten().tolist()))
+        golden_c = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, output.flatten().tolist()))
 
         # Declare result tensor type
         empty_tensor = EmptyOp([], output_type)

@@ -48,9 +48,7 @@ class SNAXToFunc(ModulePass):
     name = "snax-to-func"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        contains_sync = any(
-            isinstance(op_in_module, snax.ClusterSyncOp) for op_in_module in op.walk()
-        )
+        contains_sync = any(isinstance(op_in_module, snax.ClusterSyncOp) for op_in_module in op.walk())
 
         if contains_sync:
             PatternRewriteWalker(InsertFunctionCall()).rewrite_module(op)

@@ -61,9 +61,7 @@ class AllocToGlobal(RewritePattern):
 
         # remove all the deallocs
         deallocs = [
-            user_op.operation
-            for user_op in op.results[0].uses
-            if isinstance(user_op.operation, memref.DeallocOp)
+            user_op.operation for user_op in op.results[0].uses if isinstance(user_op.operation, memref.DeallocOp)
         ]
         for dealloc in deallocs:
             rewriter.erase_op(dealloc)

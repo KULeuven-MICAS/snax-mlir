@@ -71,9 +71,7 @@ class ChangeForStep(RewritePattern):
 
         # compute new iteration variable
         new_iter_var = MuliOp(op.step, new_for.body.block.args[0])
-        new_for.body.block.args[0].replace_by_if(
-            new_iter_var.result, lambda use: use.operation is not new_iter_var
-        )
+        new_for.body.block.args[0].replace_by_if(new_iter_var.result, lambda use: use.operation is not new_iter_var)
 
         # insert the ops
         rewriter.insert_op(new_iter_var, InsertPoint.at_start(new_for.body.block))
@@ -98,9 +96,7 @@ class MergeForLoops(RewritePattern):
             return
 
         # same for the parent op:
-        lb_parent, ub_parent, step_parent = (
-            extract_cst_index(x) for x in (parent.lb, parent.ub, parent.step)
-        )
+        lb_parent, ub_parent, step_parent = (extract_cst_index(x) for x in (parent.lb, parent.ub, parent.step))
         if lb_parent is None or ub_parent is None or step_parent is None:
             return
 
@@ -128,9 +124,7 @@ class MergeForLoops(RewritePattern):
         )
 
         # rewrite parent op
-        rewriter.insert_op(
-            (div_val, new_parent_iter), InsertPoint.at_start(new_parent.body.block)
-        )
+        rewriter.insert_op((div_val, new_parent_iter), InsertPoint.at_start(new_parent.body.block))
         rewriter.replace_op(parent, new_parent)
 
         # the matched for loop is merged into the parent one, with an iter value of iter // ub
@@ -152,6 +146,4 @@ class PipelineCanonicalizeFor(ModulePass):
     name = "pipeline-canonicalize-for"
 
     def apply(self, ctx: Context, op: ModuleOp) -> None:
-        PatternRewriteWalker(
-            GreedyRewritePatternApplier([ChangeForStep(), MergeForLoops()])
-        ).rewrite_module(op)
+        PatternRewriteWalker(GreedyRewritePatternApplier([ChangeForStep(), MergeForLoops()])).rewrite_module(op)

@@ -29,9 +29,7 @@ def is_cast_op(op: Operation) -> bool:
     return isinstance(op, MemorySpaceCastOp) or isinstance(op, LayoutCast)
 
 
-def transform_constant(
-    source: DenseIntOrFPElementsAttr, dest_layout: Attribute
-) -> DenseIntOrFPElementsAttr | None:
+def transform_constant(source: DenseIntOrFPElementsAttr, dest_layout: Attribute) -> DenseIntOrFPElementsAttr | None:
     """
     Transform a constant op to a new layout.
     """
@@ -39,9 +37,7 @@ def transform_constant(
         pass
 
     elif isinstance(source.type, builtin.TensorType):
-        memref_type = builtin.MemRefType(
-            source.type.get_element_type(), source.type.get_shape()
-        )
+        memref_type = builtin.MemRefType(source.type.get_element_type(), source.type.get_shape())
 
     else:
         raise NotImplementedError("Can only handle memref and tensor types")
@@ -71,9 +67,7 @@ def transform_constant(
     bounds = cast(list[int], [stride.bound for stride in strides])
     order = np.argsort(cast(list[int], [stride.step for stride in strides]))
     # get data:
-    values = np.frombuffer(
-        source.data.data, dtype=np.dtype(source.get_element_type().format)
-    )
+    values = np.frombuffer(source.data.data, dtype=np.dtype(source.get_element_type().format))
     # transform data:
     values = values.reshape(bounds).transpose(order[::-1])
     # update constant op:
@@ -97,9 +91,7 @@ def get_source_operand(op: MemorySpaceCastOp | LayoutCast) -> Operand:
     # if the source of the memref cast is another layout_cast op,
     # combine them all together
     source_op = op
-    while isinstance(source_op.source, OpResult) and isinstance(
-        source_op.source.op, MemorySpaceCastOp | LayoutCast
-    ):
+    while isinstance(source_op.source, OpResult) and isinstance(source_op.source.op, MemorySpaceCastOp | LayoutCast):
         source_op = source_op.source.op
     return source_op.source
 
@@ -110,9 +102,7 @@ class DeleteUnusedLayoutCasts(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: MemorySpaceCastOp | LayoutCast, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: MemorySpaceCastOp | LayoutCast, rewriter: PatternRewriter):
         if not op.dest.uses:
             # if the cast is not used anymore, we can remove it
             rewriter.erase_matched_op()
@@ -159,9 +149,7 @@ class ApplyLayoutCastArithConstant(RewritePattern):
         if not isinstance(const_source := source.op, arith.ConstantOp):
             return
         # check if it is used in a terminator operation
-        if any(
-            use.operation.has_trait(IsTerminator) for use in const_source.result.uses
-        ):
+        if any(use.operation.has_trait(IsTerminator) for use in const_source.result.uses):
             return
         # apply transformation
         assert isinstance(const_source.value, DenseIntOrFPElementsAttr)
@@ -195,10 +183,7 @@ class ApplyLayoutCastMemrefAlloc(RewritePattern):
         if any(use.operation.has_trait(IsTerminator) for use in alloc_op.memref.uses):
             return
         # alloc op may only be used by cast ops
-        if not all(
-            isinstance(use.operation, LayoutCast | MemorySpaceCastOp)
-            for use in alloc_op.memref.uses
-        ):
+        if not all(isinstance(use.operation, LayoutCast | MemorySpaceCastOp) for use in alloc_op.memref.uses):
             return
 
         # apply transformation by allocating with the correct layout
@@ -232,9 +217,7 @@ class ApplyLayoutCastMemrefGlobal(RewritePattern):
         if not isinstance(const_source := source.op, memref.GetGlobalOp):
             return
         # check if it is used in a terminator operation
-        if any(
-            use.operation.has_trait(IsTerminator) for use in const_source.memref.uses
-        ):
+        if any(use.operation.has_trait(IsTerminator) for use in const_source.memref.uses):
             return
         global_op = SymbolTable.lookup_symbol(op, const_source.name_)
         if not isinstance(global_op, memref.GlobalOp):
@@ -244,9 +227,7 @@ class ApplyLayoutCastMemrefGlobal(RewritePattern):
         if isa(
             global_op.initial_value, DenseIntOrFPElementsAttr[builtin.AnyDenseElement]
         ):  # global op with initial value
-            new_constant = transform_constant(
-                global_op.initial_value, op.dest.type.layout
-            )
+            new_constant = transform_constant(global_op.initial_value, op.dest.type.layout)
             if new_constant is None:
                 # transformation failed
                 return
@@ -322,9 +303,7 @@ class RealizeMemrefCasts(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: MemorySpaceCastOp | LayoutCast, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: MemorySpaceCastOp | LayoutCast, rewriter: PatternRewriter):
         # if the casting is not used anymore (perhaps made useless by previous
         # cast realizations), we do not need to do anything. dce will remove it later
         if not op.dest.uses:
@@ -368,9 +347,7 @@ class RealizeMemrefCasts(RewritePattern):
             if shapes[i] == -1:
                 ## create dim op
                 index = arith.ConstantOp.from_int_and_width(i, builtin.IndexType())
-                dim_op = memref.DimOp.from_source_and_index(
-                    source_op.source, index.result
-                )
+                dim_op = memref.DimOp.from_source_and_index(source_op.source, index.result)
                 ops_to_add.extend([index, dim_op])
                 dyn_operands.append(dim_op)
 

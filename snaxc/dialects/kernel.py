@@ -40,9 +40,7 @@ class QuantizedBinaryOp:
 @irdl_op_definition
 class MulOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.mul"
-    assembly_format = (
-        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
-    )
+    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
 
     @property
     def equivalent_region(self) -> Region:
@@ -63,9 +61,7 @@ class MulOp(KernelOp, BinaryOp, Parsable):
 @irdl_op_definition
 class AddOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.add"
-    assembly_format = (
-        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
-    )
+    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
 
     @property
     def equivalent_region(self) -> Region:
@@ -86,9 +82,7 @@ class AddOp(KernelOp, BinaryOp, Parsable):
 @irdl_op_definition
 class MacOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.mac"
-    assembly_format = (
-        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
-    )
+    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
 
     @property
     def equivalent_region(self) -> Region:

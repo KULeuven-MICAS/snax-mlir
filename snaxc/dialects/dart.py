@@ -46,9 +46,7 @@ things in a (hopefully) more principled approach, including:
 - no stream ops outside of streaming regions allowed
 """
 
-_StreamTypeElement = TypeVar(
-    "_StreamTypeElement", bound=Attribute, covariant=True, default=Attribute
-)
+_StreamTypeElement = TypeVar("_StreamTypeElement", bound=Attribute, covariant=True, default=Attribute)
 
 
 @irdl_attr_definition
@@ -158,9 +156,7 @@ class OperationOp(StreamingRegionOpBase):
         """
         Return the static pattern bounds of this op.
         """
-        return self.get_shapes_to_pattern_bounds_map().eval(
-            tuple(self.get_static_shapes()), []
-        )
+        return self.get_shapes_to_pattern_bounds_map().eval(tuple(self.get_static_shapes()), [])
 
 
 @irdl_op_definition
@@ -195,16 +191,9 @@ class ScheduleOp(StreamingRegionOpBase):
         result_types: Sequence[Attribute] = (),
     ) -> None:
         if isinstance(tiles, Sequence):
-            tiles = ArrayAttr(
-                [
-                    ArrayAttr([IntegerAttr.from_index_int_value(val) for val in tile])
-                    for tile in tiles
-                ]
-            )
+            tiles = ArrayAttr([ArrayAttr([IntegerAttr.from_index_int_value(val) for val in tile]) for tile in tiles])
         if isinstance(bounds, Sequence):
-            bounds = ArrayAttr(
-                [IntegerAttr.from_index_int_value(val) for val in bounds]
-            )
+            bounds = ArrayAttr([IntegerAttr.from_index_int_value(val) for val in bounds])
         super().__init__(
             inputs,
             outputs,
@@ -239,9 +228,7 @@ class AccessPatternOp(StreamingRegionOpBase):
         result_types: Sequence[Attribute] = (),
     ) -> None:
         if isinstance(bounds, Sequence):
-            bounds = ArrayAttr(
-                [IntegerAttr.from_index_int_value(val) for val in bounds]
-            )
+            bounds = ArrayAttr([IntegerAttr.from_index_int_value(val) for val in bounds])
         super().__init__(
             inputs,
             outputs,

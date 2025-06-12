@@ -62,10 +62,7 @@ def canonicalize_addition(expr: AffineBinaryOpExpr) -> AffineExpr:
             assert isinstance(new_expr, AffineBinaryOpExpr)
             expr = new_expr
     # turn (a + b) + c into a + (b + c)
-    if (
-        isinstance(expr.lhs, AffineBinaryOpExpr)
-        and expr.lhs.kind is AffineBinaryOpKind.Add
-    ):
+    if isinstance(expr.lhs, AffineBinaryOpExpr) and expr.lhs.kind is AffineBinaryOpKind.Add:
         new_expr = expr.lhs.lhs + (expr.lhs.rhs + expr.rhs)
         assert isinstance(new_expr, AffineBinaryOpExpr)
         expr = new_expr
@@ -97,10 +94,7 @@ def canonicalize_multiplication(expr: AffineBinaryOpExpr) -> AffineExpr:
         if expr.rhs.value == 1:
             return expr.lhs
         # turn (a + b) * cst into (a * cst) + (b * cst)
-        if (
-            isinstance(expr.lhs, AffineBinaryOpExpr)
-            and expr.lhs.kind is AffineBinaryOpKind.Add
-        ):
+        if isinstance(expr.lhs, AffineBinaryOpExpr) and expr.lhs.kind is AffineBinaryOpKind.Add:
             new_expr = (expr.lhs.lhs * expr.rhs) + (expr.lhs.rhs * expr.rhs)
             assert isinstance(new_expr, AffineBinaryOpExpr)
             expr = new_expr
@@ -134,9 +128,7 @@ def canonicalize_mod(expr: AffineBinaryOpExpr) -> AffineExpr:
 
 
 def canonicalize_binary_op(expr: AffineBinaryOpExpr) -> AffineExpr:
-    expr = AffineBinaryOpExpr(
-        expr.kind, canonicalize_expr(expr.lhs), canonicalize_expr(expr.rhs)
-    )
+    expr = AffineBinaryOpExpr(expr.kind, canonicalize_expr(expr.lhs), canonicalize_expr(expr.rhs))
     if expr.kind is AffineBinaryOpKind.Add:
         return canonicalize_addition(expr)
     if expr.kind is AffineBinaryOpKind.Mul:

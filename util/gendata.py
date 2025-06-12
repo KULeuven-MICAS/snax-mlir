@@ -4,9 +4,7 @@ import numpy as np
 from numpy import typing as npt
 
 
-def create_header(
-    file_name: str, sizes: dict[str, int], variables: dict[str, npt.NDArray]
-) -> None:
+def create_header(file_name: str, sizes: dict[str, int], variables: dict[str, npt.NDArray]) -> None:
     header_file = f"{file_name}.h"
     if os.path.dirname(header_file):
         os.makedirs(os.path.dirname(header_file), exist_ok=True)
@@ -35,11 +33,7 @@ def create_data(file_name: str, variables: dict[str, npt.NDArray]):
     with open(c_file, "w") as f:
         f.write(includes)
         for variable_name, variable_value in variables.items():
-            f.write(
-                f"const {variable_value.dtype}_t {variable_name}"
-                + f"[{variable_value.size}] = "
-                + "{\n"
-            )
+            f.write(f"const {variable_value.dtype}_t {variable_name}" + f"[{variable_value.size}] = " + "{\n")
             variable_str = ["\t" + str(i) for i in variable_value]
             f.write(",\n".join(variable_str))
             f.write("\n};\n\n")

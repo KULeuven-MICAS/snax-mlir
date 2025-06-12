@@ -23,12 +23,8 @@ class UnrollPipeline(RewritePattern):
     def match_and_rewrite(self, pipeline: PipelineOp, rewriter: PatternRewriter):
         # check: all stages must have no arguments left
         for operation in pipeline.body.block.ops:
-            if isinstance(operation, StageOp) and (
-                len(operation.ins) > 0 or len(operation.outs) > 0
-            ):
-                raise RuntimeError(
-                    "found pipeline stage with remaining buffer arguments"
-                )
+            if isinstance(operation, StageOp) and (len(operation.ins) > 0 or len(operation.outs) > 0):
+                raise RuntimeError("found pipeline stage with remaining buffer arguments")
 
         assert isinstance(for_op := pipeline.parent_op(), ForOp)
         assert isinstance(index_op := pipeline.body.block.first_op, IndexOp)
@@ -46,12 +42,8 @@ class UnrollPipeline(RewritePattern):
             for j in range(i + 1):
                 stage = pipeline.stages[j].clone()
                 rewriter.insert_op(stage, InsertPoint.before(for_op))
-                for operand_0, operand_j in zip(
-                    index_op.results, index_ops[i - j].results
-                ):
-                    operand_0.replace_by_if(
-                        operand_j, lambda use: use.operation.parent_op() is stage
-                    )
+                for operand_0, operand_j in zip(index_op.results, index_ops[i - j].results):
+                    operand_0.replace_by_if(operand_j, lambda use: use.operation.parent_op() is stage)
             rewriter.insert_op(snax.ClusterSyncOp(), InsertPoint.before(for_op))
 
         # 1: Insert postamble (back to front)
@@ -69,21 +61,15 @@ class UnrollPipeline(RewritePattern):
             # insert stages
             for j in reversed(range(i + 1)):
                 stage = pipeline.stages[-j - 1].clone()
-                for operand_0, operand_j in zip(
-                    index_op.results, index_ops[i - j].results
-                ):
-                    operand_0.replace_by_if(
-                        operand_j, lambda use: use.operation.parent_op() is stage
-                    )
+                for operand_0, operand_j in zip(index_op.results, index_ops[i - j].results):
+                    operand_0.replace_by_if(operand_j, lambda use: use.operation.parent_op() is stage)
                 ops_to_add.append(stage)
             ops_to_add.append(snax.ClusterSyncOp())
             rewriter.insert_op(ops_to_add, InsertPoint.after(for_op))
         rewriter.insert_op(index_ops_to_add, InsertPoint.after(for_op))
 
         # 2: Increment for op lower bound by (nb_stages - 1)
-        cst = arith.ConstantOp.from_int_and_width(
-            pipeline.nb_stages - 1, builtin.IndexType()
-        )
+        cst = arith.ConstantOp.from_int_and_width(pipeline.nb_stages - 1, builtin.IndexType())
         for_op.lb.replace_by_if(cst.result, lambda use: use.operation is for_op)
         rewriter.insert_op(cst, InsertPoint.before(for_op))
 
@@ -96,9 +82,7 @@ class UnrollPipeline(RewritePattern):
             # set new input
             clone.operands[0] = index_val.result
             # insert ops and add to list
-            rewriter.insert_op(
-                [cst, index_val, clone], InsertPoint.at_start(pipeline.body.block)
-            )
+            rewriter.insert_op([cst, index_val, clone], InsertPoint.at_start(pipeline.body.block))
             # replace usage by new index op
             for operand_0, operand_i in zip(index_op.results, clone.results):
 
@@ -110,9 +94,7 @@ class UnrollPipeline(RewritePattern):
             index_ops.append(clone)
 
         # 4: Add synchronization at end of pipeline
-        rewriter.insert_op(
-            snax.ClusterSyncOp(), InsertPoint.at_end(pipeline.body.block)
-        )
+        rewriter.insert_op(snax.ClusterSyncOp(), InsertPoint.at_end(pipeline.body.block))
 
         # 5: Inline region from pipeline op
         rewriter.inline_block(pipeline.body.block, InsertPoint.before(pipeline))
@@ -162,6 +144,4 @@ class UnrollPipelinePass(ModulePass):
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(UnrollPipeline()).rewrite_module(op)
-        PatternRewriteWalker(
-            GreedyRewritePatternApplier([DestructIndex(), DestructStage()])
-        ).rewrite_module(op)
+        PatternRewriteWalker(GreedyRewritePatternApplier([DestructIndex(), DestructStage()])).rewrite_module(op)

@@ -74,9 +74,7 @@ def plot_stalls_and_fires_per_port(df, output_path):
     # Add annotations
     for start, end, label in group_positions:
         center = (indices[start] + indices[end] + bar_width) / 2
-        ax.hlines(
-            -8, indices[start], indices[end] + bar_width, color="black", linewidth=2
-        )
+        ax.hlines(-8, indices[start], indices[end] + bar_width, color="black", linewidth=2)
         ax.text(center, -11, label, ha="center", va="top", fontsize=12)
 
     # Adjust plot limits
@@ -237,9 +235,7 @@ def plot_banking_conflicts(df, output_path):
         assert isinstance(operand, str)
         dx, dy = operand_offsets.get(operand, (0, 0))
 
-        ax.text(
-            x + dx, y + dy, operand, color=color, fontsize=10, ha="center", va="center"
-        )
+        ax.text(x + dx, y + dy, operand, color=color, fontsize=10, ha="center", va="center")
 
     ax.set_aspect("auto")
     plt.tight_layout()
@@ -256,9 +252,7 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Process CSV file and generate plots.")
     parser.add_argument("--input_file", type=str, required=True, help="Input .csv file")
-    parser.add_argument(
-        "--output_path", type=str, default=".", help="Output directory for plots"
-    )
+    parser.add_argument("--output_path", type=str, default=".", help="Output directory for plots")
     args = parser.parse_args()
 
     df = parse_and_prepare_data(args.input_file)

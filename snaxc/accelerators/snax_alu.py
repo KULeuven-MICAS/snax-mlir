@@ -30,9 +30,7 @@ default_streamer = StreamerConfiguration(
 )
 
 
-class SNAXAluAccelerator(
-    SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate
-):
+class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate):
     """
     Accelerator interface class for the SNAX Alu accelerator.
     """
@@ -44,9 +42,7 @@ class SNAXAluAccelerator(
         SupportedKernel(kernel.MulOp, [i64, i64, i64]),
     )
 
-    def __init__(
-        self, streamer_config: StreamerConfiguration = default_streamer
-    ) -> None:
+    def __init__(self, streamer_config: StreamerConfiguration = default_streamer) -> None:
         super().__init__(streamer_config)
 
         self.fields = (*self.streamer_setup_fields, "alu_mode", "loop_bound_alu")
@@ -73,25 +69,17 @@ class SNAXAluAccelerator(
         return [
             *ops_to_insert,
             setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
-            launch_val := arith.ConstantOp(
-                builtin.IntegerAttr.from_int_and_width(1, 5)
-            ),
-            token := accfg.LaunchOp(
-                [launch_val, launch_val], self.launch_fields, setup
-            ),
+            launch_val := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(1, 5)),
+            token := accfg.LaunchOp([launch_val, launch_val], self.launch_fields, setup),
             accfg.AwaitOp(token),
         ]
 
-    def _generate_setup_vals(
-        self, op: linalg.GenericOp
-    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def _generate_setup_vals(self, op: linalg.GenericOp) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         a, b, o = op.operands
 
         c0_index = arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
         dim_0 = memref.DimOp.from_source_and_index(a, c0_index)
-        design_time_parallelism = arith.ConstantOp.from_int_and_width(
-            4, builtin.IndexType()
-        )
+        design_time_parallelism = arith.ConstantOp.from_int_and_width(4, builtin.IndexType())
         loop_bound = arith.DivUIOp(dim_0, design_time_parallelism)
         loop_bound_i32 = arith.IndexCastOp(loop_bound, builtin.i32)
         c0 = arith.ConstantOp.from_int_and_width(0, 32)
@@ -111,9 +99,7 @@ class SNAXAluAccelerator(
                             ref.type.element_type.size, builtin.IndexType()
                         ),
                         byte_offset := arith.MuliOp(metadata.offset, el_bytes),
-                        ptr_plus_byte_offset := arith.AddiOp(
-                            ptr, byte_offset, builtin.IndexType()
-                        ),
+                        ptr_plus_byte_offset := arith.AddiOp(ptr, byte_offset, builtin.IndexType()),
                         ptr_i32 := arith.IndexCastOp(ptr_plus_byte_offset, builtin.i32),
                     ],
                     ptr_i32.result,
@@ -162,9 +148,7 @@ class SNAXAluAccelerator(
         self, op: snax_stream.StreamingRegionOp
     ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         c0 = arith.ConstantOp.from_int_and_width(0, 32)
-        loop_bound = arith.ConstantOp.from_int_and_width(
-            op.stride_patterns.data[0].upper_bounds.data[0], 32
-        )
+        loop_bound = arith.ConstantOp.from_int_and_width(op.stride_patterns.data[0].upper_bounds.data[0], 32)
 
         return [
             *self._generate_streamer_setup_vals(op),

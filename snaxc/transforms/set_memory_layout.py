@@ -44,9 +44,7 @@ class AddCyclicMemoryLayout(RewritePattern):
     def match_and_rewrite(self, op: dart.ScheduleOp, rewriter: PatternRewriter):
         # do not alter pre-existing layouts
         for operand in op.operands:
-            if isa(operand.type, MemRefType[Attribute]) and isinstance(
-                operand.type.layout, TiledStridedLayoutAttr
-            ):
+            if isa(operand.type, MemRefType[Attribute]) and isinstance(operand.type.layout, TiledStridedLayoutAttr):
                 return
 
         # get schedule from op
@@ -66,15 +64,11 @@ class AddCyclicMemoryLayout(RewritePattern):
             # create a list to keep strides for every dimension.
             # for non-tiled layouts, every dimension will be assigned 1 stride
             # for tiled layouts, every dimension can be assigned multiple strides
-            strides: list[list[Stride]] = [
-                [] for _ in range(memref_type.get_num_dims())
-            ]
+            strides: list[list[Stride]] = [[] for _ in range(memref_type.get_num_dims())]
 
             # iterate over the columns of the schedule pattern in reversed order, to find out
             # which dimension is accessed in the innermost loop of the operation
-            for schedule_bound, accesses in zip(
-                schedule.bounds[::-1], np.flip(schedule.pattern.A, axis=1).T
-            ):
+            for schedule_bound, accesses in zip(schedule.bounds[::-1], np.flip(schedule.pattern.A, axis=1).T):
                 # normalize accesses to binary list
                 # this list will now have a 1 at the index of the dimension that is accessed
                 accesses = tuple(0 if x == 0 else 1 for x in accesses)
@@ -94,9 +88,7 @@ class AddCyclicMemoryLayout(RewritePattern):
                 existing_bound = prod(s.bound for s in strides[accessed_dim] if s.bound)
 
                 # the remaining size of the operand dimension
-                size_remaining = ceil(
-                    memref_type.get_shape()[accessed_dim] // existing_bound
-                )
+                size_remaining = ceil(memref_type.get_shape()[accessed_dim] // existing_bound)
 
                 # can we further tile the layout according to the remaining size?
                 to_tile = self.tiled_layout
@@ -112,9 +104,7 @@ class AddCyclicMemoryLayout(RewritePattern):
                     # stride=1, bound=8
                     # we cannot tile for either 8 or 3 because then the other pattern is no longer affine
                     else:
-                        for stride, bound in zip(
-                            schedule.pattern.A[accessed_dim, :], schedule.bounds
-                        ):
+                        for stride, bound in zip(schedule.pattern.A[accessed_dim, :], schedule.bounds):
                             if stride % schedule_bound != 0 and bound != schedule_bound:
                                 to_tile = False
 
@@ -124,9 +114,7 @@ class AddCyclicMemoryLayout(RewritePattern):
                     layout_bound = size_remaining
 
                 # assign this current stride to the relevant operand dimension
-                strides[accesses.index(1)].insert(
-                    0, Stride(current_stride, layout_bound)
-                )
+                strides[accesses.index(1)].insert(0, Stride(current_stride, layout_bound))
 
                 # increase current stride
                 current_stride = current_stride * layout_bound
@@ -136,9 +124,7 @@ class AddCyclicMemoryLayout(RewritePattern):
                 if not len(stride):
                     stride.append(Stride(current_stride, 1))
 
-            layout = TiledStridedLayout(
-                [TiledStride(s) for s in strides]
-            ).canonicalize()
+            layout = TiledStridedLayout([TiledStride(s) for s in strides]).canonicalize()
             tsl = TiledStridedLayoutAttr(layout)
 
             new_operands.append(LayoutCast.from_type_and_target_layout(operand, tsl))
@@ -156,6 +142,4 @@ class SetMemoryLayout(ModulePass):
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         tiled = self.tiled if self.tiled is not None else True
-        PatternRewriteWalker(AddCyclicMemoryLayout(tiled_layout=tiled)).rewrite_module(
-            op
-        )
+        PatternRewriteWalker(AddCyclicMemoryLayout(tiled_layout=tiled)).rewrite_module(op)

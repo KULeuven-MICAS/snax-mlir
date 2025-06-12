@@ -116,11 +116,7 @@ class DeleteAllStates(RewritePattern):
             # use the generic creation interface to clone the op but with fewer
             # operands:
             new_op = op.__class__.create(
-                operands=[
-                    operand
-                    for operand in op.operands
-                    if not isinstance(operand.type, accfg.StateType)
-                ],
+                operands=[operand for operand in op.operands if not isinstance(operand.type, accfg.StateType)],
                 result_types=[res.type for res in op.results],
                 properties=op.properties,
                 attributes=op.attributes,
@@ -136,11 +132,7 @@ class DeleteAllStates(RewritePattern):
             # and again, clone the op but remove the results of the offending type
             new_op = op.__class__.create(
                 operands=op.operands,
-                result_types=[
-                    res.type
-                    for res in op.results
-                    if not isinstance(res.type, accfg.StateType)
-                ],
+                result_types=[res.type for res in op.results if not isinstance(res.type, accfg.StateType)],
                 properties=op.properties,
                 attributes=op.attributes,
                 successors=op.successors,
@@ -159,17 +151,10 @@ class DeleteAllStates(RewritePattern):
             #  - `None` if the old result was erased, or
             #  - `new_results.pop(0)`, which is the next result of the new results
             replace_results_by = [
-                (
-                    None
-                    if isinstance(res.type, accfg.StateType)
-                    else new_ops_results.pop(0)
-                )
-                for res in op.results
+                (None if isinstance(res.type, accfg.StateType) else new_ops_results.pop(0)) for res in op.results
             ]
             # and then we replace the offending operation
-            rewriter.replace_op(
-                op, new_op, new_results=replace_results_by, safe_erase=False
-            )
+            rewriter.replace_op(op, new_op, new_results=replace_results_by, safe_erase=False)
 
         # also clean up all block arguments
         for region in op.regions:
@@ -211,6 +196,6 @@ class ConvertAccfgToCsrPass(ModulePass):
         ).rewrite_module(op)
 
         # then we remove all the top-level accfg.accelerator operations from the module and erase the state variables
-        PatternRewriteWalker(
-            GreedyRewritePatternApplier([DeleteAllStates(), RemoveAcceleratorOps()])
-        ).rewrite_module(op)
+        PatternRewriteWalker(GreedyRewritePatternApplier([DeleteAllStates(), RemoveAcceleratorOps()])).rewrite_module(
+            op
+        )

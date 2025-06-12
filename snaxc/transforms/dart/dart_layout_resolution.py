@@ -30,9 +30,7 @@ class LayoutResolution(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: dart.ScheduleOp, rewriter: PatternRewriter):
         bounds = [x.value.data for x in op.bounds.data]
-        schedule = Schedule(
-            SchedulePattern(bounds, pattern.data) for pattern in op.patterns
-        )
+        schedule = Schedule(SchedulePattern(bounds, pattern.data) for pattern in op.patterns)
 
         # small function to generate a list of n zeros with the i-th element 1
         # for example n = 4, i = 1  -> [0, 1, 0, 0]
@@ -57,29 +55,17 @@ class LayoutResolution(RewritePattern):
 
             # Make sure no symbols are used (not supported yet)
             if access_mem_map.num_symbols != 0:
-                raise RuntimeError(
-                    "Access patterns with symbols are not supported yet."
-                )
+                raise RuntimeError("Access patterns with symbols are not supported yet.")
 
             strides: list[int] = []
 
             for i in range(access_mem_map.num_dims):
-                strides.append(
-                    access_mem_map.eval(
-                        generate_one_list(access_mem_map.num_dims, i), ()
-                    )[0]
-                )
+                strides.append(access_mem_map.eval(generate_one_list(access_mem_map.num_dims, i), ())[0])
 
-            access_patterns.append(
-                AffineTransform(np.array([strides]), np.array([0])).to_affine_map()
-            )
+            access_patterns.append(AffineTransform(np.array([strides]), np.array([0])).to_affine_map())
 
-        new_inputs: list[Operation] = [
-            memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs
-        ]
-        new_outputs = [
-            memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs
-        ]
+        new_inputs: list[Operation] = [memref.ExtractAlignedPointerAsIndexOp.get(input) for input in op.inputs]
+        new_outputs = [memref.ExtractAlignedPointerAsIndexOp.get(output) for output in op.outputs]
 
         new_patterns = ArrayAttr([AffineMapAttr(map) for map in access_patterns])
 
@@ -92,9 +78,7 @@ class LayoutResolution(RewritePattern):
             op.accelerator,
             op.result_types,
         )
-        rewriter.replace_matched_op(
-            [*new_inputs, *new_outputs, access_pattern_op], access_pattern_op.results
-        )
+        rewriter.replace_matched_op([*new_inputs, *new_outputs, access_pattern_op], access_pattern_op.results)
 
 
 @dataclass(frozen=True)

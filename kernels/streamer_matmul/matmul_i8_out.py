@@ -56,17 +56,9 @@ def matmul(m=16, n=16, k=16):
     @Builder.implicit_region([])
     def func_body(_) -> None:
         # Declare constants
-        a = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist())
-        )
-        b = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(b_type, b_vals.flatten().tolist())
-        )
-        golden = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(
-                output_type, golden_vals.flatten().tolist()
-            )
-        )
+        a = ConstantOp(DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist()))
+        b = ConstantOp(DenseIntOrFPElementsAttr.from_list(b_type, b_vals.flatten().tolist()))
+        golden = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, golden_vals.flatten().tolist()))
 
         # Declare result tensor type
         empty_tensor = EmptyOp([], output_type)

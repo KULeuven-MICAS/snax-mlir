@@ -33,9 +33,7 @@ def create_tiled_matrix_multiply(k, m, n, tiling_factors):
     """
 
     def get_2d_memref_type(typ, dim_one, dim_two, transpose=False):
-        layout = (
-            builtin.StridedLayoutAttr([1, dim_one]) if transpose else builtin.NoneAttr()
-        )
+        layout = builtin.StridedLayoutAttr([1, dim_one]) if transpose else builtin.NoneAttr()
         return builtin.MemRefType(typ, [dim_one, dim_two], layout=layout)
 
     input_types = [

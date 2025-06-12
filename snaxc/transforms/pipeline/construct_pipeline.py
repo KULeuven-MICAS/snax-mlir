@@ -144,9 +144,7 @@ class ConstructPipeline(RewritePattern):
                     else:
                         output_buffers.append(operand)
                         arg_insert_index = len(input_buffers) + len(output_buffers) - 1
-                    operation.operands[index] = stage_block.insert_arg(
-                        operand.type, arg_insert_index
-                    )
+                    operation.operands[index] = stage_block.insert_arg(operand.type, arg_insert_index)
 
                 if isinstance(operation, CopyOp):
                     rewrite_operand(operation.source, 0, True)
@@ -183,6 +181,4 @@ class ConstructPipelinePass(ModulePass):
     name = "construct-pipeline"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(
-            ConstructPipeline(), apply_recursively=False
-        ).rewrite_module(op)
+        PatternRewriteWalker(ConstructPipeline(), apply_recursively=False).rewrite_module(op)

@@ -81,9 +81,7 @@ class FuseElementwisePattern(RewritePattern):
         arg_types = tuple(arg.type for arg in op.body.block.args[:-1])
         # second op arg types
         arg_types += tuple(
-            arg.type
-            for arg, operand in zip(user_op.body.block.args, user_op.operands)
-            if operand is not result
+            arg.type for arg, operand in zip(user_op.body.block.args, user_op.operands) if operand is not result
         )
 
         streaming_region_op = dart.OperationOp(
@@ -103,8 +101,7 @@ class FuseElementwisePattern(RewritePattern):
                     producer_generic := dart.GenericOp(
                         inputs=tuple(
                             streaming_region_op.body.block.args[i.index]
-                            if isinstance(i, BlockArgument)
-                            and isinstance(i.type, dart.StreamType)
+                            if isinstance(i, BlockArgument) and isinstance(i.type, dart.StreamType)
                             else i
                             for i in o.inputs
                         ),
@@ -133,9 +130,7 @@ class FuseElementwisePattern(RewritePattern):
                         inputs=tuple(
                             producer_generic.results[0]
                             if index == obliterating_index
-                            else streaming_region_op.body.block.args[
-                                index + len(op.inputs) - 1
-                            ]
+                            else streaming_region_op.body.block.args[index + len(op.inputs) - 1]
                             for index in range(len(o.inputs))
                         ),
                         body=rewriter.move_region_contents_to_new_regions(o.body),

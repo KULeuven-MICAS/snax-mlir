@@ -32,9 +32,5 @@ class AddMcycleAroundLaunch(ModulePass):
     name = "test-add-mcycle-around-launch"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(
-            InsertBeforeLaunch(), apply_recursively=False
-        ).rewrite_module(op)
-        PatternRewriteWalker(
-            InsertAfterAwait(), apply_recursively=False
-        ).rewrite_module(op)
+        PatternRewriteWalker(InsertBeforeLaunch(), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(InsertAfterAwait(), apply_recursively=False).rewrite_module(op)

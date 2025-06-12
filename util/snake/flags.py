@@ -56,9 +56,7 @@ def get_cc_flags(snitch_sw_path: str, snax_mlir_path: str) -> Sequence[str]:
     ]
 
 
-def get_ld_flags(
-    snitch_sw_path: str, snitch_llvm_path: str | None = None
-) -> Sequence[str]:
+def get_ld_flags(snitch_sw_path: str, snitch_llvm_path: str | None = None) -> Sequence[str]:
     """
     Function that returns default linker flags
     """

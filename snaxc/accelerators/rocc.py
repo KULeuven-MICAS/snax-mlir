@@ -24,18 +24,14 @@ class RoCCAccelerator(Accelerator, ABC):
         return []
 
     @staticmethod
-    def lower_acc_launch(
-        launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
-    ) -> Sequence[Operation]:
+    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         xcustom_acc = 3  # hardcoded to 3 for now
         vals = create_pairs(launch_op)
         # Create the sequence of all operations that need to be emitted
         return combine_pairs_to_ops(acc_op.launch_field_items(), vals, xcustom_acc)
 
     @staticmethod
-    def lower_acc_setup(
-        setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp
-    ) -> Sequence[Operation]:
+    def lower_acc_setup(setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         # If you have the first op, materialize a default value for the register values
         # which are not set yet, otherwise create_pairs might not retrace a previous
         # value
@@ -55,22 +51,16 @@ class RoCCAccelerator(Accelerator, ABC):
             # If there are additional defaults to be added, replace the current setup
             # op with a new one that uses the defaults
             if to_add_as_defaults:
-                optional_default_value.append(
-                    default_val := arith.ConstantOp.from_int_and_width(0, i64)
-                )
+                optional_default_value.append(default_val := arith.ConstantOp.from_int_and_width(0, i64))
                 new_params = list(field_dict.keys()) + to_add_as_defaults
-                new_values = list(field_dict.values()) + [default_val] * len(
-                    to_add_as_defaults
-                )
+                new_values = list(field_dict.values()) + [default_val] * len(to_add_as_defaults)
                 setup_op = accfg.SetupOp(new_values, new_params, setup_op.accelerator)
 
         xcustom_acc = 3  # hardcoded to 3 for now
         vals = create_pairs(setup_op)
         # Only pass on the field names that are set in the current setup
         instructions = set([name[:-4] for name, _ in setup_op.iter_params()])
-        current_fields = {
-            key: val for key, val in acc_op.field_items() if key[:-4] in instructions
-        }.items()
+        current_fields = {key: val for key, val in acc_op.field_items() if key[:-4] in instructions}.items()
         # Create the sequence of all operations that need to be emitted
         return [
             *optional_default_value,
@@ -128,11 +118,7 @@ def combine_pairs_to_ops(
     Emits a custom RoCC instruction for each field_item in field_items
     CUSTOM field can be specified by xcustom_acc.
     """
-    for name, func7 in [
-        (name[:-4], func7.value.data)
-        for name, func7 in field_items
-        if name.endswith(".rs1")
-    ]:
+    for name, func7 in [(name[:-4], func7.value.data) for name, func7 in field_items if name.endswith(".rs1")]:
         ops.extend(
             [
                 get_rocc_inline_asm(
@@ -146,9 +132,7 @@ def combine_pairs_to_ops(
     return ops
 
 
-def get_rocc_inline_asm(
-    xcustom: str, func7: str, val1: SSAValue, val2: SSAValue
-) -> llvm.InlineAsmOp:
+def get_rocc_inline_asm(xcustom: str, func7: str, val1: SSAValue, val2: SSAValue) -> llvm.InlineAsmOp:
     """
     This will emit a custom RoCC op with 2 source registers.
     As per the sources in:

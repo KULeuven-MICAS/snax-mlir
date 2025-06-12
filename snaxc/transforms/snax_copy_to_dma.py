@@ -85,9 +85,7 @@ class MatchSimpleCopy(RewritePattern):
         if not isinstance(op.destination.type.layout, NoneAttr):
             return
         assert op.source.type.get_shape() == op.destination.type.get_shape()
-        assert (
-            op.source.type.get_element_type() == op.destination.type.get_element_type()
-        )
+        assert op.source.type.get_element_type() == op.destination.type.get_element_type()
 
         # get the size of the ops
         ops_to_insert, total_size_op = get_total_size_op(op.source)
@@ -125,10 +123,7 @@ def extract_strides(memreftype: MemRefType) -> list[int | None]:
     """
     strides: list[int | None]
     if isinstance(memreftype.layout, StridedLayoutAttr):
-        strides = [
-            x.data if isinstance(x, IntAttr) else None
-            for x in memreftype.layout.strides.data
-        ]
+        strides = [x.data if isinstance(x, IntAttr) else None for x in memreftype.layout.strides.data]
     elif isinstance(memreftype.layout, NoneAttr):
         # default to row-major layout, construct strides
         # based on shape of the memref type
@@ -179,8 +174,7 @@ class TransformDMA(RewritePattern):
         if any(
             [
                 not op.destination.type.get_shape() == op.source.type.get_shape(),
-                not op.destination.type.get_element_type()
-                == op.source.type.get_element_type(),
+                not op.destination.type.get_element_type() == op.source.type.get_element_type(),
                 not isinstance(op.source.type.get_element_type(), IntegerType),
             ]
         ):
@@ -201,13 +195,8 @@ class TransformDMA(RewritePattern):
             else:
                 # otherwise, shape can be used as single-dimension tile sizes
                 # change dynamic size -1 to None
-                tile_bounds = [
-                    [x.data] if x.data > 0 else [None]
-                    for x in op.source.type.shape.data
-                ]
-            tsl_source = TiledStridedLayoutAttr(
-                TiledStridedLayout.from_strides(strides, tile_bounds, offset)
-            )
+                tile_bounds = [[x.data] if x.data > 0 else [None] for x in op.source.type.shape.data]
+            tsl_source = TiledStridedLayoutAttr(TiledStridedLayout.from_strides(strides, tile_bounds, offset))
 
         # if dest is not tsl, construct representation:
         if isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
@@ -224,13 +213,8 @@ class TransformDMA(RewritePattern):
             else:
                 # otherwise, shape can be used as single-dimension tile sizes
                 # change dynamic size -1 to None
-                tile_bounds = [
-                    [x.data] if x.data > 0 else [None]
-                    for x in op.source.type.shape.data
-                ]
-            tsl_dest = TiledStridedLayoutAttr(
-                TiledStridedLayout.from_strides(strides, tile_bounds, offset)
-            )
+                tile_bounds = [[x.data] if x.data > 0 else [None] for x in op.source.type.shape.data]
+            tsl_dest = TiledStridedLayoutAttr(TiledStridedLayout.from_strides(strides, tile_bounds, offset))
 
         # list of all ops that need to be inserted
         ops_to_insert: list[Operation] = []
@@ -254,9 +238,7 @@ class TransformDMA(RewritePattern):
                 offset_op = ExtractStridedMetaDataOp(op.source)
                 offset = offset_op.offset
             else:
-                offset_op = ConstantOp.from_int_and_width(
-                    tsl_source.data.offset, IndexType()
-                )
+                offset_op = ConstantOp.from_int_and_width(tsl_source.data.offset, IndexType())
                 offset = offset_op.result
 
             calc_offset_op = MuliOp(el_bytes_op, offset, IndexType())
@@ -274,9 +256,7 @@ class TransformDMA(RewritePattern):
                 offset = offset_op.offset
             else:
                 # Multiplication with el_bytes already happens statically with extract_offset()
-                offset_op = ConstantOp.from_int_and_width(
-                    tsl_dest.data.offset, IndexType()
-                )
+                offset_op = ConstantOp.from_int_and_width(tsl_dest.data.offset, IndexType())
                 offset = offset_op.result
             calc_offset_op = MuliOp(el_bytes_op, offset, IndexType())
             pointer_dst = AddiOp(pointer_dst, calc_offset_op, IndexType())
@@ -313,15 +293,11 @@ class TransformDMA(RewritePattern):
         ops_to_insert.extend(ops_to_add)
 
         # generate the step ops for the source tsl
-        ops_to_add, step_ops_src = tsl_source.get_step_ops(
-            bound_ops, op.source, in_bytes=True
-        )
+        ops_to_add, step_ops_src = tsl_source.get_step_ops(bound_ops, op.source, in_bytes=True)
         ops_to_insert.extend(ops_to_add)
 
         # generate the step ops for the destination tsl
-        ops_to_add, step_ops_dst = tsl_dest.get_step_ops(
-            bound_ops, op.destination, in_bytes=True
-        )
+        ops_to_add, step_ops_dst = tsl_dest.get_step_ops(bound_ops, op.destination, in_bytes=True)
         ops_to_insert.extend(ops_to_add)
 
         @dataclass(frozen=True)
@@ -361,9 +337,7 @@ class TransformDMA(RewritePattern):
             ops_to_insert.extend(ops_to_add)
 
             # create function call
-            func_call = func.CallOp(
-                "snax_dma_1d_transfer", [pointer_src, pointer_dst, total_size_op], []
-            )
+            func_call = func.CallOp("snax_dma_1d_transfer", [pointer_src, pointer_dst, total_size_op], [])
 
             # insert ops and replace op
             rewriter.insert_op_before_matched_op(ops_to_insert)
@@ -379,9 +353,7 @@ class TransformDMA(RewritePattern):
 
         assert isinstance(op.source.type.element_type, FixedBitwidthType)
         el_bytes = op.source.type.element_type.size
-        dma_size = ConstantOp.from_int_and_width(
-            lcb[-1].bound * lcb[-1].step * el_bytes, IndexType()
-        )
+        dma_size = ConstantOp.from_int_and_width(lcb[-1].bound * lcb[-1].step * el_bytes, IndexType())
         dma_stride_src = dma_loop.step_src_op
         dma_stride_dst = dma_loop.step_dst_op
         dma_stride_bound = dma_loop.bound_op
@@ -437,9 +409,7 @@ class TransformDMA(RewritePattern):
         for i in range(len(remaining_strides_list) - 1):
             # other for loops have a region with the previous for loop as body
             region = Region(Block([for_loop, scf.YieldOp()], arg_types=(IndexType(),)))
-            for_loop = scf.ForOp(
-                lower, upper[len(remaining_strides_list) - 2 - i], step, [], region
-            )
+            for_loop = scf.ForOp(lower, upper[len(remaining_strides_list) - 2 - i], step, [], region)
 
         # save outermost for loop to insert at the end
         outermost_for_loop = for_loop
@@ -467,9 +437,7 @@ class TransformDMA(RewritePattern):
 
             # insert the ops in the for loop body
             assert for_loop.body.block.first_op is not None
-            for_loop.body.block.insert_ops_before(
-                ops_to_insert_for_loop, for_loop.body.block.first_op
-            )
+            for_loop.body.block.insert_ops_before(ops_to_insert_for_loop, for_loop.body.block.first_op)
 
             # if this is innermost for loop, also insert dma function call
             if isinstance(next_for_op, scf.YieldOp):
@@ -486,9 +454,7 @@ class TransformDMA(RewritePattern):
                     [],
                 )
                 assert for_loop.body.block.last_op is not None
-                for_loop.body.block.insert_op_before(
-                    func_call, for_loop.body.block.last_op
-                )
+                for_loop.body.block.insert_op_before(func_call, for_loop.body.block.last_op)
 
             # else continue with next for loop
             else:
@@ -522,23 +488,17 @@ class SNAXCopyToDMA(ModulePass):
         PatternRewriteWalker(TransformDMA(ignore)).rewrite_module(op)
 
         if any(
-            isinstance(op_in_module, func.CallOp)
-            and op_in_module.callee.root_reference.data == "snax_dma_1d_transfer"
+            isinstance(op_in_module, func.CallOp) and op_in_module.callee.root_reference.data == "snax_dma_1d_transfer"
             for op_in_module in op.walk()
         ):
-            func_decl = func.FuncOp.external(
-                "snax_dma_1d_transfer", 3 * [builtin.IndexType()], []
-            )
+            func_decl = func.FuncOp.external("snax_dma_1d_transfer", 3 * [builtin.IndexType()], [])
             SymbolTable.insert_or_update(op, func_decl)
 
         if any(
-            isinstance(op_in_module, func.CallOp)
-            and op_in_module.callee.root_reference.data == "snax_dma_2d_transfer"
+            isinstance(op_in_module, func.CallOp) and op_in_module.callee.root_reference.data == "snax_dma_2d_transfer"
             for op_in_module in op.walk()
         ):
-            func_decl = func.FuncOp.external(
-                "snax_dma_2d_transfer", 6 * [builtin.IndexType()], []
-            )
+            func_decl = func.FuncOp.external("snax_dma_2d_transfer", 6 * [builtin.IndexType()], [])
             SymbolTable.insert_or_update(op, func_decl)
 
         # remove dead code because a lot of unused stuff is generated

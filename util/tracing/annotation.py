@@ -30,9 +30,7 @@ class EventGenerator(ABC):
     def __init__(self):
         self._acc_callback = []
 
-    def schedule_writeback(
-        self, state: TraceState, callback: typing.Callable[[int], list[Event]]
-    ) -> list[Event]:
+    def schedule_writeback(self, state: TraceState, callback: typing.Callable[[int], list[Event]]) -> list[Event]:
         if state.cpu_state["write_rd"] and state.cpu_state["rd"] != 0:
             # The result is written back in the same cycle.
             return callback(state.cpu_state["writeback"])
@@ -68,10 +66,7 @@ class BarrierEventGenerator(EventGenerator):
                 return result
 
             # Don't bother for instantly succeeding barriers.
-            if (
-                state.clock_cycle - self._barrier_start_state.clock_cycle
-                > self._INSTANT_THRESHOLD
-            ):
+            if state.clock_cycle - self._barrier_start_state.clock_cycle > self._INSTANT_THRESHOLD:
                 result.append(
                     BarrierEvent(
                         self._barrier_start_state.clock_cycle,
@@ -96,10 +91,7 @@ class StreamingEventGenerator(EventGenerator):
     def cycle(self, state: TraceState) -> list[StreamingEvent]:
         result = []
 
-        if (
-            not isinstance(state.instruction, CSRInstruction)
-            or state.instruction.csr != 0x7C0
-        ):
+        if not isinstance(state.instruction, CSRInstruction) or state.instruction.csr != 0x7C0:
             return result
 
         # Stream enables and disables always appear twice. Once when issued from the integer core, second when processed
@@ -212,9 +204,7 @@ class DMAEventGenerator(EventGenerator):
                 def write_back(is_busy):
                     inner_result = []
                     if not is_busy:
-                        inner_result += self._in_flight_to_event(
-                            state.clock_cycle, self._in_flight
-                        )
+                        inner_result += self._in_flight_to_event(state.clock_cycle, self._in_flight)
                         self._in_flight.clear()
                     return inner_result
 
@@ -301,10 +291,6 @@ def calculate_sections(
 
             start = section["start"]
             dur = section["end"] - section["start"]
-            events.append(
-                KernelEvent(
-                    name, start, dur, is_dm_core, origin, section
-                ).to_chrome_tracing(hartid)
-            )
+            events.append(KernelEvent(name, start, dur, is_dm_core, origin, section).to_chrome_tracing(hartid))
 
     return events

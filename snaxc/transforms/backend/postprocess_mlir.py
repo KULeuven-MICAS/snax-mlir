@@ -35,10 +35,7 @@ class PostprocessPass(ModulePass):
     index_bitwidth: int = field(default=32)
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        flags = tuple(
-            flag.format(index_bitwidth=self.index_bitwidth)
-            for flag in MLIR_POSTPROC_FLAGS
-        )
+        flags = tuple(flag.format(index_bitwidth=self.index_bitwidth) for flag in MLIR_POSTPROC_FLAGS)
         # Temporarily allow unregistered ops
         allow_unregistered_old, ctx.allow_unregistered = ctx.allow_unregistered, True
         MLIROptPass(generic=True, arguments=flags).apply(ctx, op)

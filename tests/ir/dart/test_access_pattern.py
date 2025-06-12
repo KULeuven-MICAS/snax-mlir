@@ -27,9 +27,7 @@ def test_access_pattern_creation():
 
 
 def test_access_pattern_inner_dims():
-    pattern = AffineTransform(
-        np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), b=np.array([1, 2, 3])
-    )
+    pattern = AffineTransform(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), b=np.array([1, 2, 3]))
     bounds = (10, 20, 30)
     access_pattern = AccessPattern(bounds, pattern)
 
@@ -90,9 +88,7 @@ def test_schedule_pattern_invalid_bounds():
 
 
 def test_schedule_pattern_rotate():
-    pattern = AffineTransform(
-        np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), np.array([0, 0, 0])
-    )
+    pattern = AffineTransform(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), np.array([0, 0, 0]))
     bounds = (10, 20, 30)
     access_pattern = SchedulePattern(bounds, pattern)
 
@@ -133,9 +129,7 @@ def test_schedule_pattern_rotate():
     # test 4: 4 dims, rotate 3
     rotated_pattern = access_pattern.rotate(3)
     expected_bounds = (20, 30, 10, 40)
-    expected_results = np.array(
-        [[0, 0, 1, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]]
-    )
+    expected_results = np.array([[0, 0, 1, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
     assert rotated_pattern.bounds == expected_bounds
     assert (rotated_pattern.pattern.A == expected_results).all()
     assert (rotated_pattern.pattern.b == pattern.b).all()
@@ -143,9 +137,7 @@ def test_schedule_pattern_rotate():
 
 
 def test_schedule_pattern_add_dim():
-    pattern = AffineTransform(
-        np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), np.array([0, 0, 0])
-    )
+    pattern = AffineTransform(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), np.array([0, 0, 0]))
     bounds = (10, 20, 30)
     access_pattern = SchedulePattern(bounds, pattern)
     pattern_new_dim = access_pattern.add_dim()
@@ -157,9 +149,7 @@ def test_schedule_pattern_add_dim():
 
 
 def test_schedule_pattern_tile_dim():
-    pattern = AffineTransform(
-        np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), np.array([0, 0, 0])
-    )
+    pattern = AffineTransform(np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]), np.array([0, 0, 0]))
     bounds = (10, 20, 30)
     access_pattern = SchedulePattern(bounds, pattern)
     tiled_pattern = access_pattern.tile_dim(1, 5)
@@ -180,9 +170,7 @@ def test_template_pattern_creation():
 
 
 def test_template_pattern_matches():
-    pattern = AffineMap(
-        num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
-    )
+    pattern = AffineMap(num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1)))
     bounds = (10, 20)
     tp = TemplatePattern(bounds, pattern)
 
@@ -193,9 +181,7 @@ def test_template_pattern_matches():
     # test non matching pattern
     sp_non_matching_pattern = SchedulePattern(
         bounds,
-        AffineMap(
-            num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(0))
-        ),
+        AffineMap(num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(0))),
     )
     assert tp.matches(sp_non_matching_pattern) is False
 
@@ -216,12 +202,8 @@ def test_template_pattern_matches():
 
 
 def test_schedule_rotate():
-    pattern1 = AffineMap(
-        num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
-    )
-    pattern2 = AffineMap(
-        num_dims=2, num_symbols=0, results=(AffineDimExpr(1), AffineDimExpr(0))
-    )
+    pattern1 = AffineMap(num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1)))
+    pattern2 = AffineMap(num_dims=2, num_symbols=0, results=(AffineDimExpr(1), AffineDimExpr(0)))
     sp1 = SchedulePattern((10, 20), pattern1)
     sp2 = SchedulePattern((30, 40), pattern2)
     schedule = Schedule([sp1, sp2])
@@ -232,9 +214,7 @@ def test_schedule_rotate():
 
 
 def test_schedule_tile_dim():
-    pattern1 = AffineMap(
-        num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
-    )
+    pattern1 = AffineMap(num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1)))
     sp1 = SchedulePattern((100, 200), pattern1)
     schedule = Schedule([sp1])
     tiled_schedule = schedule.tile_dim(0, 10)
@@ -256,9 +236,7 @@ def test_schedule_clear_unused_dims():
 
 
 def test_template_matches_schedule():
-    pattern1 = AffineMap(
-        num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1))
-    )
+    pattern1 = AffineMap(num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(1)))
     tp1 = TemplatePattern((10, 20), pattern1)
     tp2 = TemplatePattern((30, 40), pattern1)
     template = Template([tp1, tp2])
@@ -269,9 +247,7 @@ def test_template_matches_schedule():
 
     sp3 = SchedulePattern(
         (10, 20),
-        AffineMap(
-            num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(0))
-        ),
+        AffineMap(num_dims=2, num_symbols=0, results=(AffineDimExpr(0), AffineDimExpr(0))),
     )
     schedule_non_matching = Schedule([sp1, sp3])
 

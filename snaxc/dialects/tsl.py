@@ -49,9 +49,7 @@ class TiledStridedLayoutAttr(MemRefLayoutAttr, Data[TiledStridedLayout]):
             for depth in range(max_depth):
                 strides = self.data.tstrides[dim].strides
                 mod = prod([stride.bound for stride in strides[depth:] if stride.bound])
-                fdiv = prod(
-                    [stride.bound for stride in strides[depth + 1 :] if stride.bound]
-                )
+                fdiv = prod([stride.bound for stride in strides[depth + 1 :] if stride.bound])
                 assert (step := self.data.get_stride(dim, depth).step)
                 if depth > 0:
                     result += step * ((AffineDimExpr(dim) % mod) // fdiv)
@@ -116,9 +114,7 @@ class TiledStridedLayoutAttr(MemRefLayoutAttr, Data[TiledStridedLayout]):
             # all lower tile sizes
             else:
                 # get the product of all lower tile sizes
-                product_tilebounds = prod(
-                    [stride.bound for _, stride in tsl.tstrides[dim] if stride.bound]
-                )
+                product_tilebounds = prod([stride.bound for _, stride in tsl.tstrides[dim] if stride.bound])
                 div_op = ConstantOp.from_int_and_width(product_tilebounds, IndexType())
 
                 # divide the size of the memref by the product of all lower tiles
@@ -178,9 +174,7 @@ class TiledStridedLayoutAttr(MemRefLayoutAttr, Data[TiledStridedLayout]):
         ):
             metadata_op = ExtractStridedMetaDataOp(memref_op)
             assert isinstance(memref_type.element_type, FixedBitwidthType)
-            element_size_op = ConstantOp.from_int_and_width(
-                memref_type.element_type.size, IndexType()
-            )
+            element_size_op = ConstantOp.from_int_and_width(memref_type.element_type.size, IndexType())
             result.extend([metadata_op, element_size_op])
             for dim in range(tsl.dimension()):
                 depth = tsl.tstrides[dim].depth() - 1  # get last depth
@@ -231,9 +225,7 @@ class TiledStridedLayoutAttr(MemRefLayoutAttr, Data[TiledStridedLayout]):
 
                 # static case
                 if stride.step is not None:
-                    step_op = ConstantOp.from_int_and_width(
-                        stride.step * el_bytes, IndexType()
-                    )
+                    step_op = ConstantOp.from_int_and_width(stride.step * el_bytes, IndexType())
                     result.append(step_op)
                     result_mapping[(dim, depth)] = step_op
 

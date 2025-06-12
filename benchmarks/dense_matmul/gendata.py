@@ -52,16 +52,12 @@ def create_test_data(m, n, k, add_c: bool = False):
 
 if __name__ == "__main__":
     # Set up the argument parser
-    parser = argparse.ArgumentParser(
-        description="Generate test data with specified parameters."
-    )
+    parser = argparse.ArgumentParser(description="Generate test data with specified parameters.")
     # Adding arguments
     parser.add_argument("--m", type=int, default=16, help="Value for m (default: 16)")
     parser.add_argument("--n", type=int, default=16, help="Value for n (default: 16)")
     parser.add_argument("--k", type=int, default=16, help="Value for k (default: 16)")
-    parser.add_argument(
-        "--add_c", type=int, default=False, help="Add C value to result"
-    )
+    parser.add_argument("--add_c", type=int, default=False, help="Add C value to result")
 
     # Parse the arguments
     args = parser.parse_args()

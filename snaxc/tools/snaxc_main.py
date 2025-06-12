@@ -106,13 +106,9 @@ class SNAXCMain(CommandLineTool):
         Add other/additional arguments by overloading this function.
         """
 
-        arg_parser.add_argument(
-            "input_file", type=str, nargs="?", help="path to input file"
-        )
+        arg_parser.add_argument("input_file", type=str, nargs="?", help="path to input file")
 
-        arg_parser.add_argument(
-            "-o", "--output-file", type=str, required=True, help="path to output file"
-        )
+        arg_parser.add_argument("-o", "--output-file", type=str, required=True, help="path to output file")
 
         arg_parser.add_argument(
             "-c",
@@ -163,13 +159,9 @@ class SNAXCMain(CommandLineTool):
         Fails, if not all passes are registered.
         """
 
-        assert isinstance(self.ctx, AccContext), (
-            "Context must be an AccContext instance"
-        )
+        assert isinstance(self.ctx, AccContext), "Context must be an AccContext instance"
 
-        def callback(
-            previous_pass: ModulePass, module: ModuleOp, next_pass: ModulePass
-        ) -> None:
+        def callback(previous_pass: ModulePass, module: ModuleOp, next_pass: ModulePass) -> None:
             module.verify()
             if self.args.print_between_passes:
                 print(f"IR after {previous_pass.name}:")

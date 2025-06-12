@@ -37,9 +37,5 @@ def test_tsl_attr_get_affine(example_tsl_attr: TiledStridedLayoutAttr):
     tsl = example_tsl_attr
     map = canonicalize_map(tsl.get_affine_map())
     assert map == canonicalize_map(
-        AffineMap.from_callable(
-            lambda d0, d1: (
-                (((((d0 // 4) * 32) + ((d0 % 4) * 4)) + ((d1 // 4) * 16)) + (d1 % 4)),
-            )
-        )
+        AffineMap.from_callable(lambda d0, d1: ((((((d0 // 4) * 32) + ((d0 % 4) * 4)) + ((d1 // 4) * 16)) + (d1 % 4)),))
     )

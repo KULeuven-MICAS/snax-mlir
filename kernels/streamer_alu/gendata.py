@@ -17,12 +17,8 @@ def create_data_files():
     np.random.seed(0)
 
     # G = A + B (snax-alu mode 0)
-    A = np.random.randint(
-        low_bound, high_bound, size=array_size, dtype=np.dtype("int64")
-    )
-    B = np.random.randint(
-        low_bound, high_bound, size=array_size, dtype=np.dtype("int64")
-    )
+    A = np.random.randint(low_bound, high_bound, size=array_size, dtype=np.dtype("int64"))
+    B = np.random.randint(low_bound, high_bound, size=array_size, dtype=np.dtype("int64"))
     O = np.zeros(array_size, dtype=np.dtype("int64"))
     G = A + B
 

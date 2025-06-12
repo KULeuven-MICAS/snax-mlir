@@ -21,9 +21,7 @@ class AccessPattern(ABC):
     bounds: tuple[int | None, ...]
     pattern: AffineTransform
 
-    def __init__(
-        self, bounds: Sequence[int | None], pattern: AffineMap | AffineTransform
-    ):
+    def __init__(self, bounds: Sequence[int | None], pattern: AffineMap | AffineTransform):
         # Convert bounds to a tuple
         bounds = tuple(bounds)
 
@@ -32,9 +30,7 @@ class AccessPattern(ABC):
 
         # Perform validations
         if len(bounds) != pattern.num_dims:
-            raise ValueError(
-                "The number of bounds should be equal to the dimension of the pattern"
-            )
+            raise ValueError("The number of bounds should be equal to the dimension of the pattern")
 
         # Assign attributes using object.__setattr__ due to frozen=True
         object.__setattr__(self, "bounds", bounds)
@@ -89,9 +85,7 @@ class SchedulePattern(AccessPattern):
 
     def __init__(self, bounds: Sequence[int], pattern: AffineMap | AffineTransform):
         if any(bound <= 0 for bound in bounds):
-            raise ValueError(
-                "All bounds must be static, strictly positive integers for a schedule"
-            )
+            raise ValueError("All bounds must be static, strictly positive integers for a schedule")
 
         super().__init__(bounds, pattern)
 
@@ -151,9 +145,7 @@ class SchedulePattern(AccessPattern):
         new_pattern = self.pattern.compose(transform_map)
         bound_to_tile = self.bounds[dim]
         tiled_bound = bound_to_tile // template_bound
-        new_bounds = (
-            self.bounds[:dim] + (tiled_bound, template_bound) + self.bounds[dim + 1 :]
-        )
+        new_bounds = self.bounds[:dim] + (tiled_bound, template_bound) + self.bounds[dim + 1 :]
 
         return type(self)(new_bounds, new_pattern)
 
@@ -178,9 +170,7 @@ class SchedulePattern(AccessPattern):
         return type(self)(new_bounds, new_pattern)
 
 
-def same_nonzero_singular_vectors(
-    A: NDArray[np.int_], B: NDArray[np.int_], tol: float = 1e-10
-) -> bool:
+def same_nonzero_singular_vectors(A: NDArray[np.int_], B: NDArray[np.int_], tol: float = 1e-10) -> bool:
     """
     Check if the subspaces spanned by the right singular vectors of A and B
     corresponding to non-zero singular values are the same.
@@ -227,9 +217,7 @@ class TemplatePattern(AccessPattern):
     Templates should not be transformed through either tiling/rotating/others.
     """
 
-    def __init__(
-        self, bounds: Sequence[int | None], pattern: AffineMap | AffineTransform
-    ):
+    def __init__(self, bounds: Sequence[int | None], pattern: AffineMap | AffineTransform):
         super().__init__(bounds, pattern)
 
     def matches(self, sp: SchedulePattern):

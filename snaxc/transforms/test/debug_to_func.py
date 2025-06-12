@@ -45,9 +45,7 @@ class DebugToFunc(RewritePattern):
         when = arith.ConstantOp.from_int_and_width(whenparam, 32)
         ops_to_insert.append(when)
 
-        func_call = func.CallOp(
-            f"debug_{op.debug_type.data}", [ptr_a, ptr_b, ptr_c, when], []
-        )
+        func_call = func.CallOp(f"debug_{op.debug_type.data}", [ptr_a, ptr_b, ptr_c, when], [])
         ops_to_insert.append(func_call)
         rewriter.replace_matched_op(ops_to_insert)
 

@@ -30,9 +30,7 @@ class LLVMMemrefDescriptor:
         self.descriptor = descriptor
 
     @classmethod
-    def from_rank_and_integer_type(
-        cls, rank: int, integer_type: IntegerType
-    ) -> "LLVMMemrefDescriptor":
+    def from_rank_and_integer_type(cls, rank: int, integer_type: IntegerType) -> "LLVMMemrefDescriptor":
         """
         Create an LLVMMemrefDescriptor from a dimension and an integer type.
 
@@ -57,9 +55,7 @@ class LLVMMemrefDescriptor:
         )
 
     @classmethod
-    def from_memref_type(
-        cls, memref_type: MemRefType[Attribute], integer_type: IntegerType
-    ) -> "LLVMMemrefDescriptor":
+    def from_memref_type(cls, memref_type: MemRefType[Attribute], integer_type: IntegerType) -> "LLVMMemrefDescriptor":
         """
         Create an LLVMMemrefDescriptor from a MemRefType.
 
@@ -103,9 +99,7 @@ class LLVMMemrefDescriptor:
             raise exception("Expected fourth element to be LLVMArrayType")
 
         if not isinstance(shape.type, IntegerType):
-            raise exception(
-                "Expected fourth element to be LLVMArrayType of IntegerType"
-            )
+            raise exception("Expected fourth element to be LLVMArrayType of IntegerType")
 
         strides = next(type_iter)
         if not isinstance(strides, LLVMArrayType):

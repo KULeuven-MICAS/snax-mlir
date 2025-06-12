@@ -100,13 +100,9 @@ class RemoveTransposeConstants(RewritePattern):
     It then constant folds this operation by transforming the weight directly.
     """
 
-    def transpose_tuple(
-        self, array_tuple: Sequence[int], cols: int, rows: int
-    ) -> Sequence[int]:
+    def transpose_tuple(self, array_tuple: Sequence[int], cols: int, rows: int) -> Sequence[int]:
         # Transpose using list comprehension
-        transposed_tuple = tuple(
-            array_tuple[i + j * rows] for i in range(rows) for j in range(cols)
-        )
+        transposed_tuple = tuple(array_tuple[i + j * rows] for i in range(rows) for j in range(cols))
         return transposed_tuple
 
     @op_type_rewrite_pattern
@@ -120,13 +116,9 @@ class RemoveTransposeConstants(RewritePattern):
         # check for transpose:
         if len(op.indexing_maps) != 2:
             return
-        if op.indexing_maps.data[0].data != AffineMap.from_callable(
-            lambda x, y: (y, x)
-        ):
+        if op.indexing_maps.data[0].data != AffineMap.from_callable(lambda x, y: (y, x)):
             return
-        if op.indexing_maps.data[1].data != AffineMap.from_callable(
-            lambda x, y: (x, y)
-        ):
+        if op.indexing_maps.data[1].data != AffineMap.from_callable(lambda x, y: (x, y)):
             return
 
         # is input constant?
@@ -134,22 +126,14 @@ class RemoveTransposeConstants(RewritePattern):
             return
         if not isinstance(const_op := opresult.op, arith.ConstantOp):
             return
-        if not isa(
-            (const_type := op.inputs[0].type), builtin.TensorType[builtin.IntegerType]
-        ):
+        if not isa((const_type := op.inputs[0].type), builtin.TensorType[builtin.IntegerType]):
             return
-        if not isinstance(
-            (dense_attr := const_op.value), builtin.DenseIntOrFPElementsAttr
-        ):
+        if not isinstance((dense_attr := const_op.value), builtin.DenseIntOrFPElementsAttr):
             return
 
         # transpose const op
-        transposed_data = self.transpose_tuple(
-            cast(Sequence[int], dense_attr.get_values()), *const_type.get_shape()
-        )
-        transposed_dense_attr = builtin.DenseIntOrFPElementsAttr.create_dense_int(
-            const_type, transposed_data
-        )
+        transposed_data = self.transpose_tuple(cast(Sequence[int], dense_attr.get_values()), *const_type.get_shape())
+        transposed_dense_attr = builtin.DenseIntOrFPElementsAttr.create_dense_int(const_type, transposed_data)
 
         # create new const_op
         new_const_op = arith.ConstantOp(transposed_dense_attr, op.outputs[0].type)
@@ -187,9 +171,7 @@ class OrganizeGetGlobals(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, getglobal: memref.GetGlobalOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, getglobal: memref.GetGlobalOp, rewriter: PatternRewriter):
         assert getglobal.parent
         for firstuser in getglobal.parent.walk():
             if firstuser in {x.operation for x in getglobal.memref.uses}:
@@ -243,27 +225,15 @@ class PreprocessMLPerfTiny(ModulePass):
     )
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(
-            InsertStaticFunctionCall(), apply_recursively=False
-        ).rewrite_module(op)
+        PatternRewriteWalker(InsertStaticFunctionCall(), apply_recursively=False).rewrite_module(op)
         self.mlir_inliner_pass.apply(ctx, op)
         PatternRewriteWalker(DropOldFunction()).rewrite_module(op)
         PatternRewriteWalker(RescaleClampPattern()).rewrite_module(op)
         self.mlir_lowering_pass.apply(ctx, op)
-        PatternRewriteWalker(RemoveZeroInits(), apply_recursively=False).rewrite_module(
-            op
-        )
-        PatternRewriteWalker(
-            RemoveTransposeConstants(), apply_recursively=False
-        ).rewrite_module(op)
+        PatternRewriteWalker(RemoveZeroInits(), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(RemoveTransposeConstants(), apply_recursively=False).rewrite_module(op)
         self.mlir_bufferization_pass.apply(ctx, op)
         PatternRewriteWalker(AllocToGlobal()).rewrite_module(op)
-        PatternRewriteWalker(
-            InsertMemoryClears(), apply_recursively=False
-        ).rewrite_module(op)
-        PatternRewriteWalker(
-            InsertDebugStatements(), apply_recursively=False
-        ).rewrite_module(op)
-        PatternRewriteWalker(
-            OrganizeGetGlobals(), apply_recursively=False
-        ).rewrite_module(op)
+        PatternRewriteWalker(InsertMemoryClears(), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(InsertDebugStatements(), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(OrganizeGetGlobals(), apply_recursively=False).rewrite_module(op)

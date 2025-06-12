@@ -44,9 +44,7 @@ class DispatchRegionsRewriter(RewritePattern):
                 # dispatch current list if it is nonempty, and the current op
                 # can not be added (either because it mustn't be dispatched, or
                 # because it doesn't share the same parent)
-                if len(ops_to_dispatch) and (
-                    not dispatch_rule(op) or op.parent is not ops_to_dispatch[-1].parent
-                ):
+                if len(ops_to_dispatch) and (not dispatch_rule(op) or op.parent is not ops_to_dispatch[-1].parent):
                     # create and insert scf.if op
                     if_op = scf.IfOp(core_cond, [], [yield_op := scf.YieldOp()])
                     rewriter.insert_op(if_op, InsertPoint.before(ops_to_dispatch[0]))
@@ -77,30 +75,20 @@ class DispatchRegionsRewriter(RewritePattern):
 
         # Add pin to constants attribute for function-constant-pinning pass
         constants_to_pin = builtin.ArrayAttr(
-            [
-                builtin.IntegerAttr.from_int_and_width(i, 32)
-                for i in range(self.nb_cores)
-            ]
+            [builtin.IntegerAttr.from_int_and_width(i, 32) for i in range(self.nb_cores)]
         )
         func_call.attributes.update({"pin_to_constants": constants_to_pin})
 
         call_and_condition_dm = [
             func_call,
-            cst_1 := arith.ConstantOp.from_int_and_width(
-                self.nb_cores - 1, builtin.i32
-            ),
+            cst_1 := arith.ConstantOp.from_int_and_width(self.nb_cores - 1, builtin.i32),
             comparison_dm := arith.CmpiOp(func_call, cst_1, "eq"),
         ]
         # Make sure function call is only inserted once
         inserted_function_call = False
-        if any(
-            dispatcher(block, comparison_dm.result, dispatch_to_dm)
-            for block in func_op.body.blocks
-        ):
+        if any(dispatcher(block, comparison_dm.result, dispatch_to_dm) for block in func_op.body.blocks):
             inserted_function_call = True
-            rewriter.insert_op(
-                call_and_condition_dm, InsertPoint.at_start(func_op.body.blocks[0])
-            )
+            rewriter.insert_op(call_and_condition_dm, InsertPoint.at_start(func_op.body.blocks[0]))
         else:
             comparison_dm.erase()
             cst_1.erase()
@@ -111,10 +99,7 @@ class DispatchRegionsRewriter(RewritePattern):
             cst_0 := arith.ConstantOp.from_int_and_width(0, builtin.i32),
             comparison_compute := arith.CmpiOp(func_call, cst_0, "eq"),
         ]
-        if any(
-            dispatcher(block, comparison_compute.result, dispatch_to_compute)
-            for block in func_op.body.blocks
-        ):
+        if any(dispatcher(block, comparison_compute.result, dispatch_to_compute) for block in func_op.body.blocks):
             # insert function call in dominator block (first one)
             if inserted_function_call:
                 # If function call is already inserted, insert check after
@@ -173,6 +158,4 @@ class DispatchRegions(ModulePass):
             DispatchRegionsRewriter(self.nb_cores),
             apply_recursively=False,
         ).rewrite_module(op)
-        PatternRewriteWalker(
-            InsertFunctionDeclaration(), apply_recursively=False
-        ).rewrite_module(op)
+        PatternRewriteWalker(InsertFunctionDeclaration(), apply_recursively=False).rewrite_module(op)

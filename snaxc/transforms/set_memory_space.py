@@ -27,8 +27,7 @@ class InitFuncMemorySpace(RewritePattern):
         # Function must have memref arguments with an undefined memory space
         if not any(
             [
-                isinstance(x, builtin.MemRefType)
-                and isinstance(x.memory_space, builtin.NoneAttr)
+                isinstance(x, builtin.MemRefType) and isinstance(x.memory_space, builtin.NoneAttr)
                 for x in [*op.function_type.inputs, *op.function_type.outputs]
             ]
         ):
@@ -128,14 +127,11 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
     """
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, op: linalg.GenericOp | dart.OperationOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, op: linalg.GenericOp | dart.OperationOp, rewriter: PatternRewriter):
         operands_to_memory_cast = tuple(
             x
             for x in op.operands
-            if isinstance(memref_type := x.type, builtin.MemRefType)
-            and memref_type.memory_space != L1.attribute
+            if isinstance(memref_type := x.type, builtin.MemRefType) and memref_type.memory_space != L1.attribute
         )
 
         if not operands_to_memory_cast:
@@ -147,9 +143,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
             for use in operand.uses:
                 if (
                     isinstance(use.operation, memref.MemorySpaceCastOp)
-                    and isinstance(
-                        use_type := use.operation.dest.type, builtin.MemRefType
-                    )
+                    and isinstance(use_type := use.operation.dest.type, builtin.MemRefType)
                     and use_type.memory_space == L1.attribute
                 ):
                     cast_op = use.operation
@@ -157,9 +151,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
             # If cast op not found, create and insert new one
             assert isa(optype := operand.type, builtin.MemRefType[Attribute])
             if cast_op is None:
-                cast_op = memref.MemorySpaceCastOp.from_type_and_target_space(
-                    operand, optype, L1.attribute
-                )
+                cast_op = memref.MemorySpaceCastOp.from_type_and_target_space(operand, optype, L1.attribute)
                 rewriter.insert_op_before_matched_op(cast_op)
 
             return cast_op
