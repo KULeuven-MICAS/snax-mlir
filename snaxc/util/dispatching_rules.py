@@ -1,7 +1,7 @@
 from xdsl.dialects import linalg, memref
 from xdsl.ir import Operation
 
-from snaxc.dialects import dart
+from snaxc.dialects import dart, snax
 
 
 def dispatch_to_dm(op: Operation):
@@ -21,5 +21,7 @@ def dispatch_to_compute(op: Operation):
     if isinstance(op, linalg.GenericOp):
         return True
     if isinstance(op, dart.StreamingRegionOpBase):
+        return True
+    if isinstance(op, snax.ConvolutionOp | snax.MaxPoolOp | snax.FullyConnectedOp):
         return True
     return False
