@@ -18,6 +18,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.rewriter import InsertPoint
 
+from snaxc.dialects import snax
 from snaxc.dialects.dart import StreamingRegionOpBase
 from snaxc.dialects.pipeline import IndexOp, PipelineOp, StageOp, YieldOp
 from snaxc.dialects.snax import ClusterSyncOp
@@ -85,7 +86,15 @@ class ConstructPipeline(RewritePattern):
         cluster_sync_ops: list[ClusterSyncOp] = []
 
         def is_stage_op(op: Operation) -> bool:
-            return isinstance(op, CopyOp | GenericOp | StreamingRegionOpBase)
+            return isinstance(
+                op,
+                CopyOp
+                | GenericOp
+                | StreamingRegionOpBase
+                | snax.ConvolutionOp
+                | snax.MaxPoolOp
+                | snax.FullyConnectedOp,
+            )
 
         while is_stage_op(next_op):
             current_stage.append(next_op)
@@ -157,6 +166,9 @@ class ConstructPipeline(RewritePattern):
                     for i, operand in enumerate(operation.operands):
                         if isinstance(operand.type, MemRefType):
                             rewrite_operand(operand, i, operand in operation.inputs)
+                elif isinstance(operation, snax.ConvolutionOp | snax.MaxPoolOp | snax.FullyConnectedOp):
+                    rewrite_operand(operation.operands[0], 0, True)
+                    rewrite_operand(operation.operands[1], 1, False)
 
                 stage_block.add_op(operation)
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import cast
 
 from xdsl.dialects.builtin import (
@@ -39,6 +39,69 @@ from snaxc.accelerators.streamers import (
 )
 from snaxc.accelerators.streamers.streamers import StreamerOpts
 from snaxc.util.memref_descriptor import LLVMMemrefDescriptor
+
+
+@irdl_op_definition
+class ConvolutionOp(IRDLOperation):
+    name = "snax.convolution"
+
+    ops = var_operand_def()
+
+    def __init__(
+        self,
+        operands: Sequence[SSAValue | Operation] = (),
+        result_types: Sequence[Attribute] = (),
+        attributes: Mapping[str, Attribute | None] | None = None,
+        properties: Mapping[str, Attribute | None] | None = None,
+    ):
+        super().__init__(
+            operands=(operands,),
+            result_types=(result_types,),
+            attributes=attributes,
+            properties=properties,
+        )
+
+
+@irdl_op_definition
+class MaxPoolOp(IRDLOperation):
+    name = "snax.maxpool"
+
+    ops = var_operand_def()
+
+    def __init__(
+        self,
+        operands: Sequence[SSAValue | Operation] = (),
+        result_types: Sequence[Attribute] = (),
+        attributes: Mapping[str, Attribute | None] | None = None,
+        properties: Mapping[str, Attribute | None] | None = None,
+    ):
+        super().__init__(
+            operands=(operands,),
+            result_types=(result_types,),
+            attributes=attributes,
+            properties=properties,
+        )
+
+
+@irdl_op_definition
+class FullyConnectedOp(IRDLOperation):
+    name = "snax.fully_connected"
+
+    ops = var_operand_def()
+
+    def __init__(
+        self,
+        operands: Sequence[SSAValue | Operation] = (),
+        result_types: Sequence[Attribute] = (),
+        attributes: Mapping[str, Attribute | None] | None = None,
+        properties: Mapping[str, Attribute | None] | None = None,
+    ):
+        super().__init__(
+            operands=(operands,),
+            result_types=(result_types,),
+            attributes=attributes,
+            properties=properties,
+        )
 
 
 @irdl_op_definition
@@ -230,6 +293,6 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
 
 Snax = Dialect(
     "snax",
-    [ClusterSyncOp, MCycleOp, LayoutCast, Alloc, ClearL1],
+    [ClusterSyncOp, MCycleOp, LayoutCast, Alloc, ClearL1, ConvolutionOp, MaxPoolOp, FullyConnectedOp],
     [StreamerConfigurationAttr],
 )
