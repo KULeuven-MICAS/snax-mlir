@@ -1,5 +1,5 @@
 from xdsl.context import Context
-from xdsl.dialects import builtin
+from xdsl.dialects import builtin, scf
 from xdsl.dialects.memref import DeallocOp
 from xdsl.ir import Operation
 from xdsl.passes import ModulePass
@@ -47,9 +47,19 @@ class InsertSyncBarrier(ModulePass):
 
                     if dispatch_to_dm(op_in_module) and not dispatch_to_dm(op_use.operation):
                         ops_to_sync.append(op_use.operation)
+                        if op_in_module.parent_op() == op_use.operation.parent_op() and isinstance(
+                            for_op := op_in_module.parent_op(), scf.ForOp
+                        ):
+                            assert isinstance(for_op.body.block.last_op, scf.YieldOp)
+                            ops_to_sync.append(for_op.body.block.last_op)
 
                     if dispatch_to_compute(op_in_module) and not dispatch_to_compute(op_use.operation):
                         ops_to_sync.append(op_use.operation)
+                        if op_in_module.parent_op() == op_use.operation.parent_op() and isinstance(
+                            for_op := op_in_module.parent_op(), scf.ForOp
+                        ):
+                            assert isinstance(for_op.body.block.last_op, scf.YieldOp)
+                            ops_to_sync.append(for_op.body.block.last_op)
 
                     if isinstance(op_use.operation, DeallocOp):
                         # if the operation is a sync op, clear the list
