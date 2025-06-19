@@ -21,6 +21,7 @@ from snaxc.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
 from snaxc.transforms.convert_dart_to_snax_stream import ConvertDartToSnaxStream
 from snaxc.transforms.convert_linalg_to_accfg import ConvertLinalgToAccPass
 from snaxc.transforms.convert_linalg_to_kernel import ConvertLinalgToKernel
+from snaxc.transforms.convert_memref_to_arith import ConvertMemrefToArithPass
 from snaxc.transforms.dart.convert_linalg_to_dart import ConvertLinalgToDart
 from snaxc.transforms.dart.dart_fuse_operations import DartFuseOperationsPass
 from snaxc.transforms.dart.dart_layout_resolution import DartLayoutResolutionPass
@@ -210,9 +211,11 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(ConvertAccfgToCsrPass())
         pass_pipeline.append(SNAXCopyToDMA())
         pass_pipeline.append(SNAXToFunc())
+        pass_pipeline.append(ConvertMemrefToArithPass())
         if self.args.debug:
             pass_pipeline.append(DebugToFuncPass())
         pass_pipeline.append(ClearMemorySpace())
+        pass_pipeline.append(CanonicalizePass())
 
         # Convert to llvm:
         pass_pipeline.append(PostprocessPass())
