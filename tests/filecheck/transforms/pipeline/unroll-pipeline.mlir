@@ -32,7 +32,7 @@ scf.for %i = %lb to %ub step %step {
 // CHECK-NEXT:   "test.op"(%2) {world} : (index) -> ()
 // CHECK-NEXT:   "snax.cluster_sync_op"() : () -> ()
 // CHECK-NEXT: }
-// CHECK-NEXT: %3 = arith.constant 0 : index
+// CHECK-NEXT: %3 = arith.constant 1 : index
 // CHECK-NEXT: %4 = arith.subi %ub, %3 : index
 // CHECK-NEXT: "test.op"(%4) {world} : (index) -> ()
 // CHECK-NEXT: "snax.cluster_sync_op"() : () -> ()
@@ -81,9 +81,9 @@ scf.for %i = %lb to %ub step %step {
 // CHECK-NEXT    "test.op"(%3) {wizard} : (index) -> ()
 // CHECK-NEXT    "snax.cluster_sync_op"() : () -> ()
 // CHECK-NEXT  }
-// CHECK-NEXT  %6 = arith.constant 0 : index
+// CHECK-NEXT  %6 = arith.constant 1 : index
 // CHECK-NEXT  %7 = arith.subi %ub, %6 : index
-// CHECK-NEXT  %8 = arith.constant 1 : index
+// CHECK-NEXT  %8 = arith.constant 2 : index
 // CHECK-NEXT  %9 = arith.subi %ub, %8 : index
 // CHECK-NEXT  "test.op"(%7) {a} : (index) -> ()
 // CHECK-NEXT  "test.op"(%9) {wizard} : (index) -> ()
