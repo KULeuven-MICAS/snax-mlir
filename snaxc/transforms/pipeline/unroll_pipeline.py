@@ -52,7 +52,7 @@ class UnrollPipeline(RewritePattern):
         for i in range(pipeline.nb_stages - 1):
             ops_to_add: list[Operation] = []
             # create new index op
-            index = arith.ConstantOp.from_int_and_width(i, builtin.IndexType())
+            index = arith.ConstantOp.from_int_and_width(i + 1, builtin.IndexType())
             index_val = arith.SubiOp(for_op.ub, index)
             index_clone = index_op.clone()
             index_clone.operands[0] = index_val.result
