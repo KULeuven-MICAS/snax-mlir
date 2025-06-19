@@ -1,12 +1,13 @@
 from math import prod
 from typing import cast
+
 from xdsl.context import Context
-from xdsl.dialects import builtin, linalg
+from xdsl.dialects import builtin
 from xdsl.dialects.arith import AddiOp, ConstantOp, DivUIOp, MuliOp
 from xdsl.dialects.builtin import FixedBitwidthType, IndexType
 from xdsl.dialects.memref import ExtractAlignedPointerAsIndexOp, SubviewOp
-from xdsl.ir import Attribute, Block, Operation, OpResult
-from xdsl.parser import IRDLOperation, MemRefType
+from xdsl.ir import Attribute, Operation, OpResult
+from xdsl.parser import MemRefType
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -14,10 +15,8 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
-from xdsl.rewriter import InsertPoint
 from xdsl.utils.hints import isa
 
-from snaxc.dialects.kernel import Kernel, Parsable
 from snaxc.dialects.tsl import TiledStridedLayoutAttr
 
 
