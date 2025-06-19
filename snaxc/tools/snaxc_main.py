@@ -33,6 +33,10 @@ from snaxc.transforms.frontend.preprocess_mlir import PreprocessPass
 from snaxc.transforms.insert_accfg_op import InsertAccOp
 from snaxc.transforms.insert_sync_barrier import InsertSyncBarrier
 from snaxc.transforms.memref_to_snax import MemrefToSNAX
+from snaxc.transforms.pipeline.construct_pipeline import ConstructPipelinePass
+from snaxc.transforms.pipeline.pipeline_canonicalize_for import PipelineCanonicalizeFor
+from snaxc.transforms.pipeline.pipeline_duplicate_buffers import PipelineDuplicateBuffersPass
+from snaxc.transforms.pipeline.unroll_pipeline import UnrollPipelinePass
 from snaxc.transforms.realize_memref_casts import RealizeMemrefCastsPass
 from snaxc.transforms.reuse_memref_allocs import ReuseMemrefAllocs
 from snaxc.transforms.set_memory_layout import SetMemoryLayout
@@ -207,6 +211,11 @@ class SNAXCMain(CommandLineTool):
             pass_pipeline.append(InsertDebugPass())
         pass_pipeline.append(RealizeMemrefCastsPass())
         pass_pipeline.append(ReuseMemrefAllocs())
+        pass_pipeline.append(InsertSyncBarrier())
+        pass_pipeline.append(PipelineCanonicalizeFor())
+        pass_pipeline.append(ConstructPipelinePass())
+        pass_pipeline.append(PipelineDuplicateBuffersPass())
+        pass_pipeline.append(UnrollPipelinePass())
         pass_pipeline.append(MemrefToSNAX())
         pass_pipeline.append(CanonicalizePass())
         pass_pipeline.append(SnaxAllocatePass(self.args.alloc_mode))
