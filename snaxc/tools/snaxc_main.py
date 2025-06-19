@@ -153,6 +153,13 @@ class SNAXCMain(CommandLineTool):
             help="disable all frontend passes",
         )
 
+        arg_parser.add_argument(
+            "--no-backend",
+            default=False,
+            action="store_true",
+            help="disable all backend passes",
+        )
+
     def setup_pipeline(self):
         """
         Creates a pipeline that consists of all the passes specified.
@@ -218,7 +225,8 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(CanonicalizePass())
 
         # Convert to llvm:
-        pass_pipeline.append(PostprocessPass())
+        if not self.args.no_backend:
+            pass_pipeline.append(PostprocessPass())
 
         # Initialize pipeline
         self.pipeline = PipelinePass(tuple(pass_pipeline), callback)
