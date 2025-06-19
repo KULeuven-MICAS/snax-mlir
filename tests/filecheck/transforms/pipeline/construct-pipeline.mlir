@@ -29,23 +29,23 @@ scf.for %i = %lb to %ub step %step {
 // CHECK-NEXT: scf.for %i = %lb to %ub step %step {
 // CHECK-NEXT:   pipeline.pipeline {
 // CHECK-NEXT:     pipeline.index %i -> {
-// CHECK-NEXT:     ^0(%4 : index):
-// CHECK-NEXT:       "test.op"(%i) : (index) -> ()
+// CHECK-NEXT:     ^0(%i_1 : index):
+// CHECK-NEXT:       "test.op"(%i_1) : (index) -> ()
 // CHECK-NEXT:       pipeline.yield
 // CHECK-NEXT:     }
 // CHECK-NEXT:     pipeline.stage 0 ins(%0 : memref<1x2xi8>) outs(%1 : memref<1x2xi8>) {
-// CHECK-NEXT:     ^1(%5 : memref<1x2xi8>, %6 : memref<1x2xi8>):
-// CHECK-NEXT:       "memref.copy"(%5, %6) : (memref<1x2xi8>, memref<1x2xi8>) -> ()
+// CHECK-NEXT:     ^1(%4 : memref<1x2xi8>, %5 : memref<1x2xi8>):
+// CHECK-NEXT:       "memref.copy"(%4, %5) : (memref<1x2xi8>, memref<1x2xi8>) -> ()
 // CHECK-NEXT:     }
 // CHECK-NEXT:     pipeline.stage 1 ins(%1 : memref<1x2xi8>) outs(%2 : memref<1x2xi8>) {
-// CHECK-NEXT:     ^2(%7 : memref<1x2xi8>, %8 : memref<1x2xi8>):
-// CHECK-NEXT:       "dart.operation"(%7, %8) <{patterns = [], operandSegmentSizes = array<i32: 1, 1>}> ({
+// CHECK-NEXT:     ^2(%6 : memref<1x2xi8>, %7 : memref<1x2xi8>):
+// CHECK-NEXT:       "dart.operation"(%6, %7) <{patterns = [], operandSegmentSizes = array<i32: 1, 1>}> ({
 // CHECK-NEXT:         dart.yield
 // CHECK-NEXT:       }) : (memref<1x2xi8>, memref<1x2xi8>) -> ()
 // CHECK-NEXT:     }
 // CHECK-NEXT:     pipeline.stage 2 ins(%2 : memref<1x2xi8>) outs(%3 : memref<1x2xi8>) {
-// CHECK-NEXT:     ^3(%9 : memref<1x2xi8>, %10 : memref<1x2xi8>):
-// CHECK-NEXT:       "memref.copy"(%9, %10) : (memref<1x2xi8>, memref<1x2xi8>) -> ()
+// CHECK-NEXT:     ^3(%8 : memref<1x2xi8>, %9 : memref<1x2xi8>):
+// CHECK-NEXT:       "memref.copy"(%8, %9) : (memref<1x2xi8>, memref<1x2xi8>) -> ()
 // CHECK-NEXT:     }
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
