@@ -150,13 +150,13 @@ class ConstructPipeline(RewritePattern):
                     rewrite_operand(operation.source, 0, True)
                     rewrite_operand(operation.destination, 1, False)
                 elif isinstance(operation, GenericOp):
-                    for i, operand in enumerate(operation.operands):
+                    for j, operand in enumerate(operation.operands):
                         if isinstance(operand.type, MemRefType):
-                            rewrite_operand(operand, i, operand in operation.inputs)
+                            rewrite_operand(operand, j, operand in operation.inputs)
                 elif isinstance(operation, StreamingRegionOpBase):
-                    for i, operand in enumerate(operation.operands):
+                    for j, operand in enumerate(operation.operands):
                         if isinstance(operand.type, MemRefType):
-                            rewrite_operand(operand, i, operand in operation.inputs)
+                            rewrite_operand(operand, j, operand in operation.inputs)
 
                 stage_block.add_op(operation)
 
