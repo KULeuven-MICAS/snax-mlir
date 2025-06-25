@@ -13,6 +13,13 @@ module snax_rules:
 use rule * from snax_rules exclude snax_opt_mlir as snax_*
 
 
+rule generate_quantized_matmul:
+    output:
+        "gemm.mlir",
+    script:
+        "gemm.py"
+
+
 rule compile_snax:
     """
     Apply various transformations snax-opt on mlir files.
@@ -35,29 +42,16 @@ rule all:
 rule compile_main:
     input:
         "main.c",
-        "data.h",
     output:
         "main.o",
     shell:
         "{config[cc]} {config[cflags]} -c {input[0]}"
 
 
-from gendata import create_data_files
-
-
-rule generate_data:
-    output:
-        "data.c",
-        "data.h",
-    run:
-        create_data_files()
-
-
 rule link_snax_binary:
     input:
         "gemm.o",
         "main.o",
-        "data.o",
     output:
         "gemm.x",
     shell:
