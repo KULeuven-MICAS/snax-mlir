@@ -83,4 +83,5 @@ class StaticInlinePass(ModulePass):
         self.mlir_inliner_pass.apply(ctx, op)
 
         # And drop the function with dynamic arguments:
+        assert isinstance(func_op := op.body.block.first_op, func.FuncOp)
         rewriter.erase_op(func_op)

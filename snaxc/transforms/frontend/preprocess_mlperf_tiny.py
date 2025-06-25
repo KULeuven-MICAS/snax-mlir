@@ -2,10 +2,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import cast
 
-from xdsl.builder import Builder
 from xdsl.context import Context
-from xdsl.dialects import arith, builtin, func, linalg, memref, tensor
-from xdsl.ir import BlockArgument, Operation, OpResult
+from xdsl.dialects import arith, builtin, linalg, memref
+from xdsl.ir import Operation, OpResult
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -19,54 +18,7 @@ from xdsl.transforms.mlir_opt import MLIROptPass
 from xdsl.utils.hints import isa
 
 from snaxc.dialects import snax
-from snaxc.transforms.alloc_to_global import AllocToGlobal
 from snaxc.transforms.convert_tosa_to_kernel import RescaleClampPattern
-from snaxc.transforms.test.insert_debugs import InsertDebugStatements
-
-
-class InsertStaticFunctionCall(RewritePattern):
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: builtin.ModuleOp, rewriter: PatternRewriter):
-        """
-        Insert a function with static arguments them to dynamic ones,
-        calls the existing main function, and then casts the dynamic output
-        to a static value. After inlining and canonicalization, everything is static.
-        """
-
-        # define types
-        static_input = builtin.TensorType(builtin.IntegerType(8), (8, 640))
-        dynamic_input = builtin.TensorType(builtin.IntegerType(8), (-1, 640))
-
-        static_output = builtin.TensorType(builtin.IntegerType(8), (8, 640))
-        dynamic_output = builtin.TensorType(builtin.IntegerType(8), (-1, 640))
-
-        @Builder.implicit_region((static_input,))
-        def func_region(args: tuple[BlockArgument, ...]):
-            cast = tensor.CastOp(args[0], dynamic_input)
-            func_result = func.CallOp("main", [cast], [dynamic_output])
-            cast2 = tensor.CastOp(func_result, static_output)
-            func.ReturnOp(cast2)
-
-        main_func = func.FuncOp(
-            "run_network",
-            builtin.FunctionType.from_lists([static_input], [static_output]),
-            region=func_region,
-        )
-
-        rewriter.insert_op(main_func, InsertPoint.at_end(op.body.block))
-
-
-class DropOldFunction(RewritePattern):
-    """
-    After the function `main` has been inlined in the function
-    `run_network`, the main function can be dropped
-    """
-
-    @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: func.FuncOp, rewriter: PatternRewriter):
-        ## delete old main function which has been inlined
-        if op.sym_name.data == "main":
-            rewriter.erase_matched_op()
 
 
 class RemoveZeroInits(RewritePattern):
@@ -133,7 +85,7 @@ class RemoveTransposeConstants(RewritePattern):
 
         # transpose const op
         transposed_data = self.transpose_tuple(cast(Sequence[int], dense_attr.get_values()), *const_type.get_shape())
-        transposed_dense_attr = builtin.DenseIntOrFPElementsAttr.create_dense_int(const_type, transposed_data)
+        transposed_dense_attr = builtin.DenseIntOrFPElementsAttr.create_dense_int(op.outputs[0].type, transposed_data)
 
         # create new const_op
         new_const_op = arith.ConstantOp(transposed_dense_attr, op.outputs[0].type)
@@ -225,15 +177,15 @@ class PreprocessMLPerfTiny(ModulePass):
     )
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(InsertStaticFunctionCall(), apply_recursively=False).rewrite_module(op)
-        self.mlir_inliner_pass.apply(ctx, op)
-        PatternRewriteWalker(DropOldFunction()).rewrite_module(op)
+        # PatternRewriteWalker(InsertStaticFunctionCall(), apply_recursively=False).rewrite_module(op)
+        # self.mlir_inliner_pass.apply(ctx, op)
+        # PatternRewriteWalker(DropOldFunction()).rewrite_module(op)
         PatternRewriteWalker(RescaleClampPattern()).rewrite_module(op)
-        self.mlir_lowering_pass.apply(ctx, op)
-        PatternRewriteWalker(RemoveZeroInits(), apply_recursively=False).rewrite_module(op)
+        # self.mlir_lowering_pass.apply(ctx, op)
+        # PatternRewriteWalker(RemoveZeroInits(), apply_recursively=False).rewrite_module(op)
         PatternRewriteWalker(RemoveTransposeConstants(), apply_recursively=False).rewrite_module(op)
-        self.mlir_bufferization_pass.apply(ctx, op)
-        PatternRewriteWalker(AllocToGlobal()).rewrite_module(op)
-        PatternRewriteWalker(InsertMemoryClears(), apply_recursively=False).rewrite_module(op)
-        PatternRewriteWalker(InsertDebugStatements(), apply_recursively=False).rewrite_module(op)
-        PatternRewriteWalker(OrganizeGetGlobals(), apply_recursively=False).rewrite_module(op)
+        # self.mlir_bufferization_pass.apply(ctx, op)
+        # PatternRewriteWalker(AllocToGlobal()).rewrite_module(op)
+        # PatternRewriteWalker(InsertMemoryClears(), apply_recursively=False).rewrite_module(op)
+        # PatternRewriteWalker(InsertDebugStatements(), apply_recursively=False).rewrite_module(op)
+        # PatternRewriteWalker(OrganizeGetGlobals(), apply_recursively=False).rewrite_module(op)

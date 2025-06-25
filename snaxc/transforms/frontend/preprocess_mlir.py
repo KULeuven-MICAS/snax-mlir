@@ -3,7 +3,10 @@ from dataclasses import dataclass, field
 from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
+from xdsl.pattern_rewriter import PatternRewriteWalker
 from xdsl.transforms.mlir_opt import MLIROptPass
+
+from snaxc.transforms.frontend.preprocess_mlperf_tiny import RemoveTransposeConstants
 
 MLIR_PREPOC_FLAGS: tuple[tuple[str, ...], ...] = (
     (
@@ -19,16 +22,20 @@ MLIR_PREPOC_FLAGS: tuple[tuple[str, ...], ...] = (
         + "))",
         "--mlir-print-op-generic",
         "--mlir-print-local-scope",
+        "--allow-unregistered-dialect",
     ),
     (
         "--tosa-to-arith=include-apply-rescale",
         "--mlir-print-op-generic",
         "--mlir-print-local-scope",
+        "--allow-unregistered-dialect",
     ),
     (
         "--linalg-generalize-named-ops",
+        "--canonicalize",
         "--mlir-print-op-generic",
         "--mlir-print-local-scope",
+        "--allow-unregistered-dialect",
     ),
 )
 
@@ -42,3 +49,5 @@ class PreprocessPass(ModulePass):
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         for flags in MLIR_PREPOC_FLAGS:
             MLIROptPass(generic=True, arguments=flags).apply(ctx, op)
+
+        PatternRewriteWalker(RemoveTransposeConstants(), apply_recursively=False).rewrite_module(op)
