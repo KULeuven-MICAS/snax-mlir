@@ -1,7 +1,7 @@
 from util.get_model import get_model
-from util.snake.configs import get_mlperf_tiny_config
+from util.snake.configs import get_snax_gemmx_config
 
-config = get_mlperf_tiny_config()
+config = get_snax_gemmx_config()
 
 
 module snax_rules:
@@ -11,26 +11,30 @@ module snax_rules:
         config
 
 
-module tf_rules:
-    snakefile:
-        "../../util/snake/tensorflow.smk"
-    config:
-        config
+use rule * from snax_rules exclude snax_opt_mlir as snax_*
 
 
-use rule * from snax_rules exclude compile_llvm_module, snax_opt_mlir as snax_*
-
-
-use rule * from tf_rules as tf_*
-
-
-nets = ["resnet18_int8", "kws_int8", "mobilenet_int8", "anomaly_int8"]
+nets = ["anomaly_int8"]
+targets = ["anomaly_int8_static"]
 extensions = [".o"]
+
+
+rule compile_snax:
+    """
+    Apply various transformations snax-opt on mlir files.
+    Options controlled with `snaxoptflags` defined in config.
+    """
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}.ll.mlir"),
+    shell:
+        "{config[snaxc]} -c {config[snaxc-config]} -o {output} {input}"
 
 
 rule all:
     input:
-        expand("{network}{extension}", network=nets, extension=extensions),
+        expand("{network}{extension}", network=targets, extension=extensions),
 
 
 rule get_mlperf_tiny_model:
@@ -42,23 +46,21 @@ rule get_mlperf_tiny_model:
         "wget -O {output[0]} https://github.com/kuleuven-micas/mlir-networks/releases/latest/download/mlperf_tiny_{output[0]}"
 
 
-rule snax_opt_mlir:
-    """
-    Similar to snax_opt_mlir, but with print-op-generic
-    """
-    input:
-        "{file}.mlir",
+rule create_static_anomaly_int8:
     output:
-        temp("{file}.ll.mlir"),
+        "anomaly_int8_static.mlir",
+    input:
+        "anomaly_int8.mlir",
     shell:
-        "{config[snax-opt]} -p {config[snaxoptflags]} --allow-unregistered-dialect --print-op-generic -o {output} {input}"
+        "{config[snax-opt]} -p frontend-static-inline{{value=8}},convert-tosa-to-kernel --allow-unregistered-dialect -o {output} {input}"
 
 
-# Override default rule, for output not to be temporary
-rule compile_llvm_module:
+rule link_snax_binary:
     input:
-        "{file}.ll",
-    output:
         "{file}.o",
+        "main.o",
+        "data.o",
+    output:
+        "{file}.x",
     shell:
-        "{config[cc]} {config[clangflags]} -x ir -c {input} -o {output}"
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
