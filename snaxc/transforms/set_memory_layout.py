@@ -16,11 +16,25 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 from xdsl.utils.hints import isa
 
+from snaxc.accelerators.acc_context import AccContext
+from snaxc.accelerators.snax import SNAXStreamer
 from snaxc.dialects import dart
 from snaxc.dialects.snax import LayoutCast
 from snaxc.dialects.tsl import TiledStridedLayoutAttr
 from snaxc.ir.dart.access_pattern import Schedule, SchedulePattern
 from snaxc.ir.tsl import Stride, TiledStride, TiledStridedLayout
+
+
+def spatial_dims(ctx: AccContext, op: dart.ScheduleOp) -> int:
+    """
+    Get the number of spatial dimensions of the accelerator.
+    """
+    # get accelerator
+    assert op.accelerator
+    accelerator_type = ctx.get_acc(op.accelerator.data)
+    assert isinstance(accelerator_type, SNAXStreamer)
+    template = accelerator_type.get_template(op)
+    return template[0].pattern.num_dims
 
 
 @dataclass
@@ -38,6 +52,7 @@ class AddCyclicMemoryLayout(RewritePattern):
     """
 
     # allow for tiled layouts?
+    ctx: AccContext
     tiled_layout: bool = False
 
     @op_type_rewrite_pattern
@@ -68,13 +83,30 @@ class AddCyclicMemoryLayout(RewritePattern):
 
             # iterate over the columns of the schedule pattern in reversed order, to find out
             # which dimension is accessed in the innermost loop of the operation
-            for schedule_bound, accesses in zip(schedule.bounds[::-1], np.flip(schedule.pattern.A, axis=1).T):
+            for schedule_dim, (schedule_bound, accesses) in enumerate(
+                zip(schedule.bounds[::-1], np.flip(schedule.pattern.A, axis=1).T)
+            ):
                 # normalize accesses to binary list
                 # this list will now have a 1 at the index of the dimension that is accessed
                 accesses = tuple(0 if x == 0 else 1 for x in accesses)
 
                 if 1 not in accesses:
                     continue
+
+                # assess access granularity:
+                # TODO: build out this system to be better
+                # this is a hack that works, this information needs to come from accelerators:
+                assert isa(operand.type, MemRefType[builtin.FixedBitwidthType])
+                access_granularity = 8 if operand.type.get_element_type().bitwidth == 8 else 16  # in elements
+                if current_stride % access_granularity != 0:
+                    # check if we need non-contiguous layout to comply with granularity constraint
+                    if current_stride == 1:
+                        # do nothing
+                        pass
+                    # we need information here wheteher or not the current dim is temporal / spatial
+                    elif schedule_dim >= spatial_dims(self.ctx, op):
+                        # we are in temporal regime, comply with granularity constraint
+                        current_stride += (access_granularity - current_stride) % 64
 
                 # find operand dimension that is accessed
                 accessed_dim = accesses.index(1)
@@ -141,5 +173,6 @@ class SetMemoryLayout(ModulePass):
     tiled: bool | None = True
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
+        assert isinstance(ctx, AccContext)
         tiled = self.tiled if self.tiled is not None else True
-        PatternRewriteWalker(AddCyclicMemoryLayout(tiled_layout=tiled)).rewrite_module(op)
+        PatternRewriteWalker(AddCyclicMemoryLayout(tiled_layout=tiled, ctx=ctx)).rewrite_module(op)
