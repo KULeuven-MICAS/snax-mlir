@@ -71,11 +71,12 @@ class StreamifyGenericOpPattern(RewritePattern):
         for output in (op.operands[index] for index, _ in streamable_output_indices):
             if isinstance(output, OpResult) and isinstance(output.op, EmptyOp):
                 outputs.append(output)
-            # replace with an empty tensor
-            empty = EmptyOp([], tensor_type=output.type)
-            rewriter.insert_op(empty, InsertPoint.before(op))
-            outputs.append(empty.tensor)
-            outputs_to_add.append(output)
+            else:
+                # replace with an empty tensor
+                empty = EmptyOp([], tensor_type=output.type)
+                rewriter.insert_op(empty, InsertPoint.before(op))
+                outputs.append(empty.tensor)
+                outputs_to_add.append(output)
 
         # create the streaming region to wrap around the stream.generic
         streaming_region_op = dart.OperationOp(
