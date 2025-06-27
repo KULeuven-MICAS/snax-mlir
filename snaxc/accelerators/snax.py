@@ -107,6 +107,8 @@ class SNAXStreamer(ABC):
     def _generate_streamer_setup_vals(self, op: StreamingRegionOp) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
 
+        do_broadcast = [False] * len(self.streamer_config.data.streamers)
+
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             # streamer must generate zero pattern if the stream is coming from c0
             is_zero_pattern = False
@@ -124,6 +126,8 @@ class SNAXStreamer(ABC):
             # spatial strides
             for dim, flag in enumerate(streamer.spatial_dims):
                 stride = op.stride_patterns.data[operand].spatial_strides.data[dim].data
+                if stride == 0 and StreamerOpts.HasBroadcast in streamer.opts:
+                    do_broadcast[operand] = True
                 cst = arith.ConstantOp.from_int_and_width(stride, i32)
                 result.append(([cst], cst.result))
 
@@ -183,8 +187,12 @@ class SNAXStreamer(ABC):
 
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             if StreamerOpts.HasBroadcast in streamer.opts:
-                c1 = arith.ConstantOp.from_int_and_width(1, i32)
-                result.append(([c1], c1.result))
+                if do_broadcast[operand]:
+                    c0 = arith.ConstantOp.from_int_and_width(0, i32)
+                    result.append(([c0], c0.result))
+                else:
+                    c1 = arith.ConstantOp.from_int_and_width(1, i32)
+                    result.append(([c1], c1.result))
 
         return result
 
