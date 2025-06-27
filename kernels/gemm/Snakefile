@@ -34,6 +34,13 @@ rule generate_gemm_init:
         "gemm_init.py"
 
 
+rule generate_gemm_init_broadcast:
+    output:
+        "gemm_init_broadcast.mlir",
+    script:
+        "gemm_init_broadcast.py"
+
+
 rule compile_snax:
     """
     Apply various transformations snax-opt on mlir files.
@@ -53,6 +60,7 @@ rule all:
         "gemm_traces.json",
         "gemm_broadcast_traces.json",
         "gemm_init_traces.json",
+        "gemm_init_broadcast_traces.json",
 
 
 rule compile_main:
