@@ -8,7 +8,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.transforms.mlir_opt import MLIROptPass
 
-from snaxc.transforms.dart.dart_bufferize import BufferizeStreamingRegion
+from snaxc.transforms.dart.dart_bufferize import BufferizeStreamingRegion, VerifyDartBufferization
 
 
 @dataclass(frozen=True)
@@ -41,6 +41,7 @@ class SnaxBufferize(ModulePass):
     )
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
+        PatternRewriteWalker(VerifyDartBufferization()).rewrite_module(op)
         self.mlir_bufferization_pass.apply(ctx, op)
         PatternRewriteWalker(BufferizeStreamingRegion()).rewrite_module(op)
         self.mlir_canonicalization_pass.apply(ctx, op)
