@@ -1,4 +1,4 @@
-from xdsl.ir.affine import AffineMap
+from xdsl.ir.affine import AffineDimExpr, AffineMap
 
 from snaxc.ir.dart.access_pattern import (
     Schedule,
@@ -141,6 +141,21 @@ def test_multiple_results():
 
     # test if the schedule idx returns the correct index
     assert scheduler(template, schedule, extra_checks=[], schedule_idx=3) == result[3]
+
+
+def test_allow_broadcasts():
+    pattern_template = AffineMap.from_callable(lambda a, b, c: (b, c))
+    template = Template((TemplatePattern(bounds=(8, 8, 8), pattern=pattern_template),))
+    pattern_schedule = AffineMap.from_callable(lambda a, b, c: (c,))
+    schedule = Schedule((SchedulePattern(bounds=(8, 8, 8), pattern=pattern_schedule),))
+
+    results = list(scheduler_backtrack(template, schedule))
+    # There are 12 results:
+    assert len(results) == 12
+
+    # All results should contain (c,)
+    for result in results:
+        assert result.inner_dims(3)[0].pattern.to_affine_map().results[0] == AffineDimExpr(2)
 
 
 def test_pure_output_stationary_check():
