@@ -230,7 +230,14 @@ class TemplatePattern(AccessPattern):
         elif sp.num_dims < self.num_dims:
             return False
 
-        result = same_nonzero_singular_vectors(self.pattern.A, sp.pattern.A)
+        # Allow for broadcasting the schedule to outer dims of the result:
+        broadcast_results = len(self.pattern.A) - len(sp.pattern.A)
+        if broadcast_results > 0:
+            self_pattern = self.pattern.A[broadcast_results:, :]
+        else:
+            self_pattern = self.pattern.A
+
+        result = same_nonzero_singular_vectors(self_pattern, sp.pattern.A)
 
         return result
 
