@@ -13,11 +13,18 @@ module snax_rules:
 use rule * from snax_rules exclude snax_opt_mlir as snax_*
 
 
-rule generate_quantized_matmul:
+rule generate_gemm:
     output:
         "gemm.mlir",
     script:
         "gemm.py"
+
+
+rule generate_gemm_broadcast:
+    output:
+        "gemm_broadcast.mlir",
+    script:
+        "gemm_broadcast.py"
 
 
 rule compile_snax:
@@ -37,6 +44,7 @@ rule compile_snax:
 rule all:
     input:
         "gemm_traces.json",
+        "gemm_broadcast_traces.json",
 
 
 rule compile_main:
@@ -50,9 +58,9 @@ rule compile_main:
 
 rule link_snax_binary:
     input:
-        "gemm.o",
+        "{file}.o",
         "main.o",
     output:
-        "gemm.x",
+        "{file}.x",
     shell:
         "{config[ld]} {config[ldflags]} {input} -o {output}"
