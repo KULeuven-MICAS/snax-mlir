@@ -1,9 +1,20 @@
 from dataclasses import dataclass
 
+from xdsl.builder import Builder
 from xdsl.context import Context
 from xdsl.dialects import linalg
-from xdsl.dialects.builtin import ArrayAttr, ModuleOp, ShapedType, StringAttr
-from xdsl.ir import Block, Region
+from xdsl.dialects.arith import ConstantOp
+from xdsl.dialects.builtin import (
+    AffineMapAttr,
+    ArrayAttr,
+    ModuleOp,
+    ShapedType,
+    StringAttr,
+    TensorType,
+)
+from xdsl.dialects.tensor import EmptyOp
+from xdsl.ir import Block, BlockArgument, OpResult, Region, SSAValue
+from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -12,8 +23,10 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.rewriter import InsertPoint
+from xdsl.utils.hints import isa
 
 from snaxc.dialects import dart
+from snaxc.dialects.kernel import AddOp
 
 
 @dataclass
@@ -52,10 +65,22 @@ class StreamifyGenericOpPattern(RewritePattern):
             if (indexing_map := op.indexing_maps.data[index])
         )
 
+        # if outputs isn't an empty tensor, explicit add should be added
+        outputs: list[SSAValue] = []
+        outputs_to_add: list[SSAValue] = []
+        for output in (op.operands[index] for index, _ in streamable_output_indices):
+            if isinstance(output, OpResult) and isinstance(output.op, EmptyOp):
+                outputs.append(output)
+            # replace with an empty tensor
+            empty = EmptyOp([], tensor_type=output.type)
+            rewriter.insert_op(empty, InsertPoint.before(op))
+            outputs.append(empty.tensor)
+            outputs_to_add.append(output)
+
         # create the streaming region to wrap around the stream.generic
         streaming_region_op = dart.OperationOp(
             inputs=tuple(op.operands[index] for index, _ in streamable_input_indices),
-            outputs=tuple(op.operands[index] for index, _ in streamable_output_indices),
+            outputs=tuple(outputs),
             patterns=patterns,
             body=Region(Block(arg_types=input_stream_types + result_stream_types)),
             result_types=op.result_types,
@@ -89,6 +114,51 @@ class StreamifyGenericOpPattern(RewritePattern):
         rewriter.replace_op(yield_op, dart.YieldOp(yield_op.operands[0]))
 
         rewriter.replace_matched_op(streaming_region_op)
+
+        # Add explicit adds for outputs that were not empty tensors
+        for output in outputs_to_add:
+            assert len(streaming_region_op.results) == 1
+            output_idx = 0
+
+            # add body for outputs:
+            arg_types = [result_stream_types[output_idx].element_type] * 3
+            stream_arg_types = [result_stream_types[output_idx]] * 3
+
+            # generic body:
+            @Builder.implicit_region(arg_types)
+            def generic_region(args: tuple[BlockArgument, ...]) -> None:
+                result = AddOp(operands=[args[0], args[1]], result_types=[args[2].type])
+                dart.YieldOp(result)
+
+            assert streaming_region_op.accelerator is not None
+
+            @Builder.implicit_region(stream_arg_types)
+            def dart_region(args: tuple[BlockArgument, ...]) -> None:
+                result = dart.GenericOp(
+                    inputs=[args[0], args[1]],
+                    body=generic_region,
+                    library_call=streaming_region_op.accelerator,
+                    result_types=[args[2].type],
+                )
+                dart.YieldOp(result)
+
+            if isinstance(output, OpResult) and isinstance(output.op, ConstantOp):
+                empty = EmptyOp([], output.type)
+                assert isa(output.type, TensorType)
+                add_op = dart.OperationOp(
+                    [streaming_region_op.results[0], output],
+                    [empty],
+                    ArrayAttr([AffineMapAttr(AffineMap.identity(output.type.get_num_dims()))] * 3),
+                    body=dart_region,
+                    result_types=[output.type],
+                    accelerator=streaming_region_op.accelerator,
+                )
+                rewriter.insert_op([empty, add_op], InsertPoint.after(streaming_region_op))
+                streaming_region_op.results[output_idx].replace_by_if(
+                    add_op.results[0], lambda use: use.operation is not add_op
+                )
+            else:
+                raise NotImplementedError("currently unsupported")
 
 
 @dataclass(frozen=True)
