@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.ir import Block, BlockArgument, Region
-from xdsl.ir.affine import AffineMap
+from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -14,6 +14,15 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 
 from snaxc.dialects import dart
+
+
+def pattern_is_broadcast(map: AffineMap):
+    if map.num_dims != len(map.results) + 1:
+        return False
+    for result in map.results:
+        if not isinstance(result, AffineDimExpr):
+            return False
+    return True
 
 
 @dataclass
@@ -40,7 +49,8 @@ class FuseElementwisePattern(RewritePattern):
 
         # user op must be elementwise: all indexing maps must be identity maps
         for pattern in user_op.patterns:
-            if not pattern.data == AffineMap.identity(pattern.data.num_dims):
+            # Exception: broadcast patterns are supported for add
+            if pattern.data != AffineMap.identity(pattern.data.num_dims) and not pattern_is_broadcast(pattern.data):
                 return
 
         # now we can fuse!
