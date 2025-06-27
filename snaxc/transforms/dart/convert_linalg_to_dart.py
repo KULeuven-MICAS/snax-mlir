@@ -12,7 +12,7 @@ from xdsl.dialects.builtin import (
     StringAttr,
     TensorType,
 )
-from xdsl.dialects.tensor import EmptyOp
+from xdsl.dialects.tensor import EmptyOp, ExtractSliceOp
 from xdsl.ir import Block, BlockArgument, OpResult, Region, SSAValue
 from xdsl.ir.affine import AffineMap
 from xdsl.passes import ModulePass
@@ -70,6 +70,10 @@ class StreamifyGenericOpPattern(RewritePattern):
         outputs_to_add: list[SSAValue] = []
         for output in (op.operands[index] for index, _ in streamable_output_indices):
             if isinstance(output, OpResult) and isinstance(output.op, EmptyOp):
+                outputs.append(output)
+            elif isinstance(output, OpResult) and isinstance(output.op, ExtractSliceOp):
+                # TODO: this case isn't entirely correct, for tiled execution, i think
+                # depending on the tiling we sould add / not add
                 outputs.append(output)
             else:
                 # replace with an empty tensor
