@@ -72,3 +72,39 @@
 //CHECK-NEXT:    }) : (!dart.stream<i32>, !dart.stream<i32>) -> !dart.stream<i32>
 //CHECK-NEXT:    dart.yield %27 : !dart.stream<i32>
 //CHECK-NEXT:  }) : (tensor<16x16xi32>, tensor<16x16xi32>, tensor<16x16xi32>) -> tensor
+
+%9 = tensor.empty() : tensor<16x16xi32>
+%10 = arith.constant dense<5> : tensor<16xi32>
+%11 = linalg.generic {indexing_maps = [affine_map<(d0, d1) -> (d1)>, affine_map<(d0, d1) -> (d0, d1)>], iterator_types = ["parallel", "parallel"]} ins(%10 : tensor<16xi32>) outs(%9 : tensor<16x16xi32>) {
+^0(%arg3 : i32, %arg4 : i32):
+  linalg.yield %arg3 : i32
+} -> tensor<16x16xi32>
+
+// CHECK-NEXT: %32 = tensor.empty() : tensor<16x16xi32>
+// CHECK-NEXT: %33 = arith.constant dense<5> : tensor<16xi32>
+// CHECK-NEXT: %34 = tensor.empty() : tensor<16x16xi32>
+
+%12 = linalg.generic {indexing_maps = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> ()>, affine_map<(d0, d1, d2) -> (d0, d1)>], iterator_types = ["parallel", "parallel", "reduction"], library_call = "snax_gemmx_stream"} ins(%arg0, %arg1, %c0_i32, %c0_i32 : tensor<16x16xi8>, tensor<16x16xi8>, i32, i32) outs(%11 : tensor<16x16xi32>) {
+^0(%in_10 : i8, %in_11 : i8, %in_12 : i32, %in_13 : i32, %out_3 : i32):
+  %13 = kernel.qmac %in_10, %in_11 zp_lhs : %in_12 zp_rhs : %in_13 : i8, i8, i32, i32 -> i32
+  linalg.yield %13 : i32
+} -> tensor<16x16xi32>
+
+// CHECK-NEXT: %35 = "dart.operation"(%arg0, %arg1, %34) <{patterns = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>], accelerator = "snax_gemmx", operandSegmentSizes = array<i32: 2, 1>}> ({
+// CHECK-NEXT: ^8(%36 : !dart.stream<i8>, %37 : !dart.stream<i8>, %38 : !dart.stream<i32>):
+// CHECK-NEXT:   %39 = "dart.generic"(%36, %37, %c0_i32, %c0_i32) <{library_call = "snax_gemmx"}> ({
+// CHECK-NEXT:   ^9(%in_10 : i8, %in_11 : i8, %in_12 : i32, %in_13 : i32, %out_3 : i32):
+// CHECK-NEXT:     %40 = kernel.qmac %in_10, %in_11 zp_lhs : %in_12 zp_rhs : %in_13 : i8, i8, i32, i32 -> i32
+// CHECK-NEXT:     dart.yield %40 : i32
+// CHECK-NEXT:   }) : (!dart.stream<i8>, !dart.stream<i8>, i32, i32) -> !dart.stream<i32>
+// CHECK-NEXT:   dart.yield %39 : !dart.stream<i32>
+// CHECK-NEXT: }) : (tensor<16x16xi8>, tensor<16x16xi8>, tensor<16x16xi32>) -> tensor<16x16xi32>
+// CHECK-NEXT: %41 = "dart.operation"(%35, %33, %32) <{patterns = [affine_map<(d0, d1) -> (d0, d1)>, affine_map<(d0, d1) -> (d1)>, affine_map<(d0, d1) -> (d0, d1)>], accelerator = "snax_gemmx", operandSegmentSizes = array<i32: 2, 1>}> ({
+// CHECK-NEXT: ^10(%42 : !dart.stream<i32>, %43 : !dart.stream<i32>, %44 : !dart.stream<i32>):
+// CHECK-NEXT:   %45 = "dart.generic"(%42, %43) <{library_call = "snax_gemmx"}> ({
+// CHECK-NEXT:   ^11(%46 : i32, %47 : i32, %48 : i32):
+// CHECK-NEXT:     %49 = kernel.add %46, %47 : i32, i32 -> i32
+// CHECK-NEXT:     dart.yield %49 : i32
+// CHECK-NEXT:   }) : (!dart.stream<i32>, !dart.stream<i32>) -> !dart.stream<i32>
+// CHECK-NEXT:   dart.yield %45 : !dart.stream<i32>
+// CHECK-NEXT: }) : (tensor<16x16xi32>, tensor<16xi32>, tensor<16x16xi32>) -> tensor<16x16xi32>

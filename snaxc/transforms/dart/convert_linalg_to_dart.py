@@ -167,6 +167,31 @@ class StreamifyGenericOpPattern(RewritePattern):
                 streaming_region_op.results[output_idx].replace_by_if(
                     add_op.results[0], lambda use: use.operation is not add_op
                 )
+            elif (
+                isinstance(output, OpResult)
+                and isinstance(generic := output.op, linalg.GenericOp)
+                and isinstance(generic.body.block.first_op, linalg.YieldOp)
+            ):
+                assert isa(output.type, TensorType)
+                assert isinstance(out := generic.outputs[0], OpResult)
+                assert isinstance(out.op, EmptyOp)
+                # for the operation a + b = c, the generic supplies indexing maps
+                # for b and c. As a is the same shape as c, we can use the same indexing map
+                indexing_maps = tuple(map for map in generic.indexing_maps.data)
+                indexing_maps = (indexing_maps[1], indexing_maps[0], indexing_maps[1])
+                add_op = dart.OperationOp(
+                    [streaming_region_op.results[0], generic.inputs[0]],
+                    [out.op.tensor],
+                    ArrayAttr(indexing_maps),
+                    body=dart_region,
+                    result_types=[output.type],
+                    accelerator=streaming_region_op.accelerator,
+                )
+                rewriter.insert_op(add_op, InsertPoint.after(streaming_region_op))
+                rewriter.erase_op(generic)
+                streaming_region_op.results[output_idx].replace_by_if(
+                    add_op.results[0], lambda use: use.operation is not add_op
+                )
             else:
                 raise NotImplementedError("currently unsupported")
 
