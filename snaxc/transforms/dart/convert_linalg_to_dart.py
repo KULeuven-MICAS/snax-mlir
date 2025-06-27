@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 
 from xdsl.builder import Builder
@@ -15,6 +16,7 @@ from xdsl.dialects.builtin import (
 from xdsl.dialects.tensor import EmptyOp, ExtractSliceOp
 from xdsl.ir import Block, BlockArgument, OpResult, Region, SSAValue
 from xdsl.ir.affine import AffineMap
+from xdsl.parser import MemRefType
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -74,6 +76,9 @@ class StreamifyGenericOpPattern(RewritePattern):
             elif isinstance(output, OpResult) and isinstance(output.op, ExtractSliceOp):
                 # TODO: this case isn't entirely correct, for tiled execution, i think
                 # depending on the tiling we sould add / not add
+                outputs.append(output)
+            elif isinstance(output.type, MemRefType):
+                warnings.warn("You really shoulnd't be using memrefs at this point")
                 outputs.append(output)
             else:
                 # replace with an empty tensor
