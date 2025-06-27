@@ -1,7 +1,9 @@
+import warnings
 from dataclasses import dataclass
 
 from xdsl.context import Context
 from xdsl.dialects import bufferization, builtin
+from xdsl.dialects.tensor import EmptyOp
 from xdsl.ir import Operation, OpResult, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -12,6 +14,25 @@ from xdsl.pattern_rewriter import (
 )
 
 from snaxc.dialects import dart
+
+
+@dataclass
+class VerifyDartBufferization(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter) -> None:
+        # check for operands that need to be bufferized:
+        operands_to_buffer = tuple(operand for operand in op.operands if isinstance(operand.type, builtin.TensorType))
+
+        # if not tensor operands, return
+        if not operands_to_buffer:
+            return
+
+        # outputs must be an empty tensor
+        if isinstance(out := op.outputs[0], OpResult):
+            if not isinstance(out.op, EmptyOp):
+                warnings.warn("Dart bufferization with non-empty tensor output will not take in initial values.")
+
+        # otherwise, legal
 
 
 @dataclass
