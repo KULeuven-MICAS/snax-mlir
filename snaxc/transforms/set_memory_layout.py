@@ -58,6 +58,11 @@ class AddCyclicMemoryLayout(RewritePattern):
         for operand, schedule in zip(op.operands, schedule):
             assert isa(memref_type := operand.type, MemRefType[Attribute])
 
+            if len(operand.type.get_shape()) == 1:  # pyright: ignore
+                tsl = TiledStridedLayoutAttr(TiledStridedLayout([TiledStride([Stride(16, 2), Stride(1, 8)])]))
+                new_operands.append(LayoutCast.from_type_and_target_layout(operand, tsl))
+                continue
+
             # start assigning contiguous, starting from stride = 1
             current_stride = 1
 

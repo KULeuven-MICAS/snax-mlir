@@ -1,9 +1,17 @@
+import logging
+import sys
 from collections.abc import Callable, Iterator, Sequence
 from math import ceil
 
 import numpy as np
 
 from snaxc.ir.dart.access_pattern import Schedule, Template
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+# handler = logging.StreamHandler(sys.stdout)
+# handler.setLevel(logging.DEBUG)
+# logger.addHandler(handler)
 
 
 def scheduler_backtrack(
@@ -52,18 +60,28 @@ def scheduler_backtrack(
         # apply rotation:
         schedule = schedule.rotate(schedule.num_dims - inner_dims + 1)
 
+        logger.debug("\nChecking schedule with %d inner dims:", inner_dims)
+        logger.debug(schedule)
+
         # use innermost dimensions for template check
         schedule_check = schedule.inner_dims(inner_dims)
         template_check = template.inner_dims(inner_dims)
 
+        logger.debug("\nTemplate check:")
+        logger.debug(template_check)
+        logger.debug("Schedule check:")
+        logger.debug(schedule_check)
+
         # check 1: check for valid transformation
         if not template_check.matches(schedule_check):
             # not possible, consider next option
+            logger.debug("Template and schedule do not match, skipping")
             continue
 
         # check 2: apply extra checks
         if not all(check(template_check, schedule_check) for check in extra_checks):
             # not a valid schedule, consider next option
+            logger.debug("Extra checks failed, skipping")
             continue
 
         # checks passed, we have a candidate schedule now
