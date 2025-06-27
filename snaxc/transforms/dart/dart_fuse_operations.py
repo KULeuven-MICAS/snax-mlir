@@ -14,6 +14,7 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 
 from snaxc.dialects import dart
+from snaxc.dialects.kernel import AddOp
 
 
 def pattern_is_broadcast(map: AffineMap):
@@ -50,7 +51,11 @@ class FuseElementwisePattern(RewritePattern):
         # user op must be elementwise: all indexing maps must be identity maps
         for pattern in user_op.patterns:
             # Exception: broadcast patterns are supported for add
-            if pattern.data != AffineMap.identity(pattern.data.num_dims) and not pattern_is_broadcast(pattern.data):
+            if pattern_is_broadcast(pattern.data):
+                assert isinstance(generic := user_op.body.block.first_op, dart.GenericOp)
+                if not isinstance(generic.body.block.first_op, AddOp):
+                    return
+            elif pattern.data != AffineMap.identity(pattern.data.num_dims):
                 return
 
         # now we can fuse!
