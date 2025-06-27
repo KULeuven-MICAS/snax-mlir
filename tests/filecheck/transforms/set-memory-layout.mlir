@@ -75,4 +75,6 @@ func.func @snax_main() -> () {
 }
 
 // non-contiguous layout for access granularity constraint:
-// CHECK:     %6 = "snax.layout_cast"(%2) : (memref<16xi32, "L1">) -> memref<16xi32, #tsl.tsl<[2, 8] -> (16, 1)>, "L1">
+// TILED:     %6 = "snax.layout_cast"(%2) : (memref<16xi32, "L1">) -> memref<16xi32, #tsl.tsl<[2, 8] -> (16, 1)>, "L1">
+// not possible if we cannot tile
+// CHECK:     %6 = "snax.layout_cast"(%2) : (memref<16xi32, "L1">) -> memref<16xi32, #tsl.tsl<[16] -> (1)>, "L1">
