@@ -53,6 +53,7 @@ rule all:
         "gemm_traces.json",
         "gemm_broadcast_traces.json",
         "gemm_init_traces.json",
+        "gemm_init_broadcast_traces.json",
 
 
 rule compile_main:
