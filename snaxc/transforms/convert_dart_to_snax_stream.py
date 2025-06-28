@@ -43,6 +43,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
         # must be available
         if op.accelerator.data == "snax_gemmx":
             if len(op.patterns) == 3:
+                # matmul, no add
                 if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
                     streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (0, 1, 4)]
                 elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
@@ -50,8 +51,15 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                 else:
                     raise NotImplementedError("Unsupported type for snax_gemmx accelerator")
             elif len(op.patterns) == 4:
-                streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (0, 1, 3, 4)]
+                # gemm with add
+                if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
+                    streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (0, 1, 3, 4)]
+                elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
+                    streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (0, 1, 3, 2)]
+                else:
+                    raise NotImplementedError("Unsupported type for snax_gemmx accelerator")
             else:
+                # rescale only
                 streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (3, 2)]
         else:
             streamers = accelerator_type.streamer_config.data.streamers
@@ -116,6 +124,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                             next_bound // applied_bound,
                         )
                 else:
+                    breakpoint()
                     raise NotImplementedError()
 
             # remaining are temporal strides
@@ -199,8 +208,26 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                 #
                 # for a gemm, the 8bit-output port D8 are unused, so we create
                 # empty patterns for them here
-                snax_stride_patterns.insert(2, empty_pattern)
-                new_inputs.insert(2, op.inputs[-1])
+                if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
+                    snax_stride_patterns.insert(2, empty_pattern)
+                    new_inputs.insert(2, op.inputs[-1])
+                elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
+                    d8_pattern = snax_stride_patterns.pop()
+                    d8_input = new_outputs.pop()
+                    snax_stride_patterns.insert(2, d8_pattern)
+                    new_inputs.insert(2, d8_input)
+
+                    # for D32:
+                    snax_stride_patterns.append(
+                        snax_stream.StridePattern(
+                            upper_bounds=[0, 0, 0],
+                            temporal_strides=[0, 0, 0],
+                            spatial_strides=[0, 0],
+                        )
+                    )
+                    new_inputs.append(op.inputs[-1])
+                else:
+                    raise RuntimeError("unsupported case")
 
             else:
                 # simd

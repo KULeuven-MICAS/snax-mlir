@@ -364,6 +364,13 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
                     pass
                 else:
                     raise RuntimeError("unsupported kernel")
+            if isinstance(generic_op.next_op, dart.GenericOp):
+                generic_op = generic_op.next_op
+                if isinstance(generic_op.body.block.first_op, kernel.RescaleOp):
+                    # same template
+                    pass
+                else:
+                    raise RuntimeError("unsupported kernel")
         else:
             # rescale only function of gemmx
             m, k = (AffineDimExpr(i) for i in range(2))
