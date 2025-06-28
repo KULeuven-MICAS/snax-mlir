@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 from xdsl.context import Context
 from xdsl.dialects import builtin
-from xdsl.ir import Block, BlockArgument, Region
+from xdsl.dialects.tensor import EmptyOp
+from xdsl.ir import Block, BlockArgument, OpResult, Region
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -76,6 +77,11 @@ class FuseElementwisePattern(RewritePattern):
         new_inputs = op.inputs + tuple(i for i in user_op.inputs if i is not result)
         # new outputs: only outputs of consumer region
         new_outputs = user_op.outputs
+
+        # warning: can only happen if the producer region output comes from an empty tensor:
+        if isinstance(out := op.outputs[0], OpResult):
+            if not isinstance(out.op, EmptyOp):
+                raise RuntimeError("Tried to fuse operation with non-empty producer output")
 
         # patterns for producer region (all except fused operand = output):
         patterns = op.patterns.data[:-1]
