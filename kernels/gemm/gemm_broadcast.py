@@ -3,19 +3,20 @@ from io import StringIO
 
 import numpy as np
 from xdsl.builder import Builder
-from xdsl.dialects.arith import ConstantOp
+from xdsl.dialects.arith import AddiOp, ConstantOp
 from xdsl.dialects.builtin import (
-    DenseArrayBase,
+    AffineMapAttr,
     DenseIntOrFPElementsAttr,
-    IntegerType,
     ModuleOp,
     TensorType,
     i8,
     i32,
 )
 from xdsl.dialects.func import FuncOp, ReturnOp
-from xdsl.dialects.linalg import AddOp, BroadcastOp, QuantizedMatmulOp
+from xdsl.dialects.linalg import GenericOp, IteratorTypeAttr, QuantizedMatmulOp, YieldOp
 from xdsl.dialects.tensor import EmptyOp
+from xdsl.ir import BlockArgument
+from xdsl.ir.affine import AffineMap
 from xdsl.printer import Printer
 
 
@@ -56,14 +57,31 @@ def gemm(m=16, n=16, k=16):
         # Specify the operation
         result = QuantizedMatmulOp([a.result, b.result, c0.result, c0.result], empty_tensor.results)
 
+        # create broadcast add using a linalg generic
+        arg_types = [output_type.element_type] * 3
+
+        @Builder.implicit_region(arg_types)
+        def add_body(args: tuple[BlockArgument, ...]) -> None:
+            result = AddiOp(args[0], args[1])
+            YieldOp(result)
+
+        indexing_maps = [
+            AffineMapAttr(AffineMap.from_callable(lambda x, y: (x, y))),
+            AffineMapAttr(AffineMap.from_callable(lambda _, y: (y,))),
+            AffineMapAttr(AffineMap.from_callable(lambda x, y: (x, y))),
+        ]
+
         # Declare result tensor type
         empty_tensor_2 = EmptyOp([], output_type)
 
-        broadcast_bias = BroadcastOp(
-            c.result, empty_tensor_2.tensor, DenseArrayBase.create_dense_int(IntegerType(64), [0]), output_type
+        with_bias = GenericOp(
+            [result.res[0], c.result],
+            [empty_tensor_2.tensor],
+            add_body,
+            indexing_maps,
+            [IteratorTypeAttr.parallel()] * 2,
+            [output_type],
         )
-
-        with_bias = AddOp([result.res[0], broadcast_bias.result[0]], empty_tensor_2.results)
 
         # Return both the computed result and the golden output
         ReturnOp(with_bias, golden)
