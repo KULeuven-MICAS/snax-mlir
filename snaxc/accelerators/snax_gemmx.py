@@ -168,9 +168,10 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
         ops_to_add: list[Operation] = []
 
         assert isinstance(generic_op := op.body.block.first_op, dart.GenericOp)
+        assert isinstance(yield_op := op.body.block.last_op, dart.YieldOp)
 
         if isinstance(qmac := generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp):
-            if qmac.results[0].type == builtin.IntegerType(8):
+            if yield_op.arguments[0].type == dart.StreamType(builtin.IntegerType(8)):
                 i8_out = True
                 last_pattern = op.stride_patterns.data[2]
             else:
@@ -199,36 +200,66 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
             else:
                 bypassSIMD = c1.result  # bypass simd
             if i8_out:
+                # check if there is a rescale op:
+                region_yield = op.body.block.last_op
+                assert isinstance(region_yield, dart.YieldOp)
+                if isinstance(region_yield.prev_op, dart.GenericOp) and isinstance(
+                    rescale_op := region_yield.prev_op.body.block.first_op, kernel.RescaleOp
+                ):
+                    max_int_val = rescale_op.max_int.value.data
+                    min_int_val = rescale_op.min_int.value.data
+                    double_round_val = rescale_op.double_round.value.data
+                    shift_val = rescale_op.shift.value.data
+                    mult_val = rescale_op.multiplier.value.data
+                    zp_in_val = rescale_op.input_zp.value.data
+                    zp_out_val = rescale_op.output_zp.value.data
+                else:
+                    max_int_val = 127
+                    min_int_val = -128
+                    double_round_val = 0
+                    shift_val = 9
+                    mult_val = 1
+                    zp_in_val = 0
+                    zp_out_val = 0
+
                 m_val = arith.ConstantOp.from_int_and_width(m, 32)
                 ops_to_add.append(m_val)
                 loop_bound = m_val
-                max_int = arith.ConstantOp.from_int_and_width(127, i32)
-                min_int = arith.ConstantOp.from_int_and_width(-128, i32)
-                ops_to_add.extend([max_int, min_int])
+
+                max_int = arith.ConstantOp.from_int_and_width(max_int_val, i32)
+                min_int = arith.ConstantOp.from_int_and_width(min_int_val, i32)
+                double_round = arith.ConstantOp.from_int_and_width(double_round_val, i32)
+                shift = arith.ConstantOp.from_int_and_width(shift_val, i32)
+                mult = arith.ConstantOp.from_int_and_width(mult_val, i32)
+                zp_in = arith.ConstantOp.from_int_and_width(zp_in_val, i32)
+                zp_out = arith.ConstantOp.from_int_and_width(zp_out_val, i32)
+                ops_to_add.extend([max_int, min_int, double_round, shift, mult, zp_in, zp_out])
+
                 # force values that can be negative to 8 bits
                 cst255 = arith.ConstantOp.from_int_and_width(255, 32)
                 max_int = arith.AndIOp(max_int, cst255)
                 min_int = arith.AndIOp(min_int, cst255)
-                ops_to_add.extend([cst255, max_int, min_int])
+                zp_in = arith.AndIOp(zp_in, cst255)
+                zp_out = arith.AndIOp(zp_out, cst255)
+                ops_to_add.extend([cst255, max_int, min_int, zp_in, zp_out])
 
                 # bitpacking
-                ops_to_add.extend(pack_bitlist([min_int, max_int], [24, 16]))
+                ops_to_add.extend(pack_bitlist([min_int, max_int, zp_out, zp_in], [24, 16, 8, 0]))
                 csr0 = ops_to_add[-1].results[0].op.results[0]
-                csr1 = c0.result
-                shift = arith.ConstantOp.from_int_and_width(9, i32)
-                ops_to_add.append(shift)
+                csr1 = double_round.result
+
                 shift_bitlist = list(pack_bitlist((shift,) * 4, (24, 16, 8, 0)))
                 ops_to_add.extend(shift_bitlist)
 
                 shift_vals = (shift_bitlist[-1].results[0] for _ in range(2))
+                mult_vals = (mult.result for _ in range(8))
 
             else:
                 loop_bound = c0
                 csr0 = c0.result
                 csr1 = c0.result
                 shift_vals = (c0.result for _ in range(2))
-
-            mult_vals = (c1.result for _ in range(8))
+                mult_vals = (c1.result for _ in range(8))
 
             if isinstance(qmac, kernel.QMacOp):
                 # get zero points for gemm
@@ -330,6 +361,16 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
                 if isinstance(generic_op.body.block.first_op, kernel.AddOp):
                     # gemm, add c pattern that is equal to output pattern
                     template += [template[-1]]
+                elif isinstance(generic_op.body.block.first_op, kernel.RescaleOp):
+                    # same template
+                    pass
+                else:
+                    raise RuntimeError("unsupported kernel")
+            if isinstance(generic_op.next_op, dart.GenericOp):
+                generic_op = generic_op.next_op
+                if isinstance(generic_op.body.block.first_op, kernel.RescaleOp):
+                    # same template
+                    pass
                 else:
                     raise RuntimeError("unsupported kernel")
         else:
