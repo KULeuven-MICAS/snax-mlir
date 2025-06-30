@@ -216,7 +216,7 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
                 else:
                     max_int_val = 127
                     min_int_val = -128
-                    double_round_val = 1
+                    double_round_val = 0
                     shift_val = 9
                     mult_val = 1
                     zp_in_val = 0
