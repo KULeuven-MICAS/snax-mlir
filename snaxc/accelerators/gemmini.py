@@ -129,7 +129,7 @@ class GemminiAccelerator(RoCCAccelerator):
         if not isinstance(op, linalg.GenericOp):
             return []
         else:
-            a, b, _, c = op.operands  # Don't use zero point adjustments
+            a, b, _, _, c = op.operands  # Don't use zero point adjustments
             ops_to_insert: Sequence[Operation] = []
             pointer_values: Sequence[SSAValue] = []
             stride_values: Sequence[SSAValue] = []
