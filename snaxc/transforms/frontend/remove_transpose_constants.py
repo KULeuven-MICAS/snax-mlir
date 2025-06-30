@@ -52,6 +52,7 @@ class RemoveTransposeConstants(RewritePattern):
 
         # transpose const op
         transposed_data = self.transpose_tuple(cast(Sequence[int], dense_attr.get_values()), *const_type.get_shape())
+        assert isa(op.outputs[0].type, builtin.TensorType[builtin.IntegerType])
         transposed_dense_attr = builtin.DenseIntOrFPElementsAttr.create_dense_int(op.outputs[0].type, transposed_data)
 
         # create new const_op
