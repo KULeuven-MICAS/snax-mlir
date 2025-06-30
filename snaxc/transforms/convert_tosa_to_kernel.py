@@ -1,7 +1,6 @@
 from xdsl.builder import Builder
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, linalg, tensor, tosa
-from xdsl.dialects.builtin import IntegerAttr, i1, i8, i32
 from xdsl.ir import Attribute, BlockArgument
 from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.passes import ModulePass
@@ -66,17 +65,7 @@ class RescaleClampPattern(RewritePattern):
         @Builder.implicit_region((inp_type.element_type, out_type.element_type))
         def linalg_body(args: tuple[BlockArgument, ...]) -> None:
             kernel_op = kernel.RescaleOp(
-                operands=[args[0]],
-                result_types=[args[-1].type],
-                attributes={
-                    "input_zp": IntegerAttr(input_zp, i8),
-                    "output_zp": IntegerAttr(output_zp, i8),
-                    "multiplier": IntegerAttr(multiplier, i32),
-                    "shift": IntegerAttr(shift, i8),
-                    "max_int": IntegerAttr(max_int, i8),
-                    "min_int": IntegerAttr(min_int, i8),
-                    "double_round": IntegerAttr(double_round, i1),
-                },
+                args[0], args[-1].type, input_zp, output_zp, multiplier, shift, max_int, min_int, bool(double_round)
             )
             linalg.YieldOp(kernel_op)
 

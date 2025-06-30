@@ -4,8 +4,8 @@ from typing import cast
 from xdsl.builder import Builder
 from xdsl.dialects import arith, linalg
 from xdsl.dialects.builtin import I8, I32, BoolAttr, IntegerType
-from xdsl.ir import BlockArgument, Dialect, Region, SSAValue
-from xdsl.irdl import attr_def, irdl_op_definition, operand_def, result_def
+from xdsl.ir import Attribute, BlockArgument, Dialect, Operation, Region, SSAValue
+from xdsl.irdl import irdl_op_definition, operand_def, prop_def, result_def
 from xdsl.parser import IntegerAttr, IRDLOperation
 
 
@@ -163,19 +163,60 @@ class RescaleOp(KernelOp):
     input = operand_def(IntegerType)
     result = result_def(IntegerType)
 
-    input_zp = attr_def(IntegerAttr[I8])
-    output_zp = attr_def(IntegerAttr[I8])
-    multiplier = attr_def(IntegerAttr[I32])
-    shift = attr_def(IntegerAttr[I8])
-    max_int = attr_def(IntegerAttr[I8])
-    min_int = attr_def(IntegerAttr[I8])
-    double_round = attr_def(BoolAttr)
+    input_zp = prop_def(IntegerAttr[I8])
+    output_zp = prop_def(IntegerAttr[I8])
+    multiplier = prop_def(IntegerAttr[I32])
+    shift = prop_def(IntegerAttr[I8])
+    max_int = prop_def(IntegerAttr[I8])
+    min_int = prop_def(IntegerAttr[I8])
+    double_round = prop_def(BoolAttr)
 
     assembly_format = (
         "$input attr-dict `zero_points` `(` $input_zp `,` $output_zp `)`"
         "`rescale` `(` $multiplier ` ` `>` `>` $shift `)` `clamp` `(` $min_int `,` $max_int `)`"
         " `double_round` `=` $double_round `:` type($input) `->` type($result)"
     )
+
+    def __init__(
+        self,
+        input: SSAValue | Operation,
+        result_type: Attribute,
+        input_zp: int | IntegerAttr[I8],
+        output_zp: int | IntegerAttr[I8],
+        multiplier: int | IntegerAttr[I32],
+        shift: int | IntegerAttr[I8],
+        max_int: int | IntegerAttr[I8],
+        min_int: int | IntegerAttr[I8],
+        double_round: bool | BoolAttr = False,
+    ):
+        input = SSAValue.get(input)
+        if isinstance(input_zp, int):
+            input_zp = IntegerAttr.from_int_and_width(input_zp, 8)
+        if isinstance(output_zp, int):
+            output_zp = IntegerAttr.from_int_and_width(output_zp, 8)
+        if isinstance(multiplier, int):
+            multiplier = IntegerAttr.from_int_and_width(multiplier, 32)
+        if isinstance(shift, int):
+            shift = IntegerAttr.from_int_and_width(shift, 8)
+        if isinstance(max_int, int):
+            max_int = IntegerAttr.from_int_and_width(max_int, 8)
+        if isinstance(min_int, int):
+            min_int = IntegerAttr.from_int_and_width(min_int, 8)
+        if isinstance(double_round, bool):
+            double_round = IntegerAttr.from_int_and_width(1 if double_round else 0, 1)
+        super().__init__(
+            operands=[input],
+            result_types=[result_type],
+            properties={
+                "input_zp": input_zp,
+                "output_zp": output_zp,
+                "multiplier": multiplier,
+                "shift": shift,
+                "max_int": max_int,
+                "min_int": min_int,
+                "double_round": double_round,
+            },
+        )
 
 
 Kernel = Dialect(
