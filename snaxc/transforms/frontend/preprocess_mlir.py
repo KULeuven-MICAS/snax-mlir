@@ -17,16 +17,19 @@ MLIR_PREPOC_FLAGS: tuple[tuple[str, ...], ...] = (
             ]
         )
         + "))",
+        "--allow-unregistered-dialect",
         "--mlir-print-op-generic",
         "--mlir-print-local-scope",
     ),
     (
         "--tosa-to-arith=include-apply-rescale",
+        "--allow-unregistered-dialect",
         "--mlir-print-op-generic",
         "--mlir-print-local-scope",
     ),
     (
         "--linalg-generalize-named-ops",
+        "--allow-unregistered-dialect",
         "--mlir-print-op-generic",
         "--mlir-print-local-scope",
     ),
