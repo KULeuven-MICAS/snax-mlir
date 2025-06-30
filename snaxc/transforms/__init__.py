@@ -166,13 +166,6 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return PreprocessPass
 
-    def get_preprocess_mlperf_tiny():
-        from snaxc.transforms.frontend.preprocess_mlperf_tiny import (
-            PreprocessMLPerfTiny,
-        )
-
-        return PreprocessMLPerfTiny
-
     def get_realize_memref_casts():
         from snaxc.transforms.realize_memref_casts import RealizeMemrefCastsPass
 
@@ -283,7 +276,6 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "pipeline-duplicate-buffers": get_pipeline_duplicate_buffers,
         "postprocess": get_postprocess_mlir,
         "preprocess": get_preprocess_mlir,
-        "preprocess-mlperftiny": get_preprocess_mlperf_tiny,
         "realize-memref-casts": get_realize_memref_casts,
         "reuse-memref-allocs": get_reuse_memref_allocs,
         "snax-allocate": get_snax_allocate,
