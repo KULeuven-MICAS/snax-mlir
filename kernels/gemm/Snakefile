@@ -68,6 +68,7 @@ rule all:
         "gemm_broadcast_traces.json",
         "gemm_init_traces.json",
         "gemm_init_broadcast_traces.json",
+        "gemm_rescale_traces.json",
 
 
 rule link_snax_binary:
