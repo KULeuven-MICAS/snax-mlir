@@ -46,7 +46,7 @@ rule compile_snax:
 
 rule all:
     input:
-        expand("{target}_traces.json", target=targets),
+        expand("{target}_perfetto_traces.json", target=targets),
 
 
 rule get_mlperf_tiny_model:
