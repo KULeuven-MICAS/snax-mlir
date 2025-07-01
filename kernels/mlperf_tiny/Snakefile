@@ -58,12 +58,22 @@ rule get_mlperf_tiny_model:
         "wget -O {output[0]} https://github.com/kuleuven-micas/mlir-networks/releases/latest/download/mlperf_tiny_{output[0]}"
 
 
+rule get_mlperf_tiny_data:
+    output:
+        "{network}_sample_data.json",
+    wildcard_constraints:
+        network="|".join(nets),
+    shell:
+        "wget -O {output[0]} https://github.com/kuleuven-micas/mlir-networks/releases/latest/download/mlperf_tiny_{output[0]}"
+
+
 rule generate_data:
+    input:
+        "anomaly_int8_sample_data.json",
     output:
         "data.h",
-        "data.c",
-    script:
-        "gendata.py"
+    shell:
+        "python gendata.py {input} --batch_size 8"
 
 
 rule create_static_anomaly_int8:
@@ -79,7 +89,6 @@ rule link_snax_binary:
     input:
         "{file}.o",
         "main.o",
-        "data.o",
     output:
         "{file}.x",
     shell:

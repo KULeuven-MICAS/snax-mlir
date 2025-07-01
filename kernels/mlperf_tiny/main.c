@@ -28,62 +28,51 @@ int main() {
 
   // run_network takes in two memref structs:
 
-  // struct TwoDMemrefI8 {
-  //   int8_t *data; // allocated pointer: Pointer to data buffer as allocated,
-  //                 // only used for deallocating the memref
-  //   int8_t *aligned_data; // aligned pointer: Pointer to properly aligned
-  //   data
-  //                         // that memref indexes
-  //   uint32_t offset;
-  //   uint32_t shape[2];
-  //   uint32_t stride[2];
-  // };
-
   // the first one is the inputs
 
-  TwoDMemrefI8_t input;
-  input.data = &data;
-  input.aligned_data = input.data;
-  input.offset = 0;
-  input.shape[0] = 8;
-  input.shape[1] = 640;
-  input.stride[0] = 640;
-  input.stride[1] = 1;
+  TwoDMemrefI8_t input_memref;
+  input_memref.data = &input;
+  input_memref.aligned_data = input_memref.data;
+  input_memref.offset = 0;
+  input_memref.shape[0] = 8;
+  input_memref.shape[1] = 640;
+  input_memref.stride[0] = 640;
+  input_memref.stride[1] = 1;
 
-  int thiscore = snrt_cluster_core_idx();
-
-  if (thiscore != 0) {
-    printf("Input allocated at %p, aligned at %p, offset %d, shape [%d, %d], "
-           "stride [%d, %d]\n",
-           input.data, input.aligned_data, input.offset, input.shape[0],
-           input.shape[1], input.stride[0], input.stride[1]);
-  }
   snrt_cluster_hw_barrier();
 
   // the second one is the outputs
   // we don't need to initialize it, as the kernel will fill it in.
-  TwoDMemrefI8_t output;
+  TwoDMemrefI8_t output_memref;
 
   (void)snrt_mcycle();
   snrt_cluster_hw_barrier();
 
-  _mlir_ciface_run_network(&output, &input);
+  _mlir_ciface_run_network(&output_memref, &input_memref);
 
   snrt_cluster_hw_barrier();
   (void)snrt_mcycle();
 
   // Correctness check
   // from this point on only core 0 is required to be alive.
+  int thiscore = snrt_cluster_core_idx();
   if (thiscore != 0)
     return 0;
 
-  printf("Printing the first results:\n");
+  int se = 0;
 
-  int nerr = 0;
+  for (int i = 0; i < output_memref.shape[1]; i++) {
+    int err = (output_memref.aligned_data[i] - output[i]);
+    se += (err) * (err);
+  }
 
-  for (int i = 0; i < 10; i++) {
+  int mse = se / output_memref.shape[1];
 
-    printf("(%d): %d\n", i, output.aligned_data[i]);
+  printf("MSE: %d\n", mse);
+
+  if (mse > 5) {
+    printf("Error: MSE is too high (%d)\n" mse);
+    return 1;
   }
 
   printf("Finished.\n");
