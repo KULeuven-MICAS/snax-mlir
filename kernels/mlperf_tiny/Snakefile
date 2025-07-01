@@ -45,6 +45,14 @@ rule get_mlperf_tiny_model:
         "wget -O {output[0]} https://github.com/kuleuven-micas/mlir-networks/releases/latest/download/mlperf_tiny_{output[0]}"
 
 
+rule generate_data:
+    output:
+        "data.h",
+        "data.c",
+    script:
+        "gendata.py"
+
+
 rule create_static_anomaly_int8:
     output:
         "anomaly_int8_static.mlir",
