@@ -20,5 +20,5 @@ jobs:
       - name: Upload perfetto traces as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: converted-models
+          name: perfetto-traces
           path: kernels/mlperf_tiny/*_perfetto_traces.json
