@@ -11,11 +11,24 @@ module snax_rules:
         config
 
 
-use rule * from snax_rules exclude snax_opt_mlir as snax_*
+use rule * from snax_rules exclude snax_opt_mlir, compile_c as snax_*
 
 
 nets = ["anomaly_int8"]
 targets = ["anomaly_int8_static"]
+
+
+rule compile_c:
+    """
+    Generic rule to compile c files with default compilation options.
+    """
+    input:
+        "main.c",
+        "data.h",
+    output:
+        temp("main.o"),
+    shell:
+        "{config[cc]} {config[cflags]} -c {input[0]} -o {output}"
 
 
 rule compile_snax:
