@@ -16,7 +16,6 @@ use rule * from snax_rules exclude snax_opt_mlir as snax_*
 
 nets = ["anomaly_int8"]
 targets = ["anomaly_int8_static"]
-extensions = [".o"]
 
 
 rule compile_snax:
@@ -34,7 +33,7 @@ rule compile_snax:
 
 rule all:
     input:
-        expand("{network}{extension}", network=targets, extension=extensions),
+        expand("{target}_traces.json", target=targets),
 
 
 rule get_mlperf_tiny_model:
