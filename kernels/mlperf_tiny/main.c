@@ -71,7 +71,7 @@ int main() {
   printf("MSE: %d\n", mse);
 
   if (mse > 5) {
-    printf("Error: MSE is too high (%d)\n" mse);
+    printf("Error: MSE is too high (%d)\n", mse);
     return 1;
   }
 
