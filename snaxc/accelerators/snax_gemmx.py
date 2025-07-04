@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from math import prod
+from typing import cast
 
 from xdsl.dialects import arith, builtin
 from xdsl.dialects.builtin import i8, i32
@@ -209,8 +210,8 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
                     max_int_val = rescale_op.max_int.value.data
                     min_int_val = rescale_op.min_int.value.data
                     double_round_val = rescale_op.double_round.value.data
-                    shift_val = rescale_op.shift.value.data
-                    mult_val = rescale_op.multiplier.value.data
+                    shift_val = cast(int, rescale_op.shift.get_values()[0])
+                    mult_val = cast(int, rescale_op.multiplier.get_values()[0])
                     zp_in_val = rescale_op.input_zp.value.data
                     zp_out_val = rescale_op.output_zp.value.data
                 else:
@@ -295,8 +296,10 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
             max_int = arith.ConstantOp.from_int_and_width(rescale.max_int.value, i32)
             min_int = arith.ConstantOp.from_int_and_width(rescale.min_int.value, i32)
             double_round = arith.ConstantOp.from_int_and_width(rescale.double_round.value, i32)
-            shift = arith.ConstantOp.from_int_and_width(rescale.shift.value, i32)
-            mult = arith.ConstantOp.from_int_and_width(rescale.multiplier.value, i32)
+            shift_val = cast(int, rescale.shift.get_values()[0])
+            mult_val = cast(int, rescale.multiplier.get_values()[0])
+            shift = arith.ConstantOp.from_int_and_width(shift_val, i32)
+            mult = arith.ConstantOp.from_int_and_width(mult_val, i32)
             zp_in = arith.ConstantOp.from_int_and_width(rescale.input_zp.value, i32)
             zp_out = arith.ConstantOp.from_int_and_width(rescale.output_zp.value, i32)
             ops_to_add.extend([max_int, min_int, double_round, shift, mult, zp_in, zp_out])

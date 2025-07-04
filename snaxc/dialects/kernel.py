@@ -1,9 +1,10 @@
 from abc import ABC
+from collections.abc import Sequence
 from typing import cast
 
 from xdsl.builder import Builder
 from xdsl.dialects import arith, linalg
-from xdsl.dialects.builtin import I8, I32, BoolAttr, IntegerType
+from xdsl.dialects.builtin import I8, I32, BoolAttr, DenseArrayBase, IntegerType
 from xdsl.ir import Attribute, BlockArgument, Dialect, Operation, Region, SSAValue
 from xdsl.irdl import attr_def, irdl_op_definition, operand_def, result_def
 from xdsl.parser import IntegerAttr, IRDLOperation
@@ -165,17 +166,13 @@ class RescaleOp(KernelOp):
 
     input_zp = attr_def(IntegerAttr[I8])
     output_zp = attr_def(IntegerAttr[I8])
-    multiplier = attr_def(IntegerAttr[I32])
-    shift = attr_def(IntegerAttr[I8])
+    multiplier = attr_def(DenseArrayBase)
+    shift = attr_def(DenseArrayBase)
     max_int = attr_def(IntegerAttr[I8])
     min_int = attr_def(IntegerAttr[I8])
     double_round = attr_def(BoolAttr)
 
-    assembly_format = (
-        "$input attr-dict `zero_points` `(` $input_zp `,` $output_zp `)`"
-        "`rescale` `(` $multiplier ` ` `>` `>` $shift `)` `clamp` `(` $min_int `,` $max_int `)`"
-        " `double_round` `=` $double_round `:` type($input) `->` type($result)"
-    )
+    assembly_format = "$input attr-dict `:` `(` type($input) `)` `->` type($result)"
 
     def __init__(
         self,
@@ -183,8 +180,8 @@ class RescaleOp(KernelOp):
         result_type: Attribute,
         input_zp: int | IntegerAttr[I8],
         output_zp: int | IntegerAttr[I8],
-        multiplier: int | IntegerAttr[I32],
-        shift: int | IntegerAttr[I8],
+        multiplier: Sequence[int] | Sequence[IntegerAttr[I32]] | DenseArrayBase,
+        shift: Sequence[int] | Sequence[IntegerAttr[I8]] | DenseArrayBase,
         max_int: int | IntegerAttr[I8],
         min_int: int | IntegerAttr[I8],
         double_round: bool | BoolAttr = False,
@@ -194,10 +191,14 @@ class RescaleOp(KernelOp):
             input_zp = IntegerAttr.from_int_and_width(input_zp, 8)
         if isinstance(output_zp, int):
             output_zp = IntegerAttr.from_int_and_width(output_zp, 8)
-        if isinstance(multiplier, int):
-            multiplier = IntegerAttr.from_int_and_width(multiplier, 32)
-        if isinstance(shift, int):
-            shift = IntegerAttr.from_int_and_width(shift, 8)
+        if not isinstance(multiplier, DenseArrayBase):
+            multiplier = DenseArrayBase.create_dense_int(
+                IntegerType(32), [x if isinstance(x, int) else x.value.data for x in multiplier]
+            )
+        if not isinstance(shift, DenseArrayBase):
+            shift = DenseArrayBase.create_dense_int(
+                IntegerType(32), [x if isinstance(x, int) else x.value.data for x in shift]
+            )
         if isinstance(max_int, int):
             max_int = IntegerAttr.from_int_and_width(max_int, 8)
         if isinstance(min_int, int):

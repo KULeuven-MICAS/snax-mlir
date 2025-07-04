@@ -50,9 +50,10 @@ class RescaleClampPattern(RewritePattern):
         # Extract all values:
         input_zp = assert_int8(rescale_op.input_zp.value.data)
         output_zp = assert_int8(rescale_op.output_zp.value.data)
-        multiplier = rescale_op.multiplier.get_values()[0]
-        assert isinstance(multiplier, int)
-        shift = assert_int8(rescale_op.shift.get_values()[0])
+        multiplier = rescale_op.multiplier.get_values()
+        assert isa(multiplier, tuple[int, ...])
+        shift = rescale_op.shift.get_values()
+        assert isa(shift, tuple[int, ...])
         if isinstance(clamp_op, tosa.ClampOp):
             max_int = assert_int8(clamp_op.max_int.value.data)
             min_int = assert_int8(clamp_op.min_int.value.data)
