@@ -1,16 +1,17 @@
 import numpy as np
+import numpy.typing as npt
 
 
 def postprocessing_simd_golden_model(
-    data_in,
-    input_zp_i,
-    output_zp_i,
-    shift_i,
-    max_int_i,
-    min_int_i,
-    double_round_i,
-    multiplier_i,
-):
+    data_in: npt.NDArray[np.int_],
+    input_zp_i: int,
+    output_zp_i: int,
+    shift_i: int | npt.NDArray[np.int_],
+    max_int_i: int,
+    min_int_i: int,
+    double_round_i: int,
+    multiplier_i: int | npt.NDArray[np.int_],
+) -> npt.NDArray[np.int_]:
     # Step 1: Subtract input zero point
     var = data_in - input_zp_i
 
