@@ -80,7 +80,7 @@ def gemm(m=16, n=16, k=16):
 
         @Builder.implicit_region(arg_types)
         def init_body(args: tuple[BlockArgument, ...]) -> None:
-            rescaled = RescaleOp(args[0], i8, 13, -27, 1234567890, 39, 127, -128, True)
+            rescaled = RescaleOp(args[0], i8, 13, -27, [1234567890], [39], 127, -128, True)
             YieldOp(rescaled)
 
         indexing_maps = [AffineMapAttr(AffineMap.from_callable(lambda x, y: (x, y)))] * 2
