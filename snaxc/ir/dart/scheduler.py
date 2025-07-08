@@ -115,6 +115,35 @@ def is_pure_output_stationary(template: Template, schedule: Schedule):
     return first_reduction_idx > last_parallel_idx
 
 
+def is_output_channel_stationary(template: Template, schedule: Schedule, channel_dim: int) -> bool:
+    """
+    Checks whether a schedule is output-channel stationary.
+    For this, all outputs of a single output channel must be computed
+    before moving to the next output channel.
+    A 'channel' in this context is defined as the dimension that is
+    relevant only to the second dimension of the output operand.
+    """
+    # fetch the pattern of the 2nd and last operand
+    output_schedule = schedule[-1].pattern.A
+    # do not consider template dims
+    output_schedule = output_schedule[:, : -template.num_dims]
+
+    assert len(output_schedule.shape) > channel_dim, "Output schedule does not have enough dimensions for this check"
+
+    arr = output_schedule[channel_dim, :]
+
+    # There mustn't be a zero before the first non-zero element in the output channel dimension.
+    nonzero_indices = np.nonzero(arr)[0]
+
+    if nonzero_indices.size == 0:
+        return True  # all elements are zero
+    else:
+        first_nonzero_idx = nonzero_indices[0]
+        result = np.all(arr[:first_nonzero_idx] != 0)
+        breakpoint()
+        return bool(result)
+
+
 def is_memory_flexible_enough(template: Template, schedule: Schedule, element_sizes: Sequence[int]):
     """
     Checks whether the TCDM flexibility is sufficient to actually execute
