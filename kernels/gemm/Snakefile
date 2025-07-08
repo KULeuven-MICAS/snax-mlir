@@ -48,6 +48,13 @@ rule generate_gemm_rescale:
         "gemm_rescale.py"
 
 
+rule generate_gemm_rescale_channels:
+    output:
+        "gemm_rescale_channels.mlir",
+    script:
+        "gemm_rescale_channels.py"
+
+
 rule compile_snax:
     """
     Apply various transformations snax-opt on mlir files.
@@ -69,6 +76,7 @@ rule all:
         "gemm_init_traces.json",
         "gemm_init_broadcast_traces.json",
         "gemm_rescale_traces.json",
+        "gemm_rescale_channels_traces.json",
 
 
 rule link_snax_binary:

@@ -35,17 +35,23 @@ def gemm(m=16, n=16, k=16):
     c_type = TensorType(i32, (m, n))
     c_vals = np.random.randint(-1024, 1023, (m, n))
 
+    multiplier_vals = np.random.randint(4e8, 1e9, (n,))
+    # multiplier_vals = np.array([1e9] * n, dtype=np.int32)  # Fixed multiplier for testing
+    shift_vals = np.random.randint(37, 41, (n,))
+    # shift_vals = np.array([39, 38] * (n // 2), dtype=np.int32)  # Fixed multiplier for testing
+
     output_type = TensorType(i8, (m, n))
     golden_vals = a_vals @ b_vals + c_vals
+
     golden_vals = postprocessing_simd_golden_model(
         golden_vals,
-        input_zp_i=13,
-        output_zp_i=-27,
-        shift_i=39,
+        input_zp_i=0,
+        output_zp_i=0,
+        shift_i=shift_vals,
         max_int_i=127,
         min_int_i=-128,
         double_round_i=True,
-        multiplier_i=1234567890,
+        multiplier_i=multiplier_vals,
     )
 
     res_types = [output_type] * 2
@@ -80,7 +86,7 @@ def gemm(m=16, n=16, k=16):
 
         @Builder.implicit_region(arg_types)
         def init_body(args: tuple[BlockArgument, ...]) -> None:
-            rescaled = RescaleOp(args[0], i8, 13, -27, [1234567890], [39], 127, -128, True)
+            rescaled = RescaleOp(args[0], i8, 0, 0, multiplier_vals.tolist(), shift_vals.tolist(), 127, -128, True)
             YieldOp(rescaled)
 
         indexing_maps = [AffineMapAttr(AffineMap.from_callable(lambda x, y: (x, y)))] * 2
