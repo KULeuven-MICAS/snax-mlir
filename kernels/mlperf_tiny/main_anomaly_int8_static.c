@@ -1,4 +1,4 @@
-#include "data.h"
+#include "data_anomaly_int8_static.h"
 #include "memref.h"
 #include "snax_rt.h"
 #include "stdint.h"
