@@ -100,7 +100,6 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                             next_bound // applied_bound,
                         )
                 else:
-                    breakpoint()
                     raise NotImplementedError()
 
             # remaining are temporal strides

@@ -140,7 +140,6 @@ def is_output_channel_stationary(template: Template, schedule: Schedule, channel
     else:
         first_nonzero_idx = nonzero_indices[0]
         result = np.all(arr[:first_nonzero_idx] != 0)
-        breakpoint()
         return bool(result)
 
 
