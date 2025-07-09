@@ -490,3 +490,24 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
             raise RuntimeError("unsupported kernel")
 
         return Template(TemplatePattern(template_bounds, tp) for tp in template)
+
+    def get_streamers(self, op: dart.StreamingRegionOpBase) -> Sequence[Streamer]:
+        if len(op.patterns) == 3:
+            # matmul, no add
+            if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
+                streamers = [self.streamer_config.data.streamers[i] for i in (0, 1, 4)]
+            elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
+                streamers = [self.streamer_config.data.streamers[i] for i in (0, 1, 2)]
+            else:
+                raise NotImplementedError("Unsupported type for snax_gemmx accelerator")
+        elif len(op.patterns) == 4:
+            # gemm with add
+            if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
+                streamers = [self.streamer_config.data.streamers[i] for i in (0, 1, 3, 4)]
+            elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
+                streamers = [self.streamer_config.data.streamers[i] for i in (0, 1, 3, 2)]
+            else:
+                raise NotImplementedError("Unsupported type for snax_gemmx accelerator")
+        else:
+            streamers = [self.streamer_config.data.streamers[i] for i in (3, 2)]
+        return streamers
