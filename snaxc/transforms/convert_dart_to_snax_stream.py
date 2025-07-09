@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 
 from xdsl.context import Context
-from xdsl.dialects import arith, builtin
-from xdsl.ir import Operation, SSAValue
+from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -117,138 +116,10 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
             )
             snax_stride_patterns.append(snax_stride_pattern)
 
-        # TODO: what is still required is a better system for the unused operands
-        # of snax_gemmx / other accelerators. this now fills in empty/zero patterns for the unused operands.
-
-        new_inputs: list[SSAValue] = list(op.inputs)
-        new_outputs: list[SSAValue] = list(op.outputs)
-        ops_to_add: list[Operation] = []
-
-        assert op.accelerator
-        if op.accelerator.data == "snax_gemmx":
-            empty_pattern = snax_stream.StridePattern(
-                upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0]
-            )
-            if len(snax_stride_patterns) == 3:
-                if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
-                    # matmul, int32 output
-                    # insert empty patterns for D8 and zero pattern for C
-                    snax_stride_patterns.insert(2, empty_pattern)
-                    new_inputs.append(op.outputs[0])
-
-                    # insert same pattern for C as for D32
-                    snax_stride_patterns.insert(
-                        3,
-                        snax_stream.StridePattern(
-                            upper_bounds=snax_stride_patterns[3].upper_bounds,
-                            temporal_strides=snax_stride_patterns[3].temporal_strides,
-                            spatial_strides=snax_stride_patterns[3].spatial_strides,
-                        ),
-                    )
-
-                    # point C to 0
-                    ops_to_add.append(
-                        # zero pointer will generate 0 values
-                        ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
-                    )
-                    new_inputs.append(ptr.result)
-
-                elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
-                    new_inputs.append(new_outputs.pop())
-                    # matmul, int8 output
-                    # for C32:
-                    snax_stride_patterns.append(
-                        snax_stream.StridePattern(
-                            upper_bounds=snax_stride_patterns[2].upper_bounds,
-                            temporal_strides=snax_stride_patterns[2].temporal_strides,
-                            spatial_strides=[64, 8],
-                        )
-                    )
-                    ops_to_add.append(
-                        # zero pointer will generate 0 values
-                        ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
-                    )
-                    new_inputs.append(ptr.result)
-                    # for D32
-                    snax_stride_patterns.append(
-                        snax_stream.StridePattern(
-                            upper_bounds=[0, 0, 0],
-                            temporal_strides=[0, 0, 0],
-                            spatial_strides=[0, 0],
-                        )
-                    )
-                    new_inputs.append(op.outputs[0])
-
-            elif len(snax_stride_patterns) == 4:
-                # gemm
-                #
-                # for a gemm, the 8bit-output port D8 are unused, so we create
-                # empty patterns for them here
-                if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
-                    snax_stride_patterns.insert(2, empty_pattern)
-                    new_inputs.insert(2, op.inputs[-1])
-                elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
-                    d8_pattern = snax_stride_patterns.pop()
-                    d8_input = new_outputs.pop()
-                    snax_stride_patterns.insert(2, d8_pattern)
-                    new_inputs.insert(2, d8_input)
-
-                    # for D32:
-                    snax_stride_patterns.append(
-                        snax_stream.StridePattern(
-                            upper_bounds=[0, 0, 0],
-                            temporal_strides=[0, 0, 0],
-                            spatial_strides=[0, 0],
-                        )
-                    )
-                    new_inputs.append(op.inputs[-1])
-                else:
-                    raise RuntimeError("unsupported case")
-
-            else:
-                # simd
-                # to calculate only simd, we calculate the result
-                # of D8 = rescale(AxB + C)
-                # create zero patterns for A and B such that D8 = rescale(C)
-                # create empty pattern for D32
-                # do not use new outputs
-                new_inputs.append(new_outputs.pop())
-
-                zero_pattern = snax_stream.StridePattern(
-                    upper_bounds=snax_stride_patterns[0].upper_bounds,
-                    temporal_strides=[0] * len(snax_stride_patterns[0].upper_bounds),
-                    spatial_strides=[8],
-                )
-
-                # read zeros from tcdm (must make sure there are zeros at these addresses)
-                # in the new streamer this can be fixed with byte masking
-                snax_stride_patterns.insert(0, zero_pattern)
-                ops_to_add.append(ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType()))
-                new_inputs.insert(0, ptr.result)
-                snax_stride_patterns.insert(1, zero_pattern)
-                ops_to_add.append(ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType()))
-                new_inputs.insert(1, ptr.result)
-
-                # flip D8 and C such that they are in the right order
-                snax_stride_patterns.append(snax_stride_patterns.pop(2))
-                new_inputs.append(new_inputs.pop(2))
-
-                # empty pattern for D32
-                snax_stride_patterns.append(empty_pattern)
-                # dummy base pointer for D32
-                new_inputs.append(op.inputs[-1])
-
-                # make last spatial stride patterns 2d
-                snax_stride_patterns[-2] = snax_stream.StridePattern(
-                    upper_bounds=snax_stride_patterns[-2].upper_bounds,
-                    temporal_strides=snax_stride_patterns[-2].temporal_strides,
-                    spatial_strides=[8, 64],
-                )
-                snax_stride_patterns[-1] = snax_stream.StridePattern(
-                    upper_bounds=snax_stride_patterns[-1].upper_bounds,
-                    temporal_strides=snax_stride_patterns[-1].temporal_strides,
-                    spatial_strides=[8, 64],
-                )
+        new_inputs, new_outputs, new_stride_patterns, ops_to_add = accelerator_type.set_stride_patterns(
+            op, snax_stride_patterns
+        )
+        snax_stride_patterns = list(new_stride_patterns)
 
         snax_stride_patterns = [pattern.canonicalize() for pattern in snax_stride_patterns]
 

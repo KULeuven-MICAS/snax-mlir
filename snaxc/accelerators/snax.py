@@ -10,8 +10,8 @@ from xdsl.ir import Operation, OpResult, SSAValue
 from snaxc.accelerators.accelerator import Accelerator
 from snaxc.accelerators.streamers import StreamerConfiguration
 from snaxc.accelerators.streamers.streamers import Streamer, StreamerFlag, StreamerOpts
-from snaxc.dialects import accfg
-from snaxc.dialects.dart import StreamingRegionOpBase
+from snaxc.dialects import accfg, snax_stream
+from snaxc.dialects.dart import AccessPatternOp, StreamingRegionOpBase
 from snaxc.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
 from snaxc.ir.dart.access_pattern import Template
 
@@ -277,6 +277,18 @@ class SNAXStreamer(ABC):
         Return the set of streamers used for a given op.
         """
         return self.streamer_config.data.streamers
+
+    def set_stride_patterns(
+        self, op: AccessPatternOp, snax_stride_patterns: Sequence[snax_stream.StridePattern]
+    ) -> tuple[Sequence[SSAValue], Sequence[SSAValue], Sequence[snax_stream.StridePattern], Sequence[Operation]]:
+        """
+        Allows the accelerator to customize the found stride patterns
+        after scheduling and layout resolution, for a given operation.
+
+        Returns the new inputs, outputs and strides for the snax StridePattern
+        operation, along with a list of ops to add to the IR.
+        """
+        return (op.inputs, op.outputs, snax_stride_patterns, [])
 
 
 class SNAXPollingBarrier(Accelerator, ABC):
