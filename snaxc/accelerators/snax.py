@@ -262,9 +262,8 @@ class SNAXStreamer(ABC):
 
         return base_addr, streamer_launch
 
-    @staticmethod
     @abstractmethod
-    def get_template(op: StreamingRegionOpBase) -> Template:
+    def get_template(self, op: StreamingRegionOpBase) -> Template:
         """
         Get the template for this acelerator to schedule a given
         stream.streaming_region operation.
