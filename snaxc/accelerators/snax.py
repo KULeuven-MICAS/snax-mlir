@@ -9,7 +9,7 @@ from xdsl.ir import Operation, OpResult, SSAValue
 
 from snaxc.accelerators.accelerator import Accelerator
 from snaxc.accelerators.streamers import StreamerConfiguration
-from snaxc.accelerators.streamers.streamers import StreamerFlag, StreamerOpts
+from snaxc.accelerators.streamers.streamers import Streamer, StreamerFlag, StreamerOpts
 from snaxc.dialects import accfg
 from snaxc.dialects.dart import StreamingRegionOpBase
 from snaxc.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
@@ -271,6 +271,12 @@ class SNAXStreamer(ABC):
         Returns template, template_bounds
         """
         raise NotImplementedError()
+
+    def get_streamers(self, op: StreamingRegionOpBase) -> Sequence[Streamer]:
+        """
+        Return the set of streamers used for a given op.
+        """
+        return self.streamer_config.data.streamers
 
 
 class SNAXPollingBarrier(Accelerator, ABC):

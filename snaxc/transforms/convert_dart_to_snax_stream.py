@@ -36,33 +36,9 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
         accelerator_type = self.ctx.get_acc(op.accelerator.data)
         assert isinstance(accelerator_type, SNAXStreamer)
         template = accelerator_type.get_template(op)
+        streamers = accelerator_type.get_streamers(op)
 
         snax_stride_patterns: list[snax_stream.StridePattern] = []
-
-        # FIXME: along with the mess at the bottom, very urgently a better mapping of operand -> streamer
-        # must be available
-        if op.accelerator.data == "snax_gemmx":
-            if len(op.patterns) == 3:
-                # matmul, no add
-                if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
-                    streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (0, 1, 4)]
-                elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
-                    streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (0, 1, 2)]
-                else:
-                    raise NotImplementedError("Unsupported type for snax_gemmx accelerator")
-            elif len(op.patterns) == 4:
-                # gemm with add
-                if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
-                    streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (0, 1, 3, 4)]
-                elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
-                    streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (0, 1, 3, 2)]
-                else:
-                    raise NotImplementedError("Unsupported type for snax_gemmx accelerator")
-            else:
-                # rescale only
-                streamers = [accelerator_type.streamer_config.data.streamers[i] for i in (3, 2)]
-        else:
-            streamers = accelerator_type.streamer_config.data.streamers
 
         for operand in range(len(op.operands)):
             pattern = AffineTransform.from_affine_map(op.patterns.data[operand].data)
