@@ -509,5 +509,5 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
             else:
                 raise NotImplementedError("Unsupported type for snax_gemmx accelerator")
         else:
-            raise NotImplementedError("Unsupported number of patterns for snax_gemmx accelerator")
+            streamers = [self.streamer_config.data.streamers[i] for i in (3, 2)]
         return streamers
