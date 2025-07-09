@@ -448,8 +448,7 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
 
         return ops
 
-    @staticmethod
-    def get_template(op: dart.StreamingRegionOpBase) -> Template:
+    def get_template(self, op: dart.StreamingRegionOpBase) -> Template:
         assert isinstance(generic_op := op.body.block.first_op, dart.GenericOp)
         if isinstance(generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp):
             # matmul
