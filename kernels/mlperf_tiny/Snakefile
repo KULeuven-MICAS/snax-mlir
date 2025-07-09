@@ -11,7 +11,7 @@ module snax_rules:
         config
 
 
-use rule * from snax_rules exclude snax_opt_mlir as snax_*
+use rule * from snax_rules exclude snax_opt_mlir, compile_c as snax_*
 
 
 nets = ["anomaly_int8"]
@@ -23,10 +23,10 @@ rule compile_c:
     Generic rule to compile c files with default compilation options.
     """
     input:
-        "main.c",
-        "data.h",
+        "main_{file}.c",
+        "data_{file}.h",
     output:
-        temp("main.o"),
+        temp("main_{file}.o"),
     shell:
         "{config[cc]} {config[cflags]} -c {input[0]} -o {output}"
 
@@ -67,13 +67,13 @@ rule get_mlperf_tiny_data:
         "wget -O {output[0]} https://github.com/kuleuven-micas/mlir-networks/releases/latest/download/mlperf_tiny_{output[0]}"
 
 
-rule generate_data:
+rule generate_data_anomaly_int8:
     input:
         "anomaly_int8_sample_data.json",
     output:
-        "data.h",
+        "data_anomaly_int8_static.h",
     shell:
-        "python gendata.py {input} --batch_size 8"
+        "python gendata.py {input} --batch_size 8 --output {output}"
 
 
 rule create_static_anomaly_int8:
@@ -88,7 +88,7 @@ rule create_static_anomaly_int8:
 rule link_snax_binary:
     input:
         "{file}.o",
-        "main.o",
+        "main_{file}.o",
     output:
         "{file}.x",
     shell:
