@@ -14,8 +14,8 @@ module snax_rules:
 use rule * from snax_rules exclude snax_opt_mlir, compile_c as snax_*
 
 
-nets = ["anomaly_int8"]
-targets = ["anomaly_int8_static"]
+nets = ["anomaly_int8", "resnet18_int8"]
+targets = ["anomaly_int8_static", "resnet18_int8_static"]
 
 
 rule compile_c:
@@ -41,7 +41,7 @@ rule compile_snax:
     output:
         temp("{file}.ll.mlir"),
     shell:
-        "{config[snaxc]} -c {config[snaxc-config]} -o {output} {input}"
+        "{config[snaxc]} -c {config[snaxc-config]} -o {output} {input} --debug"
 
 
 rule all:
@@ -76,6 +76,15 @@ rule generate_data_anomaly_int8:
         "python gendata.py {input} --batch_size 8 --output {output}"
 
 
+rule generate_data_resnet18_int8:
+    input:
+        "resnet18_int8_sample_data.json",
+    output:
+        "data_resnet18_int8_static.h",
+    shell:
+        "python gendata.py {input} --output {output}"
+
+
 rule create_static_anomaly_int8:
     output:
         "anomaly_int8_static.mlir",
@@ -83,6 +92,15 @@ rule create_static_anomaly_int8:
         "anomaly_int8.mlir",
     shell:
         "{config[snax-opt]} -p frontend-static-inline{{value=8}},convert-tosa-to-kernel --allow-unregistered-dialect -o {output} {input}"
+
+
+rule create_static_resnet18_int8:
+    output:
+        "resnet18_static.mlir",
+    input:
+        "resnet18_int8.mlir",
+    shell:
+        "{config[snax-opt]} -p frontend-static-inline{{value=1}},convert-tosa-to-kernel --allow-unregistered-dialect -o {output} {input}"
 
 
 rule link_snax_binary:
