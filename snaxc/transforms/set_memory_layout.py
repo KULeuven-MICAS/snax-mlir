@@ -4,7 +4,7 @@ from math import ceil, prod
 import numpy as np
 from xdsl.context import Context
 from xdsl.dialects import builtin
-from xdsl.ir import Attribute
+from xdsl.ir import Attribute, SSAValue
 from xdsl.parser import MemRefType
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -35,6 +35,31 @@ def spatial_dims(ctx: AccContext, op: dart.ScheduleOp) -> int:
     assert isinstance(accelerator_type, SNAXStreamer)
     template = accelerator_type.get_template(op)
     return template[0].pattern.num_dims
+
+
+def ensure_access_granularity(
+    ctx: AccContext, current_stride: int, schedule_dim: int, op: dart.ScheduleOp, operand: SSAValue
+) -> int:
+    if current_stride == 1:
+        return current_stride
+
+    # assess access granularity:
+    # TODO: build out this system to be better
+    # this is a hack that works, this information needs to come from accelerators:
+    assert isa(operand.type, MemRefType[builtin.FixedBitwidthType])
+
+    if schedule_dim >= spatial_dims(ctx, op):
+        # we are in temporal regime
+        temporal_access_granularity = 8 if operand.type.get_element_type().bitwidth == 8 else 16  # in elements
+        if current_stride % temporal_access_granularity != 0:
+            current_stride += (temporal_access_granularity - current_stride) % 64
+    else:
+        # we are in spatial regime
+        spatial_access_granularity = 8 if operand.type.get_element_type().bitwidth == 8 else 2  # in elements
+        if current_stride % spatial_access_granularity != 0:
+            current_stride += (spatial_access_granularity - current_stride) % 64
+
+    return current_stride
 
 
 @dataclass
@@ -93,21 +118,7 @@ class AddCyclicMemoryLayout(RewritePattern):
                 if 1 not in accesses:
                     continue
 
-                # assess access granularity:
-                # TODO: build out this system to be better
-                # this is a hack that works, this information needs to come from accelerators:
-                assert isa(operand.type, MemRefType[builtin.FixedBitwidthType])
-                breakpoint()
-                access_granularity = 8 if operand.type.get_element_type().bitwidth == 8 else 16  # in elements
-                if current_stride % access_granularity != 0:
-                    # check if we need non-contiguous layout to comply with granularity constraint
-                    if current_stride == 1:
-                        # do nothing
-                        pass
-                    # we need information here wheteher or not the current dim is temporal / spatial
-                    elif schedule_dim >= spatial_dims(self.ctx, op):
-                        # we are in temporal regime, comply with granularity constraint
-                        current_stride += (access_granularity - current_stride) % 64
+                current_stride = ensure_access_granularity(self.ctx, current_stride, schedule_dim, op, operand)
 
                 # find operand dimension that is accessed
                 accessed_dim = accesses.index(1)
