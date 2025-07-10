@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 from io import StringIO
+from typing import Any, cast
 
 import numpy as np
 import tensorflow as tf
@@ -120,15 +121,34 @@ def conv(spec: ConvSpec):
 
 
 if __name__ == "__main__":
-    # Get the name of the current Python script and replace its extension with .mlir
-    script_name = os.path.basename(__file__)
-    mlir_filename = os.path.splitext(script_name)[0] + ".mlir"
+    # Check if running under Snakemake
+    snakemake_instance = globals().get("snakemake", None)
 
-    # Generate IR and write it to the specified MLIR file
+    if snakemake_instance:
+        cfg = cast(dict[str, Any], snakemake.config["convspecs"][snakemake.wildcards[0]])  # noqa: F821
+        spec = ConvSpec(
+            b=cfg["b"],
+            ox=cfg["ox"],
+            oy=cfg["oy"],
+            fx=cfg["fx"],
+            fy=cfg["fy"],
+            c=cfg["c"],
+            k=cfg["k"],
+            groups=cfg.get("groups", 1),
+            stride=cfg.get("stride", 1),
+            dilation=cfg.get("dilation", 1),
+        )
+        output_file_path = snakemake.output[0]  # noqa: F821
+    else:
+        # Standalone default
+        spec = ConvSpec(1, 16, 16, 3, 3, 16, 16)
+        spec = ConvSpec(1, 8, 8, 3, 3, 3, 8)
+        script_name = os.path.basename(__file__)
+        output_file_path = os.path.splitext(script_name)[0] + ".mlir"
+
+    # Generate and write MLIR
     output = StringIO()
     printer = Printer(stream=output)
-    # spec = ConvSpec(1, 16, 16, 3, 3, 16, 16)
-    spec = ConvSpec(1, 32, 32, 3, 3, 3, 16)
     printer.print(conv(spec))
-    with open(mlir_filename, "w") as output_file:
+    with open(output_file_path, "w") as output_file:
         output_file.write(output.getvalue())

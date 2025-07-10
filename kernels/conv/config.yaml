@@ -1,0 +1,22 @@
+convspecs:
+  conv_standard:
+    b: 1
+    ox: 16
+    oy: 16
+    fx: 3
+    fy: 3
+    c: 16
+    k: 16
+    stride: 1
+    dilation: 1
+
+  conv_underutilized:
+    b: 1
+    ox: 8
+    oy: 8
+    fx: 3
+    fy: 3
+    c: 3
+    k: 8
+    stride: 1
+    dilation: 1

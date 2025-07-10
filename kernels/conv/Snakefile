@@ -13,31 +13,41 @@ module snax_rules:
 use rule * from snax_rules exclude snax_opt_mlir as snax_*
 
 
+configfile: "config.yaml"
+
+
+# List of convspec IDs (keys from config.yaml)
+convspec_ids = list(config["convspecs"].keys())
+
+
 rule compile_snax:
     """
     Apply various transformations snax-opt on mlir files.
     Options controlled with `snaxoptflags` defined in config.
     """
     input:
-        "{file}.mlir",
+        "{file}_source.mlir",
     output:
         temp("{file}.ll.mlir"),
+    wildcard_constraints:
+        file="|".join(convspec_ids),
     shell:
         "{config[snaxc]} -c {config[snaxc-config]} -o {output} {input}"
-
-
-files = ["conv"]
 
 
 # Rules
 rule all:
     input:
-        expand("{file}_traces.json", file=files),
+        expand("{file}_traces.json", file=convspec_ids),
 
 
 rule generate_conv:
     output:
-        "conv.mlir",
+        "{id}_source.mlir",
+    wildcard_constraints:
+        file="|".join(convspec_ids),
+    params:
+        cfg=lambda wildcards: config["convspecs"][wildcards.id],
     script:
         "conv.py"
 
