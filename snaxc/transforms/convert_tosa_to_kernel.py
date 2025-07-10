@@ -93,7 +93,7 @@ class RescaleClampPattern(RewritePattern):
                 builtin.AffineMapAttr(AffineMap(nb_dims, 0, tuple(AffineDimExpr(i) for i in range(nb_dims))))
                 for _ in range(2)
             ],
-            iterator_types=builtin.ArrayAttr([linalg.IteratorTypeAttr.parallel()] * 2),
+            iterator_types=builtin.ArrayAttr([linalg.IteratorTypeAttr.parallel()] * nb_dims),
             result_types=(clamp_op.output.type,),
         )
 

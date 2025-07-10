@@ -127,7 +127,8 @@ if __name__ == "__main__":
     # Generate IR and write it to the specified MLIR file
     output = StringIO()
     printer = Printer(stream=output)
-    spec = ConvSpec(1, 16, 16, 3, 3, 16, 16)
+    # spec = ConvSpec(1, 16, 16, 3, 3, 16, 16)
+    spec = ConvSpec(1, 32, 32, 3, 3, 3, 16)
     printer.print(conv(spec))
     with open(mlir_filename, "w") as output_file:
         output_file.write(output.getvalue())

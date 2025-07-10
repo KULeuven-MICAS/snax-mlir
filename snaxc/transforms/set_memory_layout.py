@@ -97,6 +97,7 @@ class AddCyclicMemoryLayout(RewritePattern):
                 # TODO: build out this system to be better
                 # this is a hack that works, this information needs to come from accelerators:
                 assert isa(operand.type, MemRefType[builtin.FixedBitwidthType])
+                breakpoint()
                 access_granularity = 8 if operand.type.get_element_type().bitwidth == 8 else 16  # in elements
                 if current_stride % access_granularity != 0:
                     # check if we need non-contiguous layout to comply with granularity constraint

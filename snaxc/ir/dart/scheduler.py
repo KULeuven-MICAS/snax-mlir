@@ -76,7 +76,8 @@ def scheduler_backtrack(
         if template_bound:
             if schedule_bound < template_bound:
                 # TODO: underutilized array, apply padding
-                continue
+                # continue
+                pass
             elif schedule_bound % template_bound != 0:
                 # TODO: imperfect factorization
                 continue
