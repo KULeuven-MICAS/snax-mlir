@@ -74,13 +74,12 @@ def scheduler_backtrack(
         schedule_bound = candidate_schedule[0].bounds[-inner_dims]
 
         if template_bound:
-            if schedule_bound < template_bound:
-                # TODO: underutilized array, apply padding
-                continue
+            if schedule_bound <= template_bound:
+                pass
             elif schedule_bound % template_bound != 0:
                 # TODO: imperfect factorization
                 continue
-            else:  # >=
+            else:
                 # tile schedule
                 candidate_schedule = candidate_schedule.tile_dim(schedule.num_dims - inner_dims, template_bound)
 

@@ -80,10 +80,12 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
 
             # fill up all spatial strides
             for spat_size in streamers[operand].spatial_dims:
+                assert stride is not None
+                assert bound is not None
                 spatial_strides.append(stride)
                 if bound == spat_size:
                     # nice, strides correspond with streamer dimension
-                    stride, bound = next(access_iter)
+                    stride, bound = next(access_iter, (None, None))
                 elif bound < spat_size:
                     # caution! the dimensions of the stride pattern don't nicely overlap with the dimensions
                     # of the streamers, this is only allowed if the two pattern dimensions can be merged.
