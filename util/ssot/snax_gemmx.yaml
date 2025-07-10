@@ -6,8 +6,7 @@ cluster_0:
   memory:
     name: L1
     start: 0x1000_0000
-    size: 100_000
+    size: 1000_000
   core_0:
-    - snax_gemmx
   core_1:
     - data_mover

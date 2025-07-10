@@ -2,7 +2,8 @@ from collections.abc import Iterable
 
 from xdsl.context import Context
 from xdsl.dialects import builtin, linalg
-from xdsl.dialects.builtin import ShapedType
+from xdsl.dialects.builtin import ShapedType, StringAttr
+from xdsl.ir import OpResult
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -84,6 +85,10 @@ class DispatchTemplatePattern(RewritePattern):
                 break
 
         if not matched_accelerator:
+            return
+
+        if len(linalg_op.inputs[0].type.get_shape()) < 3:
+            # FIXME: temporary workaround to not dispatch 2D kernels for gemmx
             return
 
         # set linalg op library call

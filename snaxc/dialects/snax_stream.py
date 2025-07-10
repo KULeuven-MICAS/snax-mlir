@@ -77,7 +77,7 @@ class StridePattern(ParametrizedAttribute):
             printer.print_string("]")
 
     def canonicalize(self) -> Self:
-        if IntAttr(0) in self.spatial_strides.data:
+        if all(x == IntAttr(0) for x in self.spatial_strides):
             return self
         upper_bounds = [x.data for x in self.upper_bounds.data]
         temporal_strides = [x.data for x in self.temporal_strides.data]

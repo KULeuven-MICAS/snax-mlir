@@ -36,11 +36,12 @@ def parse_config(config: Any) -> AccContext:
             cluster = parse_cluster(value)
             context.register_memory(cluster.memory)
             for core in cluster.cores:
-                for accelerator in core.accelerators:
-                    if accelerator == "snax_gemmx":
-                        context.register_accelerator(SNAXGEMMXAccelerator.name, lambda: SNAXGEMMXAccelerator())
-                    elif accelerator == "snax_alu":
-                        context.register_accelerator(SNAXAluAccelerator.name, lambda: SNAXAluAccelerator())
+                if core.accelerators is not None:
+                    for accelerator in core.accelerators:
+                        if accelerator == "snax_gemmx":
+                            context.register_accelerator(SNAXGEMMXAccelerator.name, lambda: SNAXGEMMXAccelerator())
+                        elif accelerator == "snax_alu":
+                            context.register_accelerator(SNAXAluAccelerator.name, lambda: SNAXAluAccelerator())
         else:
             raise ValueError(f"Unknown config key: {key}")
 

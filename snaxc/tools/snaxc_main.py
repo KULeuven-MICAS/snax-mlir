@@ -21,7 +21,6 @@ from snaxc.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
 from snaxc.transforms.convert_dart_to_snax_stream import ConvertDartToSnaxStream
 from snaxc.transforms.convert_kernel_to_linalg import ConvertKernelToLinalg
 from snaxc.transforms.convert_linalg_to_accfg import ConvertLinalgToAccPass
-from snaxc.transforms.convert_linalg_to_kernel import ConvertLinalgToKernel
 from snaxc.transforms.convert_memref_to_arith import ConvertMemrefToArithPass
 from snaxc.transforms.dart.convert_linalg_to_dart import ConvertLinalgToDart
 from snaxc.transforms.dart.dart_fuse_operations import DartFuseOperationsPass
@@ -196,7 +195,7 @@ class SNAXCMain(CommandLineTool):
             pass_pipeline.append(InsertAccOp(accelerator))
 
         # Standard lowering pipeline:
-        pass_pipeline.append(ConvertLinalgToKernel())
+        # pass_pipeline.append(ConvertLinalgToKernel())
         pass_pipeline.append(DispatchKernels())
         pass_pipeline.append(ConvertLinalgToDart())
         pass_pipeline.append(DartFuseOperationsPass())
