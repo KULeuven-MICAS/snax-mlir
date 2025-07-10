@@ -8,6 +8,7 @@ from xdsl.utils.hints import isa
 from snaxc.accelerators.acc_context import AccContext
 from snaxc.accelerators.snax_alu import SNAXAluAccelerator
 from snaxc.accelerators.snax_gemmx import SNAXGEMMXAccelerator
+from snaxc.accelerators.snax_xdma import SNAXXDMAAccelerator
 from snaxc.util.snax_memory import SnaxMemory
 
 
@@ -36,11 +37,14 @@ def parse_config(config: Any) -> AccContext:
             cluster = parse_cluster(value)
             context.register_memory(cluster.memory)
             for core in cluster.cores:
-                for accelerator in core.accelerators:
-                    if accelerator == "snax_gemmx":
-                        context.register_accelerator(SNAXGEMMXAccelerator.name, lambda: SNAXGEMMXAccelerator())
-                    elif accelerator == "snax_alu":
-                        context.register_accelerator(SNAXAluAccelerator.name, lambda: SNAXAluAccelerator())
+                if core.accelerators:
+                    for accelerator in core.accelerators:
+                        if accelerator == "snax_gemmx":
+                            context.register_accelerator(SNAXGEMMXAccelerator.name, lambda: SNAXGEMMXAccelerator())
+                        elif accelerator == "snax_alu":
+                            context.register_accelerator(SNAXAluAccelerator.name, lambda: SNAXAluAccelerator())
+                        elif accelerator == "xdma":
+                            context.register_accelerator(SNAXXDMAAccelerator.name, lambda: SNAXXDMAAccelerator())
         else:
             raise ValueError(f"Unknown config key: {key}")
 
