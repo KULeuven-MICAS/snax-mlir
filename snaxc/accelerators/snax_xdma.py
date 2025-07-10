@@ -52,7 +52,9 @@ default_streamer = StreamerConfiguration(
 c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
 
 
-class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate):
+class SNAXXDMAAccelerator(
+    SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate
+):
     """
     Accelerator interface class for the SNAX XDMA.
     """
@@ -62,8 +64,12 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
     supported_kernels = ()
     max_multicast_dest = 25
 
-    def __init__(self, streamer_config: StreamerConfiguration = default_streamer) -> None:
-        assert default_streamer.size() == 2, "SNAX XDMA only supports two streamers (reader and writer)."
+    def __init__(
+        self, streamer_config: StreamerConfiguration = default_streamer
+    ) -> None:
+        assert (
+            default_streamer.size() == 2
+        ), "SNAX XDMA only supports two streamers (reader and writer)."
 
         super().__init__(streamer_config)
 
@@ -72,7 +78,8 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
         # Supported kernels are given by all available extensions
         self.supported_kernels = [
             ext.get_dma_extension_kernel()
-            for ext in default_streamer.streamers[0].opts + default_streamer.streamers[1].opts
+            for ext in default_streamer.streamers[0].opts
+            + default_streamer.streamers[1].opts
             if isinstance(ext, StreamerExtension)
         ]
         self.supported_kernels = tuple(self.supported_kernels)  # Remove duplicates
@@ -97,8 +104,12 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
 
         return [
             *ops_to_insert,
-            setup := accfg.SetupOp([val for _, val in setup_args], self.fields, self.name),
-            token := accfg.LaunchOp([val for _, val in launch_args], self.launch_fields, setup),
+            setup := accfg.SetupOp(
+                [val for _, val in setup_args], self.fields, self.name
+            ),
+            token := accfg.LaunchOp(
+                [val for _, val in launch_args], self.launch_fields, setup
+            ),
             accfg.AwaitOp(token),
         ]
 
@@ -116,7 +127,8 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
             if isinstance(opresult := op.operands[operand], OpResult):
                 is_zero_pattern = (
                     isinstance(opresult.op, arith.ConstantOp)
-                    and opresult.op.value == c0_attr  # TODO: check what zero patterns are and if they are relevant here
+                    and opresult.op.value
+                    == c0_attr  # TODO: check what zero patterns are and if they are relevant here
                 )
 
             # base pointers (low, high)
@@ -125,13 +137,17 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
                 result.append(([czero], czero.result))
             else:
                 result.append(([], op.operands[operand]))
-            result.append(([c0 := arith.ConstantOp.from_int_and_width(0, i32)], c0.result))
+            result.append(
+                ([c0 := arith.ConstantOp.from_int_and_width(0, i32)], c0.result)
+            )
 
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             # spatial strides
             for dim, flag in enumerate(streamer.spatial_dims):
                 stride = op.stride_patterns.data[operand].spatial_strides.data[dim].data
-                if stride == 0 and any(isinstance(opt, HasBroadcast) for opt in streamer.opts):
+                if stride == 0 and any(
+                    isinstance(opt, HasBroadcast) for opt in streamer.opts
+                ):
                     do_broadcast[operand] = True
                 cst = arith.ConstantOp.from_int_and_width(stride, i32)
                 result.append(([cst], cst.result))
@@ -139,12 +155,16 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
             # loop bounds
             upper_bounds = op.stride_patterns.data[operand].upper_bounds.data
             # pad unused temporal bounds with 1's'
-            upper_bounds = upper_bounds + ((IntAttr(1),) * (streamer.temporal_dim - len(upper_bounds)))
+            upper_bounds = upper_bounds + (
+                (IntAttr(1),) * (streamer.temporal_dim - len(upper_bounds))
+            )
 
             # temporal strides
             temporal_strides = op.stride_patterns.data[operand].temporal_strides.data
             # pad unused spatial strides with 0's
-            temporal_strides = temporal_strides + ((IntAttr(0),) * (streamer.temporal_dim - len(temporal_strides)))
+            temporal_strides = temporal_strides + (
+                (IntAttr(0),) * (streamer.temporal_dim - len(temporal_strides))
+            )
 
             # ops for loop bounds
             for dim, flag in enumerate(streamer.temporal_dims):
@@ -188,7 +208,13 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
                     result.append(([n1], n1.result))
 
             # Bypass option
-            bypass = 2 ** len([opt for opt in streamer.opts if isinstance(opt, StreamerExtension)]) - 1
+            bypass = (
+                2
+                ** len(
+                    [opt for opt in streamer.opts if isinstance(opt, StreamerExtension)]
+                )
+                - 1
+            )
             i = 0
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
@@ -261,19 +287,32 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
 
         return op
 
-    def get_xdma_streamer_setup_dict(self, base_addr: int = 0x3C0) -> tuple[int, dict[str, int]]:
-        streamer_setup = {key: base_addr + i for i, key in enumerate(self.streamer_setup_fields[0:4])}
+    def get_xdma_streamer_setup_dict(
+        self, base_addr: int = 0x3C0
+    ) -> tuple[int, dict[str, int]]:
+        streamer_setup = {
+            key: base_addr + i for i, key in enumerate(self.streamer_setup_fields[0:4])
+        }
         streamer_setup.update(
             {
                 key: base_addr + i + 2 + 2 * self.max_multicast_dest
                 for i, key in enumerate(self.streamer_setup_fields[4:])
             }
         )
-        updated_base_addr = base_addr + len(self.streamer_setup_fields) + 2 * self.max_multicast_dest - 2
+        updated_base_addr = (
+            base_addr
+            + len(self.streamer_setup_fields)
+            + 2 * self.max_multicast_dest
+            - 2
+        )
         return updated_base_addr, streamer_setup
 
-    def get_xdma_streamer_launch_dict(self, base_addr: int = 0x3C0) -> tuple[int, dict[str, int]]:
-        streamer_launch = {key: base_addr + i for i, key in enumerate(self.streamer_launch_fields)}
+    def get_xdma_streamer_launch_dict(
+        self, base_addr: int = 0x3C0
+    ) -> tuple[int, dict[str, int]]:
+        streamer_launch = {
+            key: base_addr + i for i, key in enumerate(self.streamer_launch_fields)
+        }
         updated_base_addr = base_addr + len(self.streamer_launch_fields)
         return (
             updated_base_addr,
@@ -309,7 +348,10 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
         pattern = snax_stride_patterns[0]
         new_stride_pattern = snax_stream.StridePattern(
             [2] + [x.data for x in pattern.upper_bounds],
-            [512] + [x.data for x in pattern.temporal_strides],  # TODO: make this 512 not hardcoded
+            [512]
+            + [
+                x.data for x in pattern.temporal_strides
+            ],  # TODO: make this 512 not hardcoded
             pattern.spatial_strides,
         )
 
