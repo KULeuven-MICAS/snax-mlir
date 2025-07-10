@@ -23,7 +23,7 @@ rule compile_snax:
     output:
         temp("{file}.ll.mlir"),
     shell:
-        "{config[snaxc]} -c {config[snaxc-config]} --alloc-mode static -o {output} {input}"
+        "{config[snaxc]} -c {config[snaxc-config]} -o {output} {input}"
 
 
 files = ["add"]
