@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 
 from xdsl.context import Context
@@ -66,6 +67,13 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
 
             # TCDM takes 8 contiguous bytes minimum
             if stride * bound == TCDM_BANK_WIDTH:
+                stride, bound = next(access_iter)
+            elif stride * bound < TCDM_BANK_WIDTH:
+                # non-contiguous access
+                warnings.warn(
+                    "Non-contiguous access detected, this is not yet supported by SNAX Streamers,"
+                    "unless there are zeros in the empty areas this will probably yield incorrect results."
+                )
                 stride, bound = next(access_iter)
             else:
                 stride, bound = TCDM_BANK_WIDTH, (stride * bound) // TCDM_BANK_WIDTH
