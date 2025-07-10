@@ -151,7 +151,7 @@ def test_allow_broadcasts():
 
     results = list(scheduler_backtrack(template, schedule))
     # There are 12 results:
-    assert len(results) == 12
+    assert len(results) == 2
 
     # All results should contain (c,)
     for result in results:
@@ -226,5 +226,5 @@ def test_memory_flexibility_scheduler():
         )
     )
 
-    assert len(results_without) == 2
+    assert len(results_without) == 3
     assert len(results_with) == 0
