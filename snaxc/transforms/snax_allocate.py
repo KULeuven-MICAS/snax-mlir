@@ -3,7 +3,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
 
-from minimalloc import Buffer, Problem  # pyright: ignore[reportMissingTypeStubs]
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, llvm
 from xdsl.dialects.memref import DeallocOp
@@ -65,7 +64,9 @@ def create_memref_struct(
         else:
             assert isinstance(shape_op, Operation)
 
-        llvm_struct = llvm.InsertValueOp(dense_array([3, i]), llvm_struct.res, shape_op.results[0])
+        llvm_struct = llvm.InsertValueOp(
+            dense_array([3, i]), llvm_struct.res, shape_op.results[0]
+        )
         ops_to_insert.append(llvm_struct)
 
     return llvm_struct, ops_to_insert
@@ -95,7 +96,9 @@ class DynamicAllocs(RewritePattern):
 
         # create constant alignment op to pass on to the allocation function
         assert isinstance(alloc_op.alignment, builtin.IntegerAttr)
-        alignment_op = arith.ConstantOp.from_int_and_width(alloc_op.alignment.value.data, builtin.IndexType())
+        alignment_op = arith.ConstantOp.from_int_and_width(
+            alloc_op.alignment.value.data, builtin.IndexType()
+        )
         ops_to_insert.append(alignment_op)
 
         # call allocation function with size and alignment operations
@@ -120,13 +123,17 @@ class DynamicAllocs(RewritePattern):
         ops_to_insert.append(func_result)
 
         # extract the allocated pointer and aligned pointer from alloc function call
-        pointer_op = llvm.ExtractValueOp(dense_array([0]), func_result.results[0], llvm.LLVMPointerType.opaque())
+        pointer_op = llvm.ExtractValueOp(
+            dense_array([0]), func_result.results[0], llvm.LLVMPointerType.opaque()
+        )
         aligned_pointer_op = llvm.ExtractValueOp(
             dense_array([1]), func_result.results[0], llvm.LLVMPointerType.opaque()
         )
         ops_to_insert.extend([pointer_op, aligned_pointer_op])
 
-        created_struct, ops_to_insert_struct = create_memref_struct(alloc_op, pointer_op.res, aligned_pointer_op.res)
+        created_struct, ops_to_insert_struct = create_memref_struct(
+            alloc_op, pointer_op.res, aligned_pointer_op.res
+        )
         ops_to_insert.extend(ops_to_insert_struct)
 
         module_op = alloc_op.get_toplevel_object()
@@ -154,14 +161,20 @@ class StaticAllocs(RewritePattern):
 
     get_memory: Callable[[str], SnaxMemory]
 
-    current_addresses: dict[SnaxMemory, int] = field(default_factory=dict[SnaxMemory, int])
+    current_addresses: dict[SnaxMemory, int] = field(
+        default_factory=dict[SnaxMemory, int]
+    )
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: snax.Alloc, rewriter: PatternRewriter):
         if not isinstance(op.size, OpResult):
-            raise RuntimeError("Static allocations should have a statically known size.")
+            raise RuntimeError(
+                "Static allocations should have a statically known size."
+            )
         if not isinstance(op.size.op, arith.ConstantOp):
-            raise RuntimeError("Static allocations should have a statically known size.")
+            raise RuntimeError(
+                "Static allocations should have a statically known size."
+            )
         if op.memory_space is None:
             raise RuntimeError("Allocations need a defined memory space")
 
@@ -191,7 +204,9 @@ class StaticAllocs(RewritePattern):
         next_address = current_address + size
 
         if next_address > memory.start + memory.capacity:
-            raise RuntimeError(f"Memory space {memory.attribute.data} is full, cannot allocate {size} bytes")
+            raise RuntimeError(
+                f"Memory space {memory.attribute.data} is full, cannot allocate {size} bytes"
+            )
 
         self.current_addresses[memory] = next_address
 
@@ -219,6 +234,8 @@ class MiniMallocate(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter):
+        from minimalloc import Buffer, Problem
+
         buffers: list[Buffer] = []
         buffer_ops: dict[str, snax.Alloc] = {}
         uses: dict[Operation, list[Buffer]] = defaultdict(list)
@@ -238,9 +255,13 @@ class MiniMallocate(RewritePattern):
             if isinstance(op, snax.Alloc):
                 # create new buffer
                 if not isinstance(op.size, OpResult):
-                    raise RuntimeError("Static allocations should have a statically known size.")
+                    raise RuntimeError(
+                        "Static allocations should have a statically known size."
+                    )
                 if not isinstance(op.size.op, arith.ConstantOp):
-                    raise RuntimeError("Static allocations should have a statically known size.")
+                    raise RuntimeError(
+                        "Static allocations should have a statically known size."
+                    )
                 if op.memory_space is None:
                     raise RuntimeError("Allocations need a defined memory space")
 
@@ -287,10 +308,15 @@ class MiniMallocate(RewritePattern):
         # Lifetime of the buffers is now determined, run the minimalloc algorithm for every memory space
         pointer_result: dict[str, int] = {}
         memory_spaces = set(
-            self.get_memory(cast(StringAttr, buffer_ops[buffer.id].memory_space).data) for buffer in buffers
+            self.get_memory(cast(StringAttr, buffer_ops[buffer.id].memory_space).data)
+            for buffer in buffers
         )
         for memory in memory_spaces:
-            buffers_subset = [buffer for buffer in buffers if buffer_ops[buffer.id].memory_space == memory.attribute]
+            buffers_subset = [
+                buffer
+                for buffer in buffers
+                if buffer_ops[buffer.id].memory_space == memory.attribute
+            ]
             problem = Problem(buffers_subset, memory.capacity)
             solution = problem.solve()
             for buffer, offset in zip(buffers_subset, solution):
@@ -298,15 +324,21 @@ class MiniMallocate(RewritePattern):
 
         # Now, generate constant ops for the pointers
         for buffer in buffers:
-            pointer_cst = arith.ConstantOp.from_int_and_width(pointer_result[buffer.id], builtin.i32)
+            pointer_cst = arith.ConstantOp.from_int_and_width(
+                pointer_result[buffer.id], builtin.i32
+            )
             pointer = llvm.IntToPtrOp(pointer_cst)
 
             ops_to_insert: list[Operation] = [pointer_cst, pointer]
 
-            created_struct, ops_to_insert_struct = create_memref_struct(buffer_ops[buffer.id], pointer.output)
+            created_struct, ops_to_insert_struct = create_memref_struct(
+                buffer_ops[buffer.id], pointer.output
+            )
             ops_to_insert.extend(ops_to_insert_struct)
 
-            rewriter.replace_op(buffer_ops[buffer.id], ops_to_insert, created_struct.results)
+            rewriter.replace_op(
+                buffer_ops[buffer.id], ops_to_insert, created_struct.results
+            )
 
 
 def allocs_are_static(module_op: builtin.ModuleOp) -> bool:

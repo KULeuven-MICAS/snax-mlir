@@ -20,8 +20,12 @@ def get_snax_mac_config(snax_mlir_path: str | None = None) -> dict[str, Any]:
     config["num_chips"] = 1
     config["num_harts"] = 2
     config["vltsim"] = f"{snax_utils_path}/snax-mac-rtl/bin/snitch_cluster.vlt"
-    config["cflags"].append(f"-I{snitch_sw_path}/target/snitch_cluster/sw/snax/mac/include")
-    config["ldflags"].append(f"-I{snitch_sw_path}/target/snitch_cluster/sw/snax/mac/build/mac.o")
+    config["cflags"].append(
+        f"-I{snitch_sw_path}/target/snitch_cluster/sw/snax/mac/include"
+    )
+    config["ldflags"].append(
+        f"-I{snitch_sw_path}/target/snitch_cluster/sw/snax/mac/build/mac.o"
+    )
     return config
 
 
@@ -36,7 +40,10 @@ def get_snax_gemmx_config(snax_mlir_path: str | None = None) -> dict[str, Any]:
     config.update(get_default_flags(snitch_sw_path, snax_mlir_path=snax_mlir_path))
     config["num_chips"] = 1
     config["num_harts"] = 2
-    config["vltsim"] = snax_utils_path + "/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster.vlt"
+    config["vltsim"] = (
+        snax_utils_path
+        + "/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster.vlt"
+    )
     config["snaxc-config"] = utils_dir / "ssot" / "snax_gemmx.yaml"
     return config
 
@@ -52,7 +59,7 @@ def get_snax_xdma_config(snax_mlir_path: str | None = None) -> dict[str, Any]:
     config.update(get_default_flags(snitch_sw_path, snax_mlir_path=snax_mlir_path))
     config["num_chips"] = 1
     config["num_harts"] = 2
-    config["vltsim"] = snax_utils_path + "/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster.vlt"
+    config["vltsim"] = utils_dir / "xdma_vlt" / "snitch_cluster.vlt"
     config["snaxc-config"] = utils_dir / "ssot" / "snax_xdma.yaml"
     return config
 

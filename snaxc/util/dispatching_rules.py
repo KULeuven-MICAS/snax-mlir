@@ -9,6 +9,8 @@ def dispatch_to_dm(op: Operation):
     for now, this is only memref copy operations"""
     if isinstance(op, memref.CopyOp):
         return True
+    if isinstance(op, dart.StreamingRegionOpBase):
+        return True
     return False
 
 
@@ -20,6 +22,5 @@ def dispatch_to_compute(op: Operation):
     """
     if isinstance(op, linalg.GenericOp):
         return True
-    if isinstance(op, dart.StreamingRegionOpBase):
-        return True
+
     return False

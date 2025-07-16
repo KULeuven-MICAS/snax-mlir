@@ -3,13 +3,13 @@
 #include "stdint.h"
 #include <snrt.h>
 
-void _mlir_ciface_snax_main(FourDMemrefI32_t *results);
+void _mlir_ciface_snax_main(OneDMemrefI32_t *results);
 
 int main() {
 
-  FourDMemrefI32_t results[2];
+  OneDMemrefI32_t results[2];
 
-  FourDMemrefI32_t *golden, *computed;
+  OneDMemrefI32_t *golden, *computed;
 
   golden = &results[0];
   computed = &results[1];
@@ -31,9 +31,7 @@ int main() {
   if (thiscore != 0)
     return 0;
 
-  int total_results = 1;
-  for (int i = 0; i < 4; i++)
-    total_results *= computed->shape[i];
+  int total_results = computed->shape[0];
 
   printf("Checking %d results...\n", total_results);
 

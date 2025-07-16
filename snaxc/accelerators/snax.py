@@ -9,7 +9,15 @@ from xdsl.ir import Operation, OpResult, SSAValue
 
 from snaxc.accelerators.accelerator import Accelerator
 from snaxc.accelerators.streamers import StreamerConfiguration
-from snaxc.accelerators.streamers.streamers import Streamer, StreamerFlag, StreamerOpts
+from snaxc.accelerators.streamers.streamers import (
+    HasAddressRemap,
+    HasBroadcast,
+    HasChannelMask,
+    Streamer,
+    StreamerFlag,
+    StreamerSystemType,
+)
+from snaxc.accelerators.xdma_extensions import DMAExtension, TransposeExtension
 from snaxc.dialects import accfg, snax_stream
 from snaxc.dialects.dart import AccessPatternOp, StreamingRegionOpBase
 from snaxc.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
@@ -25,7 +33,9 @@ class SNAXAccelerator(Accelerator, ABC):
     """
 
     @staticmethod
-    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_launch(
+        launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
+    ) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.launch_field_items())
         ops: Sequence[Operation] = []
         for field, val in launch_op.iter_params():
@@ -57,7 +67,9 @@ class SNAXAccelerator(Accelerator, ABC):
         return ops
 
     @staticmethod
-    def lower_acc_setup(setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_setup(
+        setup_op: accfg.SetupOp, acc_op: accfg.AcceleratorOp
+    ) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.field_items())
         ops: Sequence[Operation] = []
         for field, val in setup_op.iter_params():
@@ -92,19 +104,29 @@ class SNAXStreamer(ABC):
 
     zero_address = 0x1000_0040
 
-    def __init__(self, streamer_config: StreamerConfiguration | StreamerConfigurationAttr) -> None:
+    def __init__(
+        self, streamer_config: StreamerConfiguration | StreamerConfigurationAttr
+    ) -> None:
         if isinstance(streamer_config, StreamerConfiguration):
             streamer_config = StreamerConfigurationAttr(streamer_config)
 
         self.streamer_config = streamer_config
 
         # set streamer names as a, b, c, d, ...
-        self.streamer_names = list(string.ascii_lowercase[: self.streamer_config.data.size()])
+        self.streamer_names = list(
+            string.ascii_lowercase[: self.streamer_config.data.size()]
+        )
 
-        self.streamer_setup_fields = self.get_streamer_setup_fields()
-        self.streamer_launch_fields = self.get_streamer_launch_fields()
+        if self.streamer_config.data.system_type() == StreamerSystemType.Regular:
+            self.streamer_setup_fields = self.get_streamer_setup_fields()
+            self.streamer_launch_fields = self.get_streamer_launch_fields()
+        else:
+            self.streamer_setup_fields = self.get_xdma_streamer_setup_fields()
+            self.streamer_launch_fields = self.get_xdma_streamer_launch_fields()
 
-    def _generate_streamer_setup_vals(self, op: StreamingRegionOp) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def _generate_streamer_setup_vals(
+        self, op: StreamingRegionOp
+    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
 
         do_broadcast = [False] * len(self.streamer_config.data.streamers)
@@ -113,7 +135,10 @@ class SNAXStreamer(ABC):
             # streamer must generate zero pattern if the stream is coming from c0
             is_zero_pattern = False
             if isinstance(opresult := op.operands[operand], OpResult):
-                is_zero_pattern = isinstance(opresult.op, arith.ConstantOp) and opresult.op.value == c0_attr
+                is_zero_pattern = (
+                    isinstance(opresult.op, arith.ConstantOp)
+                    and opresult.op.value == c0_attr
+                )
 
             # base pointers (low, high)
             if is_zero_pattern:
@@ -121,12 +146,16 @@ class SNAXStreamer(ABC):
                 result.append(([czero], czero.result))
             else:
                 result.append(([], op.operands[operand]))
-            result.append(([c0 := arith.ConstantOp.from_int_and_width(0, i32)], c0.result))
+            result.append(
+                ([c0 := arith.ConstantOp.from_int_and_width(0, i32)], c0.result)
+            )
 
             # spatial strides
             for dim, flag in enumerate(streamer.spatial_dims):
                 stride = op.stride_patterns.data[operand].spatial_strides.data[dim].data
-                if stride == 0 and StreamerOpts.HasBroadcast in streamer.opts:
+                if stride == 0 and any(
+                    isinstance(opt, HasBroadcast) for opt in streamer.opts
+                ):
                     do_broadcast[operand] = True
                 cst = arith.ConstantOp.from_int_and_width(stride, i32)
                 result.append(([cst], cst.result))
@@ -134,12 +163,16 @@ class SNAXStreamer(ABC):
             # loop bounds
             upper_bounds = op.stride_patterns.data[operand].upper_bounds.data
             # pad unused temporal bounds with 1's'
-            upper_bounds = upper_bounds + ((IntAttr(1),) * (streamer.temporal_dim - len(upper_bounds)))
+            upper_bounds = upper_bounds + (
+                (IntAttr(1),) * (streamer.temporal_dim - len(upper_bounds))
+            )
 
             # temporal strides
             temporal_strides = op.stride_patterns.data[operand].temporal_strides.data
             # pad unused spatial strides with 0's
-            temporal_strides = temporal_strides + ((IntAttr(0),) * (streamer.temporal_dim - len(temporal_strides)))
+            temporal_strides = temporal_strides + (
+                (IntAttr(0),) * (streamer.temporal_dim - len(temporal_strides))
+            )
 
             # ops for loop bounds
             for dim, flag in enumerate(streamer.temporal_dims):
@@ -161,12 +194,12 @@ class SNAXStreamer(ABC):
                 result.append(([cst], cst.result))
 
             # address remap:
-            if StreamerOpts.HasAddressRemap in streamer.opts:
+            if any(isinstance(opt, HasAddressRemap) for opt in streamer.opts):
                 c0 = arith.ConstantOp.from_int_and_width(0, i32)
                 result.append(([c0], c0.result))
 
             # channel mask option
-            if StreamerOpts.HasChannelMask in streamer.opts:
+            if any(isinstance(opt, HasChannelMask) for opt in streamer.opts):
                 if is_zero_pattern:
                     # mask all channels such that they generate zeros
                     c0 = arith.ConstantOp.from_int_and_width(0, i32)
@@ -178,7 +211,7 @@ class SNAXStreamer(ABC):
 
         # transpose specifications
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
-            if StreamerOpts.HasTranspose in streamer.opts:
+            if any(isinstance(opt, TransposeExtension) for opt in streamer.opts):
                 # if we want to disable transpose, we need
                 # a 1 to the transpose field, as it is an
                 # extension bypass signal
@@ -186,7 +219,7 @@ class SNAXStreamer(ABC):
                 result.append(([c1], c1.result))
 
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
-            if StreamerOpts.HasBroadcast in streamer.opts:
+            if any(isinstance(opt, HasBroadcast) for opt in streamer.opts):
                 if do_broadcast[operand]:
                     c0 = arith.ConstantOp.from_int_and_width(0, i32)
                     result.append(([c0], c0.result))
@@ -199,7 +232,9 @@ class SNAXStreamer(ABC):
     def get_streamer_setup_fields(self) -> Sequence[str]:
         result: list[str] = []
 
-        for name, streamer in zip(self.streamer_names, self.streamer_config.data.streamers):
+        for name, streamer in zip(
+            self.streamer_names, self.streamer_config.data.streamers
+        ):
             # base pointers
             result.extend([f"{name}_ptr_low", f"{name}_ptr_high"])
             # spatial strides
@@ -209,24 +244,74 @@ class SNAXStreamer(ABC):
             # temporal strides
             result.extend([f"{name}_tstride_{i}" for i in range(streamer.temporal_dim)])
             # options
-            if StreamerOpts.HasAddressRemap in streamer.opts:
+            if any(isinstance(opt, HasAddressRemap) for opt in streamer.opts):
                 result.append(f"{name}_address_remap")
-            if StreamerOpts.HasChannelMask in streamer.opts:
+            if any(isinstance(opt, HasChannelMask) for opt in streamer.opts):
                 result.append(f"{name}_channel_mask")
 
         # transpose specifications
-        for streamer, name in zip(self.streamer_config.data.streamers, self.streamer_names):
-            if StreamerOpts.HasTranspose in streamer.opts:
+        for streamer, name in zip(
+            self.streamer_config.data.streamers, self.streamer_names
+        ):
+            if any(isinstance(opt, TransposeExtension) for opt in streamer.opts):
                 result.append(f"{name}_transpose")
 
-        for streamer, name in zip(self.streamer_config.data.streamers, self.streamer_names):
-            if StreamerOpts.HasBroadcast in streamer.opts:
+        for streamer, name in zip(
+            self.streamer_config.data.streamers, self.streamer_names
+        ):
+            if any(isinstance(opt, HasBroadcast) for opt in streamer.opts):
                 result.append(f"{name}_broadcast")
 
         return result
 
     def get_streamer_launch_fields(self) -> Sequence[str]:
         return ["launch_streamer"]
+
+    def get_xdma_streamer_setup_fields(self) -> Sequence[str]:
+        """
+        Get the setup fields for the xDMA streamer.
+        """
+        result: list[str] = []
+
+        assert (
+            self.streamer_config.data.system_type() == StreamerSystemType.DmaExt
+        ), "This method should only be called for xDMA streamer configurations"
+
+        for name, streamer in zip(
+            self.streamer_names, self.streamer_config.data.streamers
+        ):
+            # base address
+            result.extend([f"{name}_ptr_low", f"{name}_ptr_high"])
+
+        for i, (name, streamer) in enumerate(
+            zip(self.streamer_names, self.streamer_config.data.streamers)
+        ):
+            # spatial strides
+            result.extend([f"{name}_sstride_{i}" for i in range(streamer.spatial_dim)])
+            # temporal bounds
+            result.extend([f"{name}_bound_{i}" for i in range(streamer.temporal_dim)])
+            # temporal strides
+            result.extend([f"{name}_tstride_{i}" for i in range(streamer.temporal_dim)])
+            # options
+            result.extend([f"{name}_enabled_chan"])
+            if name == "b":
+                result.append(f"{name}_enabled_byte")
+            result.extend([f"{name}_bypass"])
+            # Extensions
+            for extension in streamer.opts:
+                if isinstance(extension, DMAExtension):
+                    for i in range(extension.csr_length):
+                        result.append(f"{name}_{extension.name}_{i}")
+
+        return result
+
+    def get_xdma_streamer_launch_fields(self) -> Sequence[str]:
+        """
+        Get the launch fields for the xDMA streamer.
+        """
+        return [
+            "launch_start",
+        ]
 
     def get_streamer_setup_dict(self, base_addr: int) -> tuple[int, dict[str, int]]:
         """
@@ -239,7 +324,9 @@ class SNAXStreamer(ABC):
         int: The next usable CSR address
         dict[str, int]: The dictionary mapping setup field to csr address
         """
-        streamer_setup = {key: base_addr + i for i, key in enumerate(self.streamer_setup_fields)}
+        streamer_setup = {
+            key: base_addr + i for i, key in enumerate(self.streamer_setup_fields)
+        }
         base_addr += len(self.streamer_setup_fields)
         return base_addr, streamer_setup
 
@@ -254,7 +341,9 @@ class SNAXStreamer(ABC):
         int: The next usable CSR address
         dict[str, int]: The dictionary mapping setup field to csr address
         """
-        streamer_launch = {key: base_addr + i for i, key in enumerate(self.streamer_launch_fields)}
+        streamer_launch = {
+            key: base_addr + i for i, key in enumerate(self.streamer_launch_fields)
+        }
         base_addr += len(self.streamer_launch_fields)
 
         # 1 busy register + 1 performance counter after launch field
@@ -279,8 +368,15 @@ class SNAXStreamer(ABC):
         return self.streamer_config.data.streamers
 
     def set_stride_patterns(
-        self, op: AccessPatternOp, snax_stride_patterns: Sequence[snax_stream.StridePattern]
-    ) -> tuple[Sequence[SSAValue], Sequence[SSAValue], Sequence[snax_stream.StridePattern], Sequence[Operation]]:
+        self,
+        op: AccessPatternOp,
+        snax_stride_patterns: Sequence[snax_stream.StridePattern],
+    ) -> tuple[
+        Sequence[SSAValue],
+        Sequence[SSAValue],
+        Sequence[snax_stream.StridePattern],
+        Sequence[Operation],
+    ]:
         """
         Allows the accelerator to customize the found stride patterns
         after scheduling and layout resolution, for a given operation.
@@ -319,14 +415,18 @@ class SNAXPollingBarrier(Accelerator, ABC):
         # kernels/tiled_mult/tiled.preprocfinal.mlir only works
         # when at least 4 nops are introduced, due to hardware handshake issues.
         # this is will likely not be fixed in the future.
-        nops = [llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True) for _ in range(4)]
+        nops = [
+            llvm.InlineAsmOp("nop", "", [], [], has_side_effects=True) for _ in range(4)
+        ]
         return [
             WhileOp(
                 [],
                 [],
                 [
                     barrier := arith.ConstantOp(acc_op.barrier),
-                    zero := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(0, 32)),
+                    zero := arith.ConstantOp(
+                        builtin.IntegerAttr.from_int_and_width(0, 32)
+                    ),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate
@@ -385,7 +485,9 @@ class SNAXPollingBarrier2(Accelerator, ABC):
                 [],
                 [
                     barrier := arith.ConstantOp(acc_op.barrier),
-                    one := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(1, 32)),
+                    one := arith.ConstantOp(
+                        builtin.IntegerAttr.from_int_and_width(1, 32)
+                    ),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate
@@ -426,7 +528,9 @@ class SNAXPollingBarrier3(Accelerator, ABC):
                 [],
                 [
                     barrier := arith.ConstantOp(acc_op.barrier),
-                    zero := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(0, 32)),
+                    zero := arith.ConstantOp(
+                        builtin.IntegerAttr.from_int_and_width(0, 32)
+                    ),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate

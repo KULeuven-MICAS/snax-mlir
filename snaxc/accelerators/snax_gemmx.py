@@ -16,11 +16,14 @@ from snaxc.accelerators.snax import (
     SNAXStreamer,
 )
 from snaxc.accelerators.streamers import (
+    HasAddressRemap,
+    HasBroadcast,
+    HasChannelMask,
     Streamer,
     StreamerConfiguration,
     StreamerType,
 )
-from snaxc.accelerators.streamers.streamers import StreamerOpts
+from snaxc.accelerators.xdma_extensions import TransposeExtension
 from snaxc.dialects import accfg, dart, kernel, snax_stream
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 from snaxc.util.pack_bitlist import pack_bitlist
@@ -31,35 +34,35 @@ default_streamer = StreamerConfiguration(
             StreamerType.Reader,
             temporal_dims=("n", "n", "n", "n", "n", "n"),
             spatial_dims=(8,),
-            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
+            opts=(TransposeExtension(), HasAddressRemap()),
         ),
         Streamer(  # B
             StreamerType.Reader,
             temporal_dims=("n", "n", "n"),
             spatial_dims=(8,),
-            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
+            opts=(TransposeExtension(), HasAddressRemap()),
         ),
         Streamer(  # D8
             StreamerType.Writer,
             temporal_dims=("r", "n", "n"),
             spatial_dims=(8,),
-            opts=(StreamerOpts.HasAddressRemap,),
+            opts=(HasAddressRemap(),),
         ),
         Streamer(  # C
             StreamerType.Reader,
             temporal_dims=("r", "n", "n"),
             spatial_dims=(8, 4),
             opts=(
-                StreamerOpts.HasChannelMask,
-                StreamerOpts.HasAddressRemap,
-                StreamerOpts.HasBroadcast,
+                HasChannelMask(),
+                HasAddressRemap(),
+                HasBroadcast(),
             ),
         ),
         Streamer(  # D32
             StreamerType.Writer,
             temporal_dims=("r", "n", "n"),
             spatial_dims=(8, 4),
-            opts=(StreamerOpts.HasAddressRemap,),
+            opts=(HasAddressRemap(),),
         ),
     ],
 )
