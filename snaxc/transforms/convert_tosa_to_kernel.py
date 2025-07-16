@@ -37,6 +37,9 @@ class RescaleClampPattern(RewritePattern):
             return
         if not isinstance(clamp_op := next(iter(rescale_op.output.uses)).operation, tosa.ClampOp):
             # no clamping op after, so we integrate clamping in rescale op to int8 range
+            # iff the output of the rescale op is int8
+            if rescale_op.output.type.element_type != builtin.i8:
+                return
             clamp_op = rescale_op
 
         # should have tensor inputs
