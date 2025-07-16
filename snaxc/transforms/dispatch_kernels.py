@@ -69,6 +69,16 @@ class DispatchTemplatePattern(RewritePattern):
                         # no match, continue
                         continue
 
+                if supported_kernel.secondary:
+                    if not any(
+                        isinstance(operand, OpResult)
+                        and isinstance(operand.op, linalg.GenericOp)
+                        and isinstance(operand.op.library_call, StringAttr)
+                        and accelerator.name in operand.op.library_call.data
+                        for operand in linalg_op.inputs
+                    ):
+                        continue
+
                 # kernel supported & operand types matched successfully
                 matched_accelerator = accelerator
                 break
