@@ -18,7 +18,7 @@ from snaxc.dialects.kernel import AddOp
 
 
 def pattern_is_broadcast(map: AffineMap):
-    if map.num_dims != len(map.results) + 1:
+    if not map.num_dims > len(map.results):
         return False
     for result in map.results:
         if not isinstance(result, AffineDimExpr):
