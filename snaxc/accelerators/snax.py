@@ -9,6 +9,7 @@ from xdsl.ir import Operation, OpResult, SSAValue
 
 from snaxc.accelerators.accelerator import Accelerator
 from snaxc.accelerators.streamers import StreamerConfiguration
+from snaxc.accelerators.streamers.extensions.streamer_extension import StreamerExtension
 from snaxc.accelerators.streamers.extensions.transpose_extension import (
     TransposeExtension,
 )

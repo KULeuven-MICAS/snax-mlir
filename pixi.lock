@@ -2158,10 +2158,10 @@ packages:
   - libgcc >=14
   size: 17310984
   timestamp: 1752743789959
-- pypi: .
+- pypi: ./
   name: snax-mlir
   version: 0.2.2
-  sha256: 2839df9cca3c961037b867a55d2eb5e5411ccd44d24d7ea231d91c26b6825602
+  sha256: a4c7cdaea653b3c7a1e3bbdceeba90c78b5ad55c79dd419c72ee973fc8825350
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@60e3b7970a3eb7fc16ab7e57c2928357bc5d0180
   - minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2
