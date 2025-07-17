@@ -3,6 +3,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
 
+from minimalloc import Buffer, Problem  # pyright: ignore[reportMissingTypeStubs]
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, llvm
 from xdsl.dialects.memref import DeallocOp
@@ -218,8 +219,6 @@ class MiniMallocate(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter):
-        from minimalloc import Buffer, Problem
-
         buffers: list[Buffer] = []
         buffer_ops: dict[str, snax.Alloc] = {}
         uses: dict[Operation, list[Buffer]] = defaultdict(list)
