@@ -31,13 +31,14 @@ from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 from xdsl.utils.exceptions import VerifyException
 
+import snaxc.accelerators.xdma_extensions  # pyright: ignore[reportUnusedImport] # noqa: F401
 from snaxc.accelerators.streamers import (
     Streamer,
     StreamerConfiguration,
     StreamerFlag,
+    StreamerOpts,
     StreamerType,
 )
-from snaxc.accelerators.streamers.streamers import StreamerOpts
 from snaxc.util.memref_descriptor import LLVMMemrefDescriptor
 
 
@@ -94,11 +95,17 @@ class LayoutCast(IRDLOperation):
         source = cast(MemRefType[Attribute], self.source.type)
         dest = self.dest.type
         if source.get_shape() != dest.get_shape():
-            raise VerifyException("Expected source and destination to have the same shape.")
+            raise VerifyException(
+                "Expected source and destination to have the same shape."
+            )
         if source.get_element_type() != dest.get_element_type():
-            raise VerifyException("Expected source and destination to have the same element type.")
+            raise VerifyException(
+                "Expected source and destination to have the same element type."
+            )
         if source.memory_space != dest.memory_space:
-            raise VerifyException("Expected source and destination to have the same memory space.")
+            raise VerifyException(
+                "Expected source and destination to have the same memory space."
+            )
 
 
 @irdl_op_definition
@@ -216,10 +223,14 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
                 # Determine the spatial dimensions
                 spatial_dims: Sequence[int] = []
                 while not parser.parse_optional_punctuation("]"):
-                    spatial_dims.append(parser.parse_integer(allow_boolean=False, allow_negative=False))
+                    spatial_dims.append(
+                        parser.parse_integer(allow_boolean=False, allow_negative=False)
+                    )
                     parser.parse_optional_punctuation("-")
 
-                streamers.append(Streamer(streamer_type, temporal_dims, spatial_dims, opts))
+                streamers.append(
+                    Streamer(streamer_type, temporal_dims, spatial_dims, opts)
+                )
 
                 if not parser.parse_optional_punctuation(","):
                     break
@@ -242,7 +253,11 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
 
         streamer_strings = [
             f"{streamer.type.value}["
-            + (f"opts={'-'.join([opt.name for opt in streamer.opts])}, " if streamer.opts else "")
+            + (
+                f"opts={'-'.join([opt.name for opt in streamer.opts])}, "
+                if streamer.opts
+                else ""
+            )
             + f"temp={'-'.join(streamer.temporal_dims)}, "
             + f"spat={'-'.join(str(d) for d in streamer.spatial_dims)}]"
             for streamer in self.data.streamers
