@@ -264,7 +264,7 @@ class SNAXXDMAAccelerator(
                 **streamer_setup,
             },
             {**streamer_launch},
-            addr_next + 2,  # TODO: check if this 3 is still correct, remove alu fields
+            addr_next + 2,
         )
 
         # add snax streamer interface
@@ -297,7 +297,7 @@ class SNAXXDMAAccelerator(
         return (
             updated_base_addr,
             streamer_launch,
-        )  # TODO: check if performance counters should be included here (not in original code)
+        )
 
     def get_template(self, op: dart.StreamingRegionOpBase):
         template = [AffineMap.from_callable(lambda y: (y,))] * 3
