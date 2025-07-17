@@ -13,7 +13,7 @@ class TransposeExtension(DMAExtension):
     This class can be used to add custom functionality to the SNAX XDMA accelerator.
     """
 
-    name = "transpose_ext"
+    name = "t"
     supported_kernel = SupportedKernel(kernel.MacOp, [i32, i32, i32])  # TODO: Select correct kernel
     csr_length = 1
 

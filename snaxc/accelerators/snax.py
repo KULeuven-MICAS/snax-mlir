@@ -15,9 +15,7 @@ from snaxc.accelerators.streamers.streamers import (
     HasChannelMask,
     Streamer,
     StreamerFlag,
-    StreamerSystemType,
 )
-from snaxc.accelerators.xdma_extensions.dma_extension import DMAExtension
 from snaxc.accelerators.xdma_extensions.transpose_extension import TransposeExtension
 from snaxc.dialects import accfg, snax_stream
 from snaxc.dialects.dart import AccessPatternOp, StreamingRegionOpBase
