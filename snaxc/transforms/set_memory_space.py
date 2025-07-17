@@ -3,6 +3,7 @@ from xdsl.dialects import builtin, func, linalg, memref
 from xdsl.ir import Attribute, Operation, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
+    GreedyRewritePatternApplier,
     PatternRewriter,
     PatternRewriteWalker,
     RewritePattern,
@@ -219,12 +220,44 @@ class HandleFuncReturns(RewritePattern):
         rewriter.replace_matched_op(new_op)
 
 
+class UpdateSubviewOperations(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: memref.SubviewOp, rewriter: PatternRewriter):
+        assert isa(op.source.type, builtin.MemRefType[Attribute])
+
+        if op.source.type.memory_space != op.result.type.memory_space:
+            # create new subview op with correct memory space
+            new_op = memref.SubviewOp(
+                op.source,
+                op.offsets,
+                op.sizes,
+                op.strides,
+                op.static_offsets,
+                op.static_sizes,
+                op.static_strides,
+                result_type=builtin.MemRefType(
+                    op.result.type.element_type,
+                    op.result.type.get_shape(),
+                    op.result.type.layout,
+                    op.source.type.memory_space,
+                ),
+            )
+            rewriter.replace_matched_op(new_op)
+
+
 class SetMemorySpace(ModulePass):
     name = "set-memory-space"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(InitFuncMemorySpace()).rewrite_module(op)
-        PatternRewriteWalker(InitMemRefGlobalMemorySpace()).rewrite_module(op)
-        PatternRewriteWalker(InitMemRefAllocMemorySpace()).rewrite_module(op)
-        PatternRewriteWalker(HandleFuncReturns()).rewrite_module(op)
-        PatternRewriteWalker(InitStreamAndLinalgMemorySpace()).rewrite_module(op)
+        PatternRewriteWalker(
+            GreedyRewritePatternApplier(
+                [
+                    InitFuncMemorySpace(),
+                    InitMemRefGlobalMemorySpace(),
+                    InitMemRefAllocMemorySpace(),
+                    HandleFuncReturns(),
+                    InitStreamAndLinalgMemorySpace(),
+                    UpdateSubviewOperations(),
+                ]
+            )
+        ).rewrite_module(op)
