@@ -39,7 +39,7 @@ class HasAddressRemap(StreamerOpts):
     Indicates that the streamer has an address remap.
     """
 
-    name = "has_address_remap"
+    name = "a"
 
     def __init__(self) -> None:
         return
@@ -50,7 +50,7 @@ class HasChannelMask(StreamerOpts):
     Indicates that the streamer has a channel mask.
     """
 
-    name = "has_channel_mask"
+    name = "c"
 
     def __init__(self) -> None:
         return
@@ -61,7 +61,7 @@ class HasByteMask(StreamerOpts):
     Indicates that the streamer has a byte mask.
     """
 
-    name = "has_byte_mask"
+    name = "bm"
 
     def __init__(self) -> None:
         return
@@ -72,7 +72,7 @@ class HasBroadcast(StreamerOpts):
     Indicates that the streamer has a broadcast option.
     """
 
-    name = "has_broadcast"
+    name = "b"
 
     def __init__(self) -> None:
         return
