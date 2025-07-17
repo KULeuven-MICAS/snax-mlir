@@ -14,9 +14,7 @@ class TransposeExtension(StreamerExtension):
     """
 
     name = "t"
-    supported_kernel = SupportedKernel(
-        kernel.MacOp, [i32, i32, i32]
-    )  # TODO: Select correct kernel
+    supported_kernel = SupportedKernel(kernel.MacOp, [i32, i32, i32])  # TODO: Select correct kernel
     csr_length = 1
 
     def get_dma_extension_name(self) -> str:

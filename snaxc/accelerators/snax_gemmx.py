@@ -68,9 +68,7 @@ default_streamer = StreamerConfiguration(
 )
 
 
-class SNAXGEMMXAccelerator(
-    SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAXPollingBarrier4
-):
+class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAXPollingBarrier4):
     """
     Accelerator Interface class for SNAX GEMMX accelerator
     """
@@ -84,9 +82,7 @@ class SNAXGEMMXAccelerator(
         SupportedKernel(kernel.RescaleOp, (i32, i8)),
     )
 
-    def __init__(
-        self, streamer_config: StreamerConfiguration = default_streamer
-    ) -> None:
+    def __init__(self, streamer_config: StreamerConfiguration = default_streamer) -> None:
         super().__init__(streamer_config)
 
         self.fields = (
@@ -155,15 +151,9 @@ class SNAXGEMMXAccelerator(
 
             result = [
                 *ops_to_insert,
-                setup := accfg.SetupOp(
-                    [val for _, val in args], self.fields, self.name
-                ),
-                launch_val := arith.ConstantOp(
-                    builtin.IntegerAttr.from_int_and_width(1, 5)
-                ),
-                token := accfg.LaunchOp(
-                    [launch_val, launch_val], self.launch_fields, setup
-                ),
+                setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
+                launch_val := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(1, 5)),
+                token := accfg.LaunchOp([launch_val, launch_val], self.launch_fields, setup),
                 accfg.AwaitOp(token),
             ]
 
@@ -195,9 +185,7 @@ class SNAXGEMMXAccelerator(
 
         launch_attrs: dict[str, Attribute] = {}
 
-        if isinstance(
-            qmac := generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp
-        ):
+        if isinstance(qmac := generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp):
             if yield_op.arguments[0].type == dart.StreamType(builtin.IntegerType(8)):
                 i8_out = True
                 last_pattern = op.stride_patterns.data[2]
@@ -237,14 +225,10 @@ class SNAXGEMMXAccelerator(
                     max_int_val = rescale_op.max_int.value.data
                     min_int_val = rescale_op.min_int.value.data
                     double_round_val = rescale_op.double_round.value.data
-                    shift_vals_int = cast(
-                        tuple[int, ...], rescale_op.shift.get_values()
-                    )
+                    shift_vals_int = cast(tuple[int, ...], rescale_op.shift.get_values())
                     if len(shift_vals_int) == 1:
                         shift_vals_int = (shift_vals_int[0],) * 8
-                    mult_vals_int = cast(
-                        tuple[int, ...], rescale_op.multiplier.get_values()
-                    )
+                    mult_vals_int = cast(tuple[int, ...], rescale_op.multiplier.get_values())
                     if len(mult_vals_int) == 1:
                         mult_vals_int = (mult_vals_int[0],) * 8
                     zp_in_val = rescale_op.input_zp.value.data
@@ -264,22 +248,12 @@ class SNAXGEMMXAccelerator(
 
                 max_int = arith.ConstantOp.from_int_and_width(max_int_val, i32)
                 min_int = arith.ConstantOp.from_int_and_width(min_int_val, i32)
-                double_round = arith.ConstantOp.from_int_and_width(
-                    double_round_val, i32
-                )
-                shifts = [
-                    arith.ConstantOp.from_int_and_width(shift_val, i32)
-                    for shift_val in shift_vals_int
-                ]
-                mults = [
-                    arith.ConstantOp.from_int_and_width(mult_val, i32)
-                    for mult_val in mult_vals_int
-                ]
+                double_round = arith.ConstantOp.from_int_and_width(double_round_val, i32)
+                shifts = [arith.ConstantOp.from_int_and_width(shift_val, i32) for shift_val in shift_vals_int]
+                mults = [arith.ConstantOp.from_int_and_width(mult_val, i32) for mult_val in mult_vals_int]
                 zp_in = arith.ConstantOp.from_int_and_width(zp_in_val, i32)
                 zp_out = arith.ConstantOp.from_int_and_width(zp_out_val, i32)
-                ops_to_add.extend(
-                    [max_int, min_int, double_round, *shifts, *mults, zp_in, zp_out]
-                )
+                ops_to_add.extend([max_int, min_int, double_round, *shifts, *mults, zp_in, zp_out])
 
                 # force values that can be negative to 8 bits
                 cst255 = arith.ConstantOp.from_int_and_width(255, 32)
@@ -290,31 +264,23 @@ class SNAXGEMMXAccelerator(
                 ops_to_add.extend([cst255, max_int, min_int, zp_in, zp_out])
 
                 # bitpacking
-                ops_to_add.extend(
-                    pack_bitlist([min_int, max_int, zp_out, zp_in], [24, 16, 8, 0])
-                )
+                ops_to_add.extend(pack_bitlist([min_int, max_int, zp_out, zp_in], [24, 16, 8, 0]))
                 csr0 = ops_to_add[-1].results[0].op.results[0]
                 csr1 = double_round.result
 
                 shift_vals: Sequence[SSAValue] = []
                 for i in range(0, len(shifts), 4):  # 4 8-bit shift vals per 32-bit csr
-                    shift_bitlist = list(
-                        pack_bitlist(shifts[i : i + 4][::-1], (24, 16, 8, 0))
-                    )
+                    shift_bitlist = list(pack_bitlist(shifts[i : i + 4][::-1], (24, 16, 8, 0)))
                     ops_to_add.extend(shift_bitlist)
                     shift_vals.append(shift_bitlist[-1].results[0])
 
                 if len(shift_vals) > 2:
-                    launch_attrs["shift_vals"] = cast(
-                        DenseArrayBase, rescale_op.shift
-                    )  # pyright: ignore
+                    launch_attrs["shift_vals"] = cast(DenseArrayBase, rescale_op.shift)  # pyright: ignore
                     shift_vals = shift_vals[:2]
 
                 mult_vals = [mult.result for mult in mults]
                 if len(mult_vals) > 8:
-                    launch_attrs["mult_vals"] = cast(
-                        DenseArrayBase, rescale_op.multiplier
-                    )  # pyright: ignore
+                    launch_attrs["mult_vals"] = cast(DenseArrayBase, rescale_op.multiplier)  # pyright: ignore
                     launch_attrs["m"] = m_val.value
                     mult_vals = mult_vals[:8]
 
@@ -358,18 +324,14 @@ class SNAXGEMMXAccelerator(
 
             max_int = arith.ConstantOp.from_int_and_width(rescale.max_int.value, i32)
             min_int = arith.ConstantOp.from_int_and_width(rescale.min_int.value, i32)
-            double_round = arith.ConstantOp.from_int_and_width(
-                rescale.double_round.value, i32
-            )
+            double_round = arith.ConstantOp.from_int_and_width(rescale.double_round.value, i32)
             shift_val = cast(int, rescale.shift.get_values()[0])
             mult_val = cast(int, rescale.multiplier.get_values()[0])
             shift = arith.ConstantOp.from_int_and_width(shift_val, i32)
             mult = arith.ConstantOp.from_int_and_width(mult_val, i32)
             zp_in = arith.ConstantOp.from_int_and_width(rescale.input_zp.value, i32)
             zp_out = arith.ConstantOp.from_int_and_width(rescale.output_zp.value, i32)
-            ops_to_add.extend(
-                [max_int, min_int, double_round, shift, mult, zp_in, zp_out]
-            )
+            ops_to_add.extend([max_int, min_int, double_round, shift, mult, zp_in, zp_out])
 
             # force values that can be negative to 8 bits
             cst255 = arith.ConstantOp.from_int_and_width(255, 32)
@@ -380,9 +342,7 @@ class SNAXGEMMXAccelerator(
             ops_to_add.extend([cst255, max_int, min_int, zp_in, zp_out])
 
             # bitpacking
-            ops_to_add.extend(
-                pack_bitlist([min_int, max_int, zp_out, zp_in], [24, 16, 8, 0])
-            )
+            ops_to_add.extend(pack_bitlist([min_int, max_int, zp_out, zp_in], [24, 16, 8, 0]))
             csr0 = ops_to_add[-1].results[0].op.results[0]
             csr1 = double_round.result
 
@@ -400,8 +360,7 @@ class SNAXGEMMXAccelerator(
             raise NotImplementedError()
 
         knm: list[tuple[tuple[Operation], OpResult]] = [
-            (((cst := arith.ConstantOp.from_int_and_width(val, 32)),), cst.result)
-            for val in (k, n, m)
+            (((cst := arith.ConstantOp.from_int_and_width(val, 32)),), cst.result) for val in (k, n, m)
         ]
 
         return (
@@ -420,9 +379,7 @@ class SNAXGEMMXAccelerator(
         )
 
     @staticmethod
-    def lower_acc_launch(
-        launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp
-    ) -> Sequence[Operation]:
+    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         if "mult_vals" not in launch_op.attributes:
             return SNAXAccelerator.lower_acc_launch(launch_op, acc_op)
 
@@ -449,9 +406,7 @@ class SNAXGEMMXAccelerator(
 
         # add address vals:
         ops.append(addr_gemmx := arith.ConstantOp(field_to_csr_launch["launch_gemmx"]))
-        ops.append(
-            addr_streamer := arith.ConstantOp(field_to_csr_launch["launch_streamer"])
-        )
+        ops.append(addr_streamer := arith.ConstantOp(field_to_csr_launch["launch_streamer"]))
 
         # overwrite m and temporal loop bound:
         m = launch_op.attributes["m"]
@@ -460,15 +415,11 @@ class SNAXGEMMXAccelerator(
         assert isinstance(mult_vals, DenseArrayBase)
         shift_vals = launch_op.attributes["shift_vals"]
         assert isinstance(shift_vals, DenseArrayBase)
-        new_m = builtin.IntegerAttr.from_int_and_width(
-            m.value.data // (len(mult_vals) // 8), m.type.width.data
-        )
+        new_m = builtin.IntegerAttr.from_int_and_width(m.value.data // (len(mult_vals) // 8), m.type.width.data)
 
         ops.append(new_m_val := arith.ConstantOp(new_m))
         ops.append(m_addr := arith.ConstantOp(field_to_csr["M"]))
-        ops.append(
-            loop_bound_addr := arith.ConstantOp(field_to_csr["temporal_loop_bound"])
-        )
+        ops.append(loop_bound_addr := arith.ConstantOp(field_to_csr["temporal_loop_bound"]))
         ops.append(csr_op(m_addr.result, new_m_val.result))
         ops.append(csr_op(loop_bound_addr.result, new_m_val.result))
 
@@ -487,20 +438,14 @@ class SNAXGEMMXAccelerator(
             # reprogram the shift and mult values
             shifts = shift_vals[i * 8 : i * 8 + 8]
             for j in range(0, len(shifts), 4):  # 4 8-bit shift vals per 32-bit csr
-                shift_bitlist = list(
-                    pack_bitlist(shifts[j : j + 4][::-1], (24, 16, 8, 0))
-                )
+                shift_bitlist = list(pack_bitlist(shifts[j : j + 4][::-1], (24, 16, 8, 0)))
                 ops.extend(shift_bitlist)
-                ops.append(
-                    csr_addr := arith.ConstantOp(field_to_csr[f"shift_{j // 4}"])
-                )
+                ops.append(csr_addr := arith.ConstantOp(field_to_csr[f"shift_{j // 4}"]))
                 ops.append(csr_op(csr_addr.result, shift_bitlist[-1].results[0]))
 
             mults = mult_vals[i * 8 : i * 8 + 8]
             for j in range(len(mults)):
-                ops.append(
-                    mult_val := arith.ConstantOp.from_int_and_width(mults[j], i32)
-                )
+                ops.append(mult_val := arith.ConstantOp.from_int_and_width(mults[j], i32))
                 ops.append(csr_addr := arith.ConstantOp(field_to_csr[f"mult_{j}"]))
                 ops.append(csr_op(csr_addr.result, mult_val.result))
 
@@ -568,13 +513,9 @@ class SNAXGEMMXAccelerator(
         elif len(op.patterns) == 4:
             # gemm with add
             if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
-                streamers = [
-                    self.streamer_config.data.streamers[i] for i in (0, 1, 3, 4)
-                ]
+                streamers = [self.streamer_config.data.streamers[i] for i in (0, 1, 3, 4)]
             elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
-                streamers = [
-                    self.streamer_config.data.streamers[i] for i in (0, 1, 3, 2)
-                ]
+                streamers = [self.streamer_config.data.streamers[i] for i in (0, 1, 3, 2)]
             else:
                 raise NotImplementedError("Unsupported type for snax_gemmx accelerator")
         else:
@@ -596,9 +537,7 @@ class SNAXGEMMXAccelerator(
         new_outputs: list[SSAValue] = list(op.outputs)
         ops_to_add: list[Operation] = []
 
-        empty_pattern = snax_stream.StridePattern(
-            upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0]
-        )
+        empty_pattern = snax_stream.StridePattern(upper_bounds=[0] * 3, temporal_strides=[0] * 3, spatial_strides=[0])
         if len(snax_stride_patterns) == 3:
             if op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(32)):
                 # matmul, int32 output
@@ -693,14 +632,10 @@ class SNAXGEMMXAccelerator(
             # read zeros from tcdm (must make sure there are zeros at these addresses)
             # in the new streamer this can be fixed with byte masking
             snax_stride_patterns.insert(0, zero_pattern)
-            ops_to_add.append(
-                ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
-            )
+            ops_to_add.append(ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType()))
             new_inputs.insert(0, ptr.result)
             snax_stride_patterns.insert(1, zero_pattern)
-            ops_to_add.append(
-                ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
-            )
+            ops_to_add.append(ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType()))
             new_inputs.insert(1, ptr.result)
 
             # flip D8 and C such that they are in the right order
