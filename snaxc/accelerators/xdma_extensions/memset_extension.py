@@ -14,7 +14,7 @@ class MemSetExtension(DMAExtension):
     """
 
     name = "memset_ext"
-    supported_kernel = SupportedKernel(kernel.MacOp, [i32, i32, i32]) #TODO: Select correct kernel
+    supported_kernel = SupportedKernel(kernel.MacOp, [i32, i32, i32])  # TODO: Select correct kernel
     csr_length = 1
 
     def get_dma_extension_name(self) -> str:
@@ -29,4 +29,4 @@ class MemSetExtension(DMAExtension):
         This method should be implemented to provide the specific CSR values needed for the MemSet extension.
         """
         # Example implementation, replace with actual logic
-        return [0] #TODO: Replace with actual CSR values for MemSet
+        return [0]  # TODO: Replace with actual CSR values for MemSet

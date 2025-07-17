@@ -18,6 +18,7 @@ class StreamerSystemType(StrEnum):
     Enum that specifies the type of system for which the streamer is configured.
     either a regular system or a system with xDMA support.
     """
+
     # Streamer for regular system
     Regular = "reg"
     # Streamer for xDMA
@@ -29,39 +30,53 @@ class StreamerOpts(ABC):
     Base class for streamer options.
     This class can be used to define custom options for streamers.
     """
+
     name: str
+
 
 class HasAddressRemap(StreamerOpts):
     """
     Indicates that the streamer has an address remap.
     """
-    name = 'has_address_remap'
+
+    name = "has_address_remap"
+
     def __init__(self) -> None:
         return
+
 
 class HasChannelMask(StreamerOpts):
     """
     Indicates that the streamer has a channel mask.
     """
-    name = 'has_channel_mask'
+
+    name = "has_channel_mask"
+
     def __init__(self) -> None:
         return
+
 
 class HasByteMask(StreamerOpts):
     """
     Indicates that the streamer has a byte mask.
     """
-    name = 'has_byte_mask'
+
+    name = "has_byte_mask"
+
     def __init__(self) -> None:
         return
+
 
 class HasBroadcast(StreamerOpts):
     """
     Indicates that the streamer has a broadcast option.
     """
-    name = 'has_broadcast'
+
+    name = "has_broadcast"
+
     def __init__(self) -> None:
         return
+
 
 class StreamerFlag(StrEnum):
     """
@@ -113,9 +128,7 @@ class Streamer:
         opts: Iterable[StreamerOpts] = [],
     ) -> None:
         self.type = type
-        temporal_dims = [
-            f if isinstance(f, StreamerFlag) else StreamerFlag(f) for f in temporal_dims
-        ]
+        temporal_dims = [f if isinstance(f, StreamerFlag) else StreamerFlag(f) for f in temporal_dims]
         self.temporal_dims = tuple(temporal_dims)
         self.spatial_dims = tuple(spatial_dims)
         self.opts = list(opts)
@@ -177,4 +190,3 @@ class StreamerConfiguration:
         so just take the first
         """
         return self.streamers[0].spatial_dim
-

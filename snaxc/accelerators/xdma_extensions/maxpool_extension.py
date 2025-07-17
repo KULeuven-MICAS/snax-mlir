@@ -14,7 +14,7 @@ class MaxPoolExtension(DMAExtension):
     """
 
     name = "maxpool_ext"
-    supported_kernel = SupportedKernel(kernel.MacOp, [i32, i32, i32]) #TODO: Select correct kernel
+    supported_kernel = SupportedKernel(kernel.MacOp, [i32, i32, i32])  # TODO: Select correct kernel
     csr_length = 1
 
     def get_dma_extension_name(self) -> str:
@@ -29,4 +29,4 @@ class MaxPoolExtension(DMAExtension):
         This method should be implemented to provide the specific CSR values needed for the MaxPool extension.
         """
         # Example implementation, replace with actual logic
-        return [1] #TODO: Replace with actual CSR values for MaxPool
+        return [1]  # TODO: Replace with actual CSR values for MaxPool

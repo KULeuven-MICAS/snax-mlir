@@ -166,11 +166,14 @@ def get_all_subclasses(cls: type) -> set[type]:
         subclasses.update(get_all_subclasses(subclass))
     return subclasses
 
+
 STREAMER_OPT_MAP = {
     getattr(subclass, "name", None): subclass
     for subclass in get_all_subclasses(StreamerOpts)
     if hasattr(subclass, "name") and not getattr(subclass, "__abstractmethods__", False)
 }
+
+
 @irdl_attr_definition
 class StreamerConfigurationAttr(Data[StreamerConfiguration]):
     name = "snax.streamer_config"
