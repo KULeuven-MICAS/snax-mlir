@@ -31,13 +31,15 @@ from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 from xdsl.utils.exceptions import VerifyException
 
+import snaxc.accelerators.streamers.extensions  # pyright: ignore[reportUnusedImport] # noqa: F401
 from snaxc.accelerators.streamers import (
+    STREAMER_OPT_MAP,
     Streamer,
     StreamerConfiguration,
     StreamerFlag,
+    StreamerOpts,
     StreamerType,
 )
-from snaxc.accelerators.streamers.streamers import StreamerOpts
 from snaxc.util.memref_descriptor import LLVMMemrefDescriptor
 
 
@@ -184,9 +186,8 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
                 if parser.parse_optional_keyword("opts"):
                     parser.parse_punctuation("=")
                     while not parser.parse_optional_punctuation(","):
-                        opts.append(parser.parse_str_enum(StreamerOpts))
+                        opts.append(cls.parse_streamer_opt(parser))
                         parser.parse_optional_punctuation("-")
-
                 parser.parse_keyword("temp")
                 parser.parse_punctuation("=")
 
@@ -212,6 +213,14 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
 
             return StreamerConfiguration(streamers)
 
+    @classmethod
+    def parse_streamer_opt(cls, parser: AttrParser) -> StreamerOpts:
+        opt_str = parser.parse_identifier()
+        try:
+            return STREAMER_OPT_MAP[opt_str]()
+        except KeyError:
+            raise ValueError(f"Unknown StreamerOpt: {opt_str}")
+
     def print_parameter(self, printer: Printer) -> None:
         # print a streamer config in the following format:
         # for every streamer, the sequence of dims is defined by their flags
@@ -220,7 +229,7 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
 
         streamer_strings = [
             f"{streamer.type.value}["
-            + (f"opts={'-'.join(streamer.opts)}, " if streamer.opts else "")
+            + (f"opts={'-'.join([opt.name for opt in streamer.opts])}, " if streamer.opts else "")
             + f"temp={'-'.join(streamer.temporal_dims)}, "
             + f"spat={'-'.join(str(d) for d in streamer.spatial_dims)}]"
             for streamer in self.data.streamers
