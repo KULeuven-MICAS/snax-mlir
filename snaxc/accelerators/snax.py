@@ -101,8 +101,12 @@ class SNAXStreamer(ABC):
         # set streamer names as a, b, c, d, ...
         self.streamer_names = list(string.ascii_lowercase[: self.streamer_config.data.size()])
 
-        self.streamer_setup_fields = self.get_streamer_setup_fields()
-        self.streamer_launch_fields = self.get_streamer_launch_fields()
+        if self.streamer_config.data.system_type() == StreamerSystemType.Regular:
+            self.streamer_setup_fields = self.get_streamer_setup_fields()
+            self.streamer_launch_fields = self.get_streamer_launch_fields()
+        else:
+            self.streamer_setup_fields = self.get_xdma_streamer_setup_fields()
+            self.streamer_launch_fields = self.get_xdma_streamer_launch_fields()
 
     def _generate_streamer_setup_vals(self, op: StreamingRegionOp) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
@@ -227,6 +231,48 @@ class SNAXStreamer(ABC):
 
     def get_streamer_launch_fields(self) -> Sequence[str]:
         return ["launch_streamer"]
+
+    def get_xdma_streamer_setup_fields(self) -> Sequence[str]:
+        """
+        Get the setup fields for the xDMA streamer.
+        """
+        result: list[str] = []
+
+        assert self.streamer_config.data.system_type() == StreamerSystemType.DmaExt, (
+            "This method should only be called for xDMA streamer configurations"
+        )
+
+        for name, streamer in zip(self.streamer_names, self.streamer_config.data.streamers):
+            # base address
+            result.extend([f"{name}_ptr_low", f"{name}_ptr_high"])
+
+        for i, (name, streamer) in enumerate(zip(self.streamer_names, self.streamer_config.data.streamers)):
+            # spatial strides
+            result.extend([f"{name}_sstride_{i}" for i in range(streamer.spatial_dim)])
+            # temporal bounds
+            result.extend([f"{name}_bound_{i}" for i in range(streamer.temporal_dim)])
+            # temporal strides
+            result.extend([f"{name}_tstride_{i}" for i in range(streamer.temporal_dim)])
+            # options
+            result.extend([f"{name}_enabled_chan"])
+            if name == "b":
+                result.append(f"{name}_enabled_byte")
+            result.extend([f"{name}_bypass"])
+            # Extensions
+            for extension in streamer.opts:
+                if isinstance(extension, DMAExtension):
+                    for i in range(extension.csr_length):
+                        result.append(f"{name}_{extension.name}_{i}")
+
+        return result
+
+    def get_xdma_streamer_launch_fields(self) -> Sequence[str]:
+        """
+        Get the launch fields for the xDMA streamer.
+        """
+        return [
+            "launch_start",
+        ]
 
     def get_streamer_setup_dict(self, base_addr: int) -> tuple[int, dict[str, int]]:
         """
