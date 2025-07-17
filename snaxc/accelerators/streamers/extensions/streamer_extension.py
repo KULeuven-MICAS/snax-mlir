@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
 from snaxc.accelerators.dispatching import SupportedKernel
-from snaxc.accelerators.streamers import StreamerOpts
+from snaxc.accelerators.streamers.streamers import StreamerOpts
 from snaxc.dialects.kernel import KernelOp
 
 
