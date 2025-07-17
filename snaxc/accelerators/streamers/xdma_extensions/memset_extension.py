@@ -3,18 +3,20 @@ from collections.abc import Sequence
 from xdsl.dialects.builtin import i32
 
 from snaxc.accelerators.dispatching import SupportedKernel
-from snaxc.accelerators.xdma_extensions.dma_extension import DMAExtension
+from snaxc.accelerators.streamers.xdma_extensions.dma_extension import StreamerExtension
 from snaxc.dialects import kernel
 
 
-class MemSetExtension(DMAExtension):
+class MemSetExtension(StreamerExtension):
     """
-    Example extension for the SNAX XDMA accelerator.
-    This class can be used to add custom functionality to the SNAX XDMA accelerator.
+    Snax XDMA MemSet Extension
+    This extension is used to perform memory set operations on the XDMA core.
     """
 
     name = "memset_ext"
-    supported_kernel = SupportedKernel(kernel.MacOp, [i32, i32, i32])  # TODO: Select correct kernel
+    supported_kernel = SupportedKernel(
+        kernel.MacOp, [i32, i32, i32]
+    )  # TODO: Select correct kernel
     csr_length = 1
 
     def get_dma_extension_name(self) -> str:

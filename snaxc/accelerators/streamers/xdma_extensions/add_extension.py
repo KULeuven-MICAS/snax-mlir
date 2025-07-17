@@ -3,14 +3,14 @@ from collections.abc import Sequence
 from xdsl.dialects.builtin import i32
 
 from snaxc.accelerators.dispatching import SupportedKernel
-from snaxc.accelerators.xdma_extensions.dma_extension import DMAExtension
+from snaxc.accelerators.streamers.xdma_extensions.dma_extension import StreamerExtension
 from snaxc.dialects import kernel
 
 
-class AddExtension(DMAExtension):
+class AddExtension(StreamerExtension):
     """
-    Example extension for the SNAX XDMA accelerator.
-    This class can be used to add custom functionality to the SNAX XDMA accelerator.
+    Snax XDMA Add Extension
+    This extension is used to perform Elementwise addition operations on the XDMA core.
     """
 
     name = "add_ext"

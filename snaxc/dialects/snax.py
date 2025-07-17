@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 from collections.abc import Sequence
 from typing import cast
 
@@ -32,8 +31,9 @@ from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 from xdsl.utils.exceptions import VerifyException
 
-import snaxc.accelerators.xdma_extensions  # pyright: ignore[reportUnusedImport] # noqa: F401
+import snaxc.accelerators.streamers.xdma_extensions  # pyright: ignore[reportUnusedImport] # noqa: F401
 from snaxc.accelerators.streamers import (
+    STREAMER_OPT_MAP,
     Streamer,
     StreamerConfiguration,
     StreamerFlag,
@@ -96,11 +96,17 @@ class LayoutCast(IRDLOperation):
         source = cast(MemRefType[Attribute], self.source.type)
         dest = self.dest.type
         if source.get_shape() != dest.get_shape():
-            raise VerifyException("Expected source and destination to have the same shape.")
+            raise VerifyException(
+                "Expected source and destination to have the same shape."
+            )
         if source.get_element_type() != dest.get_element_type():
-            raise VerifyException("Expected source and destination to have the same element type.")
+            raise VerifyException(
+                "Expected source and destination to have the same element type."
+            )
         if source.memory_space != dest.memory_space:
-            raise VerifyException("Expected source and destination to have the same memory space.")
+            raise VerifyException(
+                "Expected source and destination to have the same memory space."
+            )
 
 
 @irdl_op_definition
@@ -161,19 +167,6 @@ class ClearL1(IRDLOperation):
     name = "snax.clear_l1"
 
 
-def get_all_subclasses(cls: type) -> set[type]:
-    subclasses: set[type] = set()
-    for subclass in cls.__subclasses__():
-        subclasses.add(subclass)
-        subclasses.update(get_all_subclasses(subclass))
-    return subclasses
-
-
-STREAMER_OPT_MAP = {
-    getattr(subclass, "name", None): subclass
-    for subclass in get_all_subclasses(StreamerOpts)
-    if hasattr(subclass, "name") and not inspect.isabstract(subclass)
-}
 
 
 @irdl_attr_definition
@@ -218,10 +211,14 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
                 # Determine the spatial dimensions
                 spatial_dims: Sequence[int] = []
                 while not parser.parse_optional_punctuation("]"):
-                    spatial_dims.append(parser.parse_integer(allow_boolean=False, allow_negative=False))
+                    spatial_dims.append(
+                        parser.parse_integer(allow_boolean=False, allow_negative=False)
+                    )
                     parser.parse_optional_punctuation("-")
 
-                streamers.append(Streamer(streamer_type, temporal_dims, spatial_dims, opts))
+                streamers.append(
+                    Streamer(streamer_type, temporal_dims, spatial_dims, opts)
+                )
 
                 if not parser.parse_optional_punctuation(","):
                     break
@@ -244,7 +241,11 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
 
         streamer_strings = [
             f"{streamer.type.value}["
-            + (f"opts={'-'.join([opt.name for opt in streamer.opts])}, " if streamer.opts else "")
+            + (
+                f"opts={'-'.join([opt.name for opt in streamer.opts])}, "
+                if streamer.opts
+                else ""
+            )
             + f"temp={'-'.join(streamer.temporal_dims)}, "
             + f"spat={'-'.join(str(d) for d in streamer.spatial_dims)}]"
             for streamer in self.data.streamers

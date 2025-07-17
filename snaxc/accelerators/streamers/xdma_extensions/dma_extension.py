@@ -6,7 +6,7 @@ from snaxc.accelerators.streamers import StreamerOpts
 from snaxc.dialects.kernel import KernelOp
 
 
-class DMAExtension(StreamerOpts, ABC):
+class StreamerExtension(StreamerOpts, ABC):
     """
     Abstract base class for DMA extensions.
     This class defines the interface for DMA extensions that can be used
