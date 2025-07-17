@@ -21,7 +21,7 @@ from snaxc.accelerators.streamers import (
     StreamerSystemType,
     StreamerType,
 )
-from snaxc.accelerators.streamers.xdma_extensions import (
+from snaxc.accelerators.streamers.extensions import (
     AddExtension,
     MaxPoolExtension,
     MemSetExtension,

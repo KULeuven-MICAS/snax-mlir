@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from xdsl.dialects.builtin import i32
 
 from snaxc.accelerators.dispatching import SupportedKernel
-from snaxc.accelerators.streamers.xdma_extensions.dma_extension import StreamerExtension
+from snaxc.accelerators.streamers.extensions.dma_extension import StreamerExtension
 from snaxc.dialects import kernel
 
 

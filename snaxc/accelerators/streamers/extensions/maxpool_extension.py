@@ -3,17 +3,17 @@ from collections.abc import Sequence
 from xdsl.dialects.builtin import i32
 
 from snaxc.accelerators.dispatching import SupportedKernel
-from snaxc.accelerators.streamers.xdma_extensions.dma_extension import StreamerExtension
+from snaxc.accelerators.streamers.extensions.dma_extension import StreamerExtension
 from snaxc.dialects import kernel
 
 
-class TransposeExtension(StreamerExtension):
+class MaxPoolExtension(StreamerExtension):
     """
-    Snax XDMA Transpose Extension
-    This extension is used to perform transpose operations on the XDMA core.
+    Snax XDMA MaxPool Extension
+    This extension is used to perform max pooling operations on the XDMA core.
     """
 
-    name = "t"
+    name = "maxpool_ext"
     supported_kernel = SupportedKernel(kernel.MacOp, [i32, i32, i32])  # TODO: Select correct kernel
     csr_length = 1
 
@@ -25,8 +25,8 @@ class TransposeExtension(StreamerExtension):
 
     def get_csr_values(self, op: kernel.KernelOp) -> Sequence[int]:
         """
-        Returns the CSR values for the Transpose extension.
-        This method should be implemented to provide the specific CSR values needed for the Transpose extension.
+        Returns the CSR values for the MaxPool extension.
+        This method should be implemented to provide the specific CSR values needed for the MaxPool extension.
         """
         # Example implementation, replace with actual logic
-        return [3]  # TODO: Replace with actual CSR values for Transpose
+        return [1]  # TODO: Replace with actual CSR values for MaxPool

@@ -9,15 +9,15 @@ from xdsl.ir import Operation, OpResult, SSAValue
 
 from snaxc.accelerators.accelerator import Accelerator
 from snaxc.accelerators.streamers import StreamerConfiguration
+from snaxc.accelerators.streamers.extensions.transpose_extension import (
+    TransposeExtension,
+)
 from snaxc.accelerators.streamers.streamers import (
     HasAddressRemap,
     HasBroadcast,
     HasChannelMask,
     Streamer,
     StreamerFlag,
-)
-from snaxc.accelerators.streamers.xdma_extensions.transpose_extension import (
-    TransposeExtension,
 )
 from snaxc.dialects import accfg, snax_stream
 from snaxc.dialects.dart import AccessPatternOp, StreamingRegionOpBase

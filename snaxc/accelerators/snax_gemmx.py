@@ -23,7 +23,7 @@ from snaxc.accelerators.streamers import (
     StreamerConfiguration,
     StreamerType,
 )
-from snaxc.accelerators.streamers.xdma_extensions import TransposeExtension
+from snaxc.accelerators.streamers.extensions import TransposeExtension
 from snaxc.dialects import accfg, dart, kernel, snax_stream
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 from snaxc.util.pack_bitlist import pack_bitlist

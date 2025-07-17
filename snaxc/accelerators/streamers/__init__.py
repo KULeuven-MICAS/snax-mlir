@@ -1,6 +1,6 @@
+from .extensions import AddExtension, MaxPoolExtension, MemSetExtension, TransposeExtension
 from .streamers import *
 from .streamers import HasAddressRemap, HasBroadcast, HasByteMask, HasChannelMask
-from .xdma_extensions import AddExtension, MaxPoolExtension, MemSetExtension, TransposeExtension
 
 STREAMER_OPT_MAP = {
     HasBroadcast().name: HasBroadcast,
