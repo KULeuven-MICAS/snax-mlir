@@ -42,7 +42,7 @@ class HasAddressRemap(StreamerOpts):
     name = "a"
 
     def __init__(self) -> None:
-        return
+        pass
 
 
 class HasChannelMask(StreamerOpts):
@@ -52,8 +52,6 @@ class HasChannelMask(StreamerOpts):
 
     name = "c"
 
-    def __init__(self) -> None:
-        return
 
 
 class HasByteMask(StreamerOpts):
@@ -63,8 +61,6 @@ class HasByteMask(StreamerOpts):
 
     name = "bm"
 
-    def __init__(self) -> None:
-        return
 
 
 class HasBroadcast(StreamerOpts):
@@ -74,8 +70,6 @@ class HasBroadcast(StreamerOpts):
 
     name = "b"
 
-    def __init__(self) -> None:
-        return
 
 
 class StreamerFlag(StrEnum):

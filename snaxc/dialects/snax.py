@@ -171,7 +171,7 @@ def get_all_subclasses(cls: type) -> set[type]:
 STREAMER_OPT_MAP = {
     getattr(subclass, "name", None): subclass
     for subclass in get_all_subclasses(StreamerOpts)
-    if hasattr(subclass, "name") and not getattr(subclass, "__abstractmethods__", False)
+    if hasattr(subclass, "name") and not inspect.isabstract(subclass)
 }
 
 
