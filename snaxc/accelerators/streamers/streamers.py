@@ -41,9 +41,6 @@ class HasAddressRemap(StreamerOpts):
 
     name = "a"
 
-    def __init__(self) -> None:
-        pass
-
 
 class HasChannelMask(StreamerOpts):
     """
@@ -51,7 +48,6 @@ class HasChannelMask(StreamerOpts):
     """
 
     name = "c"
-
 
 
 class HasByteMask(StreamerOpts):
@@ -62,14 +58,12 @@ class HasByteMask(StreamerOpts):
     name = "bm"
 
 
-
 class HasBroadcast(StreamerOpts):
     """
     Indicates that the streamer has a broadcast option.
     """
 
     name = "b"
-
 
 
 class StreamerFlag(StrEnum):
