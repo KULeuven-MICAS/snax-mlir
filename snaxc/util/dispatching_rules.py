@@ -1,6 +1,7 @@
 from xdsl.dialects import linalg, memref
 from xdsl.ir import Operation
 
+from snaxc.accelerators.streamers.extensions import XDMA_EXT_SET, StreamerExtension
 from snaxc.dialects import dart
 
 
@@ -12,8 +13,10 @@ def dispatch_to_dm(op: Operation):
     if isinstance(op, dart.StreamingRegionOpBase):
         if isinstance(str_op := op.body.block.first_op, dart.GenericOp):
             kernel_op = str_op.body.block.first_op
-            # Only dispatch to dm if the kernel is provided by a DMAExtension
-            if any([isinstance(kernel_op, ext.supported_kernel.kernel_type) for ext in DMAExtension.__subclasses__()]):
+            # Only dispatch to dm if the kernel is provided by a StreamerExtension
+            if any(
+                [isinstance(kernel_op, ext.supported_kernel.kernel_type) for ext in StreamerExtension.__subclasses__()]
+            ):
                 return True
     return False
 
@@ -29,8 +32,8 @@ def dispatch_to_compute(op: Operation):
     if isinstance(op, dart.StreamingRegionOpBase):
         if isinstance(str_op := op.body.block.first_op, dart.GenericOp):
             kernel_op = str_op.body.block.first_op
-            # Dont dispatch to compute if the kernel is provided by a DMAExtension
-            if any([isinstance(kernel_op, ext.supported_kernel.kernel_type) for ext in DMAExtension.__subclasses__()]):
+            # Dont dispatch to compute if the kernel is provided by a StreamerExtension
+            if any([isinstance(kernel_op, ext.supported_kernel.kernel_type) for ext in XDMA_EXT_SET]):
                 return False
             return True
         return True

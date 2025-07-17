@@ -9,6 +9,7 @@ from xdsl.ir import Operation, OpResult, SSAValue
 
 from snaxc.accelerators.accelerator import Accelerator
 from snaxc.accelerators.streamers import StreamerConfiguration
+from snaxc.accelerators.streamers.extensions.streamer_extension import StreamerExtension
 from snaxc.accelerators.streamers.extensions.transpose_extension import (
     TransposeExtension,
 )
@@ -18,6 +19,7 @@ from snaxc.accelerators.streamers.streamers import (
     HasChannelMask,
     Streamer,
     StreamerFlag,
+    StreamerSystemType,
 )
 from snaxc.dialects import accfg, snax_stream
 from snaxc.dialects.dart import AccessPatternOp, StreamingRegionOpBase
@@ -269,7 +271,7 @@ class SNAXStreamer(ABC):
             result.extend([f"{name}_bypass"])
             # Extensions
             for extension in streamer.opts:
-                if isinstance(extension, DMAExtension):
+                if isinstance(extension, StreamerExtension):
                     for i in range(extension.csr_length):
                         result.append(f"{name}_{extension.name}_{i}")
 
