@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+import inspect
 from typing import cast
 
 from xdsl.dialects.builtin import (
