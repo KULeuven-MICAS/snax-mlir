@@ -21,11 +21,11 @@ from snaxc.accelerators.streamers import (
     StreamerSystemType,
     StreamerType,
 )
-from snaxc.accelerators.xdma_extensions import (
+from snaxc.accelerators.streamers.extensions import (
     AddExtension,
-    DMAExtension,
     MaxPoolExtension,
     MemSetExtension,
+    StreamerExtension,
     TransposeExtension,
 )
 from snaxc.dialects import accfg, dart, snax_stream
@@ -73,7 +73,7 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
         self.supported_kernels = [
             ext.get_dma_extension_kernel()
             for ext in default_streamer.streamers[0].opts + default_streamer.streamers[1].opts
-            if isinstance(ext, DMAExtension)
+            if isinstance(ext, StreamerExtension)
         ]
         self.supported_kernels = tuple(self.supported_kernels)  # Remove duplicates
 
@@ -188,12 +188,15 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
                     result.append(([n1], n1.result))
 
             # Bypass option
-            bypass = 2 ** len([opt for opt in streamer.opts if isinstance(opt, DMAExtension)]) - 1
+            bypass = 2 ** len([opt for opt in streamer.opts if isinstance(opt, StreamerExtension)]) - 1
             i = 0
             for ext in streamer.opts:
-                if isinstance(ext, DMAExtension):
+                if isinstance(ext, StreamerExtension):
                     if isinstance(str_op := op.body.block.first_op, dart.GenericOp):
-                        if isinstance(kernel_op := str_op.body.block.first_op, ext.supported_kernel.kernel_type):
+                        if isinstance(
+                            kernel_op := str_op.body.block.first_op,
+                            ext.supported_kernel.kernel_type,
+                        ):
                             for csr_val in ext.get_csr_values(kernel_op):
                                 bypass -= 2**i
                     i += 1
@@ -202,9 +205,12 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
 
             # Extensions
             for ext in streamer.opts:
-                if isinstance(ext, DMAExtension):
+                if isinstance(ext, StreamerExtension):
                     if isinstance(str_op := op.body.block.first_op, dart.GenericOp):
-                        if isinstance(kernel_op := str_op.body.block.first_op, ext.supported_kernel.kernel_type):
+                        if isinstance(
+                            kernel_op := str_op.body.block.first_op,
+                            ext.supported_kernel.kernel_type,
+                        ):
                             # Check for each extension what its csr values are
                             for csr_val in ext.get_csr_values(kernel_op):
                                 cst = arith.ConstantOp.from_int_and_width(csr_val, i32)
@@ -218,7 +224,9 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
 
         return result
 
-    def _generate_streamer_launch_vals(self) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
+    def _generate_streamer_launch_vals(
+        self,
+    ) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         """
         Generates the values for the streamer launch operation.
         """
@@ -270,7 +278,7 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
         return (
             updated_base_addr,
             streamer_launch,
-        )  
+        )
 
     def get_template(self, op: dart.StreamingRegionOpBase):
         template = [AffineMap.from_callable(lambda y: (y,))] * 3

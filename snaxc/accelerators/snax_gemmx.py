@@ -16,11 +16,14 @@ from snaxc.accelerators.snax import (
     SNAXStreamer,
 )
 from snaxc.accelerators.streamers import (
+    HasAddressRemap,
+    HasBroadcast,
+    HasChannelMask,
     Streamer,
     StreamerConfiguration,
     StreamerType,
 )
-from snaxc.accelerators.streamers.streamers import StreamerOpts
+from snaxc.accelerators.streamers.extensions import TransposeExtension
 from snaxc.dialects import accfg, dart, kernel, snax_stream
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 from snaxc.util.pack_bitlist import pack_bitlist
@@ -31,35 +34,35 @@ default_streamer = StreamerConfiguration(
             StreamerType.Reader,
             temporal_dims=("n", "n", "n", "n", "n", "n"),
             spatial_dims=(8,),
-            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
+            opts=(TransposeExtension(), HasAddressRemap()),
         ),
         Streamer(  # B
             StreamerType.Reader,
             temporal_dims=("n", "n", "n"),
             spatial_dims=(8,),
-            opts=(StreamerOpts.HasTranspose, StreamerOpts.HasAddressRemap),
+            opts=(TransposeExtension(), HasAddressRemap()),
         ),
         Streamer(  # D8
             StreamerType.Writer,
             temporal_dims=("r", "n", "n"),
             spatial_dims=(8,),
-            opts=(StreamerOpts.HasAddressRemap,),
+            opts=(HasAddressRemap(),),
         ),
         Streamer(  # C
             StreamerType.Reader,
             temporal_dims=("r", "n", "n"),
             spatial_dims=(8, 4),
             opts=(
-                StreamerOpts.HasChannelMask,
-                StreamerOpts.HasAddressRemap,
-                StreamerOpts.HasBroadcast,
+                HasChannelMask(),
+                HasAddressRemap(),
+                HasBroadcast(),
             ),
         ),
         Streamer(  # D32
             StreamerType.Writer,
             temporal_dims=("r", "n", "n"),
             spatial_dims=(8, 4),
-            opts=(StreamerOpts.HasAddressRemap,),
+            opts=(HasAddressRemap(),),
         ),
     ],
 )
@@ -216,7 +219,8 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
                 region_yield = op.body.block.last_op
                 assert isinstance(region_yield, dart.YieldOp)
                 if isinstance(region_yield.prev_op, dart.GenericOp) and isinstance(
-                    rescale_op := region_yield.prev_op.body.block.first_op, kernel.RescaleOp
+                    rescale_op := region_yield.prev_op.body.block.first_op,
+                    kernel.RescaleOp,
                 ):
                     max_int_val = rescale_op.max_int.value.data
                     min_int_val = rescale_op.min_int.value.data
@@ -422,8 +426,14 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
         # launch streamer once
         ops.append(csr_op(addr_streamer.result, launch_values["launch_streamer"]))
 
-        shift_vals = cast(tuple[int, ...], cast(DenseArrayBase, launch_op.attributes["shift_vals"]).get_values())
-        mult_vals = cast(tuple[int, ...], cast(DenseArrayBase, launch_op.attributes["mult_vals"]).get_values())
+        shift_vals = cast(
+            tuple[int, ...],
+            cast(DenseArrayBase, launch_op.attributes["shift_vals"]).get_values(),
+        )
+        mult_vals = cast(
+            tuple[int, ...],
+            cast(DenseArrayBase, launch_op.attributes["mult_vals"]).get_values(),
+        )
         for i in range(len(mult_vals) // 8):
             # reprogram the shift and mult values
             shifts = shift_vals[i * 8 : i * 8 + 8]
@@ -513,8 +523,15 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
         return streamers
 
     def set_stride_patterns(
-        self, op: dart.AccessPatternOp, snax_stride_patterns: Sequence[snax_stream.StridePattern]
-    ) -> tuple[Sequence[SSAValue], Sequence[SSAValue], Sequence[snax_stream.StridePattern], Sequence[Operation]]:
+        self,
+        op: dart.AccessPatternOp,
+        snax_stride_patterns: Sequence[snax_stream.StridePattern],
+    ) -> tuple[
+        Sequence[SSAValue],
+        Sequence[SSAValue],
+        Sequence[snax_stream.StridePattern],
+        Sequence[Operation],
+    ]:
         snax_stride_patterns = list(snax_stride_patterns)
         new_inputs: list[SSAValue[Attribute]] = list(op.inputs)
         new_outputs: list[SSAValue] = list(op.outputs)
