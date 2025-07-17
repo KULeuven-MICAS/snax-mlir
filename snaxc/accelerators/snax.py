@@ -9,7 +9,16 @@ from xdsl.ir import Operation, OpResult, SSAValue
 
 from snaxc.accelerators.accelerator import Accelerator
 from snaxc.accelerators.streamers import StreamerConfiguration
-from snaxc.accelerators.streamers.streamers import Streamer, StreamerFlag, StreamerOpts
+from snaxc.accelerators.streamers.streamers import (
+    HasAddressRemap,
+    HasBroadcast,
+    HasChannelMask,
+    Streamer,
+    StreamerFlag,
+    StreamerSystemType,
+)
+from snaxc.accelerators.xdma_extensions.dma_extension import DMAExtension
+from snaxc.accelerators.xdma_extensions.transpose_extension import TransposeExtension
 from snaxc.dialects import accfg, snax_stream
 from snaxc.dialects.dart import AccessPatternOp, StreamingRegionOpBase
 from snaxc.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
@@ -126,7 +135,7 @@ class SNAXStreamer(ABC):
             # spatial strides
             for dim, flag in enumerate(streamer.spatial_dims):
                 stride = op.stride_patterns.data[operand].spatial_strides.data[dim].data
-                if stride == 0 and StreamerOpts.HasBroadcast in streamer.opts:
+                if stride == 0 and any(isinstance(opt, HasBroadcast) for opt in streamer.opts):
                     do_broadcast[operand] = True
                 cst = arith.ConstantOp.from_int_and_width(stride, i32)
                 result.append(([cst], cst.result))
@@ -161,12 +170,12 @@ class SNAXStreamer(ABC):
                 result.append(([cst], cst.result))
 
             # address remap:
-            if StreamerOpts.HasAddressRemap in streamer.opts:
+            if any(isinstance(opt, HasAddressRemap) for opt in streamer.opts):
                 c0 = arith.ConstantOp.from_int_and_width(0, i32)
                 result.append(([c0], c0.result))
 
             # channel mask option
-            if StreamerOpts.HasChannelMask in streamer.opts:
+            if any(isinstance(opt, HasChannelMask) for opt in streamer.opts):
                 if is_zero_pattern:
                     # mask all channels such that they generate zeros
                     c0 = arith.ConstantOp.from_int_and_width(0, i32)
@@ -178,7 +187,7 @@ class SNAXStreamer(ABC):
 
         # transpose specifications
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
-            if StreamerOpts.HasTranspose in streamer.opts:
+            if any(isinstance(opt, TransposeExtension) for opt in streamer.opts):
                 # if we want to disable transpose, we need
                 # a 1 to the transpose field, as it is an
                 # extension bypass signal
@@ -186,7 +195,7 @@ class SNAXStreamer(ABC):
                 result.append(([c1], c1.result))
 
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
-            if StreamerOpts.HasBroadcast in streamer.opts:
+            if any(isinstance(opt, HasBroadcast) for opt in streamer.opts):
                 if do_broadcast[operand]:
                     c0 = arith.ConstantOp.from_int_and_width(0, i32)
                     result.append(([c0], c0.result))
@@ -209,18 +218,18 @@ class SNAXStreamer(ABC):
             # temporal strides
             result.extend([f"{name}_tstride_{i}" for i in range(streamer.temporal_dim)])
             # options
-            if StreamerOpts.HasAddressRemap in streamer.opts:
+            if any(isinstance(opt, HasAddressRemap) for opt in streamer.opts):
                 result.append(f"{name}_address_remap")
-            if StreamerOpts.HasChannelMask in streamer.opts:
+            if any(isinstance(opt, HasChannelMask) for opt in streamer.opts):
                 result.append(f"{name}_channel_mask")
 
         # transpose specifications
         for streamer, name in zip(self.streamer_config.data.streamers, self.streamer_names):
-            if StreamerOpts.HasTranspose in streamer.opts:
+            if any(isinstance(opt, TransposeExtension) for opt in streamer.opts):
                 result.append(f"{name}_transpose")
 
         for streamer, name in zip(self.streamer_config.data.streamers, self.streamer_names):
-            if StreamerOpts.HasBroadcast in streamer.opts:
+            if any(isinstance(opt, HasBroadcast) for opt in streamer.opts):
                 result.append(f"{name}_broadcast")
 
         return result
@@ -279,8 +288,15 @@ class SNAXStreamer(ABC):
         return self.streamer_config.data.streamers
 
     def set_stride_patterns(
-        self, op: AccessPatternOp, snax_stride_patterns: Sequence[snax_stream.StridePattern]
-    ) -> tuple[Sequence[SSAValue], Sequence[SSAValue], Sequence[snax_stream.StridePattern], Sequence[Operation]]:
+        self,
+        op: AccessPatternOp,
+        snax_stride_patterns: Sequence[snax_stream.StridePattern],
+    ) -> tuple[
+        Sequence[SSAValue],
+        Sequence[SSAValue],
+        Sequence[snax_stream.StridePattern],
+        Sequence[Operation],
+    ]:
         """
         Allows the accelerator to customize the found stride patterns
         after scheduling and layout resolution, for a given operation.

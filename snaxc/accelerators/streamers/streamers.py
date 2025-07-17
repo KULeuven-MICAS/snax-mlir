@@ -1,3 +1,4 @@
+from abc import ABC
 from collections.abc import Iterable, Sequence
 from typing import Literal
 
@@ -12,15 +13,69 @@ class StreamerType(StrEnum):
     Writer = "w"
 
 
-class StreamerOpts(StrEnum):
-    # Streamer with transpose capabilities
-    HasTranspose = "t"
-    # Streamer with channel mask capabilities
-    HasChannelMask = "c"
-    # Weird address remap thingy
-    HasAddressRemap = "r"
-    # Broadcasting
-    HasBroadcast = "b"
+class StreamerSystemType(StrEnum):
+    """
+    Enum that specifies the type of system for which the streamer is configured.
+    either a regular system or a system with xDMA support.
+    """
+
+    # Streamer for regular system
+    Regular = "reg"
+    # Streamer for xDMA
+    DmaExt = "xdma"
+
+
+class StreamerOpts(ABC):
+    """
+    Base class for streamer options.
+    This class can be used to define custom options for streamers.
+    """
+
+    name: str
+
+
+class HasAddressRemap(StreamerOpts):
+    """
+    Indicates that the streamer has an address remap.
+    """
+
+    name = "has_address_remap"
+
+    def __init__(self) -> None:
+        return
+
+
+class HasChannelMask(StreamerOpts):
+    """
+    Indicates that the streamer has a channel mask.
+    """
+
+    name = "has_channel_mask"
+
+    def __init__(self) -> None:
+        return
+
+
+class HasByteMask(StreamerOpts):
+    """
+    Indicates that the streamer has a byte mask.
+    """
+
+    name = "has_byte_mask"
+
+    def __init__(self) -> None:
+        return
+
+
+class HasBroadcast(StreamerOpts):
+    """
+    Indicates that the streamer has a broadcast option.
+    """
+
+    name = "has_broadcast"
+
+    def __init__(self) -> None:
+        return
 
 
 class StreamerFlag(StrEnum):
@@ -63,7 +118,7 @@ class Streamer:
     temporal_dims: tuple[StreamerFlag, ...]
     spatial_dims: tuple[int, ...]
 
-    opts: set[StreamerOpts]
+    opts: list[StreamerOpts]
 
     def __init__(
         self,
@@ -76,7 +131,7 @@ class Streamer:
         temporal_dims = [f if isinstance(f, StreamerFlag) else StreamerFlag(f) for f in temporal_dims]
         self.temporal_dims = tuple(temporal_dims)
         self.spatial_dims = tuple(spatial_dims)
-        self.opts = set(opts)
+        self.opts = list(opts)
 
     @property
     def temporal_dim(self):
@@ -95,16 +150,28 @@ class StreamerConfiguration:
     """
 
     streamers: Sequence[Streamer]
+    streamers_system_type: StreamerSystemType
 
-    def __init__(self, streamers: Sequence[Streamer]):
+    def __init__(
+        self,
+        streamers: Sequence[Streamer],
+        streamer_system_type: StreamerSystemType = StreamerSystemType.Regular,
+    ) -> None:
         assert len(streamers)
         self.streamers = streamers
+        self.streamers_system_type = streamer_system_type
 
     def size(self) -> int:
         """
         Return the number of streamers in the configuration
         """
         return len(self.streamers)
+
+    def system_type(self) -> StreamerSystemType:
+        """
+        Return the system type of the streamers
+        """
+        return self.streamers_system_type
 
     @deprecated("Please do not use this function, it is only valid in trivial cases")
     def temporal_dim(self) -> int:
