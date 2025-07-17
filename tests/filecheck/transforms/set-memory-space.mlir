@@ -175,8 +175,5 @@ func.func @gemm(%arg0 : memref<16x16xi8>, %arg1 : memref<16x16xi8>, %arg2 : memr
 
 // CHECK:      builtin.module {
 // CHECK-NEXT:   %0 = memref.alloc() {alignment = 64 : i64} : memref<640xi32, "L1">
-// CHECK:  builtin.module {
-// CHECK-NEXT:    %0 = memref.alloc() {alignment = 64 : i64} : memref<640xi32, "L1">
-// CHECK-NEXT:  }
 // CHECK-NEXT:   %1 = memref.subview %0[0] [16] [2] : memref<640xi32, "L1"> to memref<16xi32, strided<[2]>, "L1">
 // CHECK-NEXT: }
