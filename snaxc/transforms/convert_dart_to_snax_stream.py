@@ -13,7 +13,7 @@ from xdsl.pattern_rewriter import (
 
 from snaxc.accelerators import AccContext
 from snaxc.accelerators.snax import SNAXStreamer
-from snaxc.accelerators.streamers.streamers import StreamerOpts
+from snaxc.accelerators.streamers.streamers import HasBroadcast
 from snaxc.dialects import dart, snax_stream
 from snaxc.ir.dart.affine_transform import AffineTransform
 
@@ -99,7 +99,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                     if applied_stride != next_stride:
                         # next stride of 0 is allowed in case of broadcasting, but then the
                         # next stride should be forced to 0
-                        if next_stride == 0 and StreamerOpts.HasBroadcast in streamers[operand].opts:
+                        if next_stride == 0 and any(isinstance(opt, HasBroadcast) for opt in streamers[operand].opts):
                             stride, bound = (0, next_bound // applied_bound)
                         else:
                             raise RuntimeError("Non-contiguous access is not possible for this streamer configuration")
