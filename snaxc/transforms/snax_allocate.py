@@ -219,7 +219,6 @@ class MiniMallocate(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter):
-
         buffers: list[Buffer] = []
         buffer_ops: dict[str, snax.Alloc] = {}
         uses: dict[Operation, list[Buffer]] = defaultdict(list)
