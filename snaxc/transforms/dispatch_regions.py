@@ -14,12 +14,14 @@ from xdsl.pattern_rewriter import (
 from xdsl.rewriter import InsertPoint
 from xdsl.traits import SymbolTable
 
+from snaxc.accelerators.acc_context import AccContext
 from snaxc.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
 
 
 @dataclass
 class DispatchRegionsRewriter(RewritePattern):
     nb_cores: int
+    ctx: AccContext
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, func_op: func.FuncOp, rewriter: PatternRewriter):
@@ -86,7 +88,10 @@ class DispatchRegionsRewriter(RewritePattern):
         ]
         # Make sure function call is only inserted once
         inserted_function_call = False
-        if any(dispatcher(block, comparison_dm.result, dispatch_to_dm) for block in func_op.body.blocks):
+        if any(
+            dispatcher(block, comparison_dm.result, lambda x: dispatch_to_dm(x, self.ctx))
+            for block in func_op.body.blocks
+        ):
             inserted_function_call = True
             rewriter.insert_op(call_and_condition_dm, InsertPoint.at_start(func_op.body.blocks[0]))
         else:
@@ -99,7 +104,10 @@ class DispatchRegionsRewriter(RewritePattern):
             cst_0 := arith.ConstantOp.from_int_and_width(0, builtin.i32),
             comparison_compute := arith.CmpiOp(func_call, cst_0, "eq"),
         ]
-        if any(dispatcher(block, comparison_compute.result, dispatch_to_compute) for block in func_op.body.blocks):
+        if any(
+            dispatcher(block, comparison_compute.result, lambda x: dispatch_to_compute(x, self.ctx))
+            for block in func_op.body.blocks
+        ):
             # insert function call in dominator block (first one)
             if inserted_function_call:
                 # If function call is already inserted, insert check after
@@ -154,8 +162,9 @@ class DispatchRegions(ModulePass):
     nb_cores: int = 2  # amount of cores
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
+        assert isinstance(ctx, AccContext)
         PatternRewriteWalker(
-            DispatchRegionsRewriter(self.nb_cores),
+            DispatchRegionsRewriter(self.nb_cores, ctx),
             apply_recursively=False,
         ).rewrite_module(op)
         PatternRewriteWalker(InsertFunctionDeclaration(), apply_recursively=False).rewrite_module(op)
