@@ -3,4 +3,3 @@
     %1 = tosa.rescale %0 {double_round = true, input_zp = 0 : i32, multiplier = array<i32: 1657902019>, output_zp = 0 : i32, per_channel = false, scale32 = true, shift = array<i8: 33>} : (tensor<64xi32>) -> tensor<64xi32>
     return %0 : tensor<64xi32>
   }
-}

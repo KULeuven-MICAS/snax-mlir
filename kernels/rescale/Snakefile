@@ -1,0 +1,56 @@
+rule all:
+    input:
+        "build/output.ll"
+
+
+rule preprocess:
+    input:
+        "rescale_down.mlir"
+    output:
+        "build/linalg.mlir"
+    shell:
+        """
+        snax-opt {input} -p preprocess --allow-unregistered-dialect > {output}
+        """
+
+rule linalg_to_loops:
+    input:
+        "build/linalg.mlir"
+    output:
+        "build/loops.mlir"
+    shell:
+        """
+        mlir-opt {input} \
+            --convert-linalg-to-loops \
+            --convert-scf-to-cf \
+            --canonicalize \
+            --cse \
+            > {output}
+        """
+
+rule loops_to_llvm:
+    input:
+        "build/loops.mlir"
+    output:
+        "build/llvm.mlir"
+    shell:
+        """
+        mlir-opt {input} \
+            --convert-to-llvm \
+            --convert-arith-to-llvm \
+            --convert-func-to-llvm \
+            --reconcile-unrealized-casts \
+            --canonicalize \
+            --cse \
+            > {output}
+        """
+
+rule llvm_translate:
+    input:
+        "build/llvm.mlir"
+    output:
+        "build/output.ll"
+    shell:
+        """
+        mlir-translate --mlir-to-llvmir --allow-unregistered-dialect {input} > {output}
+        """
