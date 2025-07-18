@@ -10,6 +10,7 @@ from xdsl.pattern_rewriter import (
     op_type_rewrite_pattern,
 )
 from xdsl.traits import IsTerminator, SymbolTable
+from xdsl.utils.hints import isa
 
 
 class AllocToGlobal(RewritePattern):
@@ -52,10 +53,17 @@ class AllocToGlobal(RewritePattern):
         assert SymbolTable.lookup_symbol(module_op, global_sym_name) is None
 
         # create global
+        # FIXME: this is initialized to the magic value of 77 to avoid
+        # uniintialized variables which are currently very slow. see:
+        # https://github.com/KULeuven-MICAS/snax_cluster/issues/532
+        memref_type = op.results[0].type
+        assert isa(memref_type, builtin.MemRefType[builtin.IntegerType])
         memref_global = memref.GlobalOp.get(
             builtin.StringAttr(global_sym_name),
-            op.results[0].type,
-            initial_value=builtin.UnitAttr(),
+            memref_type,
+            initial_value=builtin.DenseIntOrFPElementsAttr.create_dense_int(
+                builtin.TensorType(memref_type.element_type, memref_type.get_shape()), [77]
+            ),
         )
         SymbolTable.insert_or_update(module_op, memref_global)
 
