@@ -1,0 +1,149 @@
+from util.snake.configs import get_asplos_matmul_config
+from util.snake.configs import get_asplos_matvec_config
+
+config_matmul = get_asplos_matmul_config()
+config_matvec = get_asplos_matvec_config()
+
+config = get_asplos_matmul_config()
+
+
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule * from snax_rules exclude snax_opt_mlir, simulate as snax_*
+
+
+tests = ["matmul", "matvec", "earlyconv", "lateconv"]
+systems = ["mat", "vec"]
+
+
+# Rules
+rule all:
+    input:
+        "plot.pdf"
+
+rule generate_plot:
+    input:
+        expand("{file}_summary.txt", file=tests),
+    output:
+        "plot.pdf"
+    shell:
+        "python plot.py"
+
+
+rule extract_cycles:
+    input:
+        expand("{file}_sys{sys}_traces.json", file="{file}", sys=systems),
+    output:
+        "{file}_summary.txt",
+    shell:
+        "python extract_cycles.py {output} {input}"
+
+
+rule simulate:
+    input:
+        "{file}_sys{sys}.x",
+    output:
+        temp(
+            expand(
+                "{file}_sys{sys}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}.dasm",
+                file=["{file}"],
+                sys=["{sys}"],
+                num_chips=range(config["num_chips"]),
+                num_harts=range(config["num_harts"]),
+            ),
+        ),
+    log:
+        "{file}_sys{sys}.vltlog",
+    params:
+        vltsim=lambda wildcards: (
+            config_matmul["vltsim"]
+            if "mat" in wildcards.sys
+            else config_matvec["vltsim"]
+        ),
+    shell:
+        "{params.vltsim} --prefix-trace={wildcards.file}_sys{wildcards.sys}_ {input}  2>&1 | tee {log}"
+
+
+# matmul of 64x64x64
+rule generate_matmul:
+    output:
+        "matmul_sys{sys}.mlir",
+    wildcard_constraints:
+        sys="|".join(systems),
+    shell:
+        "python matmul.py --m 64 --n 64 --k 64 --output {output}"
+
+
+# matvec of 1x256x256
+rule generate_matvec:
+    output:
+        "matvec_sys{sys}.mlir",
+    params:
+        # for matmul, op should be padded to fill array for successful compilation
+        m=lambda wildcards: 1 if wildcards.sys == "vec" else 8,
+    wildcard_constraints:
+        sys="|".join(systems),
+    shell:
+        "python matmul.py --m {params.m} --n 256 --k 256 --output {output}"
+
+
+# early conv: only 3 input channels (other params are tiled such that they fit L1 memory)
+# c = 3, k = 16, ox = 16, oy = 16, fx = 3, fy = 3
+rule generate_earlyconv:
+    output:
+        "earlyconv_sys{sys}.mlir",
+    params:
+        # pad the conv from C=3 to fit the array properly
+        c=lambda wildcards: 32 if wildcards.sys == "vec" else 8,
+    wildcard_constraints:
+        sys="|".join(systems),
+    shell:
+        "python conv.py --c {params.c} --k 16 --ox 16 --oy 16 --output {output}"
+
+
+# late conv: all params are pretty large except for limited feature map of 8x8,
+# tiled to sensible values for L1
+# ox = 8, oy = 8, fx = 3, fy = 3, c = 32, k = 32
+rule generate_lateconv:
+    output:
+        "lateconv_sys{sys}.mlir",
+    wildcard_constraints:
+        sys="|".join(systems),
+    shell:
+        "python conv.py --c 32 --k 32 --ox 8 --oy 8 --output {output}"
+
+
+rule compile_snax:
+    input:
+        "{file}_sys{sys}.mlir",
+    output:
+        temp("{file}_sys{sys}.ll.mlir"),
+    params:
+        snaxconfig=lambda wildcards: (
+            config_matmul["snaxc-config"]
+            if "mat" in wildcards.sys
+            else config_matvec["snaxc-config"]
+        ),
+    shell:
+        "{config[snaxc]} -c {params.snaxconfig} --banked-layout --add-mcycle -o {output} {input}"
+
+
+def get_linked_files(wildcards):
+    if "conv" in wildcards.file:
+        return [f"{wildcards.file}.o", "main_4d_i8.o"]
+    else:
+        return [f"{wildcards.file}.o", "main_2d_i8.o"]
+
+
+rule link_snax_binary:
+    input:
+        get_linked_files,
+    output:
+        "{file}.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"

@@ -23,6 +23,8 @@ class AccContext(Context):
 
     _memories: dict[str, SnaxMemory] = field(default_factory=dict[str, SnaxMemory])
 
+    banked_layout: bool = False
+
     def clone(self) -> "AccContext":
         return AccContext(
             self.allow_unregistered,

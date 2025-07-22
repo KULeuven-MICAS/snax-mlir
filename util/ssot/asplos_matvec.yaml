@@ -1,0 +1,28 @@
+memory:
+  name: L3
+  start: 0x8000_0000
+  size: 1_000_000_000
+clusters:
+  - memory:
+      name: L1
+      start: 0x1000_0000
+      size: 1_000_000
+    cores:
+      - accelerators:
+          - gemmx:
+              m: 1
+              n: 16
+              k: 32
+              streamers:
+                - temporal_dims: 6
+                  spatial_dims: [4]
+                - temporal_dims: 6
+                  spatial_dims: [64]
+                - temporal_dims: 4
+                  spatial_dims: [2]
+                - temporal_dims: 4
+                  spatial_dims: [8]
+                - temporal_dims: 4
+                  spatial_dims: [8]
+      - accelerators:
+          - data_mover:

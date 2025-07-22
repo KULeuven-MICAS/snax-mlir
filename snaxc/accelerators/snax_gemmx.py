@@ -25,6 +25,7 @@ from snaxc.accelerators.streamers import (
     StreamerType,
 )
 from snaxc.accelerators.streamers.extensions import TransposeExtension
+from snaxc.accelerators.streamers.streamers import StreamerOpts
 from snaxc.dialects import accfg, dart, kernel, snax_stream
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 from snaxc.tools.configs import AcceleratorConfig, GemmxConfig
@@ -137,25 +138,33 @@ class SNAXGEMMXAccelerator(
     @classmethod
     def from_config(cls, config: AcceleratorConfig) -> Self:
         assert isinstance(config, GemmxConfig)
+
+        # TODO: get this in the config
+        remap: tuple[StreamerOpts, ...]
+        if config.m > 1:
+            remap = (HasAddressRemap(),)
+        else:
+            remap = ()
+
         streamer_config = StreamerConfiguration(
             [
                 Streamer(  # A
                     StreamerType.Reader,
                     temporal_dims=("n",) * config.streamers[0].temporal_dims,
                     spatial_dims=config.streamers[0].spatial_dims,
-                    opts=(TransposeExtension(), HasAddressRemap()),
+                    opts=(TransposeExtension(),) + remap,
                 ),
                 Streamer(  # B
                     StreamerType.Reader,
                     temporal_dims=("n",) * config.streamers[1].temporal_dims,
                     spatial_dims=config.streamers[1].spatial_dims,
-                    opts=(TransposeExtension(), HasAddressRemap()),
+                    opts=(TransposeExtension(),) + remap,
                 ),
                 Streamer(  # D8
                     StreamerType.Writer,
                     temporal_dims=("r",) + ("n",) * (config.streamers[2].temporal_dims - 1),
                     spatial_dims=config.streamers[2].spatial_dims,
-                    opts=(HasAddressRemap(),),
+                    opts=remap,
                 ),
                 Streamer(  # C
                     StreamerType.Reader,
@@ -163,15 +172,15 @@ class SNAXGEMMXAccelerator(
                     spatial_dims=config.streamers[3].spatial_dims,
                     opts=(
                         HasChannelMask(),
-                        HasAddressRemap(),
                         HasBroadcast(),
-                    ),
+                    )
+                    + remap,
                 ),
                 Streamer(  # D32
                     StreamerType.Writer,
                     temporal_dims=("r",) + ("n",) * (config.streamers[4].temporal_dims - 1),
                     spatial_dims=config.streamers[4].spatial_dims,
-                    opts=(HasAddressRemap(),),
+                    opts=remap,
                 ),
             ],
         )
@@ -534,6 +543,11 @@ class SNAXGEMMXAccelerator(
         return ops
 
     def get_template(self, op: dart.StreamingRegionOpBase) -> Template:
+        if self.m == 1:
+            return self.get_matvec_template(op)
+        return self.get_matmul_template(op)
+
+    def get_matmul_template(self, op: dart.StreamingRegionOpBase) -> Template:
         assert isinstance(generic_op := op.body.block.first_op, dart.GenericOp)
         if isinstance(generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp):
             # matmul
@@ -570,6 +584,43 @@ class SNAXGEMMXAccelerator(
                 AffineMap(2, 0, (m, k)),
             ]
             template_bounds = (self.m, self.k)
+
+        if not isinstance(generic_op.next_op, dart.YieldOp):
+            raise RuntimeError("unsupported kernel")
+
+        return Template(TemplatePattern(template_bounds, tp) for tp in template)
+
+    def get_matvec_template(self, op: dart.StreamingRegionOpBase) -> Template:
+        assert isinstance(generic_op := op.body.block.first_op, dart.GenericOp)
+        if isinstance(generic_op.body.block.first_op, kernel.QMacOp | kernel.MacOp):
+            # matmul
+            n, k = (AffineDimExpr(i) for i in range(2))
+            template = [
+                AffineMap(2, 0, (k,)),
+                AffineMap(2, 0, (k, n)),
+                AffineMap(2, 0, (n,)),
+            ]
+            template_bounds = (self.n, self.k)
+
+            if isinstance(generic_op.next_op, dart.GenericOp):
+                generic_op = generic_op.next_op
+                if isinstance(generic_op.body.block.first_op, kernel.AddOp):
+                    # gemm, add c pattern that is equal to output pattern
+                    template += [template[-1]]
+                elif isinstance(generic_op.body.block.first_op, kernel.RescaleOp):
+                    # same template
+                    pass
+                else:
+                    raise RuntimeError("unsupported kernel")
+            if isinstance(generic_op.next_op, dart.GenericOp):
+                generic_op = generic_op.next_op
+                if isinstance(generic_op.body.block.first_op, kernel.RescaleOp):
+                    # same template
+                    pass
+                else:
+                    raise RuntimeError("unsupported kernel")
+        else:
+            raise NotImplementedError()
 
         if not isinstance(generic_op.next_op, dart.YieldOp):
             raise RuntimeError("unsupported kernel")
@@ -642,11 +693,14 @@ class SNAXGEMMXAccelerator(
                 # matmul, int8 output
                 # for C32:
                 # TODO: 8 here still refers to hardcoded TCDM bank width
+                nb_output_spats = len(self.streamer_config.data.streamers[-1].spatial_dims)
                 snax_stride_patterns.append(
                     snax_stream.StridePattern(
                         upper_bounds=[x.data for x in snax_stride_patterns[2].upper_bounds] + [self.serializer_ratio],
                         temporal_strides=[x.data for x in snax_stride_patterns[2].temporal_strides] + [0],
-                        spatial_strides=[8 * self.streamer_config.data.streamers[2].spatial_dims[-1], 8],
+                        spatial_strides=[8 * self.streamer_config.data.streamers[2].spatial_dims[-1], 8][
+                            -nb_output_spats:
+                        ],
                     )
                 )
                 ops_to_add.append(
@@ -659,7 +713,7 @@ class SNAXGEMMXAccelerator(
                     snax_stream.StridePattern(
                         upper_bounds=[0, 0, 0],
                         temporal_strides=[0, 0, 0],
-                        spatial_strides=[0, 0],
+                        spatial_strides=[0] * nb_output_spats,
                     )
                 )
                 new_inputs.append(op.outputs[0])

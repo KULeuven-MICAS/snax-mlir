@@ -74,7 +74,10 @@ def scheduler_backtrack(
         schedule_bound = candidate_schedule[0].bounds[-inner_dims]
 
         if template_bound:
-            if schedule_bound <= template_bound:
+            if schedule_bound < template_bound:
+                # don't allow underfilled array
+                continue
+            if schedule_bound == template_bound:
                 pass
             elif schedule_bound % template_bound != 0:
                 # TODO: imperfect factorization

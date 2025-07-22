@@ -9,6 +9,7 @@ dependencies = [
   "minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2",
   "numpy",
   "dacite>=1.9.2,<2",
+  "plotly>=6.2.0,<7", "seaborn>=0.13.2,<0.14",
 ]
 
 [project.optional-dependencies]
@@ -77,7 +78,7 @@ typeCheckingMode = "strict"
 
 
 [tool.pixi.project]
-channels = ["conda-forge", "bioconda", "kuleuven-micas"]
+channels = ["conda-forge", "bioconda", "kuleuven-micas", "jorendumoulin"]
 platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
@@ -92,7 +93,7 @@ default = { features = ["dev", "nn", "viz"] }
 mlir = { version = "==20.1.1", channel = "kuleuven-micas" }
 clang = "==20.1.1"
 lld = "==20.1.1"
-snax-cluster-prebuilt = "==0.2.13.ext"
+snax-cluster-prebuilt = "==11"
 snakemake-minimal = "*"
 pyright = ">=1.1.390,<2"
 vcd-to-csv = { version = ">=0.1.0,<0.2", channel = "kuleuven-micas" }

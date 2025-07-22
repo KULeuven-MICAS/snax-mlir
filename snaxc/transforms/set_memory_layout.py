@@ -48,7 +48,12 @@ def ensure_access_granularity(
     # this is a hack that works, this information needs to come from accelerators:
     assert isa(operand.type, MemRefType[builtin.FixedBitwidthType])
 
-    if schedule_dim >= spatial_dims(ctx, op):
+    if ctx.banked_layout and schedule_dim >= spatial_dims(ctx, op):
+        banks = 1024 if ctx.get_acc("snax_gemmx").m == 1 else 256  # pyright: ignore
+        temporal_access_granularity = banks if operand.type.get_element_type().bitwidth == 8 else 16  # in elements
+        if current_stride % temporal_access_granularity != 0:
+            current_stride += (temporal_access_granularity - current_stride) % banks
+    elif schedule_dim >= spatial_dims(ctx, op):
         # we are in temporal regime
         temporal_access_granularity = 8 if operand.type.get_element_type().bitwidth == 8 else 16  # in elements
         if current_stride % temporal_access_granularity != 0:
