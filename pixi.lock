@@ -115,7 +115,7 @@ environments:
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-interface-report-plugins-1.1.0-pyhdfd78af_0.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-interface-storage-plugins-3.3.0-pyhdfd78af_0.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-minimal-8.27.1-pyhdfd78af_0.tar.bz2
-      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.12-hb0f4dca_0.conda
+      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.13.ext-hb0f4dca_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.17-h0157908_18.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tabulate-0.9.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tbb-2021.13.0-hceb3a55_1.conda
@@ -2149,18 +2149,19 @@ packages:
   - pkg:pypi/snakemake?source=hash-mapping
   size: 810266
   timestamp: 1736367856698
-- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.12-hb0f4dca_0.conda
-  sha256: 5a7158a59f2eeaacd2fabd3442e1ff3514f4cf63d3a8f7968f6eee8005d780ea
-  md5: 823d4f2674c2862492ab0d5f1c5c05f6
+- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.13.ext-hb0f4dca_0.conda
+  sha256: cdc747d9a1b904a39667b5104c53070c739c82bd774dbad487691f1577422582
+  md5: d85700b1e9f3cc479cafc8eaca675621
   depends:
+  - libgcc >=14
   - libstdcxx >=14
   - libgcc >=14
-  size: 12238776
-  timestamp: 1743177708313
-- pypi: ./
+  size: 17310984
+  timestamp: 1752743789959
+- pypi: .
   name: snax-mlir
   version: 0.2.2
-  sha256: 7425f0725158b02864a490b31ca0784d44b9222cc02af5e32839b3d4b5058545
+  sha256: 2839df9cca3c961037b867a55d2eb5e5411ccd44d24d7ea231d91c26b6825602
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@60e3b7970a3eb7fc16ab7e57c2928357bc5d0180
   - minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2

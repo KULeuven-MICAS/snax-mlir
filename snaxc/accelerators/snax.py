@@ -19,6 +19,7 @@ from snaxc.accelerators.streamers.streamers import (
     HasChannelMask,
     Streamer,
     StreamerFlag,
+    StreamerSystemType,
 )
 from snaxc.dialects import accfg, snax_stream
 from snaxc.dialects.dart import AccessPatternOp, StreamingRegionOpBase
