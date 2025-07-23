@@ -12,7 +12,7 @@ module snax_rules:
         config
 
 
-use rule compile_llvm_module from snax_rules
+use rule compile_llvm_module, translate_mlir from snax_rules
 
 
 rule generate_data:
@@ -59,19 +59,9 @@ rule process:
     input:
         "{file}.mlir",
     output:
-        temp("{file}.postproc.mlir"),
+        temp("{file}.ll.mlir"),
     shell:
         """
         mlir-opt --mlir-print-op-generic --allow-unregistered-dialect {input} | snax-opt -p preprocess --allow-unregistered-dialect | mlir-opt --one-shot-bufferize="bufferize-function-boundaries=1" --buffer-results-to-out-params --drop-equivalent-buffer-results --mlir-print-op-generic | snax-opt -p postprocess{{index_bitwidth=64}} --allow-unregistered-dialect -o {output}
         """
 
-
-rule mlir_to_ll:
-    input:
-        "{file}.postproc.mlir",
-    output:
-        temp("{file}.ll"),
-    shell:
-        """
-        mlir-translate {input} --mlir-to-llvmir -o {output}
-        """
