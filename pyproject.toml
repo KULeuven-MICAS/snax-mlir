@@ -8,6 +8,7 @@ dependencies = [
   "xdsl @ git+https://github.com/xdslproject/xdsl.git@60e3b7970a3eb7fc16ab7e57c2928357bc5d0180",
   "minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2",
   "numpy",
+  "dacite>=1.9.2,<2",
 ]
 
 [project.optional-dependencies]
