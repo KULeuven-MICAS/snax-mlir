@@ -19,7 +19,7 @@ MLIR_POSTPROC_FLAGS: tuple[str, ...] = (
     "--convert-cf-to-llvm=index-bitwidth={index_bitwidth}",
     "--convert-arith-to-llvm=index-bitwidth={index_bitwidth}",
     "--convert-func-to-llvm=index-bitwidth={index_bitwidth}",
-    "--finalize-memref-to-llvm=use-generic-functions index-bitwidth={index_bitwidth}",
+    "--finalize-memref-to-llvm=index-bitwidth={index_bitwidth}",
     "--canonicalize",
     "--reconcile-unrealized-casts",
     "--mlir-print-local-scope",

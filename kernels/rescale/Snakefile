@@ -1,56 +1,100 @@
+from util.snake.configs import get_snax_alu_config
+
+config = get_snax_alu_config()
+
+files = ["rescale_down"]
+
+
 rule all:
     input:
-        "build/output.ll"
+        expand("{file}.x", file=files),
+
+
+rule compile_c:
+    """
+    Generic rule to compile c files with default compilation options.
+    """
+    input:
+        "{file}.c",
+    output:
+        temp("{file}.o"),
+    shell:
+        "clang -c {input} -o {output} -I ../../runtime/include"
+
+
+rule compile_llvm_module:
+    """
+    Use clang to compile LLVM module to object file.
+    Uses target-specific options, but not C-specific options.
+    """
+    input:
+        "{file}.ll",
+    output:
+        temp("{file}.o"),
+    shell:
+        "clang -x ir -O0 -c {input} -o {output}"
+
+
+rule link_snax_binary:
+    input:
+        "{file}.o",
+        "main.o",
+    output:
+        "{file}.x",
+    shell:
+        "clang {input} -o {output} "
+
+
+rule prepreprocess:
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}.ppp.mlir"),
+    shell:
+        """
+        mlir-opt --mlir-print-op-generic --allow-unregistered-dialect {input} -o {output}
+        """
 
 
 rule preprocess:
     input:
-        "rescale_down.mlir"
+        "{file}.ppp.mlir",
     output:
-        "build/linalg.mlir"
+        temp("{file}.preproc.mlir"),
     shell:
         """
         snax-opt {input} -p preprocess --allow-unregistered-dialect > {output}
         """
 
-rule linalg_to_loops:
+
+rule midprocess:
     input:
-        "build/linalg.mlir"
+        "{file}.preproc.mlir",
     output:
-        "build/loops.mlir"
+        temp("{file}.midproc.mlir"),
     shell:
         """
-        mlir-opt {input} \
-            --convert-linalg-to-loops \
-            --convert-scf-to-cf \
-            --canonicalize \
-            --cse \
-            > {output}
+        mlir-opt --one-shot-bufferize="bufferize-function-boundaries=1" --buffer-results-to-out-params --drop-equivalent-buffer-results --mlir-print-op-generic {input} -o {output}
         """
 
-rule loops_to_llvm:
+
+rule postprocess:
     input:
-        "build/loops.mlir"
+        "{file}.midproc.mlir",
     output:
-        "build/llvm.mlir"
+        temp("{file}.postproc.mlir"),
     shell:
         """
-        mlir-opt {input} \
-            --convert-to-llvm \
-            --convert-arith-to-llvm \
-            --convert-func-to-llvm \
-            --reconcile-unrealized-casts \
-            --canonicalize \
-            --cse \
-            > {output}
+        snax-opt {input} -p postprocess{{index_bitwidth=64}} --allow-unregistered-dialect > {output}
         """
 
-rule llvm_translate:
+
+rule mlir_to_ll:
     input:
-        "build/llvm.mlir"
+        "{file}.postproc.mlir",
     output:
-        "build/output.ll"
+        "{file}.ll",
     shell:
         """
-        mlir-translate --mlir-to-llvmir --allow-unregistered-dialect {input} > {output}
+        mlir-translate {input} --mlir-to-llvmir -o {output}
         """
