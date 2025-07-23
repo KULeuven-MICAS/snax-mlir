@@ -1,38 +1,26 @@
-from util.snake.configs import get_snax_alu_config
+from util.snake.configs import get_host_config
 
-config = get_snax_alu_config()
+config = get_host_config()
 
 files = ["rescale_down"]
+
+
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule compile_c from snax_rules
+use rule compile_llvm_module from snax_rules
 
 
 rule all:
     input:
         expand("{file}.x", file=files),
-
-
-rule compile_c:
-    """
-    Generic rule to compile c files with default compilation options.
-    """
-    input:
-        "{file}.c",
-    output:
-        temp("{file}.o"),
     shell:
-        "clang -c {input} -o {output} -I ../../runtime/include"
-
-
-rule compile_llvm_module:
-    """
-    Use clang to compile LLVM module to object file.
-    Uses target-specific options, but not C-specific options.
-    """
-    input:
-        "{file}.ll",
-    output:
-        temp("{file}.o"),
-    shell:
-        "clang -x ir -O0 -c {input} -o {output}"
+        "./{input}"
 
 
 rule link_snax_binary:
@@ -45,55 +33,21 @@ rule link_snax_binary:
         "clang {input} -o {output} "
 
 
-rule prepreprocess:
+rule process:
     input:
         "{file}.mlir",
-    output:
-        temp("{file}.ppp.mlir"),
-    shell:
-        """
-        mlir-opt --mlir-print-op-generic --allow-unregistered-dialect {input} -o {output}
-        """
-
-
-rule preprocess:
-    input:
-        "{file}.ppp.mlir",
-    output:
-        temp("{file}.preproc.mlir"),
-    shell:
-        """
-        snax-opt {input} -p preprocess --allow-unregistered-dialect > {output}
-        """
-
-
-rule midprocess:
-    input:
-        "{file}.preproc.mlir",
-    output:
-        temp("{file}.midproc.mlir"),
-    shell:
-        """
-        mlir-opt --one-shot-bufferize="bufferize-function-boundaries=1" --buffer-results-to-out-params --drop-equivalent-buffer-results --mlir-print-op-generic {input} -o {output}
-        """
-
-
-rule postprocess:
-    input:
-        "{file}.midproc.mlir",
     output:
         temp("{file}.postproc.mlir"),
     shell:
         """
-        snax-opt {input} -p postprocess{{index_bitwidth=64}} --allow-unregistered-dialect > {output}
+        mlir-opt --mlir-print-op-generic --allow-unregistered-dialect {input} | snax-opt -p preprocess --allow-unregistered-dialect | mlir-opt --one-shot-bufferize="bufferize-function-boundaries=1" --buffer-results-to-out-params --drop-equivalent-buffer-results --mlir-print-op-generic | snax-opt -p postprocess{{index_bitwidth=64}} --allow-unregistered-dialect -o {output}
         """
-
 
 rule mlir_to_ll:
     input:
         "{file}.postproc.mlir",
     output:
-        "{file}.ll",
+        temp("{file}.ll"),
     shell:
         """
         mlir-translate {input} --mlir-to-llvmir -o {output}
