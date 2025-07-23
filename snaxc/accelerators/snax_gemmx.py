@@ -30,6 +30,45 @@ from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 from snaxc.tools.configs import AcceleratorConfig, GemmxConfig
 from snaxc.util.pack_bitlist import pack_bitlist
 
+default_streamer = StreamerConfiguration(
+    [
+        Streamer(  # A
+            StreamerType.Reader,
+            temporal_dims=("n", "n", "n", "n", "n", "n"),
+            spatial_dims=(8,),
+            opts=(TransposeExtension(), HasAddressRemap()),
+        ),
+        Streamer(  # B
+            StreamerType.Reader,
+            temporal_dims=("n", "n", "n"),
+            spatial_dims=(8,),
+            opts=(TransposeExtension(), HasAddressRemap()),
+        ),
+        Streamer(  # D8
+            StreamerType.Writer,
+            temporal_dims=("r", "n", "n"),
+            spatial_dims=(8,),
+            opts=(HasAddressRemap(),),
+        ),
+        Streamer(  # C
+            StreamerType.Reader,
+            temporal_dims=("r", "n", "n"),
+            spatial_dims=(8, 4),
+            opts=(
+                HasChannelMask(),
+                HasAddressRemap(),
+                HasBroadcast(),
+            ),
+        ),
+        Streamer(  # D32
+            StreamerType.Writer,
+            temporal_dims=("r", "n", "n"),
+            spatial_dims=(8, 4),
+            opts=(HasAddressRemap(),),
+        ),
+    ],
+)
+
 
 class SNAXGEMMXAccelerator(
     SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAXPollingBarrier4, ConfigurableAccelerator
@@ -52,7 +91,7 @@ class SNAXGEMMXAccelerator(
 
     def __init__(
         self,
-        streamer_config: StreamerConfiguration,
+        streamer_config: StreamerConfiguration = default_streamer,
         m: int | None = None,
         n: int | None = None,
         k: int | None = None,
