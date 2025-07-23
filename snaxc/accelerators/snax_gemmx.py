@@ -85,7 +85,13 @@ class SNAXGEMMXAccelerator(
         SupportedKernel(kernel.RescaleOp, (i32, i8)),
     )
 
-    def __init__(self, streamer_config: StreamerConfiguration = default_streamer) -> None:
+    def __init__(
+        self,
+        streamer_config: StreamerConfiguration = default_streamer,
+        m: int | None = None,
+        n: int | None = None,
+        k: int | None = None,
+    ) -> None:
         super().__init__(streamer_config)
 
         self.fields = (
