@@ -7,6 +7,7 @@ from xdsl.ir.affine import AffineMap
 from xdsl.utils.hints import isa
 
 import snaxc.dialects.kernel as kernel
+from snaxc.accelerators.configurable_accelerator import ConfigurableAccelerator
 from snaxc.accelerators.dispatching import DispatchTemplate, SupportedKernel
 from snaxc.accelerators.snax import (
     SNAXAccelerator,
@@ -30,7 +31,7 @@ default_streamer = StreamerConfiguration(
 )
 
 
-class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate):
+class SNAXAluAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate, ConfigurableAccelerator):
     """
     Accelerator interface class for the SNAX Alu accelerator.
     """

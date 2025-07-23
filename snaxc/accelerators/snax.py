@@ -9,7 +9,6 @@ from xdsl.ir import Operation, OpResult, SSAValue
 
 from snaxc.accelerators.accelerator import Accelerator
 from snaxc.accelerators.streamers import StreamerConfiguration
-from snaxc.accelerators.streamers.extensions.streamer_extension import StreamerExtension
 from snaxc.accelerators.streamers.extensions.transpose_extension import (
     TransposeExtension,
 )
@@ -19,7 +18,6 @@ from snaxc.accelerators.streamers.streamers import (
     HasChannelMask,
     Streamer,
     StreamerFlag,
-    StreamerSystemType,
 )
 from snaxc.dialects import accfg, snax_stream
 from snaxc.dialects.dart import AccessPatternOp, StreamingRegionOpBase
@@ -35,8 +33,7 @@ class SNAXAccelerator(Accelerator, ABC):
     with common SNAX lowerings.
     """
 
-    @staticmethod
-    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_launch(self, launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.launch_field_items())
         ops: Sequence[Operation] = []
         for field, val in launch_op.iter_params():

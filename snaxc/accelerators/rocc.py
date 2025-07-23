@@ -23,8 +23,7 @@ class RoCCAccelerator(Accelerator, ABC):
         """
         return []
 
-    @staticmethod
-    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_launch(self, launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         xcustom_acc = 3  # hardcoded to 3 for now
         vals = create_pairs(launch_op)
         # Create the sequence of all operations that need to be emitted

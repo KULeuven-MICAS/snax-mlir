@@ -2,6 +2,8 @@ from dataclasses import dataclass
 
 from xdsl.dialects.builtin import StringAttr
 
+from snaxc.tools.configs import SnaxMemoryConfig
+
 
 @dataclass(frozen=True)
 class SnaxMemory:
@@ -13,6 +15,17 @@ class SnaxMemory:
 
     # Memory starting address
     start: int
+
+    @classmethod
+    def from_config(cls, config: SnaxMemoryConfig) -> "SnaxMemory":
+        """
+        Create a SnaxMemory instance from a SnaxMemoryConfig.
+        """
+        return cls(
+            attribute=StringAttr(config.name),
+            capacity=config.size,
+            start=config.start,
+        )
 
 
 # define the available memory spaces in the SNAX Cluster

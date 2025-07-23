@@ -5,31 +5,22 @@ version = "0.2.2"
 requires-python = "== 3.12.*"
 
 dependencies = [
-    "xdsl @ git+https://github.com/xdslproject/xdsl.git@60e3b7970a3eb7fc16ab7e57c2928357bc5d0180",
-    "minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2",
-    "numpy",
+  "xdsl @ git+https://github.com/xdslproject/xdsl.git@60e3b7970a3eb7fc16ab7e57c2928357bc5d0180",
+  "minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2",
+  "numpy",
+  "dacite>=1.9.2,<2",
 ]
 
 [project.optional-dependencies]
 
 # All optional dependencies for plotting and parsing
-dev = [
-    "pre-commit",
-    "filecheck==1.0.0",
-    "lit",
-    "pytest",
-]
+dev = ["pre-commit", "filecheck==1.0.0", "lit", "pytest"]
 
 # All optional dependencies for graphical plotting
-viz = [
-    "pandas",
-    "matplotlib",
-]
+viz = ["pandas", "matplotlib"]
 
 # Dependencies for neural network compilation
-nn = [
-    "tensorflow-cpu==2.19.0",
-]
+nn = ["tensorflow-cpu==2.19.0"]
 
 [project.scripts]
 snax-opt = "snaxc.tools.snax_opt_main:main"
@@ -43,10 +34,10 @@ line-length = 120
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "PT", "TID251"]
 ignore = [
-    "E741",  # https://beta.ruff.rs/docs/rules/ambiguous-variable-name/
-    "PT006", # https://beta.ruff.rs/docs/rules/pytest-parametrize-names-wrong-type/
-    "PT011", # https://beta.ruff.rs/docs/rules/pytest-raises-too-broad/
-    "PT012", # https://beta.ruff.rs/docs/rules/pytest-raises-with-multiple-statements/
+  "E741",  # https://beta.ruff.rs/docs/rules/ambiguous-variable-name/
+  "PT006", # https://beta.ruff.rs/docs/rules/pytest-parametrize-names-wrong-type/
+  "PT011", # https://beta.ruff.rs/docs/rules/pytest-raises-too-broad/
+  "PT012", # https://beta.ruff.rs/docs/rules/pytest-raises-with-multiple-statements/
 ]
 
 [tool.ruff.lint.pycodestyle]
@@ -82,10 +73,7 @@ reportMissingModuleSource = false
 enableTypeIgnoreComments = false
 enableExperimentalFeatures = true
 typeCheckingMode = "strict"
-"include" = [
-    "snaxc",
-    "tests",
-]
+"include" = ["snaxc", "tests"]
 
 
 [tool.pixi.project]

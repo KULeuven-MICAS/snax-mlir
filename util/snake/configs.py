@@ -103,3 +103,13 @@ def get_mlperf_tiny_config() -> dict[str, Any]:
         }
     )
     return config
+
+
+def get_host_config() -> dict[str, Any]:
+    config: dict[str, Any] = {}
+    config.update(get_default_paths())
+    config.update({"cflags": ["-I ../../runtime/include"]})
+    config.update({"clangflags": ["-O0"]})
+    config.update({"num_chips": 1})
+    config.update({"num_harts": 1})
+    return config
