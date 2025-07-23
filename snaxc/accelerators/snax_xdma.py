@@ -5,6 +5,7 @@ from xdsl.dialects.builtin import IntAttr, i32
 from xdsl.ir import Operation, OpResult, SSAValue
 from xdsl.ir.affine import AffineMap
 
+from snaxc.accelerators.configurable_accelerator import ConfigurableAccelerator
 from snaxc.accelerators.dispatching import DispatchTemplate
 from snaxc.accelerators.snax import (
     SNAXAccelerator,
@@ -52,7 +53,9 @@ default_streamer = StreamerConfiguration(
 c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
 
 
-class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate):
+class SNAXXDMAAccelerator(
+    SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate, ConfigurableAccelerator
+):
     """
     Accelerator interface class for the SNAX XDMA.
     """
