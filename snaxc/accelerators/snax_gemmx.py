@@ -78,9 +78,9 @@ class SNAXGEMMXAccelerator(
     """
 
     name = "snax_gemmx"
-    m: int
-    n: int
-    k: int
+    m: int = 8
+    n: int = 8
+    k: int = 8
 
     supported_kernels = (
         SupportedKernel(kernel.QMacOp, (i8, i8, i32, i32, i32)),
