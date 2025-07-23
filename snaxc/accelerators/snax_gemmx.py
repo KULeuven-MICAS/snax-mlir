@@ -9,6 +9,7 @@ from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.parser import IntegerType
 from xdsl.utils.hints import isa
 
+from snaxc.accelerators.configurable_accelerator import ConfigurableAccelerator
 from snaxc.accelerators.dispatching import DispatchTemplate, SupportedKernel
 from snaxc.accelerators.snax import (
     SNAXAccelerator,
@@ -68,7 +69,9 @@ default_streamer = StreamerConfiguration(
 )
 
 
-class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAXPollingBarrier4):
+class SNAXGEMMXAccelerator(
+    SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAXPollingBarrier4, ConfigurableAccelerator
+):
     """
     Accelerator Interface class for SNAX GEMMX accelerator
     """

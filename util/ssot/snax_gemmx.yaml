@@ -2,12 +2,13 @@ memory:
   name: L3
   start: 0x8000_0000
   size: 1_000_000_000
-cluster_0:
-  memory:
-    name: L1
-    start: 0x1000_0000
-    size: 100_000
-  core_0:
-    - snax_gemmx
-  core_1:
-    - data_mover
+clusters:
+  - memory:
+      name: L1
+      start: 0x1000_0000
+      size: 100_000
+    cores:
+      - accelerators:
+          - gemmx:
+      - accelerators:
+          - data_mover:
