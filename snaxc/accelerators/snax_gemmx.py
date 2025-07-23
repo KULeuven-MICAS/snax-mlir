@@ -1,6 +1,6 @@
 from collections.abc import Sequence
-from math import prod
-from typing import cast
+from math import ceil, prod
+from typing import Self, cast
 
 from xdsl.dialects import arith, builtin, llvm
 from xdsl.dialects.builtin import DenseArrayBase, i8, i32
@@ -27,6 +27,7 @@ from snaxc.accelerators.streamers import (
 from snaxc.accelerators.streamers.extensions import TransposeExtension
 from snaxc.dialects import accfg, dart, kernel, snax_stream
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
+from snaxc.tools.configs import AcceleratorConfig, GemmxConfig
 from snaxc.util.pack_bitlist import pack_bitlist
 
 default_streamer = StreamerConfiguration(
@@ -77,6 +78,9 @@ class SNAXGEMMXAccelerator(
     """
 
     name = "snax_gemmx"
+    m: int = 8
+    n: int = 8
+    k: int = 8
 
     supported_kernels = (
         SupportedKernel(kernel.QMacOp, (i8, i8, i32, i32, i32)),
@@ -85,8 +89,21 @@ class SNAXGEMMXAccelerator(
         SupportedKernel(kernel.RescaleOp, (i32, i8)),
     )
 
-    def __init__(self, streamer_config: StreamerConfiguration = default_streamer) -> None:
+    def __init__(
+        self,
+        streamer_config: StreamerConfiguration = default_streamer,
+        m: int | None = None,
+        n: int | None = None,
+        k: int | None = None,
+    ) -> None:
         super().__init__(streamer_config)
+
+        if m is not None:
+            self.m = m
+        if n is not None:
+            self.n = n
+        if k is not None:
+            self.k = k
 
         self.fields = (
             *self.streamer_setup_fields,
@@ -100,14 +117,58 @@ class SNAXGEMMXAccelerator(
             # csr1: double_round (i8)
             "csr1",
             # 8 separate shift values
-            *(f"shift_{i}" for i in range(2)),
+            *(f"shift_{i}" for i in range(ceil(self.n / 4))),
             # 8 separate mult values
-            *(f"mult_{i}" for i in range(8)),
+            *(f"mult_{i}" for i in range(self.n)),
             "temporal_loop_bound",
             "bypassSIMD",
         )
 
         self.launch_fields = (*self.streamer_launch_fields, "launch_gemmx")
+
+    @classmethod
+    def from_config(cls, config: AcceleratorConfig) -> Self:
+        assert isinstance(config, GemmxConfig)
+        streamer_config = StreamerConfiguration(
+            [
+                Streamer(  # A
+                    StreamerType.Reader,
+                    temporal_dims=("n",) * config.streamers[0].temporal_dims,
+                    spatial_dims=config.streamers[0].spatial_dims,
+                    opts=(TransposeExtension(), HasAddressRemap()),
+                ),
+                Streamer(  # B
+                    StreamerType.Reader,
+                    temporal_dims=("n",) * config.streamers[1].temporal_dims,
+                    spatial_dims=config.streamers[1].spatial_dims,
+                    opts=(TransposeExtension(), HasAddressRemap()),
+                ),
+                Streamer(  # D8
+                    StreamerType.Writer,
+                    temporal_dims=("r",) + ("n",) * (config.streamers[2].temporal_dims - 1),
+                    spatial_dims=config.streamers[2].spatial_dims,
+                    opts=(HasAddressRemap(),),
+                ),
+                Streamer(  # C
+                    StreamerType.Reader,
+                    temporal_dims=("r",) + ("n",) * (config.streamers[3].temporal_dims - 1),
+                    spatial_dims=config.streamers[3].spatial_dims,
+                    opts=(
+                        HasChannelMask(),
+                        HasAddressRemap(),
+                        HasBroadcast(),
+                    ),
+                ),
+                Streamer(  # D32
+                    StreamerType.Writer,
+                    temporal_dims=("r",) + ("n",) * (config.streamers[4].temporal_dims - 1),
+                    spatial_dims=config.streamers[4].spatial_dims,
+                    opts=(HasAddressRemap(),),
+                ),
+            ],
+        )
+
+        return cls(streamer_config, config.m, config.n, config.k)
 
     def generate_acc_op(self) -> accfg.AcceleratorOp:
         """
@@ -120,6 +181,9 @@ class SNAXGEMMXAccelerator(
         addr_next, streamer_setup = self.get_streamer_setup_dict(base_addr)
         addr_next, streamer_launch = self.get_streamer_launch_dict(addr_next)
 
+        nb_shifts = ceil(self.n / 4)
+        nb_mults = self.n
+
         op = accfg.AcceleratorOp(
             self.name,
             {
@@ -130,13 +194,13 @@ class SNAXGEMMXAccelerator(
                 "subtractions": addr_next + 3,
                 "csr0": addr_next + 4,
                 "csr1": addr_next + 5,
-                **{f"shift_{i}": addr_next + 6 + i for i in range(2)},
-                **{f"mult_{i}": addr_next + 8 + i for i in range(8)},
-                "temporal_loop_bound": addr_next + 16,
-                "bypassSIMD": addr_next + 17,
+                **{f"shift_{i}": addr_next + 6 + i for i in range(nb_shifts)},
+                **{f"mult_{i}": addr_next + 6 + nb_shifts + i for i in range(nb_mults)},
+                "temporal_loop_bound": addr_next + 6 + nb_shifts + nb_mults,
+                "bypassSIMD": addr_next + 7 + nb_shifts + nb_mults,
             },
-            {**streamer_launch, "launch_gemmx": addr_next + 18},
-            addr_next + 18,
+            {**streamer_launch, "launch_gemmx": addr_next + 8 + nb_shifts + nb_mults},
+            addr_next + 8 + nb_shifts + nb_mults,
         )
         op.attributes["streamer_config"] = self.streamer_config
         return op
@@ -230,18 +294,18 @@ class SNAXGEMMXAccelerator(
                     double_round_val = rescale_op.double_round.value.data
                     shift_vals_int = cast(tuple[int, ...], rescale_op.shift.get_values())
                     if len(shift_vals_int) == 1:
-                        shift_vals_int = (shift_vals_int[0],) * 8
+                        shift_vals_int = (shift_vals_int[0],) * self.n
                     mult_vals_int = cast(tuple[int, ...], rescale_op.multiplier.get_values())
                     if len(mult_vals_int) == 1:
-                        mult_vals_int = (mult_vals_int[0],) * 8
+                        mult_vals_int = (mult_vals_int[0],) * self.n
                     zp_in_val = rescale_op.input_zp.value.data
                     zp_out_val = rescale_op.output_zp.value.data
                 else:
                     max_int_val = 127
                     min_int_val = -128
                     double_round_val = 0
-                    shift_vals_int = (9,) * 8
-                    mult_vals_int = (1,) * 8
+                    shift_vals_int = (9,) * self.n
+                    mult_vals_int = (1,) * self.n
                     zp_in_val = 0
                     zp_out_val = 0
 
@@ -277,22 +341,22 @@ class SNAXGEMMXAccelerator(
                     ops_to_add.extend(shift_bitlist)
                     shift_vals.append(shift_bitlist[-1].results[0])
 
-                if len(shift_vals) > 2:
+                if len(shift_vals) > ceil(self.n / 4):
                     launch_attrs["shift_vals"] = cast(DenseArrayBase, rescale_op.shift)  # pyright: ignore
-                    shift_vals = shift_vals[:2]
+                    shift_vals = shift_vals[: ceil(self.n / 4)]
 
                 mult_vals = [mult.result for mult in mults]
-                if len(mult_vals) > 8:
+                if len(mult_vals) > self.n:
                     launch_attrs["mult_vals"] = cast(DenseArrayBase, rescale_op.multiplier)  # pyright: ignore
                     launch_attrs["m"] = m_val.value
-                    mult_vals = mult_vals[:8]
+                    mult_vals = mult_vals[: self.n]
 
             else:
                 loop_bound = c0
                 csr0 = c0.result
                 csr1 = c0.result
-                shift_vals = [c0.result for _ in range(2)]
-                mult_vals = [c1.result for _ in range(8)]
+                shift_vals = [c0.result for _ in range(ceil(self.n / 4))]
+                mult_vals = [c1.result for _ in range(self.n)]
 
             if isinstance(qmac, kernel.QMacOp):
                 # get zero points for gemm
@@ -352,8 +416,8 @@ class SNAXGEMMXAccelerator(
             shift_bitlist = list(pack_bitlist((shift,) * 4, (24, 16, 8, 0)))
             ops_to_add.extend(shift_bitlist)
 
-            shift_vals = [shift_bitlist[-1].results[0] for _ in range(2)]
-            mult_vals = (mult.result for _ in range(8))
+            shift_vals = [shift_bitlist[-1].results[0] for _ in range(ceil(self.n / 4))]
+            mult_vals = (mult.result for _ in range(ceil(self.n / 4)))
 
             loop_bound = prod(x.data for x in op.stride_patterns.data[0].upper_bounds)
             loop_bound = arith.ConstantOp.from_int_and_width(loop_bound, i32)
@@ -417,7 +481,7 @@ class SNAXGEMMXAccelerator(
         assert isinstance(mult_vals, DenseArrayBase)
         shift_vals = launch_op.attributes["shift_vals"]
         assert isinstance(shift_vals, DenseArrayBase)
-        new_m = builtin.IntegerAttr.from_int_and_width(m.value.data // (len(mult_vals) // 8), m.type.width.data)
+        new_m = builtin.IntegerAttr.from_int_and_width(m.value.data // (len(mult_vals) // self.n), m.type.width.data)
 
         ops.append(new_m_val := arith.ConstantOp(new_m))
         ops.append(m_addr := arith.ConstantOp(field_to_csr["M"]))
@@ -436,16 +500,17 @@ class SNAXGEMMXAccelerator(
             tuple[int, ...],
             cast(DenseArrayBase, launch_op.attributes["mult_vals"]).get_values(),
         )
-        for i in range(len(mult_vals) // 8):
+
+        for i in range(len(mult_vals) // self.n):
             # reprogram the shift and mult values
-            shifts = shift_vals[i * 8 : i * 8 + 8]
+            shifts = shift_vals[i * self.n : i * self.n + self.n]
             for j in range(0, len(shifts), 4):  # 4 8-bit shift vals per 32-bit csr
                 shift_bitlist = list(pack_bitlist(shifts[j : j + 4][::-1], (24, 16, 8, 0)))
                 ops.extend(shift_bitlist)
                 ops.append(csr_addr := arith.ConstantOp(field_to_csr[f"shift_{j // 4}"]))
                 ops.append(csr_op(csr_addr.result, shift_bitlist[-1].results[0]))
 
-            mults = mult_vals[i * 8 : i * 8 + 8]
+            mults = mult_vals[i * self.n : i * self.n + self.n]
             for j in range(len(mults)):
                 ops.append(mult_val := arith.ConstantOp.from_int_and_width(mults[j], i32))
                 ops.append(csr_addr := arith.ConstantOp(field_to_csr[f"mult_{j}"]))
@@ -470,7 +535,7 @@ class SNAXGEMMXAccelerator(
                 AffineMap(3, 0, (k, n)),
                 AffineMap(3, 0, (m, n)),
             ]
-            template_bounds = (8, 8, 8)
+            template_bounds = (self.m, self.n, self.k)
 
             if isinstance(generic_op.next_op, dart.GenericOp):
                 generic_op = generic_op.next_op
@@ -496,7 +561,7 @@ class SNAXGEMMXAccelerator(
                 AffineMap(2, 0, (m, k)),
                 AffineMap(2, 0, (m, k)),
             ]
-            template_bounds = (8, 8)
+            template_bounds = (self.m, self.k)
 
         if not isinstance(generic_op.next_op, dart.YieldOp):
             raise RuntimeError("unsupported kernel")
@@ -568,11 +633,12 @@ class SNAXGEMMXAccelerator(
                 new_inputs.append(new_outputs.pop())
                 # matmul, int8 output
                 # for C32:
+                # TODO: 8 here still refers to hardcoded TCDM bank width
                 snax_stride_patterns.append(
                     snax_stream.StridePattern(
                         upper_bounds=snax_stride_patterns[2].upper_bounds,
                         temporal_strides=snax_stride_patterns[2].temporal_strides,
-                        spatial_strides=[64, 8],
+                        spatial_strides=[8 * self.streamer_config.data.streamers[2].spatial_dims[-1], 8],
                     )
                 )
                 ops_to_add.append(
@@ -650,6 +716,7 @@ class SNAXGEMMXAccelerator(
             new_inputs.append(op.inputs[-1])
 
             # make last spatial stride patterns 2d
+            # the spatial strides do not matter here (i think)
             snax_stride_patterns[-2] = snax_stream.StridePattern(
                 upper_bounds=snax_stride_patterns[-2].upper_bounds,
                 temporal_strides=snax_stride_patterns[-2].temporal_strides,

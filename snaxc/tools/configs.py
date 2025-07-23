@@ -48,16 +48,20 @@ class SnaxAluWrapper(AcceleratorWrapper):
 
 
 @dataclass
-class GemmxConfig(AcceleratorConfig): ...
+class GemmxConfig(AcceleratorConfig):
+    m: int
+    n: int
+    k: int
+    streamers: list[StreamerConfig]
 
 
 @dataclass
 class GemmxWrapper(AcceleratorWrapper):
-    gemmx: None
+    gemmx: GemmxConfig
 
     @property
     def accelerator(self) -> AcceleratorConfig:
-        return GemmxConfig()
+        return self.gemmx
 
 
 @dataclass

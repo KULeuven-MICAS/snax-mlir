@@ -10,5 +10,19 @@ clusters:
     cores:
       - accelerators:
           - gemmx:
+              m: 8
+              n: 8
+              k: 8
+              streamers:
+                - temporal_dims: 6
+                  spatial_dims: [8]
+                - temporal_dims: 3
+                  spatial_dims: [8]
+                - temporal_dims: 3
+                  spatial_dims: [8]
+                - temporal_dims: 3
+                  spatial_dims: [8, 4]
+                - temporal_dims: 3
+                  spatial_dims: [8, 4]
       - accelerators:
           - data_mover:
