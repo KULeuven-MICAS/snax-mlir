@@ -51,9 +51,8 @@ class Accelerator(ABC):
         """
         raise NotImplementedError()
 
-    @staticmethod
     @abstractmethod
-    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_launch(self, launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         """
         Based on the accfg.accelerator op, return the necessary sequence of
         lower-level operations to perform an

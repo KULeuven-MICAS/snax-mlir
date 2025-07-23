@@ -33,8 +33,7 @@ class SNAXAccelerator(Accelerator, ABC):
     with common SNAX lowerings.
     """
 
-    @staticmethod
-    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_launch(self, launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         field_to_csr = dict(acc_op.launch_field_items())
         ops: Sequence[Operation] = []
         for field, val in launch_op.iter_params():
