@@ -12,10 +12,30 @@ module snax_rules:
         config
 
 
-use rule compile_c from snax_rules
-
-
 use rule compile_llvm_module from snax_rules
+
+
+rule generate_data:
+    """
+    Generate data for the rescale kernel.
+    """
+    output:
+        temp("data.h"),
+    shell:
+        "python3 gendata.py --bitwidth 32 --batch_size 64 --output {output}"
+
+
+rule compile_c:
+    """
+    Generic rule to compile c files with default compilation options.
+    """
+    input:
+        "{file}.c",
+        "data.h",
+    output:
+        temp("{file}.o"),
+    shell:
+        "{config[cc]} {config[cflags]} -c {input[0]} -o {output}"
 
 
 rule all:
