@@ -378,10 +378,9 @@ class SNAXGEMMXAccelerator(SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAX
             launch_attrs,
         )
 
-    @staticmethod
-    def lower_acc_launch(launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+    def lower_acc_launch(self, launch_op: accfg.LaunchOp, acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
         if "mult_vals" not in launch_op.attributes:
-            return SNAXAccelerator.lower_acc_launch(launch_op, acc_op)
+            return self.lower_acc_launch(launch_op, acc_op)
 
         # special case for channel-specific quantization scales:
         # for this to work, the schedule must be output-channel stationary
