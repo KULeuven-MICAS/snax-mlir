@@ -82,6 +82,8 @@ class SNAXGEMMXAccelerator(
     n: int = 8
     k: int = 8
 
+    serializer_ratio: int
+
     supported_kernels = (
         SupportedKernel(kernel.QMacOp, (i8, i8, i32, i32, i32)),
         SupportedKernel(kernel.MacOp, (i8, i8, i32)),
@@ -104,6 +106,12 @@ class SNAXGEMMXAccelerator(
             self.n = n
         if k is not None:
             self.k = k
+
+        # calculate output serializer ratio
+        NB_ELEMENTS_PER_PORT = 2
+        nb_elements = self.m * self.n
+        nb_output_ports = prod(streamer_config.streamers[-1].spatial_dims)
+        self.serializer_ratio = nb_elements // (NB_ELEMENTS_PER_PORT * nb_output_ports)
 
         self.fields = (
             *self.streamer_setup_fields,
@@ -636,8 +644,8 @@ class SNAXGEMMXAccelerator(
                 # TODO: 8 here still refers to hardcoded TCDM bank width
                 snax_stride_patterns.append(
                     snax_stream.StridePattern(
-                        upper_bounds=snax_stride_patterns[2].upper_bounds,
-                        temporal_strides=snax_stride_patterns[2].temporal_strides,
+                        upper_bounds=[x.data for x in snax_stride_patterns[2].upper_bounds] + [self.serializer_ratio],
+                        temporal_strides=[x.data for x in snax_stride_patterns[2].temporal_strides] + [0],
                         spatial_strides=[8 * self.streamer_config.data.streamers[2].spatial_dims[-1], 8],
                     )
                 )
