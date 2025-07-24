@@ -18,6 +18,7 @@ from xdsl.pattern_rewriter import (
 )
 from xdsl.rewriter import InsertPoint
 
+from snaxc.accelerators.acc_context import AccContext
 from snaxc.dialects.dart import StreamingRegionOpBase
 from snaxc.dialects.pipeline import IndexOp, PipelineOp, StageOp, YieldOp
 from snaxc.dialects.snax import ClusterSyncOp
@@ -46,6 +47,8 @@ class ConstructPipeline(RewritePattern):
     and pipelined execution of asynchronous multi-core accelerators.
     """
 
+    ctx = AccContext()
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: ForOp, rewriter: PatternRewriter):
         # TODO: only apply for for loops with lb 0 and step 1
@@ -65,7 +68,7 @@ class ConstructPipeline(RewritePattern):
         assert next_op is not None
 
         def is_index_op(op: Operation) -> bool:
-            if dispatch_to_compute(op) or dispatch_to_dm(op):
+            if dispatch_to_compute(op, self.ctx) or dispatch_to_dm(op, self.ctx):
                 return False
             if isinstance(op, ClusterSyncOp):
                 return False

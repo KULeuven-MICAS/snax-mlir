@@ -5,6 +5,7 @@ from xdsl.dialects.builtin import IntAttr, i32
 from xdsl.ir import Operation, OpResult, SSAValue
 from xdsl.ir.affine import AffineMap
 
+from snaxc.accelerators.configurable_accelerator import ConfigurableAccelerator
 from snaxc.accelerators.dispatching import DispatchTemplate
 from snaxc.accelerators.snax import (
     SNAXAccelerator,
@@ -52,7 +53,9 @@ default_streamer = StreamerConfiguration(
 c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
 
 
-class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate):
+class SNAXXDMAAccelerator(
+    SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate, ConfigurableAccelerator
+):
     """
     Accelerator interface class for the SNAX XDMA.
     """
@@ -70,12 +73,13 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
         self.fields = self.streamer_setup_fields
         self.launch_fields = self.streamer_launch_fields
         # Supported kernels are given by all available extensions
-        self.supported_kernels = [
+        temp_supported_kernels = [
             ext.get_dma_extension_kernel()
             for ext in default_streamer.streamers[0].opts + default_streamer.streamers[1].opts
             if isinstance(ext, StreamerExtension)
         ]
-        self.supported_kernels = tuple(self.supported_kernels)  # Remove duplicates
+        # Filter out None values and convert to tuple
+        self.supported_kernels = tuple(kernel for kernel in temp_supported_kernels if kernel is not None)
 
     def convert_to_acc_ops(self, op: Operation) -> Sequence[Operation]:
         """
@@ -193,7 +197,7 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
                     if isinstance(str_op := op.body.block.first_op, dart.GenericOp):
-                        if isinstance(
+                        if ext.supported_kernel is not None and isinstance(
                             kernel_op := str_op.body.block.first_op,
                             ext.supported_kernel.kernel_type,
                         ):
@@ -207,7 +211,7 @@ class SNAXXDMAAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, Di
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
                     if isinstance(str_op := op.body.block.first_op, dart.GenericOp):
-                        if isinstance(
+                        if ext.supported_kernel is not None and isinstance(
                             kernel_op := str_op.body.block.first_op,
                             ext.supported_kernel.kernel_type,
                         ):

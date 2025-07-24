@@ -7,13 +7,15 @@ from snaxc.accelerators.acc_context import AccContext
 from snaxc.accelerators.configurable_accelerator import ConfigurableAccelerator
 from snaxc.accelerators.snax_alu import SNAXAluAccelerator
 from snaxc.accelerators.snax_gemmx import SNAXGEMMXAccelerator
-from snaxc.tools.configs import AcceleratorWrapper, GemmxWrapper, SnaxAluWrapper, SystemConfig
+from snaxc.accelerators.snax_xdma import SNAXXDMAAccelerator
+from snaxc.tools.configs import AcceleratorWrapper, GemmxWrapper, SnaxAluWrapper, SnaxXdmaWrapper, SystemConfig
 from snaxc.util.snax_memory import SnaxMemory
 
 # mapping the config wrappers to actual accelerators:
 config_to_type: dict[type[AcceleratorWrapper], type[ConfigurableAccelerator] | None] = {
     GemmxWrapper: SNAXGEMMXAccelerator,
     SnaxAluWrapper: SNAXAluAccelerator,
+    SnaxXdmaWrapper: SNAXXDMAAccelerator,
 }
 
 
