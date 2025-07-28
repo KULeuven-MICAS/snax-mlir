@@ -14,7 +14,7 @@ class StreamerExtension(StreamerOpts, ABC):
     """
 
     name: str
-    supported_kernel: SupportedKernel
+    supported_kernel: SupportedKernel | None
     csr_length: int
 
     @abstractmethod
@@ -25,7 +25,7 @@ class StreamerExtension(StreamerOpts, ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_dma_extension_kernel(self) -> SupportedKernel:
+    def get_dma_extension_kernel(self) -> SupportedKernel | None:
         """
         Returns the supported kernel for this DMA extension.
         """

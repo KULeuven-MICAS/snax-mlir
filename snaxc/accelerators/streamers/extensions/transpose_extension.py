@@ -1,7 +1,5 @@
 from collections.abc import Sequence
 
-from xdsl.dialects.builtin import i32
-
 from snaxc.accelerators.dispatching import SupportedKernel
 from snaxc.accelerators.streamers.extensions.streamer_extension import StreamerExtension
 from snaxc.dialects import kernel
@@ -14,13 +12,13 @@ class TransposeExtension(StreamerExtension):
     """
 
     name = "t"
-    supported_kernel = SupportedKernel(kernel.MacOp, [i32, i32, i32])  # TODO: Select correct kernel
+    supported_kernel = None  # TODO: Select correct kernel
     csr_length = 1
 
     def get_dma_extension_name(self) -> str:
         return self.name
 
-    def get_dma_extension_kernel(self) -> SupportedKernel:
+    def get_dma_extension_kernel(self) -> SupportedKernel | None:
         return self.supported_kernel
 
     def get_csr_values(self, op: kernel.KernelOp) -> Sequence[int]:

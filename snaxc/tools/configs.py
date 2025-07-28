@@ -48,6 +48,19 @@ class SnaxAluWrapper(AcceleratorWrapper):
 
 
 @dataclass
+class SnaxXdmaConfig(AcceleratorConfig): ...
+
+
+@dataclass
+class SnaxXdmaWrapper(AcceleratorWrapper):
+    snax_xdma: None
+
+    @property
+    def accelerator(self) -> AcceleratorConfig:
+        return SnaxXdmaConfig()
+
+
+@dataclass
 class GemmxConfig(AcceleratorConfig):
     m: int
     n: int
@@ -66,7 +79,7 @@ class GemmxWrapper(AcceleratorWrapper):
 
 @dataclass
 class CoreConfig:
-    accelerators: list[DataMoverWrapper | SnaxAluWrapper | GemmxWrapper]
+    accelerators: list[DataMoverWrapper | SnaxAluWrapper | GemmxWrapper | SnaxXdmaWrapper]
 
 
 @dataclass

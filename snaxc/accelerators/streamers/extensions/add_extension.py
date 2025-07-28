@@ -20,7 +20,7 @@ class AddExtension(StreamerExtension):
     def get_dma_extension_name(self) -> str:
         return self.name
 
-    def get_dma_extension_kernel(self) -> SupportedKernel:
+    def get_dma_extension_kernel(self) -> SupportedKernel | None:
         return self.supported_kernel
 
     def get_csr_values(self, op: kernel.KernelOp) -> Sequence[int]:

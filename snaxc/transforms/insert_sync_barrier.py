@@ -5,6 +5,7 @@ from xdsl.ir import Operation
 from xdsl.passes import ModulePass
 from xdsl.rewriter import InsertPoint, Rewriter
 
+from snaxc.accelerators.acc_context import AccContext
 from snaxc.dialects import snax
 from snaxc.util.dispatching_rules import dispatch_to_compute, dispatch_to_dm
 
@@ -18,6 +19,7 @@ class InsertSyncBarrier(ModulePass):
     name = "insert-sync-barrier"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
+        assert isinstance(ctx, AccContext)
         rewriter = Rewriter()
 
         ops_to_sync = []
@@ -45,7 +47,7 @@ class InsertSyncBarrier(ModulePass):
                     # is used on another core - if yes, there must be a synchronisation
                     # barrier between the two ops
 
-                    if dispatch_to_dm(op_in_module) and not dispatch_to_dm(op_use.operation):
+                    if dispatch_to_dm(op_in_module, ctx) and not dispatch_to_dm(op_use.operation, ctx):
                         ops_to_sync.append(op_use.operation)
                         if op_in_module.parent_op() == op_use.operation.parent_op() and isinstance(
                             for_op := op_in_module.parent_op(), scf.ForOp
@@ -53,7 +55,7 @@ class InsertSyncBarrier(ModulePass):
                             assert isinstance(for_op.body.block.last_op, scf.YieldOp)
                             ops_to_sync.append(for_op.body.block.last_op)
 
-                    if dispatch_to_compute(op_in_module) and not dispatch_to_compute(op_use.operation):
+                    if dispatch_to_compute(op_in_module, ctx) and not dispatch_to_compute(op_use.operation, ctx):
                         ops_to_sync.append(op_use.operation)
                         if op_in_module.parent_op() == op_use.operation.parent_op() and isinstance(
                             for_op := op_in_module.parent_op(), scf.ForOp
