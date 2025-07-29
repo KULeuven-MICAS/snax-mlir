@@ -36,14 +36,12 @@ class RescaleDownExtension(StreamerExtension):
         # returns the number of input tensors in the rescale down op, currently limited to 2
         assert isinstance(op, kernel.RescaleOp), "Operation must be a RescaleOp"
 
-        # return [
-        #     op.input_zp.value.data,
-        #     op.multiplier.value.data,
-        #     op.output_zp.value.data,
-        #     op.shift.value.data,
-        # ]
-
-        return [111, 222, 333, 444]  # Placeholder values for testing
+        return [
+            op.input_zp.value.data,
+            op.multiplier.data.data[0],
+            op.output_zp.value.data,
+            op.shift.data.data[0],
+        ]
 
     def get_template(self, op: kernel.KernelOp) -> Template:
         """
