@@ -182,6 +182,13 @@ class SNAXCMain(CommandLineTool):
             help="apply a banked layout",
         )
 
+        arg_parser.add_argument(
+            "--ignore-transforms",
+            default=False,
+            action="store_true",
+            help="ignore dynamic layout transformations",
+        )
+
     def setup_pipeline(self):
         """
         Creates a pipeline that consists of all the passes specified.
@@ -245,7 +252,7 @@ class SNAXCMain(CommandLineTool):
         if self.args.add_mcycle:
             pass_pipeline.append(AddMcycleAroundLaunch())
         pass_pipeline.append(ConvertAccfgToCsrPass())
-        pass_pipeline.append(SNAXCopyToDMA(True))
+        pass_pipeline.append(SNAXCopyToDMA(self.args.ignore_transforms))
         pass_pipeline.append(SNAXToFunc())
         pass_pipeline.append(ConvertMemrefToArithPass())
         pass_pipeline.append(SNAXLowerMCycle())

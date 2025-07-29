@@ -130,7 +130,7 @@ rule compile_snax:
             else config_matvec["snaxc-config"]
         ),
     shell:
-        "{config[snaxc]} -c {params.snaxconfig} --banked-layout --add-mcycle -o {output} {input}"
+        "{config[snaxc]} -c {params.snaxconfig} --banked-layout --ignore-transforms --add-mcycle -o {output} {input}"
 
 
 def get_linked_files(wildcards):
