@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 
+from xdsl.dialects.builtin import i8, i32
 from xdsl.ir import Operation, SSAValue
 from xdsl.ir.affine import AffineMap
 
@@ -11,15 +12,15 @@ from snaxc.dialects.snax_stream import StridePattern
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 
 
-class TransposeExtension(StreamerExtension):
+class RescaleDownExtension(StreamerExtension):
     """
-    Snax XDMA Transpose Extension
-    This extension is used to perform transpose operations on the XDMA core.
+    Snax XDMA Rescale Down Extension
+    This extension is used to perform Rescale Down operations on the XDMA core.
     """
 
-    name = "t"
-    supported_kernel = None  # TODO: Select correct kernel
-    csr_length = 1
+    name = "rescale_down_ext"
+    supported_kernel = SupportedKernel(kernel.RescaleOp, [i32, i8])
+    csr_length = 4
 
     def get_dma_extension_name(self) -> str:
         return self.name
@@ -29,11 +30,20 @@ class TransposeExtension(StreamerExtension):
 
     def get_csr_values(self, op: kernel.KernelOp) -> Sequence[int]:
         """
-        Returns the CSR values for the Transpose extension.
-        This method should be implemented to provide the specific CSR values needed for the Transpose extension.
+        Returns the CSR values for the Rescale Down extension.
+        This method should be implemented to provide the specific CSR values needed for the Rescale Down extension.
         """
-        # Example implementation, replace with actual logic
-        return [3]  # TODO: Replace with actual CSR values for Transpose
+        # returns the number of input tensors in the rescale down op, currently limited to 2
+        assert isinstance(op, kernel.RescaleOp), "Operation must be a RescaleOp"
+
+        # return [
+        #     op.input_zp.value.data,
+        #     op.multiplier.value.data,
+        #     op.output_zp.value.data,
+        #     op.shift.value.data,
+        # ]
+
+        return [111, 222, 333, 444]  # Placeholder values for testing
 
     def get_template(self, op: kernel.KernelOp) -> Template:
         """

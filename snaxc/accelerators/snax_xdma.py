@@ -26,10 +26,12 @@ from snaxc.accelerators.streamers.extensions import (
     AddExtension,
     MaxPoolExtension,
     MemSetExtension,
+    RescaleDownExtension,
     StreamerExtension,
     TransposeExtension,
 )
 from snaxc.dialects import accfg, dart, snax_stream
+from snaxc.dialects.kernel import KernelOp
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 
 default_streamer = StreamerConfiguration(
@@ -38,7 +40,12 @@ default_streamer = StreamerConfiguration(
             StreamerType.Reader,
             ["n", "n", "n", "n", "n"],
             [8],
-            [MaxPoolExtension(), AddExtension(), HasChannelMask()],
+            [
+                MaxPoolExtension(),
+                AddExtension(),
+                RescaleDownExtension(),
+                HasChannelMask(),
+            ],
         ),
         Streamer(
             StreamerType.Writer,
@@ -54,7 +61,11 @@ c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
 
 
 class SNAXXDMAAccelerator(
-    SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate, ConfigurableAccelerator
+    SNAXAccelerator,
+    SNAXPollingBarrier3,
+    SNAXStreamer,
+    DispatchTemplate,
+    ConfigurableAccelerator,
 ):
     """
     Accelerator interface class for the SNAX XDMA.
@@ -220,8 +231,11 @@ class SNAXXDMAAccelerator(
                                 cst = arith.ConstantOp.from_int_and_width(csr_val, i32)
                                 result.append(([cst], cst.result))
                         else:
-                            cst = arith.ConstantOp.from_int_and_width(0, i32)
-                            result.append(([cst], cst.result))
+                            for i in range(ext.csr_length):
+                                # If the kernel is not supported, we still need to add the CSR values
+                                # but they will be set to 0.
+                                cst = arith.ConstantOp.from_int_and_width(0, i32)
+                                result.append(([cst], cst.result))
                     else:
                         cst = arith.ConstantOp.from_int_and_width(0, i32)
                         result.append(([cst], cst.result))
@@ -285,13 +299,40 @@ class SNAXXDMAAccelerator(
         )
 
     def get_template(self, op: dart.StreamingRegionOpBase):
-        template = [AffineMap.from_callable(lambda y: (y,))] * 3
-        template_bounds = (16,)
-        return Template(TemplatePattern(template_bounds, tp) for tp in template)
+        kernel_op = op.body.block.first_op
+        if isinstance(kernel_op, dart.GenericOp):
+            kernel_op = kernel_op.body.block.first_op
+            if isinstance(kernel_op, KernelOp):
+                for streamer in self.streamer_config.data.streamers:
+                    for ext in streamer.opts:
+                        if isinstance(ext, StreamerExtension):
+                            if ext.supported_kernel is not None and isinstance(
+                                kernel_op, ext.supported_kernel.kernel_type
+                            ):
+                                return ext.get_template(kernel_op)
+        return Template(
+            [
+                TemplatePattern(
+                    (16,),
+                    AffineMap.from_callable(lambda y: (y,)),  # Default template
+                )
+            ]
+        )
 
     def get_streamers(self, op: dart.StreamingRegionOpBase) -> Sequence[Streamer]:
+        kernel_op = op.body.block.first_op
+        if isinstance(kernel_op, dart.GenericOp):
+            kernel_op = kernel_op.body.block.first_op
+            if isinstance(kernel_op, KernelOp):
+                for streamer in self.streamer_config.data.streamers:
+                    for ext in streamer.opts:
+                        if isinstance(ext, StreamerExtension):
+                            if ext.supported_kernel is not None and isinstance(
+                                kernel_op, ext.supported_kernel.kernel_type
+                            ):
+                                return ext.get_streamers(streamer_config=self.streamer_config.data)
+        # If no specific extension is found, return the default streamers
         return [
-            self.streamer_config.data.streamers[0],
             self.streamer_config.data.streamers[0],
             self.streamer_config.data.streamers[1],
         ]
@@ -306,17 +347,15 @@ class SNAXXDMAAccelerator(
         Sequence[snax_stream.StridePattern],
         Sequence[Operation],
     ]:
-        snax_stride_patterns = list(snax_stride_patterns)
-        new_inputs = [op.inputs[0]]
-        new_outputs: list[SSAValue] = list(op.outputs)
-
-        pattern = snax_stride_patterns[0]
-        new_stride_pattern = snax_stream.StridePattern(
-            [2] + [x.data for x in pattern.upper_bounds],
-            [512] + [x.data for x in pattern.temporal_strides],  # TODO: make this 512 not hardcoded
-            pattern.spatial_strides,
-        )
-
-        new_stride_patterns = [new_stride_pattern, snax_stride_patterns[-1]]
-
-        return new_inputs, new_outputs, new_stride_patterns, []
+        kernel_op = op.body.block.first_op
+        if isinstance(kernel_op, dart.GenericOp):
+            kernel_op = kernel_op.body.block.first_op
+            if isinstance(kernel_op, KernelOp):
+                for streamer in self.streamer_config.data.streamers:
+                    for ext in streamer.opts:
+                        if isinstance(ext, StreamerExtension):
+                            if ext.supported_kernel is not None and isinstance(
+                                kernel_op, ext.supported_kernel.kernel_type
+                            ):
+                                return ext.set_stride_patterns(op, kernel_op, snax_stride_patterns)
+        return ([], [], [], [])  # Default return if no extension is found

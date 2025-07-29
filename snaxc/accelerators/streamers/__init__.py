@@ -1,4 +1,10 @@
-from .extensions import AddExtension, MaxPoolExtension, MemSetExtension, TransposeExtension
+from .extensions import (
+    AddExtension,
+    MaxPoolExtension,
+    MemSetExtension,
+    RescaleDownExtension,
+    TransposeExtension,
+)
 from .streamers import *
 from .streamers import HasAddressRemap, HasBroadcast, HasByteMask, HasChannelMask
 
@@ -11,4 +17,5 @@ STREAMER_OPT_MAP = {
     MemSetExtension().name: MemSetExtension,
     TransposeExtension().name: TransposeExtension,
     AddExtension().name: AddExtension,
+    RescaleDownExtension().name: RescaleDownExtension,
 }
