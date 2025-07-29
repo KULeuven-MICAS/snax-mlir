@@ -53,6 +53,7 @@ class GemmxConfig(AcceleratorConfig):
     n: int
     k: int
     streamers: list[StreamerConfig]
+    custom_ordering: list[int] | None = None
 
 
 @dataclass

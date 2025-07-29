@@ -97,10 +97,15 @@ class SNAXStreamer(ABC):
     streamer_names: Sequence[str]
     streamer_setup_fields: Sequence[str]
     streamer_launch_fields: Sequence[str]
+    streamer_ordering: list[int]
 
     zero_address = 0x1000_0040
 
-    def __init__(self, streamer_config: StreamerConfiguration | StreamerConfigurationAttr) -> None:
+    def __init__(
+        self,
+        streamer_config: StreamerConfiguration | StreamerConfigurationAttr,
+        streamer_ordering: Sequence[int] | None = None,
+    ) -> None:
         if isinstance(streamer_config, StreamerConfiguration):
             streamer_config = StreamerConfigurationAttr(streamer_config)
 
@@ -111,6 +116,11 @@ class SNAXStreamer(ABC):
 
         self.streamer_setup_fields = self.get_streamer_setup_fields()
         self.streamer_launch_fields = self.get_streamer_launch_fields()
+
+        if streamer_ordering is None:
+            self.streamer_ordering = list(range(len(self.streamer_config.data.streamers)))
+        else:
+            self.streamer_ordering = list(streamer_ordering)
 
     def _generate_streamer_setup_vals(self, op: StreamingRegionOp) -> Sequence[tuple[Sequence[Operation], SSAValue]]:
         result: Sequence[tuple[Sequence[Operation], SSAValue]] = []
@@ -204,7 +214,7 @@ class SNAXStreamer(ABC):
 
         return result
 
-    def get_streamer_setup_fields(self) -> Sequence[str]:
+    def get_streamer_setup_fields(self, base_addr: int = 0) -> Sequence[str]:
         result: list[str] = []
 
         for name, streamer in zip(self.streamer_names, self.streamer_config.data.streamers):
@@ -247,8 +257,37 @@ class SNAXStreamer(ABC):
         int: The next usable CSR address
         dict[str, int]: The dictionary mapping setup field to csr address
         """
-        streamer_setup = {key: base_addr + i for i, key in enumerate(self.streamer_setup_fields)}
-        base_addr += len(self.streamer_setup_fields)
+        result: list[str] = []
+
+        for i in self.streamer_ordering:
+            name = self.streamer_names[i]
+            streamer = self.streamer_config.data.streamers[i]
+            # base pointers
+            result.extend([f"{name}_ptr_low", f"{name}_ptr_high"])
+            # spatial strides
+            result.extend([f"{name}_sstride_{i}" for i in range(streamer.spatial_dim)])
+            # temporal bounds
+            result.extend([f"{name}_bound_{i}" for i in range(streamer.temporal_dim)])
+            # temporal strides
+            result.extend([f"{name}_tstride_{i}" for i in range(streamer.temporal_dim)])
+            # options
+            if any(isinstance(opt, HasAddressRemap) for opt in streamer.opts):
+                result.append(f"{name}_address_remap")
+            if any(isinstance(opt, HasChannelMask) for opt in streamer.opts):
+                result.append(f"{name}_channel_mask")
+
+        # transpose specifications
+        for streamer, name in zip(self.streamer_config.data.streamers, self.streamer_names):
+            if any(isinstance(opt, TransposeExtension) for opt in streamer.opts):
+                result.append(f"{name}_transpose")
+
+        for streamer, name in zip(self.streamer_config.data.streamers, self.streamer_names):
+            if any(isinstance(opt, HasBroadcast) for opt in streamer.opts):
+                result.append(f"{name}_broadcast")
+
+        assert len(self.streamer_setup_fields) == len(result)
+        streamer_setup = {key: base_addr + i for i, key in enumerate(result)}
+        base_addr += len(result)
         return base_addr, streamer_setup
 
     def get_streamer_launch_dict(self, base_addr: int) -> tuple[int, dict[str, int]]:

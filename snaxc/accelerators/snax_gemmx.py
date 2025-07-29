@@ -98,8 +98,9 @@ class SNAXGEMMXAccelerator(
         m: int | None = None,
         n: int | None = None,
         k: int | None = None,
+        custom_ordering: list[int] | None = None,
     ) -> None:
-        super().__init__(streamer_config)
+        super().__init__(streamer_config, custom_ordering)
 
         if m is not None:
             self.m = m
@@ -185,7 +186,7 @@ class SNAXGEMMXAccelerator(
             ],
         )
 
-        return cls(streamer_config, config.m, config.n, config.k)
+        return cls(streamer_config, config.m, config.n, config.k, config.custom_ordering)
 
     def generate_acc_op(self) -> accfg.AcceleratorOp:
         """
