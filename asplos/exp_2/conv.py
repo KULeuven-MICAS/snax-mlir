@@ -1,4 +1,4 @@
-import argparse
+import os
 from dataclasses import dataclass
 from io import StringIO
 
@@ -8,7 +8,6 @@ from numpy._typing import NDArray
 from xdsl.builder import Builder
 from xdsl.dialects.arith import ConstantOp
 from xdsl.dialects.builtin import (
-    AffineMapAttr,
     DenseIntOrFPElementsAttr,
     ModuleOp,
     TensorType,
@@ -17,14 +16,9 @@ from xdsl.dialects.builtin import (
     i64,
 )
 from xdsl.dialects.func import FuncOp, ReturnOp
-from xdsl.dialects.linalg import Conv2DNchwFchwOp, GenericOp, IteratorTypeAttr, YieldOp
+from xdsl.dialects.linalg import Conv2DNchwFchwOp
 from xdsl.dialects.tensor import EmptyOp
-from xdsl.ir import BlockArgument
-from xdsl.ir.affine import AffineMap
 from xdsl.printer import Printer
-
-from snaxc.dialects.kernel import RescaleOp
-from util.gemmx.simd_golden_model import postprocessing_simd_golden_model
 
 
 @dataclass(frozen=True)
@@ -87,17 +81,6 @@ def conv(spec: ConvSpec):
     input, weight = generate_conv_tensors(spec)
     output = compute_convolution(spec, input, weight)
 
-    golden_vals = postprocessing_simd_golden_model(
-        output,
-        input_zp_i=13,
-        output_zp_i=-27,
-        shift_i=39,
-        max_int_i=127,
-        min_int_i=-128,
-        double_round_i=True,
-        multiplier_i=1234567890,
-    )
-
     # reshape to the mlir conv2d op spec
     input = input.transpose((0, 3, 1, 2))  # NHWC -> NCHW
     weight = weight.transpose((3, 2, 0, 1))  # HWCF -> FCHW
@@ -105,8 +88,7 @@ def conv(spec: ConvSpec):
 
     input_type = TensorType(i8, shape=input.shape)
     weight_type = TensorType(i8, shape=weight.shape)
-    c_type = TensorType(i32, shape=output.shape)
-    output_type = TensorType(i8, shape=output.shape)
+    output_type = TensorType(i32, shape=output.shape)
 
     res_types = [output_type, output_type]
 
@@ -120,71 +102,32 @@ def conv(spec: ConvSpec):
         # Declare constants
         input_c = ConstantOp(DenseIntOrFPElementsAttr.from_list(input_type, input.flatten().tolist()))
         weight_c = ConstantOp(DenseIntOrFPElementsAttr.from_list(weight_type, weight.flatten().tolist()))
-        golden_c = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, golden_vals.flatten().tolist()))
+        golden_c = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, output.flatten().tolist()))
 
-        # Declare result tensor type
-        empty_tensor = EmptyOp([], c_type)
+        empty_tensor = EmptyOp([], output_type)
 
         # Specify the operation
         result = Conv2DNchwFchwOp(
             (input_c.result, weight_c.result),
             (empty_tensor.results[0],),
-            (c_type,),
+            (output_type,),
             {"dilations": dilations, "strides": strides},
         )
 
-        # Rescale:
-        empty_tensor_3 = EmptyOp([], output_type)
-
-        arg_types = [i32, i8]
-
-        @Builder.implicit_region(arg_types)
-        def init_body(args: tuple[BlockArgument, ...]) -> None:
-            rescaled = RescaleOp(args[0], i8, 13, -27, [1234567890], [39], 127, -128, True)
-            YieldOp(rescaled)
-
-        indexing_maps = [AffineMapAttr(AffineMap.from_callable(lambda b, c, ox, oy: (b, c, ox, oy)))] * 2
-
-        rescaled = GenericOp(
-            [result.results[0]],
-            [empty_tensor_3.tensor],
-            init_body,
-            indexing_maps,
-            [IteratorTypeAttr.parallel()] * 4,
-            [output_type],
-        )
-
-        ReturnOp(rescaled, golden_c)
+        ReturnOp(result, golden_c)
 
     function = FuncOp.from_region("snax_main", [], res_types, func_body)
     return ModuleOp([function])
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--ox", type=int, required=True)
-    parser.add_argument("--oy", type=int, required=True)
-    parser.add_argument("--c", type=int, required=True)
-    parser.add_argument("--k", type=int, required=True)
-    parser.add_argument("--output", type=str, required=True)
-    args = parser.parse_args()
-
-    spec = ConvSpec(
-        b=1,
-        ox=args.ox,
-        oy=args.oy,
-        fx=3,
-        fy=3,
-        c=args.c,
-        k=args.k,
-        groups=1,
-        stride=1,
-        dilation=1,
-    )
+    spec = ConvSpec(1, 48, 6, 3, 3, 64, 64)
+    script_name = os.path.basename(__file__)
+    output_file_path = os.path.splitext(script_name)[0] + ".mlir"
 
     # Generate and write MLIR
     output = StringIO()
     printer = Printer(stream=output)
     printer.print(conv(spec))
-    with open(args.output, "w") as output_file:
+    with open(output_file_path, "w") as output_file:
         output_file.write(output.getvalue())

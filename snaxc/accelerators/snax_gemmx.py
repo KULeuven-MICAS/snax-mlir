@@ -279,18 +279,11 @@ class SNAXGEMMXAccelerator(
                 last_pattern = op.stride_patterns.data[-1]
             # compute knm: fix n = 1
             n = 1
-            # count the number of non-reducing bounds (output stride != 0)
-            m = (
-                prod(
-                    bound.data
-                    for bound, stride in zip(
-                        last_pattern.upper_bounds,
-                        last_pattern.temporal_strides,
-                    )
-                    if stride.data != 0
-                )
-                // n
+            # count the number of non-reducing inner bounds (output stride != 0)
+            first_non_reducing_bound = next(
+                i for i, stride in enumerate(last_pattern.temporal_strides) if stride.data != 0
             )
+            m = prod(bound.data for bound in last_pattern.upper_bounds.data[first_non_reducing_bound:]) // n
             k = prod(x.data for x in op.stride_patterns.data[0].upper_bounds) // m
 
             # gemm
@@ -683,11 +676,12 @@ class SNAXGEMMXAccelerator(
                 )
 
                 # point C to 0
-                ops_to_add.append(
-                    # zero pointer will generate 0 values
-                    ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
-                )
-                new_inputs.append(ptr.result)
+                new_inputs.append(op.outputs[0])
+                # ops_to_add.append(
+                #     # zero pointer will generate 0 values
+                #     ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
+                # )
+                # new_inputs.append(ptr.result)
 
             elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
                 new_inputs.append(new_outputs.pop())

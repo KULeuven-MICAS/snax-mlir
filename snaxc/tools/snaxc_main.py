@@ -87,6 +87,7 @@ class SNAXCMain(CommandLineTool):
             self.ctx = AccContext(allow_unregistered=True)
         if self.args.banked_layout:
             self.ctx.banked_layout = True
+        self.ctx.asplos_exp2_idx = self.args.asplos_exp2_idx
 
     def run(self):
         # read file
@@ -186,6 +187,13 @@ class SNAXCMain(CommandLineTool):
             "--ignore-transforms",
             default=False,
             action="store_true",
+            help="ignore dynamic layout transformations",
+        )
+
+        arg_parser.add_argument(
+            "--asplos-exp2-idx",
+            action="store",
+            type=int,
             help="ignore dynamic layout transformations",
         )
 

@@ -24,13 +24,14 @@ systems = ["mat", "vec"]
 # Rules
 rule all:
     input:
-        "plot.pdf"
+        "plot.pdf",
+
 
 rule generate_plot:
     input:
         expand("{file}_summary.txt", file=tests),
     output:
-        "plot.pdf"
+        "plot.pdf",
     shell:
         "python plot.py"
 

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
-from matplotlib.ticker import LogFormatter, LogLocator
-import seaborn as sns
 import pandas as pd
+import seaborn as sns
+from matplotlib.ticker import LogFormatter, LogLocator
 
 # === Input files ===
 files = {
@@ -27,7 +27,7 @@ ops_per_trace = {
 records = []
 
 for op_name, filename in files.items():
-    with open(filename, "r") as f:
+    with open(filename) as f:
         for line in f:
             trace_file, cycles_str = line.strip().split("\t")
             cycles = int(cycles_str)

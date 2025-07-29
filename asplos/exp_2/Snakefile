@@ -1,0 +1,71 @@
+from util.snake.configs import get_asplos_matmul_full_bw_config
+
+config = get_asplos_matmul_full_bw_config()
+
+
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule * from snax_rules exclude snax_opt_mlir as snax_*
+
+
+rule extract_cycles:
+    input:
+        expand("conv_{idx}_traces.json", file="{file}", idx=range(10)),
+    output:
+        "summary.txt",
+    shell:
+        "python extract_cycles.py {output} {input}"
+
+
+rule compile_snax:
+    """
+    Apply various transformations snax-opt on mlir files.
+    Options controlled with `snaxoptflags` defined in config.
+    """
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}_{idx}.ll.mlir"),
+    shell:
+        "{config[snaxc]} --add-mcycle --asplos-exp2-idx {wildcards.idx} -c {config[snaxc-config]} -o {output} {input}"
+
+
+rule debug_snax:
+    """
+    Apply various transformations snax-opt on mlir files.
+    Options controlled with `snaxoptflags` defined in config.
+    """
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}_{idx}.debug.mlir"),
+    shell:
+        "{config[snaxc]} --asplos-exp2-idx {wildcards.idx} -c {config[snaxc-config]} -o temp.mlir {input} --no-backend && mlir-opt temp.mlir --canonicalize -o {output} && rm temp.mlir"
+
+
+# Rules
+rule all:
+    input:
+        "summary.txt",
+
+
+rule generate_conv:
+    output:
+        "conv.mlir",
+    script:
+        "conv.py"
+
+
+rule link_snax_binary:
+    input:
+        "{file}.o",
+        "main.o",
+    output:
+        "{file}.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"

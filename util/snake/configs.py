@@ -57,6 +57,22 @@ def get_asplos_matmul_config(snax_mlir_path: str | None = None) -> dict[str, Any
     return config
 
 
+def get_asplos_matmul_full_bw_config(snax_mlir_path: str | None = None) -> dict[str, Any]:
+    # use CONDA_PREFIX to access pixi env
+    snax_utils_path = os.environ["CONDA_PREFIX"] + "/snax-utils"
+    utils_dir = Path(__file__).resolve().parent.parent
+    snitch_sw_path = snax_utils_path + "/asplos_matmul_full_bw"
+    config: dict[str, Any] = {}
+    config.update(get_default_paths())
+    config.update(get_default_snax_paths())
+    config.update(get_default_flags(snitch_sw_path, snax_mlir_path=snax_mlir_path))
+    config["num_chips"] = 1
+    config["num_harts"] = 2
+    config["vltsim"] = snax_utils_path + "/asplos_matmul_full_bw-rtl/bin/snitch_cluster.vlt"
+    config["snaxc-config"] = utils_dir / "ssot" / "asplos_matmul_full_bw.yaml"
+    return config
+
+
 def get_asplos_matvec_config(snax_mlir_path: str | None = None) -> dict[str, Any]:
     # use CONDA_PREFIX to access pixi env
     snax_utils_path = os.environ["CONDA_PREFIX"] + "/snax-utils"

@@ -24,6 +24,7 @@ class AccContext(Context):
     _memories: dict[str, SnaxMemory] = field(default_factory=dict[str, SnaxMemory])
 
     banked_layout: bool = False
+    asplos_exp2_idx: int | None = None
 
     def clone(self) -> "AccContext":
         return AccContext(

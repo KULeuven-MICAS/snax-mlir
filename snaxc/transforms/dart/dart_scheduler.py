@@ -57,14 +57,24 @@ class AutoflowScheduler(RewritePattern):
 
         schedule = schedule.canonicalize()
         element_sizes = [cast(MemRefType[FixedBitwidthType], oper.type).element_type.size for oper in op.operands]
-        schedule = scheduler(
-            template,
-            schedule,
-            extra_checks=[
-                is_pure_output_stationary,
-                lambda t, s: is_memory_flexible_enough(t, s, element_sizes),
-            ],
-        )
+        if self.ctx.asplos_exp2_idx is None:
+            schedule = scheduler(
+                template,
+                schedule,
+                extra_checks=[
+                    is_pure_output_stationary,
+                    lambda t, s: is_memory_flexible_enough(t, s, element_sizes),
+                ],
+            )
+        else:
+            schedule = scheduler(
+                template,
+                schedule,
+                extra_checks=[
+                    lambda t, s: is_memory_flexible_enough(t, s, element_sizes),
+                ],
+                schedule_idx=self.ctx.asplos_exp2_idx,
+            )
 
         schedule_op = dart.ScheduleOp(
             op.inputs,
