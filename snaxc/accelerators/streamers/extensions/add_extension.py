@@ -59,7 +59,7 @@ class AddExtension(StreamerExtension):
     ) -> tuple[
         Sequence[SSAValue],
         Sequence[SSAValue],
-        ParametrizedAttribute,
+        Sequence[ParametrizedAttribute],
         Sequence[Operation],
     ]:
         from snaxc.dialects.snax_stream import StridePattern
@@ -79,4 +79,6 @@ class AddExtension(StreamerExtension):
             pattern.spatial_strides,
         )
 
-        return new_inputs, new_outputs, new_stride_pattern, []
+        new_stride_patterns = [new_stride_pattern, snax_stride_patterns[-1]]
+
+        return new_inputs, new_outputs, new_stride_patterns, []

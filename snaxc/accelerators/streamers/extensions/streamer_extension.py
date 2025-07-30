@@ -72,11 +72,11 @@ class StreamerExtension(StreamerOpts, ABC):
     ) -> tuple[
         Sequence[SSAValue],
         Sequence[SSAValue],
-        ParametrizedAttribute | None,
+        Sequence[ParametrizedAttribute],
         Sequence[Operation],
     ]:
         """
         Sets the stride patterns for the given access pattern operation.
         This method should be implemented to provide the specific stride patterns needed for the DMA extension.
         """
-        return op.inputs, op.outputs, None, []
+        return op.inputs, op.outputs, snax_stride_patterns, []
