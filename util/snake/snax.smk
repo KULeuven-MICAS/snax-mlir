@@ -66,8 +66,7 @@ rule simulate:
     log:
         "{file}.vltlog",
     shell:
-        #"{config[vltsim]} --prefix-trace={wildcards.file}_ {wildcards.file}.x  2>&1 | tee {log}"
-        "{config[vltsim]} --prefix-trace={wildcards.file}_ {wildcards.file}.x  2>&1 --vc"
+        "{config[vltsim]} --prefix-trace={wildcards.file}_ {wildcards.file}.x  2>&1 | tee {log}"
 
 
 rule trace_dasm:
