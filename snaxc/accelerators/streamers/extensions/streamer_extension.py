@@ -58,9 +58,7 @@ class StreamerExtension(StreamerOpts, ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_streamers(
-        self, streamer_config: StreamerConfiguration
-    ) -> Sequence[Streamer]:
+    def get_streamers(self, streamer_config: StreamerConfiguration) -> Sequence[Streamer]:
         """
         Returns the streamers for this DMA extension.
         This method should be implemented to provide the specific streamers needed for the Add extension.

@@ -38,9 +38,7 @@ class RescaleDownExtension(StreamerExtension):
 
         return [
             op.input_zp.value.data,
-            int.from_bytes(
-                op.multiplier.data.data[0:4], byteorder="little", signed=False
-            ),
+            int.from_bytes(op.multiplier.data.data[0:4], byteorder="little", signed=False),
             op.output_zp.value.data,
             int.from_bytes(op.shift.data.data[0:4], byteorder="little", signed=False),
         ]
@@ -49,15 +47,11 @@ class RescaleDownExtension(StreamerExtension):
         """
         Returns the template for this DMA extension.
         """
-        template = [
-            AffineMap.from_callable(lambda y: (y,))
-        ] * 2  # TODO: check if this is correct
+        template = [AffineMap.from_callable(lambda y: (y,))] * 2  # TODO: check if this is correct
         template_bounds = (16,)
         return Template(TemplatePattern(template_bounds, tp) for tp in template)
 
-    def get_streamers(
-        self, streamer_config: StreamerConfiguration
-    ) -> Sequence[Streamer]:
+    def get_streamers(self, streamer_config: StreamerConfiguration) -> Sequence[Streamer]:
         """
         Returns the streamers for this DMA extension.
         This method should be implemented to provide the specific streamers needed for the Add extension.
@@ -85,9 +79,7 @@ class RescaleDownExtension(StreamerExtension):
         pattern = snax_stride_patterns[0]
         new_stride_pattern = StridePattern(
             [x.data for x in pattern.upper_bounds],
-            [
-                x.data for x in pattern.temporal_strides
-            ],  # TODO: check if this is correct
+            [x.data for x in pattern.temporal_strides],  # TODO: check if this is correct
             pattern.spatial_strides,
         )
 

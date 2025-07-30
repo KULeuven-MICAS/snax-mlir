@@ -36,9 +36,7 @@ def rescale_down(n: int = 64):
     output_type = TensorType(i8, (n,))
     golden_vals_list: Sequence[int] = []
     for val in a_vals:
-        golden_vals_list.append(
-            golden_model_rescale_down(val, 0, 0, 47, 127, -128, True, 1140768826)
-        )
+        golden_vals_list.append(golden_model_rescale_down(val, 0, 0, 47, 127, -128, True, 1140768826))
 
     golden_vals = np.array(golden_vals_list, dtype=np.int8)
 
@@ -49,15 +47,9 @@ def rescale_down(n: int = 64):
     @Builder.implicit_region([])
     def func_body(_) -> None:
         # Declare constants
-        a = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist())
-        )
+        a = ConstantOp(DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist()))
         print(a_vals.flatten().tolist())
-        golden = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(
-                output_type, golden_vals.flatten().tolist()
-            )
-        )
+        golden = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, golden_vals.flatten().tolist()))
 
         # # Declare result tensor type
         # empty_tensor = EmptyOp([], output_type)
@@ -95,15 +87,16 @@ def golden_model_rescale_down(
     multiplier_i: int,
 ) -> int:
     """
-    This function performs SIMD postprocessing of data given approximate algorithm of TOSA.rescale, with dynamically scaled shifts.
+    This function performs SIMD postprocessing of data given approximate algorithm of TOSA.rescale,
+    with dynamically scaled shifts.
     """
     # Step 1: Subtract input zero point
     var_1 = data_in - input_zp_i
 
     # Additional Step 1:
-    bits_to_shift_input = max(
-        0, 9 + shift_i - int(np.ceil(np.log2(multiplier_i))) - 16
-    )  # 8 can be adapted to be higher. higher will add more support for overflows, but will also reduce accuracy of the output.
+    bits_to_shift_input = max(0, 9 + shift_i - int(np.ceil(np.log2(multiplier_i))) - 16)
+    # 8 can be adapted to be higher. higher will add more support for overflows,
+    # but will also reduce accuracy of the output.
     bits_to_shift_multiplier = max(0, int(np.ceil(np.log2(multiplier_i))) - 16)
 
     var_1 = var_1 >> bits_to_shift_input
@@ -122,13 +115,9 @@ def golden_model_rescale_down(
     # Step 5: Double rounding
     if double_round_i:
         if var_1 > 0:
-            var_4 = var_3 + np.int32(
-                1 << (30 - bits_to_shift_multiplier - bits_to_shift_input)
-            )
+            var_4 = var_3 + np.int32(1 << (30 - bits_to_shift_multiplier - bits_to_shift_input))
         else:
-            var_4 = var_3 - np.int32(
-                1 << (30 - bits_to_shift_multiplier - bits_to_shift_input)
-            )
+            var_4 = var_3 - np.int32(1 << (30 - bits_to_shift_multiplier - bits_to_shift_input))
     else:
         # If double rounding is not used, we just pass the value through
         var_4 = var_3

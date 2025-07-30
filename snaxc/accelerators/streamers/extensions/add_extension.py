@@ -41,9 +41,7 @@ class AddExtension(StreamerExtension):
         template_bounds = (16,)
         return Template(TemplatePattern(template_bounds, tp) for tp in template)
 
-    def get_streamers(
-        self, streamer_config: StreamerConfiguration
-    ) -> Sequence[Streamer]:
+    def get_streamers(self, streamer_config: StreamerConfiguration) -> Sequence[Streamer]:
         """
         Returns the streamers for this DMA extension.
         This method should be implemented to provide the specific streamers needed for the Add extension.
