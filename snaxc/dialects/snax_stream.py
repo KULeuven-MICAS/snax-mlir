@@ -27,7 +27,7 @@ from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 
 from snaxc.accelerators import find_accelerator_op
-from snaxc.accelerators.streamers import StreamerConfiguration
+from snaxc.accelerators.streamers.streamers import StreamerConfiguration
 from snaxc.dialects.snax import StreamerConfigurationAttr
 
 

@@ -32,8 +32,7 @@ from xdsl.printer import Printer
 from xdsl.utils.exceptions import VerifyException
 
 import snaxc.accelerators.streamers.extensions  # pyright: ignore[reportUnusedImport] # noqa: F401
-from snaxc.accelerators.streamers import (
-    STREAMER_OPT_MAP,
+from snaxc.accelerators.streamers.streamers import (
     Streamer,
     StreamerConfiguration,
     StreamerFlag,
@@ -215,6 +214,8 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
 
     @classmethod
     def parse_streamer_opt(cls, parser: AttrParser) -> StreamerOpts:
+        from snaxc.accelerators.streamers import STREAMER_OPT_MAP
+
         opt_str = parser.parse_identifier()
         try:
             return STREAMER_OPT_MAP[opt_str]()

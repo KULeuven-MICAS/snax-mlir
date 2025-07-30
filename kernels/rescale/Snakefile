@@ -1,8 +1,6 @@
-from util.snake.configs import get_host_config
+from util.snake.configs import get_snax_xdma_config
 
-config = get_host_config()
-
-files = ["rescale_down"]
+config = get_snax_xdma_config()
 
 
 module snax_rules:
@@ -12,40 +10,45 @@ module snax_rules:
         config
 
 
-use rule compile_llvm_module from snax_rules
+use rule * from snax_rules exclude snax_opt_mlir as snax_*
 
 
-use rule translate_mlir from snax_rules
-
-
-rule generate_data:
+rule compile_snax:
     """
-    Generate data for the rescale kernel.
-    """
-    output:
-        temp("data.h"),
-    shell:
-        "python3 gendata.py --bitwidth 32 --batch_size 64 --output {output}"
-
-
-rule compile_c:
-    """
-    Generic rule to compile c files with default compilation options.
+    Apply various transformations snax-opt on mlir files.
+    Options controlled with `snaxoptflags` defined in config.
     """
     input:
-        "{file}.c",
-        "data.h",
+        "{file}.mlir",
     output:
-        temp("{file}.o"),
+        temp("{file}.ll.mlir"),
     shell:
-        "{config[cc]} {config[cflags]} -c {input[0]} -o {output}"
+        "{config[snaxc]} -c {config[snaxc-config]} --alloc-mode static -o {output} {input}"
 
 
+files = ["rescale_down"]
+
+
+# Rules
 rule all:
     input:
-        expand("{file}.x", file=files),
+        expand("{file}_traces.json", file=files),
+
+
+rule generate_rescale_down:
+    output:
+        temp("rescale_down.ppp.mlir"),
+    script:
+        "rescale_down.py"
+
+
+rule convert_to_kernel:
+    input:
+        "rescale_down.ppp.mlir",
+    output:
+        temp("rescale_down.mlir"),
     shell:
-        "./{input}"
+        "{config[snax-opt]} -p convert-tosa-to-kernel --allow-unregistered-dialect -o {output} {input}"
 
 
 rule link_snax_binary:
@@ -53,17 +56,6 @@ rule link_snax_binary:
         "{file}.o",
         "main.o",
     output:
-        "{file}.x",
+        temp("{file}.x"),
     shell:
-        "clang {input} -o {output} "
-
-
-rule process:
-    input:
-        "{file}.mlir",
-    output:
-        temp("{file}.ll.mlir"),
-    shell:
-        """
-        mlir-opt --mlir-print-op-generic --allow-unregistered-dialect {input} | snax-opt -p preprocess --allow-unregistered-dialect | mlir-opt --one-shot-bufferize="bufferize-function-boundaries=1" --buffer-results-to-out-params --drop-equivalent-buffer-results --mlir-print-op-generic | snax-opt -p postprocess{{index_bitwidth=64}} --allow-unregistered-dialect -o {output}
-        """
+        "{config[ld]} {config[ldflags]} {input} -o {output}"

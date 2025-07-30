@@ -1,0 +1,69 @@
+from util.snake.configs import get_host_config
+
+config = get_host_config()
+
+files = ["rescale_down"]
+
+
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule compile_llvm_module from snax_rules
+
+
+use rule translate_mlir from snax_rules
+
+
+rule generate_data:
+    """
+    Generate data for the rescale kernel.
+    """
+    output:
+        temp("data.h"),
+    shell:
+        "python3 gendata.py --bitwidth 32 --batch_size 64 --output {output}"
+
+
+rule compile_c:
+    """
+    Generic rule to compile c files with default compilation options.
+    """
+    input:
+        "{file}.c",
+        "data.h",
+    output:
+        temp("{file}.o"),
+    shell:
+        "{config[cc]} {config[cflags]} -c {input[0]} -o {output}"
+
+
+rule all:
+    input:
+        expand("{file}.x", file=files),
+    shell:
+        "./{input}"
+
+
+rule link_snax_binary:
+    input:
+        "{file}.o",
+        "main.o",
+    output:
+        "{file}.x",
+    shell:
+        "clang {input} -o {output} "
+
+
+rule process:
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}.ll.mlir"),
+    shell:
+        """
+        mlir-opt --mlir-print-op-generic --allow-unregistered-dialect {input} | snax-opt -p preprocess --allow-unregistered-dialect | mlir-opt --one-shot-bufferize="bufferize-function-boundaries=1" --buffer-results-to-out-params --drop-equivalent-buffer-results --mlir-print-op-generic | snax-opt -p postprocess{{index_bitwidth=64}} --allow-unregistered-dialect -o {output}
+        """

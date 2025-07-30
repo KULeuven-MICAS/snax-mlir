@@ -16,6 +16,7 @@ from snaxc.accelerators.streamers.extensions.transpose_extension import (
 from snaxc.accelerators.streamers.streamers import (
     HasAddressRemap,
     HasBroadcast,
+    HasByteMask,
     HasChannelMask,
     Streamer,
     StreamerFlag,
@@ -265,7 +266,7 @@ class SNAXStreamer(ABC):
             result.extend([f"{name}_tstride_{i}" for i in range(streamer.temporal_dim)])
             # options
             result.extend([f"{name}_enabled_chan"])
-            if name == "b":
+            if any(isinstance(opt, HasByteMask) for opt in streamer.opts):
                 result.append(f"{name}_enabled_byte")
             result.extend([f"{name}_bypass"])
             # Extensions
