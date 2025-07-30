@@ -38,9 +38,11 @@ class RescaleDownExtension(StreamerExtension):
 
         return [
             op.input_zp.value.data,
-            op.multiplier.data.data[0],
+            int.from_bytes(
+                op.multiplier.data.data[0:4], byteorder="little", signed=False
+            ),
             op.output_zp.value.data,
-            op.shift.data.data[0],
+            int.from_bytes(op.shift.data.data[0:4], byteorder="little", signed=False),
         ]
 
     def get_template(self, op: kernel.KernelOp) -> Template:
@@ -76,7 +78,7 @@ class RescaleDownExtension(StreamerExtension):
         Sequence[StridePattern],
         Sequence[Operation],
     ]:
-        snax_stride_patterns = list(snax_stride_patterns)
+        return op.inputs, op.outputs, snax_stride_patterns, []
         new_inputs = [op.inputs[0]]
         new_outputs: list[SSAValue] = list(op.outputs)
 

@@ -212,8 +212,7 @@ class SNAXXDMAAccelerator(
                             kernel_op := str_op.body.block.first_op,
                             ext.supported_kernel.kernel_type,
                         ):
-                            for csr_val in ext.get_csr_values(kernel_op):
-                                bypass -= 2**i
+                            bypass -= 2**i
                     i += 1
             cst = arith.ConstantOp.from_int_and_width(bypass, i32)
             result.append(([cst], cst.result))

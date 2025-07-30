@@ -3,16 +3,16 @@
 #include "stdint.h"
 #include <snrt.h>
 
-void _mlir_ciface_snax_main(OneDMemrefI32_t *results);
+void _mlir_ciface_snax_main(OneDMemrefI8_t *results);
 
 int main() {
 
-  OneDMemrefI32_t results[2];
+  OneDMemrefI8_t results[2];
 
-  OneDMemrefI32_t *golden, *computed;
+  OneDMemrefI8_t *golden, *computed;
 
-  golden = &results[0];
-  computed = &results[1];
+  computed = &results[0];
+  golden = &results[1];
 
   // allocate zero row in tcdm
   snrt_l1alloc(256);
@@ -39,8 +39,8 @@ int main() {
 
   for (int i = 0; i < total_results; i++) {
 
-    // printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
-    // computed->aligned_data[i]);
+    printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
+    computed->aligned_data[i]);
     if (golden->aligned_data[i] != computed->aligned_data[i]) {
       nerr++;
     }

@@ -25,6 +25,7 @@ def rescale_down(n: int = 64):
     np.random.seed(42)  # For reproducibility
     # Define Variables For Program:
     a_type = TensorType(i32, (n,))
+    # a_vals = np.full((n,), -8737248 , dtype=np.int32)
     a_vals = np.random.randint(
         -10000000,
         10000000,
@@ -101,7 +102,7 @@ def golden_model_rescale_down(
 
     # Additional Step 1:
     bits_to_shift_input = max(
-        0, 8 + shift_i - int(np.ceil(np.log2(multiplier_i))) - 16
+        0, 9 + shift_i - int(np.ceil(np.log2(multiplier_i))) - 16
     )  # 8 can be adapted to be higher. higher will add more support for overflows, but will also reduce accuracy of the output.
     bits_to_shift_multiplier = max(0, int(np.ceil(np.log2(multiplier_i))) - 16)
 
