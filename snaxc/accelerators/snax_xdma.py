@@ -356,5 +356,19 @@ class SNAXXDMAAccelerator(
                             if ext.supported_kernel is not None and isinstance(
                                 kernel_op, ext.supported_kernel.kernel_type
                             ):
-                                return ext.set_stride_patterns(op, kernel_op, snax_stride_patterns)
+                                new_in, new_out, new_snax_pattern, new_ops = ext.set_stride_patterns(
+                                    op, kernel_op, snax_stride_patterns
+                                )
+                                if new_snax_pattern is None:
+                                    final_snax_pattern_list = list(snax_stride_patterns)
+                                else:
+                                    assert isinstance(new_snax_pattern, snax_stream.StridePattern)
+                                    final_snax_pattern_list = [new_snax_pattern] + list(snax_stride_patterns)
+
+                                return (
+                                    new_in,
+                                    new_out,
+                                    final_snax_pattern_list,
+                                    new_ops,
+                                )
         return ([], [], [], [])  # Default return if no extension is found

@@ -1,14 +1,13 @@
 from collections.abc import Sequence
 
 from xdsl.dialects.builtin import i32
-from xdsl.ir import Operation, SSAValue
+from xdsl.ir import Operation, ParametrizedAttribute, SSAValue
 from xdsl.ir.affine import AffineMap
 
 from snaxc.accelerators.dispatching import SupportedKernel
 from snaxc.accelerators.streamers.extensions.streamer_extension import StreamerExtension
 from snaxc.accelerators.streamers.streamers import Streamer, StreamerConfiguration
 from snaxc.dialects import dart, kernel
-from snaxc.dialects.snax_stream import StridePattern
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 
 
@@ -56,18 +55,21 @@ class AddExtension(StreamerExtension):
         self,
         op: dart.AccessPatternOp,
         kernel_op: kernel.KernelOp,
-        snax_stride_patterns: Sequence[StridePattern],
+        snax_stride_patterns: Sequence[ParametrizedAttribute],
     ) -> tuple[
         Sequence[SSAValue],
         Sequence[SSAValue],
-        Sequence[StridePattern],
+        ParametrizedAttribute,
         Sequence[Operation],
     ]:
+        from snaxc.dialects.snax_stream import StridePattern
+
         snax_stride_patterns = list(snax_stride_patterns)
         new_inputs = [op.inputs[0]]
         new_outputs: list[SSAValue] = list(op.outputs)
 
         pattern = snax_stride_patterns[0]
+        assert isinstance(pattern, StridePattern)
         new_stride_pattern = StridePattern(
             [2] + [x.data for x in pattern.upper_bounds],
             [512]
@@ -77,6 +79,4 @@ class AddExtension(StreamerExtension):
             pattern.spatial_strides,
         )
 
-        new_stride_patterns = [new_stride_pattern, snax_stride_patterns[-1]]
-
-        return new_inputs, new_outputs, new_stride_patterns, []
+        return new_inputs, new_outputs, new_stride_pattern, []

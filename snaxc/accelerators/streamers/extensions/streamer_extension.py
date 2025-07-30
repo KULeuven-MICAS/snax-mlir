@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
-from xdsl.ir import Operation, SSAValue
+from xdsl.ir import Operation, ParametrizedAttribute, SSAValue
 
 from snaxc.accelerators.dispatching import SupportedKernel
 from snaxc.accelerators.streamers.streamers import (
@@ -11,7 +11,6 @@ from snaxc.accelerators.streamers.streamers import (
 )
 from snaxc.dialects import dart
 from snaxc.dialects.kernel import KernelOp
-from snaxc.dialects.snax_stream import StridePattern
 from snaxc.ir.dart.access_pattern import Template
 
 
@@ -65,20 +64,19 @@ class StreamerExtension(StreamerOpts, ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
     def set_stride_patterns(
         self,
         op: dart.AccessPatternOp,
         kernel_op: KernelOp,
-        snax_stride_patterns: Sequence[StridePattern],
+        snax_stride_patterns: Sequence[ParametrizedAttribute],
     ) -> tuple[
         Sequence[SSAValue],
         Sequence[SSAValue],
-        Sequence[StridePattern],
+        ParametrizedAttribute | None,
         Sequence[Operation],
     ]:
         """
         Sets the stride patterns for the given access pattern operation.
         This method should be implemented to provide the specific stride patterns needed for the DMA extension.
         """
-        raise NotImplementedError()
+        return op.inputs, op.outputs, None, []
