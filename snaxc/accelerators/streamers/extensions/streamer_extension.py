@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
 from xdsl.ir import Operation, ParametrizedAttribute, SSAValue
+from xdsl.ir.affine import AffineMap
 
 from snaxc.accelerators.dispatching import SupportedKernel
 from snaxc.accelerators.streamers.streamers import (
@@ -9,9 +10,9 @@ from snaxc.accelerators.streamers.streamers import (
     StreamerConfiguration,
     StreamerOpts,
 )
-from snaxc.dialects import dart
+from snaxc.dialects import dart, kernel
 from snaxc.dialects.kernel import KernelOp
-from snaxc.ir.dart.access_pattern import Template
+from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 
 
 class StreamerExtension(StreamerOpts, ABC):
@@ -49,20 +50,24 @@ class StreamerExtension(StreamerOpts, ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
-    def get_template(self, op: KernelOp) -> Template:
+    def get_template(self, op: kernel.KernelOp) -> Template:
         """
         Returns the template for this DMA extension.
         """
-        raise NotImplementedError()
+        template = [AffineMap.from_callable(lambda y: (y,))] * 2
+        template_bounds = (16,)
+        return Template(TemplatePattern(template_bounds, tp) for tp in template)
 
-    @abstractmethod
-    def get_streamers(self, streamer_config: StreamerConfiguration) -> Sequence[Streamer]:
+    def get_streamers(
+        self, streamer_config: StreamerConfiguration
+    ) -> Sequence[Streamer]:
         """
         Returns the streamers for this DMA extension.
-        This method should be implemented to provide the specific streamers needed for the Add extension.
         """
-        raise NotImplementedError()
+        return [
+            streamer_config.streamers[0],
+            streamer_config.streamers[1],
+        ]
 
     def set_stride_patterns(
         self,
