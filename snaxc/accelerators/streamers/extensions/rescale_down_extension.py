@@ -30,12 +30,14 @@ class RescaleDownExtension(StreamerExtension):
         """
         # returns the number of input tensors in the rescale down op, currently limited to 2
         assert isinstance(op, kernel.RescaleOp), "Operation must be a RescaleOp"
+        multiplier = op.multiplier.get_values()[0]
+        shift = op.shift.get_values()[0]
+        assert isinstance(multiplier, int), "Multiplier must be an integer"
+        assert isinstance(shift, int), "Shift must be an integer"
 
         return [
             op.input_zp.value.data,
-            int.from_bytes(
-                op.multiplier.data.data[0:4], byteorder="little", signed=False
-            ),
+            multiplier,
             op.output_zp.value.data,
-            int.from_bytes(op.shift.data.data[0:4], byteorder="little", signed=False),
+            shift,
         ]

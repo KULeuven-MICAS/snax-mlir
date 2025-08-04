@@ -107,7 +107,7 @@ def golden_model_rescale_down(
     var_2 = np.int32(var_1) * np.int32(multiplier_i)
 
     # Step 3: Left shift one
-    shifted_one = np.int32(1 << shift_i)
+    shifted_one = np.int32(1 << (shift_i - 1))
 
     # Step 4: Add shifted one
     var_3 = var_2 + shifted_one
