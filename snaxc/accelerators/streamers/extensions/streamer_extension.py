@@ -64,10 +64,7 @@ class StreamerExtension(StreamerOpts, ABC):
         """
         Returns the streamers for this DMA extension.
         """
-        return [
-            streamer_config.streamers[0],
-            streamer_config.streamers[1],
-        ]
+        return streamer_config.streamers
 
     def set_stride_patterns(
         self,
