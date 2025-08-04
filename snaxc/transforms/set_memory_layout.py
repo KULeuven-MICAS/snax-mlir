@@ -191,5 +191,6 @@ class SetMemoryLayout(ModulePass):
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         assert isinstance(ctx, AccContext)
-        tiled = self.tiled if self.tiled is not None else True
+        tiled = ctx.layout in ("cyclic", "banked")
+        # tiled = self.tiled if self.tiled is not None else True
         PatternRewriteWalker(AddCyclicMemoryLayout(tiled_layout=tiled, ctx=ctx)).rewrite_module(op)

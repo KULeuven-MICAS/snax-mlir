@@ -87,6 +87,11 @@ def conv(spec: ConvSpec):
     input, weight = generate_conv_tensors(spec)
     output = compute_convolution(spec, input, weight)
 
+    # reshape to the mlir conv2d op spec
+    input = input.transpose((0, 3, 1, 2))  # NHWC -> NCHW
+    weight = weight.transpose((3, 2, 0, 1))  # HWCF -> FCHW
+    output = output.transpose((0, 3, 1, 2))  # NHWC -> NCHW
+
     golden_vals = postprocessing_simd_golden_model(
         output,
         input_zp_i=0,
@@ -97,11 +102,6 @@ def conv(spec: ConvSpec):
         double_round_i=True,
         multiplier_i=1234567890,
     )
-
-    # reshape to the mlir conv2d op spec
-    input = input.transpose((0, 3, 1, 2))  # NHWC -> NCHW
-    weight = weight.transpose((3, 2, 0, 1))  # HWCF -> FCHW
-    output = output.transpose((0, 3, 1, 2))  # NHWC -> NCHW
 
     input_type = TensorType(i8, shape=input.shape)
     weight_type = TensorType(i8, shape=weight.shape)
@@ -173,8 +173,8 @@ if __name__ == "__main__":
         b=1,
         ox=args.ox,
         oy=args.oy,
-        fx=3,
-        fy=3,
+        fx=1,
+        fy=1,
         c=args.c,
         k=args.k,
         groups=1,

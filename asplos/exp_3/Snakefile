@@ -1,8 +1,9 @@
 from util.snake.configs import get_asplos_matmul_config
 from util.snake.configs import get_asplos_matvec_config
 
+import os
+
 config_matmul = get_asplos_matmul_config()
-config_matvec = get_asplos_matvec_config()
 
 config = get_asplos_matmul_config()
 
@@ -17,37 +18,28 @@ module snax_rules:
 use rule * from snax_rules exclude snax_opt_mlir, simulate as snax_*
 
 
-tests = ["lateconv"]
-systems = ["mat"]
+tests = ["conv"]
+systems = ["2", "3", "4", "5", "6", "8"]
 layout = ["default", "cyclic", "banked"]
+channels = [64, 72, 80, 96]
 
-# Rules
-# rule all:
-#     input:
-#     # "plot.pdf",
-# 
 
 rule all:
     input:
-        expand("{file}_summary.txt", file=tests),
-    # output:
-    #     "plot.pdf",
-    # shell:
-    #     "python plot.py"
-
+        "summary.txt"
 
 rule extract_cycles:
     input:
-        expand("{file}_sys{sys}_traces.json", file="{file}", sys=systems),
+        expand("{file}_channel{channel}_layout{layout}_sys{sys}_traces.json", file=tests, channel=channels, layout=layout, sys=systems),
     output:
-        "{file}_summary.txt",
+        "summary.txt",
     shell:
         "python extract_cycles.py {output} {input}"
 
 
 rule simulate:
     input:
-        "{file}_sys{sys}.x",
+        "{file}.x",
     output:
         temp(
             expand(
@@ -62,9 +54,7 @@ rule simulate:
         "{file}_sys{sys}.vltlog",
     params:
         vltsim=lambda wildcards: (
-            config_matmul["vltsim"]
-            if "mat" in wildcards.sys
-            else config_matvec["vltsim"]
+            os.environ["CONDA_PREFIX"] + "/snax-utils" + f"/asplos_matmul_{wildcards.sys}-rtl/bin/snitch_cluster.vlt"
         ),
     shell:
         "{params.vltsim} --prefix-trace={wildcards.file}_sys{wildcards.sys}_ {input}  2>&1 | tee {log}"
@@ -110,28 +100,22 @@ rule simulate:
 # late conv: all params are pretty large except for limited feature map of 8x8,
 # tiled to sensible values for L1
 # ox = 8, oy = 8, fx = 3, fy = 3, c = 32, k = 32
-rule generate_lateconv:
+rule generate_conv:
     output:
-        "lateconv_sys{sys}.mlir",
+        "conv_channel{channel}.mlir",
     wildcard_constraints:
-        sys="|".join(systems),
+        channel="|".join([str(channel) for channel in channels]),
     shell:
-        "python conv.py --c 32 --k 32 --ox 8 --oy 8 --output {output}"
+        "python conv.py --c {wildcards.channel} --k 72 --ox 72 --oy 1 --output {output}"
 
 
 rule compile_snax:
     input:
-        "{file}_sys{sys}.mlir",
+        "{file}.mlir",
     output:
-        temp("{file}_sys{sys}.ll.mlir"),
-    params:
-        snaxconfig=lambda wildcards: (
-            config_matmul["snaxc-config"]
-            if "mat" in wildcards.sys
-            else config_matvec["snaxc-config"]
-        ),
+        temp("{file}_layout{layout}.ll.mlir"),
     shell:
-        "{config[snaxc]} -c {params.snaxconfig} --add-mcycle -o {output} {input}"
+        "{config[snaxc]} -c {config[snaxc-config]} --ignore-transforms --asplos-exp3-idx 0 --layout {wildcards.layout} --add-mcycle -o {output} {input}"
 
 
 def get_linked_files(wildcards):

@@ -85,8 +85,15 @@ class SNAXCMain(CommandLineTool):
             self.ctx = context
         else:
             self.ctx = AccContext(allow_unregistered=True)
+        # setting layout with --banked arg:
         if self.args.banked_layout:
             self.ctx.banked_layout = True
+
+        # setting layout with --layout arg:
+        if self.args.layout == "banked":
+            self.ctx.banked_layout = True
+        self.ctx.layout = self.args.layout
+
         self.ctx.asplos_exp2_idx = self.args.asplos_exp2_idx
 
     def run(self):
@@ -181,6 +188,10 @@ class SNAXCMain(CommandLineTool):
             default=False,
             action="store_true",
             help="apply a banked layout",
+        )
+
+        arg_parser.add_argument(
+            "--layout", choices=["none", "default", "banked", "cyclic"], default="none", help="select memory layout"
         )
 
         arg_parser.add_argument(
