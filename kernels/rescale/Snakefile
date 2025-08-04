@@ -1,0 +1,61 @@
+from util.snake.configs import get_snax_xdma_config
+
+config = get_snax_xdma_config()
+
+
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule * from snax_rules exclude snax_opt_mlir as snax_*
+
+
+rule compile_snax:
+    """
+    Apply various transformations snax-opt on mlir files.
+    Options controlled with `snaxoptflags` defined in config.
+    """
+    input:
+        "{file}.mlir",
+    output:
+        temp("{file}.ll.mlir"),
+    shell:
+        "{config[snaxc]} -c {config[snaxc-config]} --alloc-mode static -o {output} {input}"
+
+
+files = ["rescale_down"]
+
+
+# Rules
+rule all:
+    input:
+        expand("{file}_traces.json", file=files),
+
+
+rule generate_rescale_down:
+    output:
+        temp("rescale_down.ppp.mlir"),
+    script:
+        "rescale_down.py"
+
+
+rule convert_to_kernel:
+    input:
+        "rescale_down.ppp.mlir",
+    output:
+        temp("rescale_down.mlir"),
+    shell:
+        "{config[snax-opt]} -p convert-tosa-to-kernel --allow-unregistered-dialect -o {output} {input}"
+
+
+rule link_snax_binary:
+    input:
+        "{file}.o",
+        "main.o",
+    output:
+        temp("{file}.x"),
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
