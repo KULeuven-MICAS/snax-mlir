@@ -305,7 +305,7 @@ class SNAXXDMAAccelerator(
         for streamer in self.streamer_config.data.streamers:
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
-                    if ext.supported_kernel is not None and isinstance(kernel_op, ext.supported_kernel.kernel_type):
+                    if ext.supported_kernel is not None and ext.supported_kernel.is_same_kernel(kernel_op):
                         return ext.get_template(kernel_op)
         raise RuntimeError("No suitable extension found for the kernel operation in the StreamingRegionOp.")
 
@@ -317,7 +317,7 @@ class SNAXXDMAAccelerator(
         for streamer in self.streamer_config.data.streamers:
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
-                    if ext.supported_kernel is not None and isinstance(kernel_op, ext.supported_kernel.kernel_type):
+                    if ext.supported_kernel is not None and ext.supported_kernel.is_same_kernel(kernel_op):
                         return ext.get_streamers(streamer_config=self.streamer_config.data)
         # If no specific extension is found, return the default streamers
         raise RuntimeError("No suitable extension found for the kernel operation in the StreamingRegionOp.")
@@ -339,7 +339,7 @@ class SNAXXDMAAccelerator(
         for streamer in self.streamer_config.data.streamers:
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
-                    if ext.supported_kernel is not None and isinstance(kernel_op, ext.supported_kernel.kernel_type):
+                    if ext.supported_kernel is not None and ext.supported_kernel.is_same_kernel(kernel_op):
                         new_in, new_out, new_snax_patterns, new_ops = ext.set_stride_patterns(
                             op, kernel_op, snax_stride_patterns
                         )
