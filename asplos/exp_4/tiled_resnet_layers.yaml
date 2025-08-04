@@ -74,8 +74,8 @@ layers:
     ox: 28
     oy: 28
     stride: 2
-  tile_k: 2
-  tile_y: 4
+  tile_k: 1
+  tile_y: 7
 - layer:
     c: 128
     fx: 1
@@ -140,7 +140,7 @@ layers:
     ox: 14
     oy: 14
     stride: 2
-  tile_k: 7
+  tile_k: 6
   tile_y: 2
 - layer:
     c: 256
@@ -162,8 +162,8 @@ layers:
     ox: 14
     oy: 14
     stride: 2
-  tile_k: 4
-  tile_y: 5
+  tile_k: 6
+  tile_y: 3
 - layer:
     c: 1024
     fx: 1
@@ -184,7 +184,7 @@ layers:
     ox: 14
     oy: 14
     stride: 1
-  tile_k: 5
+  tile_k: 4
   tile_y: 1
 - layer:
     c: 1024
@@ -195,7 +195,7 @@ layers:
     ox: 14
     oy: 14
     stride: 1
-  tile_k: 6
+  tile_k: 5
   tile_y: 2
 - layer:
     c: 512
@@ -217,7 +217,7 @@ layers:
     ox: 7
     oy: 7
     stride: 2
-  tile_k: 18
+  tile_k: 16
   tile_y: 2
 - layer:
     c: 2048
@@ -228,7 +228,7 @@ layers:
     ox: 7
     oy: 7
     stride: 1
-  tile_k: 10
+  tile_k: 9
   tile_y: 1
 - layer:
     c: 512
@@ -239,5 +239,5 @@ layers:
     ox: 7
     oy: 7
     stride: 1
-  tile_k: 14
+  tile_k: 12
   tile_y: 1

@@ -1,3 +1,6 @@
+rule all:
+    input:
+        "plot.svg"
 
 rule optimize_tile_sizes:
     input:
@@ -7,3 +10,11 @@ rule optimize_tile_sizes:
     script:
         "optimize_tile_sizes.py"
 
+
+rule plot_figure:
+    input:
+        "tiled_resnet_layers.yaml"
+    output:
+        "plot.svg",
+    script:
+        "plot.py"
