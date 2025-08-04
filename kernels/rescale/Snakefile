@@ -5,7 +5,7 @@ config = get_snax_xdma_config()
 
 module snax_rules:
     snakefile:
-        "../../../util/snake/snax.smk"
+        "../../util/snake/snax.smk"
     config:
         config
 
