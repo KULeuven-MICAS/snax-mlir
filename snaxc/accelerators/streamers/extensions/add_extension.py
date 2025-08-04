@@ -8,6 +8,7 @@ from snaxc.accelerators.dispatching import SupportedKernel
 from snaxc.accelerators.streamers.extensions.streamer_extension import StreamerExtension
 from snaxc.accelerators.streamers.streamers import Streamer, StreamerConfiguration
 from snaxc.dialects import dart, kernel
+from snaxc.dialects.snax_stream import StridePattern
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 
 
@@ -62,8 +63,6 @@ class AddExtension(StreamerExtension):
         Sequence[ParametrizedAttribute],
         Sequence[Operation],
     ]:
-        from snaxc.dialects.snax_stream import StridePattern
-
         snax_stride_patterns = list(snax_stride_patterns)
         new_inputs = [op.inputs[0]]
         new_outputs: list[SSAValue] = list(op.outputs)

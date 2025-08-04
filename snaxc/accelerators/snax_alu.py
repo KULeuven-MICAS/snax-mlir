@@ -14,7 +14,7 @@ from snaxc.accelerators.snax import (
     SNAXPollingBarrier3,
     SNAXStreamer,
 )
-from snaxc.accelerators.streamers import (
+from snaxc.accelerators.streamers.streamers import (
     Streamer,
     StreamerConfiguration,
     StreamerType,

@@ -15,11 +15,6 @@ from snaxc.accelerators.streamers import (
     HasBroadcast,
     HasByteMask,
     HasChannelMask,
-    Streamer,
-    StreamerConfiguration,
-    StreamerFlag,
-    StreamerSystemType,
-    StreamerType,
 )
 from snaxc.accelerators.streamers.extensions import (
     AddExtension,
@@ -28,6 +23,13 @@ from snaxc.accelerators.streamers.extensions import (
     RescaleDownExtension,
     StreamerExtension,
     TransposeExtension,
+)
+from snaxc.accelerators.streamers.streamers import (
+    Streamer,
+    StreamerConfiguration,
+    StreamerFlag,
+    StreamerSystemType,
+    StreamerType,
 )
 from snaxc.dialects import accfg, dart, snax_stream
 from snaxc.dialects.kernel import KernelOp

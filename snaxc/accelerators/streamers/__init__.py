@@ -5,7 +5,6 @@ from .extensions import (
     RescaleDownExtension,
     TransposeExtension,
 )
-from .streamers import *
 from .streamers import HasAddressRemap, HasBroadcast, HasByteMask, HasChannelMask
 
 STREAMER_OPT_MAP = {

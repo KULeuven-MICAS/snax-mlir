@@ -8,7 +8,6 @@ from xdsl.dialects.scf import ConditionOp, WhileOp, YieldOp
 from xdsl.ir import Operation, OpResult, SSAValue
 
 from snaxc.accelerators.accelerator import Accelerator
-from snaxc.accelerators.streamers import StreamerConfiguration
 from snaxc.accelerators.streamers.extensions.streamer_extension import StreamerExtension
 from snaxc.accelerators.streamers.extensions.transpose_extension import (
     TransposeExtension,
@@ -19,12 +18,14 @@ from snaxc.accelerators.streamers.streamers import (
     HasByteMask,
     HasChannelMask,
     Streamer,
+    StreamerConfiguration,
     StreamerFlag,
     StreamerSystemType,
 )
 from snaxc.dialects import accfg, snax_stream
 from snaxc.dialects.dart import AccessPatternOp, StreamingRegionOpBase
-from snaxc.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
+from snaxc.dialects.snax import StreamerConfigurationAttr
+from snaxc.dialects.snax_stream import StreamingRegionOp
 from snaxc.ir.dart.access_pattern import Template
 
 c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
