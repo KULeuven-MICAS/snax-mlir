@@ -17,23 +17,23 @@ module snax_rules:
 use rule * from snax_rules exclude snax_opt_mlir, simulate as snax_*
 
 
-tests = ["matmul", "matvec", "earlyconv", "lateconv"]
-systems = ["mat", "vec"]
-
+tests = ["lateconv"]
+systems = ["mat"]
+layout = ["default", "cyclic", "banked"]
 
 # Rules
+# rule all:
+#     input:
+#     # "plot.pdf",
+# 
+
 rule all:
     input:
-        "plot.pdf",
-
-
-rule generate_plot:
-    input:
         expand("{file}_summary.txt", file=tests),
-    output:
-        "plot.pdf",
-    shell:
-        "python plot.py"
+    # output:
+    #     "plot.pdf",
+    # shell:
+    #     "python plot.py"
 
 
 rule extract_cycles:
@@ -70,41 +70,41 @@ rule simulate:
         "{params.vltsim} --prefix-trace={wildcards.file}_sys{wildcards.sys}_ {input}  2>&1 | tee {log}"
 
 
-# matmul of 64x64x64
-rule generate_matmul:
-    output:
-        "matmul_sys{sys}.mlir",
-    wildcard_constraints:
-        sys="|".join(systems),
-    shell:
-        "python matmul.py --m 64 --n 64 --k 64 --output {output}"
-
-
-# matvec of 1x256x256
-rule generate_matvec:
-    output:
-        "matvec_sys{sys}.mlir",
-    params:
-        # for matmul, op should be padded to fill array for successful compilation
-        m=lambda wildcards: 1 if wildcards.sys == "vec" else 8,
-    wildcard_constraints:
-        sys="|".join(systems),
-    shell:
-        "python matmul.py --m {params.m} --n 256 --k 256 --output {output}"
-
-
-# early conv: only 3 input channels (other params are tiled such that they fit L1 memory)
-# c = 3, k = 16, ox = 16, oy = 16, fx = 3, fy = 3
-rule generate_earlyconv:
-    output:
-        "earlyconv_sys{sys}.mlir",
-    params:
-        # pad the conv from C=3 to fit the array properly
-        c=lambda wildcards: 32 if wildcards.sys == "vec" else 8,
-    wildcard_constraints:
-        sys="|".join(systems),
-    shell:
-        "python conv.py --c {params.c} --k 16 --ox 16 --oy 16 --output {output}"
+# # matmul of 64x64x64
+# rule generate_matmul:
+#     output:
+#         "matmul_sys{sys}.mlir",
+#     wildcard_constraints:
+#         sys="|".join(systems),
+#     shell:
+#         "python matmul.py --m 64 --n 64 --k 64 --output {output}"
+# 
+# 
+# # matvec of 1x256x256
+# rule generate_matvec:
+#     output:
+#         "matvec_sys{sys}.mlir",
+#     params:
+#         # for matmul, op should be padded to fill array for successful compilation
+#         m=lambda wildcards: 1 if wildcards.sys == "vec" else 8,
+#     wildcard_constraints:
+#         sys="|".join(systems),
+#     shell:
+#         "python matmul.py --m {params.m} --n 256 --k 256 --output {output}"
+# 
+# 
+# # early conv: only 3 input channels (other params are tiled such that they fit L1 memory)
+# # c = 3, k = 16, ox = 16, oy = 16, fx = 3, fy = 3
+# rule generate_earlyconv:
+#     output:
+#         "earlyconv_sys{sys}.mlir",
+#     params:
+#         # pad the conv from C=3 to fit the array properly
+#         c=lambda wildcards: 32 if wildcards.sys == "vec" else 8,
+#     wildcard_constraints:
+#         sys="|".join(systems),
+#     shell:
+#         "python conv.py --c {params.c} --k 16 --ox 16 --oy 16 --output {output}"
 
 
 # late conv: all params are pretty large except for limited feature map of 8x8,
@@ -131,7 +131,7 @@ rule compile_snax:
             else config_matvec["snaxc-config"]
         ),
     shell:
-        "{config[snaxc]} -c {params.snaxconfig} --banked-layout --add-mcycle -o {output} {input}"
+        "{config[snaxc]} -c {params.snaxconfig} --add-mcycle -o {output} {input}"
 
 
 def get_linked_files(wildcards):

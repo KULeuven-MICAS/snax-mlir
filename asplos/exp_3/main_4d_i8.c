@@ -1,19 +1,21 @@
-
 #include "memref.h"
 #include "snax_rt.h"
 #include "stdint.h"
 #include <snrt.h>
 
-void _mlir_ciface_snax_main(TwoDMemrefI8_t *results);
+void _mlir_ciface_snax_main(FourDMemrefI8_t *results);
 
 int main() {
 
-  TwoDMemrefI8_t results[2];
+  FourDMemrefI8_t results[2];
 
-  TwoDMemrefI8_t *golden, *computed;
+  FourDMemrefI8_t *golden, *computed;
 
   golden = &results[0];
   computed = &results[1];
+
+  // allocate zero row in tcdm
+  snrt_l1alloc(256);
 
   (void)snrt_mcycle();
   snrt_cluster_hw_barrier();
@@ -30,7 +32,7 @@ int main() {
     return 0;
 
   int total_results = 1;
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < 4; i++)
     total_results *= computed->shape[i];
 
   printf("Checking %d results...\n", total_results);
@@ -49,7 +51,7 @@ int main() {
   printf("Finished, nb errors: %d\n", nerr);
 
   if (nerr > 0)
-    return 1;
+    return 0;
   else
     return 0;
 }

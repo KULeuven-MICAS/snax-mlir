@@ -87,21 +87,21 @@ def conv(spec: ConvSpec):
     input, weight = generate_conv_tensors(spec)
     output = compute_convolution(spec, input, weight)
 
-    # reshape to the mlir conv2d op spec
-    input = input.transpose((0, 3, 1, 2))  # NHWC -> NCHW
-    weight = weight.transpose((3, 2, 0, 1))  # HWCF -> FCHW
-    output = output.transpose((0, 3, 1, 2))  # NHWC -> NCHW
-
     golden_vals = postprocessing_simd_golden_model(
         output,
-        input_zp_i=13,
-        output_zp_i=-27,
+        input_zp_i=0,
+        output_zp_i=0,
         shift_i=39,
         max_int_i=127,
         min_int_i=-128,
         double_round_i=True,
         multiplier_i=1234567890,
     )
+
+    # reshape to the mlir conv2d op spec
+    input = input.transpose((0, 3, 1, 2))  # NHWC -> NCHW
+    weight = weight.transpose((3, 2, 0, 1))  # HWCF -> FCHW
+    output = output.transpose((0, 3, 1, 2))  # NHWC -> NCHW
 
     input_type = TensorType(i8, shape=input.shape)
     weight_type = TensorType(i8, shape=weight.shape)
@@ -140,7 +140,7 @@ def conv(spec: ConvSpec):
 
         @Builder.implicit_region(arg_types)
         def init_body(args: tuple[BlockArgument, ...]) -> None:
-            rescaled = RescaleOp(args[0], i8, 13, -27, [1234567890], [39], 127, -128, True)
+            rescaled = RescaleOp(args[0], i8, 0, 0, [1234567890], [39], 127, -128, True)
             YieldOp(rescaled)
 
         indexing_maps = [AffineMapAttr(AffineMap.from_callable(lambda b, c, ox, oy: (b, c, ox, oy)))] * 2

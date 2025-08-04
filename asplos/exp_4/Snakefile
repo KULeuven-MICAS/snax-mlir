@@ -1,0 +1,9 @@
+
+rule optimize_tile_sizes:
+    input:
+        "resnet_layers.yaml"
+    output:
+        "tiled_resnet_layers.yaml",
+    script:
+        "optimize_tile_sizes.py"
+

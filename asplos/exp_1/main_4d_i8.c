@@ -5,6 +5,24 @@
 #include "stdint.h"
 #include <snrt.h>
 
+void _mlir_ciface_debug_dart(int32_t _ptr_a, int32_t _ptr_b, int32_t _ptr_c,
+                             int32_t when) {
+  int8_t *ptr_a, *ptr_b, *ptr_c;
+  ptr_a = (int8_t *)_ptr_a;
+  ptr_b = (int8_t *)_ptr_b;
+  ptr_c = (int8_t *)_ptr_c;
+
+  if (snrt_cluster_core_idx() == 0) {
+    printf("Debugging at t = %d with A at %p, B at %p, C at %p\n", when, ptr_a,
+           ptr_b, ptr_c);
+
+    for (int i = 0; i < 5; i++) {
+      printf("i%d -> A=%d, B=%d, C=%d\n", i, (int32_t)ptr_a[i],
+             (int32_t)ptr_b[i], (int32_t)ptr_c[i]);
+    }
+  }
+}
+
 void _mlir_ciface_snax_main(FourDMemrefI8_t *results);
 
 int main() {
@@ -35,7 +53,6 @@ int main() {
     total_results *= computed->shape[i];
 
   printf("Checking %d results...\n", total_results);
-  return 0;
 
   int nerr = 0;
 

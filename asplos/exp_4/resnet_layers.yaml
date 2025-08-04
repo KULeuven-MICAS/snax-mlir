@@ -1,0 +1,177 @@
+layers:
+  - name: conv_1
+    ox: 112
+    oy: 112
+    fx: 7
+    fy: 7
+    c: 3
+    k: 64
+    stride: 2
+  - name: conv_2
+    ox: 56
+    oy: 56
+    fx: 1
+    fy: 1
+    c: 64
+    k: 64
+    stride: 1
+  - name: conv_3
+    ox: 56
+    oy: 56
+    fx: 3
+    fy: 3
+    c: 64
+    k: 64
+    stride: 1
+  - name: conv_4
+    ox: 56
+    oy: 56
+    fx: 1
+    fy: 1
+    c: 64
+    k: 256
+    stride: 1
+  - name: conv_6
+    ox: 56
+    oy: 56
+    fx: 1
+    fy: 1
+    c: 256
+    k: 64
+    stride: 1
+  - name: conv_12
+    ox: 56
+    oy: 56
+    fx: 1
+    fy: 1
+    c: 256
+    k: 128
+    stride: 1
+  - name: conv_13
+    ox: 28
+    oy: 28
+    fx: 3
+    fy: 3
+    c: 128
+    k: 128
+    stride: 2
+  - name: conv_14
+    ox: 28
+    oy: 28
+    fx: 1
+    fy: 1
+    c: 128
+    k: 512
+    stride: 1
+  - name: conv_15
+    ox: 28
+    oy: 28
+    fx: 1
+    fy: 1
+    c: 256
+    k: 512
+    stride: 2
+  - name: conv_16
+    ox: 28
+    oy: 28
+    fx: 1
+    fy: 1
+    c: 512
+    k: 128
+    stride: 1
+  - name: conv_17
+    ox: 28
+    oy: 28
+    fx: 3
+    fy: 3
+    c: 128
+    k: 128
+    stride: 1
+  - name: conv_25
+    ox: 28
+    oy: 28
+    fx: 1
+    fy: 1
+    c: 512
+    k: 256
+    stride: 1
+  - name: conv_26
+    ox: 14
+    oy: 14
+    fx: 3
+    fy: 3
+    c: 256
+    k: 256
+    stride: 2
+  - name: conv_27
+    ox: 14
+    oy: 14
+    fx: 1
+    fy: 1
+    c: 256
+    k: 1024
+    stride: 1
+  - name: conv_28
+    ox: 14
+    oy: 14
+    fx: 1
+    fy: 1
+    c: 512
+    k: 1024
+    stride: 2
+  - name: conv_29
+    ox: 14
+    oy: 14
+    fx: 1
+    fy: 1
+    c: 1024
+    k: 256
+    stride: 1
+  - name: conv_30
+    ox: 14
+    oy: 14
+    fx: 3
+    fy: 3
+    c: 256
+    k: 256
+    stride: 1
+  - name: conv_44
+    ox: 14
+    oy: 14
+    fx: 1
+    fy: 1
+    c: 1024
+    k: 512
+    stride: 1
+  - name: conv_46
+    ox: 7
+    oy: 7
+    fx: 1
+    fy: 1
+    c: 512
+    k: 2048
+    stride: 1
+  - name: conv_47
+    ox: 7
+    oy: 7
+    fx: 1
+    fy: 1
+    c: 1024
+    k: 2048
+    stride: 2
+  - name: conv_48
+    ox: 7
+    oy: 7
+    fx: 1
+    fy: 1
+    c: 2048
+    k: 512
+    stride: 1
+  - name: conv_49
+    ox: 7
+    oy: 7
+    fx: 3
+    fy: 3
+    c: 512
+    k: 512
+    stride: 1
