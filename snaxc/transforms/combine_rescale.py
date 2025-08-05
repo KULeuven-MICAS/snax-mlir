@@ -17,11 +17,8 @@ from snaxc.dialects import kernel
 
 @dataclass
 class CombineRescaleRewriter(RewritePattern):
-
     @op_type_rewrite_pattern
-    def match_and_rewrite(
-        self, rescale_op: tosa.RescaleOp | kernel.RescaleOp, rewriter: PatternRewriter
-    ):
+    def match_and_rewrite(self, rescale_op: tosa.RescaleOp | kernel.RescaleOp, rewriter: PatternRewriter):
         """Combine consecutive rescale operations into a single rescale operation."""
 
         rescale_type = type(rescale_op)
@@ -60,16 +57,12 @@ class CombineRescaleRewriter(RewritePattern):
                         properties={
                             "input_zp": IntegerAttr(
                                 prev_rescale_op.input_zp.value.data
-                                + rescale_op.input_zp.value.data
-                                * (2**current_shift)
-                                // current_multiplier,
+                                + rescale_op.input_zp.value.data * (2**current_shift) // current_multiplier,
                                 i32,
                             ),
                             "output_zp": IntegerAttr(
                                 rescale_op.output_zp.value.data
-                                + prev_rescale_op.output_zp.value.data
-                                * prev_multiplier
-                                // (2**prev_shift),
+                                + prev_rescale_op.output_zp.value.data * prev_multiplier // (2**prev_shift),
                                 i32,
                             ),
                             "multiplier": DenseArrayBase.from_list(
@@ -91,15 +84,11 @@ class CombineRescaleRewriter(RewritePattern):
                         result_type=new_output_type,
                         input_zp=(
                             prev_rescale_op.input_zp.value.data
-                            + rescale_op.input_zp.value.data
-                            * (2**current_shift)
-                            // current_multiplier
+                            + rescale_op.input_zp.value.data * (2**current_shift) // current_multiplier
                         ),
                         output_zp=(
                             rescale_op.output_zp.value.data
-                            + prev_rescale_op.output_zp.value.data
-                            * prev_multiplier
-                            // (2**prev_shift)
+                            + prev_rescale_op.output_zp.value.data * prev_multiplier // (2**prev_shift)
                         ),
                         multiplier=[new_multiplier],
                         shift=[new_shift],
