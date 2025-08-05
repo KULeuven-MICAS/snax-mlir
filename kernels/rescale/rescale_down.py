@@ -26,7 +26,7 @@ def rescale_down(n: int = 64):
     # Define Variables For Program:
     a_type = TensorType(i32, (n,))
     # a_vals = np.full((n,), -8737248 , dtype=np.int32)
-    a_vals = np.random.randint( # pyright: ignore[reportUnknownMemberType]
+    a_vals = np.random.randint(  # pyright: ignore[reportUnknownMemberType]
         -10000000,
         10000000,
         n,

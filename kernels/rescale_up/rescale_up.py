@@ -32,7 +32,7 @@ def rescale_up(n: int = 64):
         n,
     )
     # print(a_vals)
-    
+
     shift = 10
     multiplier = 10283821
     input_zp = 0
@@ -43,9 +43,7 @@ def rescale_up(n: int = 64):
     output_type = TensorType(i32, (n,))
     golden_vals_list: Sequence[int] = []
     for val in a_vals:
-        golden_vals_list.append(
-            golden_model_rescale_up(val, input_zp, output_zp, shift, max_int, min_int, multiplier)
-        )
+        golden_vals_list.append(golden_model_rescale_up(val, input_zp, output_zp, shift, max_int, min_int, multiplier))
 
     golden_vals = np.array(golden_vals_list, dtype=np.int32)
 
@@ -56,15 +54,9 @@ def rescale_up(n: int = 64):
     @Builder.implicit_region([])
     def func_body(_) -> None:
         # Declare constants
-        a = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist())
-        )
+        a = ConstantOp(DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist()))
         print(a_vals.flatten().tolist())
-        golden = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(
-                output_type, golden_vals.flatten().tolist()
-            )
-        )
+        golden = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, golden_vals.flatten().tolist()))
 
         # # Declare result tensor type
         # empty_tensor = EmptyOp([], output_type)
@@ -110,9 +102,7 @@ def golden_model_rescale_up(
     var_2 = np.int64(var_1) * np.int64(multiplier_i)
 
     # Step 3: Left shift one
-    shifted_one = np.int64(
-        1 << (shift_i - 1)
-    )  # TODO: check if the minus one is actually correct
+    shifted_one = np.int64(1 << (shift_i - 1))  # TODO: check if the minus one is actually correct
 
     # Step 4: Add shifted one
     var_3 = np.int64(var_2 + shifted_one)

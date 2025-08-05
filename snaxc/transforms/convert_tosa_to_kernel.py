@@ -22,6 +22,7 @@ def assert_int8(val: float | int) -> int:
     assert val <= 127
     return val
 
+
 def assert_int32(val: float | int) -> int:
     assert isinstance(val, int)
     assert isinstance(val, int)
