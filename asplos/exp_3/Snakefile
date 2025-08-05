@@ -7,6 +7,13 @@ config_matmul = get_asplos_matmul_config()
 
 config = get_asplos_matmul_config()
 
+rule plot_figure:
+    input:
+        "summary.txt"
+    output:
+        "plot.svg",
+    script:
+        "plot.py"
 
 module snax_rules:
     snakefile:
@@ -18,10 +25,12 @@ module snax_rules:
 use rule * from snax_rules exclude snax_opt_mlir, simulate as snax_*
 
 
-tests = ["conv"]
+tests = ["matmul"]
 systems = ["2", "3", "4", "5", "6", "8"]
 layout = ["default", "cyclic", "banked"]
-channels = [64, 72, 80, 96]
+M = [64, 72]#, 80, 96]
+N = [64, 72]#, 80, 96]
+K = [64, 72]#, 80, 96]
 
 
 rule all:
@@ -30,7 +39,7 @@ rule all:
 
 rule extract_cycles:
     input:
-        expand("{file}_channel{channel}_layout{layout}_sys{sys}_traces.json", file=tests, channel=channels, layout=layout, sys=systems),
+        expand("{file}_m{m}_n{n}_k{k}_layout{layout}_sys{sys}_traces.json", file=tests, m=M, n=N, k=K, layout=layout, sys=systems),
     output:
         "summary.txt",
     shell:
@@ -100,13 +109,15 @@ rule simulate:
 # late conv: all params are pretty large except for limited feature map of 8x8,
 # tiled to sensible values for L1
 # ox = 8, oy = 8, fx = 3, fy = 3, c = 32, k = 32
-rule generate_conv:
+rule generate_matmul:
     output:
-        "conv_channel{channel}.mlir",
+        "matmul_m{m}_n{n}_k{k}.mlir",
     wildcard_constraints:
-        channel="|".join([str(channel) for channel in channels]),
+        m="|".join([str(channel) for channel in M]),
+        n="|".join([str(channel) for channel in N]),
+        k="|".join([str(channel) for channel in K]),
     shell:
-        "python conv.py --c {wildcards.channel} --k 72 --ox 72 --oy 1 --output {output}"
+        "python matmul.py --m {wildcards.m} --n {wildcards.n} --k {wildcards.k} --output {output}"
 
 
 rule compile_snax:

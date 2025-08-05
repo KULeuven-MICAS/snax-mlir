@@ -15,17 +15,21 @@ for line in lines:
         continue
     filename, cycles = parts
     cycles = int(cycles)
-    m = re.match(r"conv_channel(\d+)_layout(\w+)_sys(\d+)_traces\.json", filename)
-    if m:
-        nb_channels = int(m.group(1))
-        layout = m.group(2)
-        system = f"sys{m.group(3)}"
-        performance = 36864 * nb_channels / cycles
+    _match = re.match(r"matmul_m(\d+)_n(\d+)_k(\d+)_layout(\w+)_sys(\d+)_traces\.json", filename)
+    if _match:
+        m = int(_match.group(1))
+        n = int(_match.group(2))
+        k = int(_match.group(3))
+        layout = _match.group(4)
+        system = f"sys{_match.group(5)}"
+        performance = m * n * k / cycles
         records.append(
             {
                 "layout": layout,
                 "system": system,
-                "nb_channels": nb_channels,
+                "m": m,
+                "n": n,
+                "k": k,
                 "cycles": cycles,
                 "performance": performance,
             }
@@ -38,11 +42,11 @@ df = pd.DataFrame(records)
 avg_df = df.groupby(["layout", "system"], as_index=False)["performance"].mean()
 
 # Plot
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(5, 3))
 sns.lineplot(data=avg_df, x="system", y="performance", hue="layout", marker="o")
 plt.title("Average Performance by Layout and System")
 plt.ylabel("Performance")
 plt.xlabel("System")
 plt.xticks(rotation=45)
 plt.tight_layout()
-plt.show()
+plt.savefig("plot.svg")

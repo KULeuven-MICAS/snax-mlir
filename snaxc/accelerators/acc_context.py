@@ -25,6 +25,7 @@ class AccContext(Context):
 
     banked_layout: bool = False
     asplos_exp2_idx: int | None = None
+    asplos_exp3_idx: int | None = None
     layout: str = "none"
 
     def clone(self) -> "AccContext":

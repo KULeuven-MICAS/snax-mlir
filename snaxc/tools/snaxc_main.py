@@ -95,6 +95,11 @@ class SNAXCMain(CommandLineTool):
         self.ctx.layout = self.args.layout
 
         self.ctx.asplos_exp2_idx = self.args.asplos_exp2_idx
+        self.ctx.asplos_exp3_idx = self.args.asplos_exp3_idx
+
+        if self.args.banked_layout:
+            # banked layout only possible with first schedule
+            self.ctx.asplos_exp3_idx = None
 
     def run(self):
         # read file
@@ -203,6 +208,13 @@ class SNAXCMain(CommandLineTool):
 
         arg_parser.add_argument(
             "--asplos-exp2-idx",
+            action="store",
+            type=int,
+            help="ignore dynamic layout transformations",
+        )
+
+        arg_parser.add_argument(
+            "--asplos-exp3-idx",
             action="store",
             type=int,
             help="ignore dynamic layout transformations",

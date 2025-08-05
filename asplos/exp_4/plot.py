@@ -5,7 +5,7 @@ import seaborn as sns
 import yaml
 from dacite import from_dict
 
-from asplos.exp_4.optimize_tile_sizes import TiledConfig
+from asplos.util.convspecs import TiledConfig
 
 with open("tiled_resnet_layers.yaml") as f:
     yaml_data = yaml.safe_load(f)
