@@ -32,12 +32,19 @@ def rescale_up(n: int = 64):
         n,
     )
     # print(a_vals)
+    
+    shift = 10
+    multiplier = 10283821
+    input_zp = 0
+    output_zp = 0
+    max_int = 2147483647
+    min_int = -2147483648
 
     output_type = TensorType(i32, (n,))
     golden_vals_list: Sequence[int] = []
     for val in a_vals:
         golden_vals_list.append(
-            golden_model_rescale_up(val, 0, 0, 10, 2147483647, -2147483648, 10283821)
+            golden_model_rescale_up(val, input_zp, output_zp, shift, max_int, min_int, multiplier)
         )
 
     golden_vals = np.array(golden_vals_list, dtype=np.int32)
@@ -67,10 +74,10 @@ def rescale_up(n: int = 64):
             operands=[a.result],
             result_types=[output_type],
             properties={
-                "input_zp": IntegerAttr(0, i32),
-                "output_zp": IntegerAttr(0, i32),
-                "multiplier": DenseArrayBase.create_dense_int(i32, [1140768826]),
-                "shift": DenseArrayBase.create_dense_int(i8, [47]),
+                "input_zp": IntegerAttr(input_zp, i32),
+                "output_zp": IntegerAttr(output_zp, i32),
+                "multiplier": DenseArrayBase.create_dense_int(i32, [multiplier]),
+                "shift": DenseArrayBase.create_dense_int(i8, [shift]),
                 "scale32": BoolAttr(True, i1),
                 "double_round": BoolAttr(True, i1),
                 "per_channel": BoolAttr(False, i1),

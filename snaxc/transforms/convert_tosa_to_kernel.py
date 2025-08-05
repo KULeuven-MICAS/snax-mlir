@@ -22,6 +22,13 @@ def assert_int8(val: float | int) -> int:
     assert val <= 127
     return val
 
+def assert_int32(val: float | int) -> int:
+    assert isinstance(val, int)
+    assert isinstance(val, int)
+    assert -2147483648 <= val
+    assert val <= 2147483647
+    return val
+
 
 class RescaleClampPattern(RewritePattern):
     """
@@ -38,7 +45,7 @@ class RescaleClampPattern(RewritePattern):
         if not isinstance(clamp_op := next(iter(rescale_op.output.uses)).operation, tosa.ClampOp):
             # no clamping op after, so we integrate clamping in rescale op to int8 range
             # iff the output of the rescale op is int8
-            if rescale_op.output.type.element_type != builtin.i8:
+            if rescale_op.output.type.element_type != builtin.i8 and rescale_op.output.type.element_type != builtin.i32:
                 return
             clamp_op = rescale_op
 
@@ -58,11 +65,19 @@ class RescaleClampPattern(RewritePattern):
         shift = rescale_op.shift.get_values()
         assert isa(shift, tuple[int, ...])
         if isinstance(clamp_op, tosa.ClampOp):
-            max_int = assert_int8(clamp_op.max_int.value.data)
-            min_int = assert_int8(clamp_op.min_int.value.data)
+            if rescale_op.output.type.element_type == builtin.i8:
+                max_int = assert_int8(clamp_op.max_int.value.data)
+                min_int = assert_int8(clamp_op.min_int.value.data)
+            else:
+                max_int = assert_int32(clamp_op.max_int.value.data)
+                min_int = assert_int32(clamp_op.min_int.value.data)
         else:
-            max_int = 127
-            min_int = -128
+            if rescale_op.output.type.element_type == builtin.i8:
+                max_int = 127
+                min_int = -128
+            else:
+                max_int = 2147483647
+                min_int = -2147483648
         double_round = rescale_op.double_round.value.data
         assert double_round in (0, -1)
 

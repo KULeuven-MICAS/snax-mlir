@@ -5,6 +5,12 @@
 
 void _mlir_ciface_snax_main(OneDMemrefI32_t *results);
 
+void *memset(void *s, int c, size_t n) {
+    unsigned char *p = s;
+    while (n--) *p++ = (unsigned char)c;
+    return s;
+}
+
 int main() {
 
   OneDMemrefI32_t results[2];

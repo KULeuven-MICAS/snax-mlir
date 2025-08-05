@@ -32,4 +32,5 @@ STREAMER_OPT_MAP = {
     TransposeExtension().name: TransposeExtension,
     AddExtension().name: AddExtension,
     RescaleDownExtension().name: RescaleDownExtension,
+    RescaleUpExtension().name: RescaleUpExtension,
 }
