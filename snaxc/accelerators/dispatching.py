@@ -21,9 +21,7 @@ class SupportedKernel:
             return False
         if not isinstance(kernel_op, KernelOp):
             return False
-        return self._check_kernel_type(kernel_op) and self._check_attribute_types(
-            kernel_op
-        )
+        return self._check_kernel_type(kernel_op) and self._check_attribute_types(kernel_op)
 
     def _check_kernel_type(self, kernel_op: KernelOp) -> bool:
         """
