@@ -180,7 +180,7 @@ class StreamingRegionOp(IRDLOperation):
         # FIXME: restructure streamer config files to improve importing structure
         # this verification should not be a part of this op, but moved to one of the lowerings.
         if not streamer_interface:
-            raise VerifyException("AcceleratorOp does not have a streamer configuration")
+            raise VerifyException("Specified accelerator does not contain a StreamerConfigurationAttr")
         streamer_config = cast(StreamerConfiguration, streamer_interface.data)  # pyright: ignore
 
         if len(self.stride_patterns) != streamer_config.size():
