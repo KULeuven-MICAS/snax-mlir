@@ -70,7 +70,7 @@ def rescale_up(n: int = 64):
                 "input_zp": IntegerAttr(0, i32),
                 "output_zp": IntegerAttr(0, i32),
                 "multiplier": DenseArrayBase.create_dense_int(i32, [1140768826]),
-                "shift": DenseArrayBase.create_dense_int(i32, [47]),
+                "shift": DenseArrayBase.create_dense_int(i8, [47]),
                 "scale32": BoolAttr(True, i1),
                 "double_round": BoolAttr(True, i1),
                 "per_channel": BoolAttr(False, i1),
