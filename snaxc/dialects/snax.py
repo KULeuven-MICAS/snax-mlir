@@ -31,7 +31,7 @@ from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 from xdsl.utils.exceptions import VerifyException
 
-from snaxc.accelerators.streamers import STREAMER_OPT_MAP
+from snaxc.accelerators.streamers.extensions import STREAMER_OPT_MAP
 from snaxc.accelerators.streamers.streamers import (
     Streamer,
     StreamerConfiguration,
