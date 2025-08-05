@@ -22,7 +22,7 @@ def dispatch_to_dm(op: Operation, ctx: AccContext):
             # Only dispatch to dm if the kernel is provided by a StreamerExtension
             if any(
                 [
-                    isinstance(kernel_op, ext.supported_kernel.kernel_type)
+                    ext.supported_kernel.is_same_kernel(kernel_op)
                     for ext in XDMA_EXT_SET
                     if ext.supported_kernel is not None
                 ]
@@ -49,7 +49,7 @@ def dispatch_to_compute(op: Operation, ctx: AccContext):
             # Dont dispatch to compute if the kernel is provided by a StreamerExtension
             if any(
                 [
-                    isinstance(kernel_op, ext.supported_kernel.kernel_type)
+                    not ext.supported_kernel.is_same_kernel(kernel_op)
                     for ext in XDMA_EXT_SET
                     if ext.supported_kernel is not None
                 ]

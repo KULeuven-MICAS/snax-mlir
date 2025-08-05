@@ -21,6 +21,7 @@ from snaxc.accelerators.streamers.extensions import (
     MaxPoolExtension,
     MemSetExtension,
     RescaleDownExtension,
+    RescaleUpExtension,
     StreamerExtension,
     TransposeExtension,
 )
@@ -44,6 +45,7 @@ default_streamer = StreamerConfiguration(
                 MaxPoolExtension(),
                 AddExtension(),
                 RescaleDownExtension(),
+                RescaleUpExtension(),
                 HasChannelMask(),
             ],
         ),
@@ -208,9 +210,8 @@ class SNAXXDMAAccelerator(
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
                     if isinstance(str_op := op.body.block.first_op, dart.GenericOp):
-                        if ext.supported_kernel is not None and isinstance(
-                            kernel_op := str_op.body.block.first_op,
-                            ext.supported_kernel.kernel_type,
+                        if ext.supported_kernel is not None and ext.supported_kernel.is_same_kernel(
+                            kernel_op := str_op.body.block.first_op
                         ):
                             bypass -= 2**i
                     i += 1
@@ -221,11 +222,11 @@ class SNAXXDMAAccelerator(
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
                     if isinstance(str_op := op.body.block.first_op, dart.GenericOp):
-                        if ext.supported_kernel is not None and isinstance(
-                            kernel_op := str_op.body.block.first_op,
-                            ext.supported_kernel.kernel_type,
+                        if ext.supported_kernel is not None and ext.supported_kernel.is_same_kernel(
+                            kernel_op := str_op.body.block.first_op
                         ):
                             # Check for each extension what its csr values are
+                            assert isinstance(kernel_op, KernelOp), "Expected a KernelOp in the GenericOp"
                             for csr_val in ext.get_csr_values(kernel_op):
                                 cst = arith.ConstantOp.from_int_and_width(csr_val, i32)
                                 result.append(([cst], cst.result))
@@ -305,7 +306,7 @@ class SNAXXDMAAccelerator(
         for streamer in self.streamer_config.data.streamers:
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
-                    if ext.supported_kernel is not None and isinstance(kernel_op, ext.supported_kernel.kernel_type):
+                    if ext.supported_kernel is not None and ext.supported_kernel.is_same_kernel(kernel_op):
                         return ext.get_template(kernel_op)
         raise RuntimeError("No suitable extension found for the kernel operation in the StreamingRegionOp.")
 
@@ -317,7 +318,7 @@ class SNAXXDMAAccelerator(
         for streamer in self.streamer_config.data.streamers:
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
-                    if ext.supported_kernel is not None and isinstance(kernel_op, ext.supported_kernel.kernel_type):
+                    if ext.supported_kernel is not None and ext.supported_kernel.is_same_kernel(kernel_op):
                         return ext.get_streamers(streamer_config=self.streamer_config.data)
         # If no specific extension is found, return the default streamers
         raise RuntimeError("No suitable extension found for the kernel operation in the StreamingRegionOp.")
@@ -339,7 +340,7 @@ class SNAXXDMAAccelerator(
         for streamer in self.streamer_config.data.streamers:
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
-                    if ext.supported_kernel is not None and isinstance(kernel_op, ext.supported_kernel.kernel_type):
+                    if ext.supported_kernel is not None and ext.supported_kernel.is_same_kernel(kernel_op):
                         new_in, new_out, new_snax_patterns, new_ops = ext.set_stride_patterns(
                             op, kernel_op, snax_stride_patterns
                         )
