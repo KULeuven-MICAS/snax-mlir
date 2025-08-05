@@ -1,30 +1,55 @@
-#include "data.h"
 #include "memref.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include "snax_rt.h"
+#include "stdint.h"
+#include <snrt.h>
 
-void _mlir_ciface_rescale_down(OneDMemrefI8_t *output, OneDMemrefI32_t *input);
+void _mlir_ciface_snax_main(OneDMemrefI8_t *results);
 
 int main() {
-  OneDMemrefI32_t memref_in;
-  memref_in.data = &input;
-  memref_in.aligned_data = memref_in.data;
-  memref_in.offset = 0;
-  memref_in.shape[0] = 64;
-  memref_in.stride[0] = 1;
 
-  OneDMemrefI8_t memref_out;
-  memref_out.data = (int8_t *)malloc(64 * sizeof(int8_t));
-  memref_out.aligned_data = memref_out.data;
-  memref_out.offset = 0;
-  memref_out.shape[0] = 64;
-  memref_out.stride[0] = 1;
+  OneDMemrefI8_t results[2];
 
-  _mlir_ciface_rescale_down(&memref_in, &memref_out);
+  OneDMemrefI8_t *golden, *computed;
 
-  // Print for manual verification, acts as golden model
-  for (int i = 0; i < memref_out.shape[0]; i++) {
-    printf("%i: %d\n", i, memref_out.data[i]);
+  computed = &results[0];
+  golden = &results[1];
+
+  // allocate zero row in tcdm
+  snrt_l1alloc(256);
+
+  (void)snrt_mcycle();
+  snrt_cluster_hw_barrier();
+
+  _mlir_ciface_snax_main(results);
+
+  snrt_cluster_hw_barrier();
+  (void)snrt_mcycle();
+
+  // Correctness check
+  // from this point on only core 0 is required to be alive.
+  int thiscore = snrt_cluster_core_idx();
+  if (thiscore != 0)
+    return 0;
+
+  int total_results = computed->shape[0];
+
+  printf("Checking %d results...\n", total_results);
+
+  int nerr = 0;
+
+  for (int i = 0; i < total_results; i++) {
+
+    printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
+           computed->aligned_data[i]);
+    if (golden->aligned_data[i] != computed->aligned_data[i]) {
+      nerr++;
+    }
   }
-  return 0;
+
+  printf("Finished, nb errors: %d\n", nerr);
+
+  if (nerr > 0)
+    return 1;
+  else
+    return 0;
 }

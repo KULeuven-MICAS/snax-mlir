@@ -31,9 +31,8 @@ from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 from xdsl.utils.exceptions import VerifyException
 
-import snaxc.accelerators.streamers.extensions  # pyright: ignore[reportUnusedImport] # noqa: F401
-from snaxc.accelerators.streamers import (
-    STREAMER_OPT_MAP,
+from snaxc.accelerators.streamers.extensions import STREAMER_OPT_MAP
+from snaxc.accelerators.streamers.streamers import (
     Streamer,
     StreamerConfiguration,
     StreamerFlag,

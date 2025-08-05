@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Self
+from typing import Self, cast
 
 from xdsl.dialects.builtin import ArrayAttr, IndexType, IntAttr, StringAttr
 from xdsl.ir import (
@@ -27,8 +27,7 @@ from xdsl.parser import AttrParser
 from xdsl.printer import Printer
 
 from snaxc.accelerators import find_accelerator_op
-from snaxc.accelerators.streamers import StreamerConfiguration
-from snaxc.dialects.snax import StreamerConfigurationAttr
+from snaxc.accelerators.streamers.streamers import StreamerConfiguration
 
 
 @irdl_attr_definition
@@ -177,10 +176,12 @@ class StreamingRegionOp(IRDLOperation):
             raise VerifyException("AcceleratorOp not found!")
 
         streamer_interface = acc_op.get_attr_or_prop("streamer_config")
-        if not streamer_interface or not isinstance(streamer_interface, StreamerConfigurationAttr):
-            raise VerifyException("Specified accelerator does not contain a StreamerConfigurationAttr")
 
-        streamer_config: StreamerConfiguration = streamer_interface.data
+        # FIXME: restructure streamer config files to improve importing structure
+        # this verification should not be a part of this op, but moved to one of the lowerings.
+        if not streamer_interface:
+            raise VerifyException("Specified accelerator does not contain a StreamerConfigurationAttr")
+        streamer_config = cast(StreamerConfiguration, streamer_interface.data)  # pyright: ignore
 
         if len(self.stride_patterns) != streamer_config.size():
             raise VerifyException("Number of streamers does not equal number of stride patterns")

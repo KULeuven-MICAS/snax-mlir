@@ -20,11 +20,13 @@ from snaxc.accelerators.streamers import (
     HasAddressRemap,
     HasBroadcast,
     HasChannelMask,
+)
+from snaxc.accelerators.streamers.extensions import TransposeExtension
+from snaxc.accelerators.streamers.streamers import (
     Streamer,
     StreamerConfiguration,
     StreamerType,
 )
-from snaxc.accelerators.streamers.extensions import TransposeExtension
 from snaxc.dialects import accfg, dart, kernel, snax_stream
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 from snaxc.tools.configs import AcceleratorConfig, GemmxConfig

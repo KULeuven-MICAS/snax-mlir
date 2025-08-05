@@ -8,7 +8,6 @@ from xdsl.dialects.scf import ConditionOp, WhileOp, YieldOp
 from xdsl.ir import Operation, OpResult, SSAValue
 
 from snaxc.accelerators.accelerator import Accelerator
-from snaxc.accelerators.streamers import StreamerConfiguration
 from snaxc.accelerators.streamers.extensions.streamer_extension import StreamerExtension
 from snaxc.accelerators.streamers.extensions.transpose_extension import (
     TransposeExtension,
@@ -16,14 +15,17 @@ from snaxc.accelerators.streamers.extensions.transpose_extension import (
 from snaxc.accelerators.streamers.streamers import (
     HasAddressRemap,
     HasBroadcast,
+    HasByteMask,
     HasChannelMask,
     Streamer,
+    StreamerConfiguration,
     StreamerFlag,
     StreamerSystemType,
 )
 from snaxc.dialects import accfg, snax_stream
 from snaxc.dialects.dart import AccessPatternOp, StreamingRegionOpBase
-from snaxc.dialects.snax_stream import StreamerConfigurationAttr, StreamingRegionOp
+from snaxc.dialects.snax import StreamerConfigurationAttr
+from snaxc.dialects.snax_stream import StreamingRegionOp
 from snaxc.ir.dart.access_pattern import Template
 
 c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
@@ -265,7 +267,7 @@ class SNAXStreamer(ABC):
             result.extend([f"{name}_tstride_{i}" for i in range(streamer.temporal_dim)])
             # options
             result.extend([f"{name}_enabled_chan"])
-            if name == "b":
+            if any(isinstance(opt, HasByteMask) for opt in streamer.opts):
                 result.append(f"{name}_enabled_byte")
             result.extend([f"{name}_bypass"])
             # Extensions

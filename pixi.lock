@@ -115,7 +115,7 @@ environments:
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-interface-report-plugins-1.1.0-pyhdfd78af_0.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-interface-storage-plugins-3.3.0-pyhdfd78af_0.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-minimal-8.27.1-pyhdfd78af_0.tar.bz2
-      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.13.ext-hb0f4dca_0.conda
+      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.14-hb0f4dca_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.17-h0157908_18.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tabulate-0.9.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tbb-2021.13.0-hceb3a55_1.conda
@@ -186,7 +186,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/52/24/ab44c871b0f07f491e5d2ad12c9bd7358e527510618cb1b803a88e986db1/werkzeug-3.1.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl
       - pypi: git+https://github.com/xdslproject/xdsl.git?rev=60e3b7970a3eb7fc16ab7e57c2928357bc5d0180#60e3b7970a3eb7fc16ab7e57c2928357bc5d0180
-      - pypi: .
+      - pypi: ./
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
   sha256: fe51de6107f9edc7aa4f786a70f4a883943bc9d39b3bb7307c04c41410990726
@@ -2149,19 +2149,19 @@ packages:
   - pkg:pypi/snakemake?source=hash-mapping
   size: 810266
   timestamp: 1736367856698
-- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.13.ext-hb0f4dca_0.conda
-  sha256: cdc747d9a1b904a39667b5104c53070c739c82bd774dbad487691f1577422582
-  md5: d85700b1e9f3cc479cafc8eaca675621
+- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.14-hb0f4dca_0.conda
+  sha256: 72ead78ce258b91d38028220c79af5750043a1493dbf1c0244e4edd87726b378
+  md5: 7a437b1deaab9e44115339c45fe0c8da
   depends:
   - libgcc >=14
   - libstdcxx >=14
   - libgcc >=14
-  size: 17310984
-  timestamp: 1752743789959
-- pypi: .
+  size: 21400518
+  timestamp: 1754324061866
+- pypi: ./
   name: snax-mlir
   version: 0.2.2
-  sha256: 2839df9cca3c961037b867a55d2eb5e5411ccd44d24d7ea231d91c26b6825602
+  sha256: 5a2a47c38ce2e2d8fe1fad89d30d6f658300486d80e29bec53bcd40b818bcc61
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@60e3b7970a3eb7fc16ab7e57c2928357bc5d0180
   - minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2
@@ -2449,7 +2449,7 @@ packages:
   - mkdocs>=1.6.1 ; extra == 'docs'
   - mkdocstrings[python]>=0.27.0 ; extra == 'docs'
   - pymdown-extensions>=10.7 ; extra == 'docs'
-  - lzstring2 ; extra == 'docs'
+  - lzstring2 @ git+https://github.com/superlopuh/lz-string.git ; extra == 'docs'
   - textual==3.2.0 ; extra == 'gui'
   - pyclip==0.7 ; extra == 'gui'
   - jax==0.6.0 ; extra == 'jax'

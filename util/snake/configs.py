@@ -52,7 +52,7 @@ def get_snax_xdma_config(snax_mlir_path: str | None = None) -> dict[str, Any]:
     config.update(get_default_flags(snitch_sw_path, snax_mlir_path=snax_mlir_path))
     config["num_chips"] = 1
     config["num_harts"] = 2
-    config["vltsim"] = snax_utils_path + "/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster.vlt"
+    config["vltsim"] = snax_utils_path + "/snax-compiler_test_cluster-rtl/bin/snitch_cluster.vlt"
     config["snaxc-config"] = utils_dir / "ssot" / "snax_xdma.yaml"
     return config
 
