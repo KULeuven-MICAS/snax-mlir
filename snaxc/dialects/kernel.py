@@ -4,7 +4,7 @@ from typing import cast
 
 from xdsl.builder import Builder
 from xdsl.dialects import arith, linalg
-from xdsl.dialects.builtin import I8, I32, BoolAttr, DenseArrayBase, IntegerType
+from xdsl.dialects.builtin import I32, BoolAttr, DenseArrayBase, IntegerType
 from xdsl.ir import Attribute, BlockArgument, Dialect, Operation, Region, SSAValue
 from xdsl.irdl import attr_def, irdl_op_definition, operand_def, result_def
 from xdsl.parser import IntegerAttr, IRDLOperation

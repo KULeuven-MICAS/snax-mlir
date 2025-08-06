@@ -43,15 +43,10 @@ class RescaleClampPattern(RewritePattern):
         # searching for the pattern rescale + clamp
         if len(rescale_op.output.uses) != 1:
             return
-        if not isinstance(
-            clamp_op := next(iter(rescale_op.output.uses)).operation, tosa.ClampOp
-        ):
+        if not isinstance(clamp_op := next(iter(rescale_op.output.uses)).operation, tosa.ClampOp):
             # no clamping op after, so we integrate clamping in rescale op to int8 range
             # iff the output of the rescale op is int8
-            if (
-                rescale_op.output.type.element_type != builtin.i8
-                and rescale_op.output.type.element_type != builtin.i32
-            ):
+            if rescale_op.output.type.element_type != builtin.i8 and rescale_op.output.type.element_type != builtin.i32:
                 return
             clamp_op = rescale_op
 
@@ -108,11 +103,7 @@ class RescaleClampPattern(RewritePattern):
         for dim_idx, shape in enumerate(out_type.get_shape()):
             if shape == -1:
                 # create dim op
-                dim_idx_ops.append(
-                    dim_idx := arith.ConstantOp.from_int_and_width(
-                        dim_idx, builtin.IndexType()
-                    )
-                )
+                dim_idx_ops.append(dim_idx := arith.ConstantOp.from_int_and_width(dim_idx, builtin.IndexType()))
                 dim_ops.append(tensor.DimOp(rescale_op.input, dim_idx))
 
         dim_op_values = [dim_op.result for dim_op in dim_ops]
@@ -123,16 +114,10 @@ class RescaleClampPattern(RewritePattern):
             outputs=[output_tensor.tensor],
             body=linalg_body,
             indexing_maps=[
-                builtin.AffineMapAttr(
-                    AffineMap(
-                        nb_dims, 0, tuple(AffineDimExpr(i) for i in range(nb_dims))
-                    )
-                )
+                builtin.AffineMapAttr(AffineMap(nb_dims, 0, tuple(AffineDimExpr(i) for i in range(nb_dims))))
                 for _ in range(2)
             ],
-            iterator_types=builtin.ArrayAttr(
-                [linalg.IteratorTypeAttr.parallel()] * nb_dims
-            ),
+            iterator_types=builtin.ArrayAttr([linalg.IteratorTypeAttr.parallel()] * nb_dims),
             result_types=(clamp_op.output.type,),
         )
 
