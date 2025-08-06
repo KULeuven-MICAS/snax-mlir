@@ -41,7 +41,8 @@ rule generate_rescale_down:
     script:
         "rescale_down.py"
 
-rule generate rescale_up:
+
+rule generate_rescale_up:
     output:
         temp("rescale_up.ppp.mlir"),
     script:
