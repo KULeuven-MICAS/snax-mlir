@@ -26,7 +26,7 @@ rule compile_snax:
         "{config[snaxc]} -c {config[snaxc-config]} --alloc-mode static -o {output} {input}"
 
 
-files = ["rescale_down"]
+files = ["rescale_down", "rescale_up"]
 
 
 # Rules
@@ -41,20 +41,28 @@ rule generate_rescale_down:
     script:
         "rescale_down.py"
 
+rule generate rescale_up:
+    output:
+        temp("rescale_up.ppp.mlir"),
+    script:
+        "rescale_up.py"
+
 
 rule convert_to_kernel:
     input:
-        "rescale_down.ppp.mlir",
+        "{file}.ppp.mlir",
     output:
-        temp("rescale_down.mlir"),
+        temp("{file}.mlir"),
     shell:
         "{config[snax-opt]} -p convert-tosa-to-kernel --allow-unregistered-dialect -o {output} {input}"
 
 
 rule link_snax_binary:
     input:
-        "{file}.o",
-        "main.o",
+        lambda wildcards: [
+            f"{wildcards.file}.o",
+            "main_down.o" if "down" in wildcards.file else "main_up.o",
+        ],
     output:
         temp("{file}.x"),
     shell:
