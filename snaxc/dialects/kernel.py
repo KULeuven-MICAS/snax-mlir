@@ -178,23 +178,19 @@ class RescaleOp(KernelOp):
         self,
         input: SSAValue | Operation,
         result_type: Attribute,
-        input_zp: int | IntegerAttr[I8] | IntegerAttr[I32],
-        output_zp: int | IntegerAttr[I8] | IntegerAttr[I32],
+        input_zp: int | IntegerAttr[I32],
+        output_zp: int | IntegerAttr[I32],
         multiplier: Sequence[int] | Sequence[IntegerAttr[I32]] | DenseArrayBase,
         shift: Sequence[int] | Sequence[IntegerAttr[I32]] | DenseArrayBase,
-        max_int: int | IntegerAttr[I8] | IntegerAttr[I32],
-        min_int: int | IntegerAttr[I8] | IntegerAttr[I32],
+        max_int: int | IntegerAttr[I32],
+        min_int: int | IntegerAttr[I32],
         double_round: bool | BoolAttr = False,
     ):
         input = SSAValue.get(input)
         if isinstance(input_zp, int):
             input_zp = IntegerAttr.from_int_and_width(input_zp, 32)
-        if input_zp.type != IntegerType(32):
-            input_zp = IntegerAttr.from_int_and_width(input_zp.value.data, 32)
         if isinstance(output_zp, int):
             output_zp = IntegerAttr.from_int_and_width(output_zp, 32)
-        if output_zp.type != IntegerType(32):
-            output_zp = IntegerAttr.from_int_and_width(output_zp.value.data, 32)
         if not isinstance(multiplier, DenseArrayBase):
             multiplier = DenseArrayBase.create_dense_int(
                 IntegerType(32), [x if isinstance(x, int) else x.value.data for x in multiplier]
@@ -205,12 +201,8 @@ class RescaleOp(KernelOp):
             )
         if isinstance(max_int, int):
             max_int = IntegerAttr.from_int_and_width(max_int, 32)
-        if max_int.type != IntegerType(32):
-            max_int = IntegerAttr.from_int_and_width(max_int.value.data, 32)
         if isinstance(min_int, int):
             min_int = IntegerAttr.from_int_and_width(min_int, 32)
-        if min_int.type != IntegerType(32):
-            min_int = IntegerAttr.from_int_and_width(min_int.value.data, 32)
         if isinstance(double_round, bool):
             double_round = IntegerAttr.from_int_and_width(1 if double_round else 0, 1)
         super().__init__(

@@ -5,13 +5,6 @@
 
 void _mlir_ciface_snax_main(OneDMemrefI32_t *results);
 
-void *memset(void *s, int c, size_t n) {
-  unsigned char *p = s;
-  while (n--)
-    *p++ = (unsigned char)c;
-  return s;
-}
-
 int main() {
 
   OneDMemrefI32_t results[2];
@@ -46,9 +39,10 @@ int main() {
 
   for (int i = 0; i < total_results; i++) {
 
-    printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
-           computed->aligned_data[i]);
+    
     if (golden->aligned_data[i] != computed->aligned_data[i]) {
+      printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
+           computed->aligned_data[i]);
       nerr++;
     }
   }
