@@ -6,7 +6,7 @@ import numpy as np
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, linalg, memref
 from xdsl.dialects.memref import MemorySpaceCastOp, SubviewOp
-from xdsl.ir import Attribute, Operation, OpResult
+from xdsl.ir import Attribute, Operation, OpResult, Use
 from xdsl.irdl import Operand
 from xdsl.parser import BytesAttr, DenseIntOrFPElementsAttr, MemRefType
 from xdsl.passes import ModulePass
@@ -66,6 +66,16 @@ def transform_constant(source: DenseIntOrFPElementsAttr, dest_layout: Attribute)
     if dest_layout.data.is_dynamic():
         warnings.warn("failed to transform constant op, dest layout dynamic")
         return None
+    new_type = builtin.MemRefType(
+        memref_type.element_type,
+        memref_type.shape,
+        dest_layout,
+        memref_type.memory_space,
+    )
+
+    # splat values do not need transformations:
+    if source.is_splat():
+        return DenseIntOrFPElementsAttr([new_type, source.data])
 
     strides = [stride for _, _, stride in dest_layout.data]
     bounds = cast(list[int], [stride.bound for stride in strides])
@@ -75,13 +85,6 @@ def transform_constant(source: DenseIntOrFPElementsAttr, dest_layout: Attribute)
     # transform data:
     values = values.reshape(bounds).transpose(order[::-1])
     # update constant op:
-
-    new_type = builtin.MemRefType(
-        memref_type.element_type,
-        memref_type.shape,
-        dest_layout,
-        memref_type.memory_space,
-    )
 
     new_value = DenseIntOrFPElementsAttr([new_type, BytesAttr(values.tobytes())])
 
@@ -157,8 +160,13 @@ class ApplyLayoutCastSubviewGlobal(RewritePattern):
         if not isinstance(const_source := subview.source.op, memref.GetGlobalOp):
             return
         # global op can only have one use, this subview:
+        add_unrealized_conversion_casts: list[tuple[Use, Attribute]] = []
         if len(subview.source.uses) != 1:
-            return
+            # allow for conv test
+            # unrealized conversion casts:L
+            for use in subview.source.uses:
+                if use.operation is not subview:
+                    add_unrealized_conversion_casts.append((use, subview.source.type))
         global_op = SymbolTable.lookup_symbol(op, const_source.name_)
         if not isinstance(global_op, memref.GlobalOp):
             return
@@ -186,9 +194,16 @@ class ApplyLayoutCastSubviewGlobal(RewritePattern):
         new_tstrides: list[TiledStride] = []
 
         for tstride, shape in zip(layout.data.tstrides, const_shape):
-            remaining_size = shape // prod(cast(int, stride.bound) for _, stride in tstride)
-            # make copy
-            new_strides = [Stride(stride.step, stride.bound) for stride in tstride.strides]
+            if shape % prod(cast(int, stride.bound) for _, stride in tstride) != 0:
+                # illegal to tile
+                assert len(tstride.strides) == 1
+                stride = tstride.strides[0]
+                new_strides = [Stride(stride.step, shape)]
+                remaining_size = 1
+            else:
+                remaining_size = shape // prod(cast(int, stride.bound) for _, stride in tstride)
+                # make copy
+                new_strides = [Stride(stride.step, stride.bound) for stride in tstride.strides]
             if remaining_size > 1:
                 new_strides.insert(0, Stride(current_stride, remaining_size))
                 current_stride *= remaining_size
@@ -280,6 +295,11 @@ class ApplyLayoutCastSubviewGlobal(RewritePattern):
 
         rewriter.replace_op(subview, new_subview)
 
+        for use, _type in add_unrealized_conversion_casts:
+            unrealized_op = builtin.UnrealizedConversionCastOp.get([new_global_get_op], [_type])
+            use.operation.operands[use.index] = unrealized_op.results[0]
+            rewriter.insert_op(unrealized_op, InsertPoint.after(new_global_get_op))
+
 
 class ApplyLayoutCastArithConstant(RewritePattern):
     """
@@ -364,8 +384,8 @@ class ApplyLayoutCastMemrefGlobal(RewritePattern):
         if not isinstance(const_source := source.op, memref.GetGlobalOp):
             return
         # check if it is used in a terminator operation
-        if any(use.operation.has_trait(IsTerminator) for use in const_source.memref.uses):
-            return
+        # if any(use.operation.has_trait(IsTerminator) for use in const_source.memref.uses):
+        #     return
         global_op = SymbolTable.lookup_symbol(op, const_source.name_)
         if not isinstance(global_op, memref.GlobalOp):
             return

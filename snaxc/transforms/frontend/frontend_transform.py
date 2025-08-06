@@ -10,6 +10,9 @@ MLIR_FLAGS: tuple[tuple[str, ...], ...] = (
     (
         "--transform-interpreter",
         "--test-transform-dialect-erase-schedule",
+        "--linalg-generalize-named-ops",
+        "--canonicalize",
+        "--allow-unregistered-dialect",
         "--mlir-print-op-generic",
         "--mlir-print-local-scope",
     ),

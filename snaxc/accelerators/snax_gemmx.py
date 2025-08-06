@@ -691,8 +691,9 @@ class SNAXGEMMXAccelerator(
                 nb_output_spats = len(self.streamer_config.data.streamers[-1].spatial_dims)
                 snax_stride_patterns.append(
                     snax_stream.StridePattern(
-                        upper_bounds=[x.data for x in snax_stride_patterns[2].upper_bounds] + [self.serializer_ratio],
-                        temporal_strides=[x.data for x in snax_stride_patterns[2].temporal_strides] + [0],
+                        upper_bounds=[x.data for x in snax_stride_patterns[2].upper_bounds.data[:-1]]
+                        + [snax_stride_patterns[2].upper_bounds.data[-1].data * self.serializer_ratio],
+                        temporal_strides=[x.data for x in snax_stride_patterns[2].temporal_strides],
                         spatial_strides=[8 * self.streamer_config.data.streamers[2].spatial_dims[-1], 8][
                             -nb_output_spats:
                         ],

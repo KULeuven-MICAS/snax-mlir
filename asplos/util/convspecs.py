@@ -97,6 +97,17 @@ class TiledConvLayer:
         return (self.tiled_oy - 1) * self.layer.stride + (self.layer.fy - 1) + 1
 
     @property
+    def tiled_c(self) -> int:
+        """
+        Returns the tiled output width based on the layer's output width and the tiling size for output height.
+        Ox is always padded to multiple of 8
+        """
+        if self.layer.c % 8 == 0:
+            return self.layer.c
+        else:
+            return self.layer.c + (8 - self.layer.c % 8)
+
+    @property
     def padded_layer(self) -> ConvLayer:
         return ConvLayer(
             self.layer.name + "_padded",
