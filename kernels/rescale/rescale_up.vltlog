@@ -1,8 +1,0 @@
-Warning: Failed to write binary name to logs/.rtlbinary
-Checking 64 results...
-Finished, nb errors: 0
-[fesvr] Wrote 36 bytes of bootrom to 0x1000
-[fesvr] Wrote entry point 0x80000000 to bootloader slot 0x1020
-[fesvr] Wrote 72 bytes of bootdata to 0x1024
-[Tracer] Logging Hart          0 to rescale_up_trace_chip_00_hart_00000.dasm
-[Tracer] Logging Hart          1 to rescale_up_trace_chip_00_hart_00001.dasm
