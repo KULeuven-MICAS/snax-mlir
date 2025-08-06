@@ -1,3 +1,4 @@
+from abc import ABC
 from collections.abc import Sequence
 
 from xdsl.dialects.builtin import i8, i32
@@ -7,14 +8,14 @@ from snaxc.accelerators.streamers.extensions.streamer_extension import StreamerE
 from snaxc.dialects import kernel
 
 
-class RescaleDownExtension(StreamerExtension):
+class RescaleExtension(StreamerExtension, ABC):
     """
-    Snax XDMA Rescale Down Extension
-    This extension is used to perform Rescale Down operations on the XDMA core.
+    Snax XDMA Rescale Extension
+    This extension is used to perform Rescale operations on the XDMA core.
     """
 
-    name = "rescale_down_ext"
-    supported_kernel = SupportedKernel(kernel.RescaleOp, [i32, i8])
+    name: str
+    supported_kernel: SupportedKernel | None
     csr_length = 4
 
     def get_dma_extension_name(self) -> str:
@@ -41,3 +42,21 @@ class RescaleDownExtension(StreamerExtension):
             op.output_zp.value.data,
             shift,
         ]
+
+
+class RescaleDownExtension(RescaleExtension):
+    """
+    Snax XDMA Rescale Down Extension
+    """
+
+    supported_kernel = SupportedKernel(kernel.RescaleOp, [i32, i8])
+    name = "rescale_down_ext"
+
+
+class RescaleUpExtension(RescaleExtension):
+    """
+    Snax XDMA Rescale Up Extension
+    """
+
+    supported_kernel = SupportedKernel(kernel.RescaleOp, [i8, i32])
+    name = "rescale_up_ext"

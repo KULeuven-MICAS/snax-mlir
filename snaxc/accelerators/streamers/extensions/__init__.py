@@ -8,8 +8,7 @@ from snaxc.accelerators.streamers.streamers import (
 from .add_extension import AddExtension
 from .maxpool_extension import MaxPoolExtension
 from .memset_extension import MemSetExtension
-from .rescale_down_extension import RescaleDownExtension
-from .rescale_up_extension import RescaleUpExtension
+from .rescale_extension import RescaleDownExtension, RescaleUpExtension
 from .streamer_extension import *
 from .transpose_extension import TransposeExtension
 
