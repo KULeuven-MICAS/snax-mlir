@@ -15,22 +15,6 @@ from xdsl.utils.hints import isa
 from snaxc.dialects import kernel
 
 
-def assert_int8(val: float | int) -> int:
-    assert isinstance(val, int)
-    assert isinstance(val, int)
-    assert -128 <= val
-    assert val <= 127
-    return val
-
-
-def assert_int32(val: float | int) -> int:
-    assert isinstance(val, int)
-    assert isinstance(val, int)
-    assert -2147483648 <= val
-    assert val <= 2147483647
-    return val
-
-
 class RescaleClampPattern(RewritePattern):
     """
     Transform rescale clamp into a kernel.rescale op
@@ -59,19 +43,25 @@ class RescaleClampPattern(RewritePattern):
         # create linalg body with kernel op with the params of tosa ops
 
         # Extract all values:
-        input_zp = assert_int8(rescale_op.input_zp.value.data)
-        output_zp = assert_int8(rescale_op.output_zp.value.data)
+        builtin.i32.verify_value(rescale_op.input_zp.value.data)
+        builtin.i32.verify_value(rescale_op.output_zp.value.data)
+        input_zp = rescale_op.input_zp.value.data
+        output_zp = rescale_op.output_zp.value.data
         multiplier = rescale_op.multiplier.get_values()
         assert isa(multiplier, tuple[int, ...])
         shift = rescale_op.shift.get_values()
         assert isa(shift, tuple[int, ...])
         if isinstance(clamp_op, tosa.ClampOp):
             if rescale_op.output.type.element_type == builtin.i8:
-                max_int = assert_int8(clamp_op.max_int.value.data)
-                min_int = assert_int8(clamp_op.min_int.value.data)
+                builtin.i8.verify_value(clamp_op.max_int.value.data)
+                builtin.i8.verify_value(clamp_op.min_int.value.data)
+                max_int = clamp_op.max_int.value.data
+                min_int = clamp_op.min_int.value.data
             else:
-                max_int = assert_int32(clamp_op.max_int.value.data)
-                min_int = assert_int32(clamp_op.min_int.value.data)
+                builtin.i32.verify_value(clamp_op.max_int.value.data)
+                builtin.i32.verify_value(clamp_op.min_int.value.data)
+                max_int = clamp_op.max_int.value.data
+                min_int = clamp_op.min_int.value.data
         else:
             assert isinstance(rescale_op.output.type.element_type, builtin.IntegerType)
             min_int, max_int = rescale_op.output.type.element_type.value_range()
