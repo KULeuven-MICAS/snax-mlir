@@ -32,14 +32,14 @@ MLIR_PREPOC_FLAGS: tuple[tuple[str, ...], ...] = (
         "--mlir-print-local-scope",
         "--allow-unregistered-dialect",
     ),
-    (
-        "--linalg-generalize-named-ops",
-        "--allow-unregistered-dialect",
-        "--canonicalize",
-        "--mlir-print-op-generic",
-        "--mlir-print-local-scope",
-        "--allow-unregistered-dialect",
-    ),
+     (
+         "--linalg-generalize-named-ops",
+    #    "--allow-unregistered-dialect",
+    #     "--canonicalize",
+    #    "--mlir-print-op-generic",
+    #     "--mlir-print-local-scope",
+    #     "--allow-unregistered-dialect",
+     ),
 )
 
 
