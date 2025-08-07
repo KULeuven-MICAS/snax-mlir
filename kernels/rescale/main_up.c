@@ -3,13 +3,13 @@
 #include "stdint.h"
 #include <snrt.h>
 
-void _mlir_ciface_snax_main(OneDMemrefI8_t *results);
+void _mlir_ciface_snax_main(OneDMemrefI32_t *results);
 
 int main() {
 
-  OneDMemrefI8_t results[2];
+  OneDMemrefI32_t results[2];
 
-  OneDMemrefI8_t *golden, *computed;
+  OneDMemrefI32_t *golden, *computed;
 
   computed = &results[0];
   golden = &results[1];
@@ -39,9 +39,9 @@ int main() {
 
   for (int i = 0; i < total_results; i++) {
 
-    printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
-           computed->aligned_data[i]);
     if (golden->aligned_data[i] != computed->aligned_data[i]) {
+      printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
+             computed->aligned_data[i]);
       nerr++;
     }
   }

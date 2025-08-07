@@ -15,14 +15,6 @@ from xdsl.utils.hints import isa
 from snaxc.dialects import kernel
 
 
-def assert_int8(val: float | int) -> int:
-    assert isinstance(val, int)
-    assert isinstance(val, int)
-    assert -128 <= val
-    assert val <= 127
-    return val
-
-
 class RescaleClampPattern(RewritePattern):
     """
     Transform rescale clamp into a kernel.rescale op
@@ -38,7 +30,7 @@ class RescaleClampPattern(RewritePattern):
         if not isinstance(clamp_op := next(iter(rescale_op.output.uses)).operation, tosa.ClampOp):
             # no clamping op after, so we integrate clamping in rescale op to int8 range
             # iff the output of the rescale op is int8
-            if rescale_op.output.type.element_type != builtin.i8:
+            if rescale_op.output.type.element_type != builtin.i8 and rescale_op.output.type.element_type != builtin.i32:
                 return
             clamp_op = rescale_op
 
@@ -51,25 +43,44 @@ class RescaleClampPattern(RewritePattern):
         # create linalg body with kernel op with the params of tosa ops
 
         # Extract all values:
-        input_zp = assert_int8(rescale_op.input_zp.value.data)
-        output_zp = assert_int8(rescale_op.output_zp.value.data)
+        builtin.i32.verify_value(rescale_op.input_zp.value.data)
+        builtin.i32.verify_value(rescale_op.output_zp.value.data)
+        input_zp = rescale_op.input_zp.value.data
+        output_zp = rescale_op.output_zp.value.data
         multiplier = rescale_op.multiplier.get_values()
         assert isa(multiplier, tuple[int, ...])
         shift = rescale_op.shift.get_values()
         assert isa(shift, tuple[int, ...])
         if isinstance(clamp_op, tosa.ClampOp):
-            max_int = assert_int8(clamp_op.max_int.value.data)
-            min_int = assert_int8(clamp_op.min_int.value.data)
+            if rescale_op.output.type.element_type == builtin.i8:
+                builtin.i8.verify_value(clamp_op.max_int.value.data)
+                builtin.i8.verify_value(clamp_op.min_int.value.data)
+                max_int = clamp_op.max_int.value.data
+                min_int = clamp_op.min_int.value.data
+            else:
+                builtin.i32.verify_value(clamp_op.max_int.value.data)
+                builtin.i32.verify_value(clamp_op.min_int.value.data)
+                max_int = clamp_op.max_int.value.data
+                min_int = clamp_op.min_int.value.data
         else:
-            max_int = 127
-            min_int = -128
+            assert isinstance(rescale_op.output.type.element_type, builtin.IntegerType)
+            min_int, max_int = rescale_op.output.type.element_type.value_range()
+            max_int = max_int // 2 - 1
         double_round = rescale_op.double_round.value.data
         assert double_round in (0, -1)
 
         @Builder.implicit_region((inp_type.element_type, out_type.element_type))
         def linalg_body(args: tuple[BlockArgument, ...]) -> None:
             kernel_op = kernel.RescaleOp(
-                args[0], args[-1].type, input_zp, output_zp, multiplier, shift, max_int, min_int, bool(double_round)
+                args[0],
+                args[-1].type,
+                input_zp,
+                output_zp,
+                multiplier,
+                shift,
+                max_int,
+                min_int,
+                bool(double_round),
             )
             linalg.YieldOp(kernel_op)
 

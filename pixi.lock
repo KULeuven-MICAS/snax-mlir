@@ -115,7 +115,7 @@ environments:
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-interface-report-plugins-1.1.0-pyhdfd78af_0.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-interface-storage-plugins-3.3.0-pyhdfd78af_0.tar.bz2
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-minimal-8.27.1-pyhdfd78af_0.tar.bz2
-      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.14-hb0f4dca_0.conda
+      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.15-hb0f4dca_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.17-h0157908_18.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tabulate-0.9.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tbb-2021.13.0-hceb3a55_1.conda
@@ -2149,19 +2149,18 @@ packages:
   - pkg:pypi/snakemake?source=hash-mapping
   size: 810266
   timestamp: 1736367856698
-- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.14-hb0f4dca_0.conda
-  sha256: 72ead78ce258b91d38028220c79af5750043a1493dbf1c0244e4edd87726b378
-  md5: 7a437b1deaab9e44115339c45fe0c8da
+- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.15-hb0f4dca_0.conda
+  sha256: 3806aeff57d4765fae223d3d4f0f2b48e9c16c255b69457ffd0953fbb8fd2357
+  md5: e27c6cf2e5e7f7eae39b295ec3b034ab
   depends:
-  - libgcc >=14
   - libstdcxx >=14
   - libgcc >=14
-  size: 21400518
-  timestamp: 1754324061866
+  size: 21415178
+  timestamp: 1754401107477
 - pypi: ./
   name: snax-mlir
   version: 0.2.2
-  sha256: 5a2a47c38ce2e2d8fe1fad89d30d6f658300486d80e29bec53bcd40b818bcc61
+  sha256: dad56f8e665f75d443019b15ddd6754075dc35a987e0f3e1c06fb4dc0d232e77
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@60e3b7970a3eb7fc16ab7e57c2928357bc5d0180
   - minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2
