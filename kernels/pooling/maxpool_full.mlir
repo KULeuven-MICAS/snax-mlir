@@ -17,4 +17,3 @@ builtin.module {
     func.return %3 : tensor<1x56x56x64xi8>
   }
 }
-

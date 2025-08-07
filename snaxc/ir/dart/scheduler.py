@@ -70,9 +70,7 @@ def scheduler_backtrack(
         candidate_schedule = schedule
 
         # check 3: check for valid iteration bounds
-        template_bound = (
-            template[0].bounds[-inner_dims] if inner_dims <= template.num_dims else None
-        )
+        template_bound = template[0].bounds[-inner_dims] if inner_dims <= template.num_dims else None
         schedule_bound = candidate_schedule[0].bounds[-inner_dims]
 
         if template_bound:
@@ -83,14 +81,10 @@ def scheduler_backtrack(
                 continue
             else:
                 # tile schedule
-                candidate_schedule = candidate_schedule.tile_dim(
-                    schedule.num_dims - inner_dims, template_bound
-                )
+                candidate_schedule = candidate_schedule.tile_dim(schedule.num_dims - inner_dims, template_bound)
 
         # continue with candidate schedule, with an extra inner dim:
-        yield from scheduler_backtrack(
-            template, candidate_schedule, inner_dims + 1, extra_checks
-        )
+        yield from scheduler_backtrack(template, candidate_schedule, inner_dims + 1, extra_checks)
 
 
 def is_pure_output_stationary(template: Template, schedule: Schedule):
@@ -106,9 +100,7 @@ def is_pure_output_stationary(template: Template, schedule: Schedule):
 
     # check whether there are any non-zero elements in every column
     # create iteration_types list with False for reduction, True for parallel
-    iteration_types: list[bool] = list(
-        map(lambda x: bool(x), np.any(output_schedule != 0, axis=0).tolist())
-    )
+    iteration_types: list[bool] = list(map(lambda x: bool(x), np.any(output_schedule != 0, axis=0).tolist()))
     # the first zero should come after the last 1 for output stationary
 
     # if only reduction, or only parallel, pure otuput stationary is guaranteed
@@ -122,9 +114,7 @@ def is_pure_output_stationary(template: Template, schedule: Schedule):
     return first_reduction_idx > last_parallel_idx
 
 
-def is_output_channel_stationary(
-    template: Template, schedule: Schedule, channel_dim: int
-) -> bool:
+def is_output_channel_stationary(template: Template, schedule: Schedule, channel_dim: int) -> bool:
     """
     Checks whether a schedule is output-channel stationary.
     For this, all outputs of a single output channel must be computed
@@ -137,9 +127,7 @@ def is_output_channel_stationary(
     # do not consider template dims
     output_schedule = output_schedule[:, : -template.num_dims]
 
-    assert (
-        len(output_schedule.shape) > channel_dim
-    ), "Output schedule does not have enough dimensions for this check"
+    assert len(output_schedule.shape) > channel_dim, "Output schedule does not have enough dimensions for this check"
 
     arr = output_schedule[channel_dim, :]
 
@@ -154,9 +142,7 @@ def is_output_channel_stationary(
         return bool(result)
 
 
-def is_memory_flexible_enough(
-    template: Template, schedule: Schedule, element_sizes: Sequence[int]
-):
+def is_memory_flexible_enough(template: Template, schedule: Schedule, element_sizes: Sequence[int]):
     """
     Checks whether the TCDM flexibility is sufficient to actually execute
     the schedule.
@@ -174,9 +160,7 @@ def is_memory_flexible_enough(
         if template[i].pattern.num_results == 0:
             continue
         # is there temporary fine-grained access for this dimension?
-        temporal = (
-            s.pattern.A[:, 0 : -template.num_dims] % ceil(TCDM_BANK_WIDTH / size)
-        ).any(axis=1)
+        temporal = (s.pattern.A[:, 0 : -template.num_dims] % ceil(TCDM_BANK_WIDTH / size)).any(axis=1)
         # is the dimension spatially unrolled?
         spatial = (s.pattern.A[:, -template.num_dims :] == 1).any(axis=1)
         if (False, True) not in zip(temporal, spatial):
@@ -197,9 +181,7 @@ def scheduler(
     if schedule_idx is not None:
         all = list(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
         return all[schedule_idx]
-    result = next(
-        scheduler_backtrack(template, schedule, extra_checks=extra_checks), None
-    )
+    result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks), None)
     if result is None:
         raise ValueError("No valid schedule found for the given template and schedule.")
     return result

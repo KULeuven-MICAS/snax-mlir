@@ -117,7 +117,6 @@ class RescaleClampPattern(RewritePattern):
             rewriter.erase_matched_op()
 
 
-
 class ConvertTosaToKernelPass(ModulePass):
     """
     Converts tosa dialect ops to kernel ops wrapped in linalg generics.
