@@ -34,17 +34,6 @@ class Parsable(ABC):
             result_types=[generic_op.body.block.args[-1].type],
         )
 
-    @classmethod
-    def make_op_from_args(cls, args: tuple[BlockArgument, ...]) -> KernelOp:
-        """
-        Create a kernel operation from the given block arguments.
-        """
-        assert issubclass(cls, KernelOp)
-        return cls(
-            operands=args[:-1],
-            result_types=[args[-1].type],
-        )
-
 
 class BinaryOp:
     lhs = operand_def(IntegerType)
