@@ -155,7 +155,10 @@ def is_memory_flexible_enough(template: Template, schedule: Schedule, element_si
     # their access granularity:
     if not schedule.num_dims > template.num_dims:
         return True
-    for s, size in zip(schedule, element_sizes):
+    for i, (s, size) in enumerate(zip(schedule, element_sizes)):
+        # for empty templates, accept violation
+        if template[i].pattern.num_results == 0:
+            continue
         # is there temporary fine-grained access for this dimension?
         temporal = (s.pattern.A[:, 0 : -template.num_dims] % ceil(TCDM_BANK_WIDTH / size)).any(axis=1)
         # is the dimension spatially unrolled?
@@ -178,5 +181,7 @@ def scheduler(
     if schedule_idx is not None:
         all = list(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
         return all[schedule_idx]
-    result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
+    result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks), None)
+    if result is None:
+        raise ValueError("No valid schedule found for the given template and schedule.")
     return result

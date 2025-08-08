@@ -50,10 +50,8 @@ class ParseLinalgBody(RewritePattern):
             if len(op_def.get_irdl_definition().operands) != len(linalg_op.body.block.args[:-1]):
                 # wrong number of operands, continue search
                 continue
-            kernel_op = op_def(
-                operands=linalg_op.body.block.args[:-1],
-                result_types=[linalg_op.body.block.args[-1].type],
-            )
+            kernel_op = op_def.make_op_from_generic(linalg_op)
+            assert isinstance(kernel_op, Parsable)
 
             if check_kernel_equivalence(linalg_op.body.block, kernel_op.equivalent_region.block):
                 # modify linalg body

@@ -28,7 +28,7 @@ from xdsl.rewriter import InsertPoint
 from xdsl.utils.hints import isa
 
 from snaxc.dialects import dart
-from snaxc.dialects.kernel import AddOp
+from snaxc.dialects.kernel import AddOp, MacOp, QMacOp
 
 
 @dataclass
@@ -85,7 +85,14 @@ class StreamifyGenericOpPattern(RewritePattern):
                 empty = EmptyOp([], tensor_type=output.type)
                 rewriter.insert_op(empty, InsertPoint.before(op))
                 outputs.append(empty.tensor)
-                outputs_to_add.append(output)
+                assert op.body.block.last_op is not None
+                if any(
+                    [
+                        isinstance(op.body.block.last_op.prev_op, accumulate_class)
+                        for accumulate_class in (AddOp, QMacOp, MacOp)
+                    ]
+                ):
+                    outputs_to_add.append(output)
 
         # create the streaming region to wrap around the stream.generic
         streaming_region_op = dart.OperationOp(

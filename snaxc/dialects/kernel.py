@@ -23,6 +23,17 @@ class Parsable(ABC):
     @property
     def equivalent_region(self) -> Region: ...
 
+    @classmethod
+    def make_op_from_generic(cls, generic_op: linalg.GenericOp) -> KernelOp:
+        """
+        Create a kernel operation from a linalg.generic operation.
+        """
+        assert issubclass(cls, KernelOp)
+        return cls(
+            operands=generic_op.body.block.args[:-1],
+            result_types=[generic_op.body.block.args[-1].type],
+        )
+
 
 class BinaryOp:
     lhs = operand_def(IntegerType)
@@ -153,6 +164,45 @@ class QMacOp(KernelOp, QuantizedBinaryOp, Parsable):
 
 
 @irdl_op_definition
+class MaxPoolOp(KernelOp, Parsable):
+    """
+    Operation representing a max pooling operation.
+    """
+
+    name = "kernel.max_pool"
+
+    input = operand_def(IntegerType)
+    output = operand_def(IntegerType)
+
+    result = result_def(IntegerType)
+
+    @property
+    def equivalent_region(self) -> Region:
+        @Builder.implicit_region(
+            (
+                SSAValue.get(self.input).type,
+                IntegerType(8),
+                *self.result_types,
+            )
+        )
+        def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
+            max = arith.MaxSIOp(args[2], args[0])
+            linalg.YieldOp(max)
+
+        return equivalent_region
+
+    @classmethod
+    def make_op_from_generic(cls, generic_op: linalg.GenericOp) -> KernelOp:
+        """
+        Create a MaxPool operation from a linalg.generic operation.
+        """
+        return cls(
+            operands=[generic_op.body.block.args[-1], generic_op.body.block.args[0]],
+            result_types=[generic_op.body.block.args[-1].type],
+        )
+
+
+@irdl_op_definition
 class RescaleOp(KernelOp):
     """
     Operation applying rescaling according to the spec in
@@ -193,11 +243,13 @@ class RescaleOp(KernelOp):
             output_zp = IntegerAttr.from_int_and_width(output_zp, 32)
         if not isinstance(multiplier, DenseArrayBase):
             multiplier = DenseArrayBase.create_dense_int(
-                IntegerType(32), [x if isinstance(x, int) else x.value.data for x in multiplier]
+                IntegerType(32),
+                [x if isinstance(x, int) else x.value.data for x in multiplier],
             )
         if not isinstance(shift, DenseArrayBase):
             shift = DenseArrayBase.create_dense_int(
-                IntegerType(32), [x if isinstance(x, int) else x.value.data for x in shift]
+                IntegerType(32),
+                [x if isinstance(x, int) else x.value.data for x in shift],
             )
         if isinstance(max_int, int):
             max_int = IntegerAttr.from_int_and_width(max_int, 32)
@@ -227,6 +279,7 @@ Kernel = Dialect(
         AddOp,
         MacOp,
         QMacOp,
+        MaxPoolOp,
         RescaleOp,
     ],
 )

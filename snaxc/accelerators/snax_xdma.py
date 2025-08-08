@@ -51,7 +51,7 @@ default_streamer = StreamerConfiguration(
         ),
         Streamer(
             StreamerType.Writer,
-            ["n", "n", "n", "n", "n"],
+            ["r", "n", "n", "n", "n"],
             [8],
             [MemSetExtension(), TransposeExtension(), HasChannelMask(), HasByteMask()],
         ),
