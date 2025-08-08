@@ -55,25 +55,22 @@ class MaxPoolExtension(StreamerExtension):
             ArrayAttr,
         ), "Stride patterns must be an Array"
         assert isinstance(
-            stride_pattern.data,
-            tuple,  # pyright: ignore[reportUnknownMemberType]
+            stride_pattern.data,  # pyright: ignore[reportUnknownMemberType]
+            tuple,
         ), "Stride patterns must be a tuple"
+        stride_pattern = stride_pattern.data  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
         assert (
             len(
-                stride_pattern.data  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+                stride_pattern  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
             )
             == 2
         ), "Stride patterns tuple must have length 2"
-        assert all(
-            isinstance(sp, snax_stream.StridePattern)
-            for sp in stride_pattern.data  # pyright: ignore[reportUnknownMemberType]
-        ), "Stride patterns must contain StridePattern instances"
         assert isinstance(
-            stride_pattern.data[1],  # pyright: ignore[reportUnknownMemberType]
+            stride_pattern[1],  # pyright: ignore[reportUnknownMemberType]
             snax_stream.StridePattern,
         ), "Stride patterns must contain a StridePattern for the output"
 
-        stride_pattern = stride_pattern.data[1]  # pyright: ignore[reportUnknownMemberType]
+        stride_pattern = stride_pattern[1]  # pyright: ignore[reportUnknownMemberType]
 
         assert isinstance(stride_pattern, snax_stream.StridePattern), "Stride pattern must be a StridePattern"
 
@@ -82,7 +79,7 @@ class MaxPoolExtension(StreamerExtension):
         )
 
         assert len(stride_array.data) >= 1, "Stride pattern must have one parameter"  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-        assert isinstance(kernel_size := stride_array.data[0], IntAttr)  # pyright: ignore[reportUnknownMemberType]
+        assert isinstance(kernel_size := stride_array.data[0], IntAttr)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
         assert isinstance(kernel_size := kernel_size.data, int), "Stride pattern first parameter must be an IntAttr"
 
         return [kernel_size]
