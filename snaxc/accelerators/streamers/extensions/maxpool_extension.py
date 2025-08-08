@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from xdsl.dialects.builtin import i8
+from xdsl.dialects.builtin import ArrayAttr, IntAttr, i8
 from xdsl.ir import Operation, ParametrizedAttribute, SSAValue
 from xdsl.ir.affine import AffineMap
 
@@ -11,7 +11,7 @@ from snaxc.accelerators.streamers.streamers import (
     StreamerConfiguration,
     StreamerType,
 )
-from snaxc.dialects import dart, kernel
+from snaxc.dialects import dart, kernel, snax_stream
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 
 
@@ -37,7 +37,55 @@ class MaxPoolExtension(StreamerExtension):
         This method should be implemented to provide the specific CSR values needed for the MaxPool extension.
         """
         # Example implementation, replace with actual logic
-        return [1]  # TODO: Replace with actual CSR values for MaxPool
+        assert op.parent is not None, "Operation must be in a StreamingRegionOp"
+        assert op.parent.parent is not None, "Operation's parent must be in a StreamingRegionOp"
+        assert op.parent.parent.parent is not None, "Operation's must be in a StreamingRegionOp"
+        assert op.parent.parent.parent.parent is not None, "Operation's must be in a StreamingRegionOp"
+        assert op.parent.parent.parent.parent.parent is not None, "Operation must be in StreamingRegionOp"
+        assert isinstance(
+            streaming_region_op := op.parent.parent.parent.parent.parent.parent,
+            snax_stream.StreamingRegionOp,
+        ), "Operation must be in AccessPatternOp"
+
+        assert streaming_region_op.properties["stride_patterns"] is not None, (
+            "StreamingRegionOp must have stride pattern property"
+        )
+        assert isinstance(
+            stride_pattern := streaming_region_op.properties["stride_patterns"],
+            ArrayAttr,
+        ), "Stride patterns must be an Array"
+        assert isinstance(
+            stride_pattern.data,
+            tuple,  # pyright: ignore[reportUnknownMemberType]
+        ), "Stride patterns must be a tuple"
+        assert (
+            len(
+                stride_pattern.data  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+            )
+            == 2
+        ), "Stride patterns tuple must have length 2"
+        assert all(
+            isinstance(sp, snax_stream.StridePattern)
+            for sp in stride_pattern.data  # pyright: ignore[reportUnknownMemberType]
+        ), "Stride patterns must contain StridePattern instances"
+        assert isinstance(
+            stride_pattern.data[1],  # pyright: ignore[reportUnknownMemberType]
+            snax_stream.StridePattern,
+        ), "Stride patterns must contain a StridePattern for the output"
+
+        stride_pattern = stride_pattern.data[1]  # pyright: ignore[reportUnknownMemberType]
+
+        assert isinstance(stride_pattern, snax_stream.StridePattern), "Stride pattern must be a StridePattern"
+
+        assert isinstance(stride_array := stride_pattern.parameters[0], ArrayAttr), (
+            "Stride pattern parameters must be ParametrizedAttributes"
+        )
+
+        assert len(stride_array.data) >= 1, "Stride pattern must have one parameter"  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
+        assert isinstance(kernel_size := stride_array.data[0], IntAttr)  # pyright: ignore[reportUnknownMemberType]
+        assert isinstance(kernel_size := kernel_size.data, int), "Stride pattern first parameter must be an IntAttr"
+
+        return [kernel_size]
 
     def get_template(self, op: kernel.KernelOp) -> Template:
         template = [
@@ -73,11 +121,14 @@ class MaxPoolExtension(StreamerExtension):
         Set the stride patterns for the MaxPool operation.
         The Middle pattern is removed as it is not needed for MaxPool.
         """
+        new_inputs = [op.inputs[0]]
+        new_outputs: list[SSAValue] = list(op.outputs)
+
         snax_stride_patterns = list(snax_stride_patterns)
 
         return (
-            op.inputs,
-            op.outputs,
+            new_inputs,
+            new_outputs,
             [snax_stride_patterns[0], snax_stride_patterns[-1]],
             [],
         )
