@@ -31,10 +31,11 @@ int main() {
   if (thiscore != 0)
     return 0;
 
-    printf("Golden result address: %p\n", golden->aligned_data);
-    printf("Computed result address: %p\n", computed->aligned_data);
+  printf("Golden result address: %p\n", golden->aligned_data);
+  printf("Computed result address: %p\n", computed->aligned_data);
 
-  int total_results = computed->shape[0] * computed->shape[1] * computed->shape[2] * computed->shape[3];
+  int total_results = computed->shape[0] * computed->shape[1] *
+                      computed->shape[2] * computed->shape[3];
 
   printf("Checking %d results...\n", total_results);
 
@@ -43,8 +44,8 @@ int main() {
   for (int i = 0; i < total_results; i++) {
 
     if (golden->aligned_data[i] != computed->aligned_data[i]) {
-          printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
-           computed->aligned_data[i]);
+      printf("(%d) %d -> %d\n", i, golden->aligned_data[i],
+             computed->aligned_data[i]);
       nerr++;
     }
   }

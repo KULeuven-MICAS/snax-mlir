@@ -13,7 +13,7 @@ from xdsl.dialects.builtin import (
     i64,
 )
 from xdsl.dialects.func import FuncOp, ReturnOp
-#from xdsl.dialects.tosa import MaxPool2DOp
+from xdsl.dialects.tosa import MaxPool2DOp
 from xdsl.printer import Printer
 
 
@@ -39,9 +39,7 @@ def maxpool(m: int = 28, n: int = 28, channels: int = 64):
         i8,
         (1, (m - m_kernel) // m_stride + 1, (n - n_kernel) // n_stride + 1, channels),
     )
-    golden_vals_list = maxpool_golden(
-        a_vals, m, n, channels, m_kernel, n_kernel, m_stride, n_stride
-    )
+    golden_vals_list = maxpool_golden(a_vals, m, n, channels, m_kernel, n_kernel, m_stride, n_stride)
 
     golden_vals = np.array(golden_vals_list, dtype=np.int8)
 
@@ -52,18 +50,12 @@ def maxpool(m: int = 28, n: int = 28, channels: int = 64):
     @Builder.implicit_region([])
     def func_body(_) -> None:
         # Declare constants
-        a = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist())
-        )
-        print(a_vals[:,:, 0])
+        a = ConstantOp(DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist()))
+        print(a_vals[:, :, 0])
         # print(a_vals[:,:, 1])
         # print(a_vals.flatten().tolist())
-        golden = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(
-                output_type, golden_vals.flatten().tolist()
-            )
-        )
-        print(golden_vals[:,:, 0])
+        golden = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, golden_vals.flatten().tolist()))
+        print(golden_vals[:, :, 0])
         # print(golden_vals[:,:, 1])
         # print(golden_vals.flatten().tolist())
 
@@ -71,16 +63,15 @@ def maxpool(m: int = 28, n: int = 28, channels: int = 64):
         # empty_tensor = EmptyOp([], output_type)
 
         # Specify the operation
-        # result = MaxPool2DOp(
-        #     operands=[a.result],
-        #     result_types=[output_type],
-        #     properties={
-        #         "kernel": DenseArrayBase.create_dense_int(i64, [3, 3]),
-        #         "stride": DenseArrayBase.create_dense_int(i64, [2, 2]),
-        #         "padding": DenseArrayBase.create_dense_int(i64, [0, 0, 0, 0]),
-        #     },
-        # )
-        result = None
+        result = MaxPool2DOp(
+            operands=[a.result],
+            result_types=[output_type],
+            properties={
+                "kernel": DenseArrayBase.create_dense_int(i64, [3, 3]),
+                "stride": DenseArrayBase.create_dense_int(i64, [2, 2]),
+                "padding": DenseArrayBase.create_dense_int(i64, [0, 0, 0, 0]),
+            },
+        )
 
         # Return both the computed result and the golden output
         ReturnOp(result, golden)

@@ -42,7 +42,6 @@ rule all:
 #         "maxpool.py"
 
 
-
 rule link_snax_binary:
     input:
         "{file}.o",
