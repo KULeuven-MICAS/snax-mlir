@@ -19,6 +19,7 @@ from snaxc.transforms.backend.postprocess_mlir import PostprocessPass
 from snaxc.transforms.clear_memory_space import ClearMemorySpace
 from snaxc.transforms.convert_accfg_to_csr import ConvertAccfgToCsrPass
 from snaxc.transforms.convert_dart_to_snax_stream import ConvertDartToSnaxStream
+from snaxc.transforms.convert_kernel_to_linalg import ConvertKernelToLinalg
 from snaxc.transforms.convert_linalg_to_accfg import ConvertLinalgToAccPass
 from snaxc.transforms.convert_linalg_to_kernel import ConvertLinalgToKernel
 from snaxc.transforms.convert_memref_to_arith import ConvertMemrefToArithPass
@@ -199,6 +200,7 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(DispatchKernels())
         pass_pipeline.append(ConvertLinalgToDart())
         pass_pipeline.append(DartFuseOperationsPass())
+        pass_pipeline.append(ConvertKernelToLinalg())
         if not self.args.no_frontend:
             pass_pipeline.append(SnaxBufferize())
         if self.args.debug:
