@@ -193,21 +193,38 @@ class ApplyLayoutCastSubviewGlobal(RewritePattern):
         current_stride = max(cast(int, stride.bound) * cast(int, stride.step) for _, _, stride in layout.data)
         new_tstrides: list[TiledStride] = []
 
+        # specifically for tiled
+        illegal_to_tile = False
         for tstride, shape in zip(layout.data.tstrides, const_shape):
             if shape % prod(cast(int, stride.bound) for _, stride in tstride) != 0:
-                # illegal to tile
-                assert len(tstride.strides) == 1
-                stride = tstride.strides[0]
-                new_strides = [Stride(stride.step, shape)]
-                remaining_size = 1
-            else:
-                remaining_size = shape // prod(cast(int, stride.bound) for _, stride in tstride)
-                # make copy
-                new_strides = [Stride(stride.step, stride.bound) for stride in tstride.strides]
-            if remaining_size > 1:
-                new_strides.insert(0, Stride(current_stride, remaining_size))
-                current_stride *= remaining_size
-            new_tstrides.append(TiledStride(new_strides))
+                illegal_to_tile = True
+
+        if illegal_to_tile:
+            strides: list[tuple[int, Stride]] = [
+                (i, tstride.strides[0]) for i, tstride in enumerate(layout.data.tstrides)
+            ]
+            strides = sorted(strides, key=lambda stride: cast(int, stride[1].step))
+            current_stride = 1
+            new_tstrides = [[] for _ in strides]
+            for i, stride in strides:
+                new_tstrides[i] = TiledStride([Stride(current_stride, const_shape[i])])
+                current_stride *= const_shape[i]
+        else:
+            for tstride, shape in zip(layout.data.tstrides, const_shape):
+                if shape % prod(cast(int, stride.bound) for _, stride in tstride) != 0:
+                    # illegal to tile
+                    assert len(tstride.strides) == 1
+                    stride = tstride.strides[0]
+                    new_strides = [Stride(stride.step, shape)]
+                    remaining_size = 1
+                else:
+                    remaining_size = shape // prod(cast(int, stride.bound) for _, stride in tstride)
+                    # make copy
+                    new_strides = [Stride(stride.step, stride.bound) for stride in tstride.strides]
+                if remaining_size > 1:
+                    new_strides.insert(0, Stride(current_stride, remaining_size))
+                    current_stride *= remaining_size
+                new_tstrides.append(TiledStride(new_strides))
 
         new_layout = TiledStridedLayoutAttr(TiledStridedLayout(new_tstrides, layout.data.offset))
 
@@ -384,8 +401,9 @@ class ApplyLayoutCastMemrefGlobal(RewritePattern):
         if not isinstance(const_source := source.op, memref.GetGlobalOp):
             return
         # check if it is used in a terminator operation
-        # if any(use.operation.has_trait(IsTerminator) for use in const_source.memref.uses):
-        #     return
+        # TODO: unset this for exp5
+        if any(use.operation.has_trait(IsTerminator) for use in const_source.memref.uses):
+            return
         global_op = SymbolTable.lookup_symbol(op, const_source.name_)
         if not isinstance(global_op, memref.GlobalOp):
             return

@@ -1,11 +1,13 @@
-from util.snake.configs import get_asplos_matmul_config
-from util.snake.configs import get_asplos_matvec_config
+from util.snake.configs import get_asplos_resnet_config
 
 import os
 
-config_matmul = get_asplos_matmul_config()
+config = get_asplos_resnet_config()
 
-config = get_asplos_matmul_config()
+configfile: "tiled_resnet_layers.yaml"
+
+convspec_ids = [layer["layer"]["name"] for layer in config["layers"]]
+
 
 rule plot_figure:
     input:
@@ -28,9 +30,19 @@ rule all:
     input:
         "summary.txt"
 
+
+rule extract_cycles:
+    input:
+        expand("{file}_traces.json", file=convspec_ids),
+    output:
+        "summary.txt",
+    shell:
+        "python extract_cycles.py {output} {input}"
+
+
 rule generate_convs:
     output:
-        "conv_1.mlir"
+        expand("{file}.mlir", file=convspec_ids),
     shell:
         "python generate_tiled_convs.py"
 

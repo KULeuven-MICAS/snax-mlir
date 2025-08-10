@@ -94,7 +94,7 @@ default = { features = ["dev", "nn", "viz"] }
 mlir = { version = "==20.1.1", channel = "kuleuven-micas" }
 clang = "==20.1.1"
 lld = "==20.1.1"
-snax-cluster-prebuilt = "==20"
+snax-cluster-prebuilt = "==27"
 snakemake-minimal = "*"
 pyright = ">=1.1.390,<2"
 vcd-to-csv = { version = ">=0.1.0,<0.2", channel = "kuleuven-micas" }

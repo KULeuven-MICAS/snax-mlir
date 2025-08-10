@@ -188,5 +188,3 @@ if __name__ == "__main__":
         printer.print(tiled_conv(spec, layer.tile_k, layer.tile_y))
         with open(layer.layer.name + ".mlir", "w") as output_file:
             output_file.write(output.getvalue())
-
-        break

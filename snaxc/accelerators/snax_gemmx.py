@@ -142,6 +142,10 @@ class SNAXGEMMXAccelerator(
 
         # TODO: get this in the config
         remap: tuple[StreamerOpts, ...]
+        if config.m == config.n == config.k:
+            transpose = (TransposeExtension(),)
+        else:
+            transpose = ()
         if config.m > 1:
             remap = (HasAddressRemap(),)
         else:
@@ -153,13 +157,13 @@ class SNAXGEMMXAccelerator(
                     StreamerType.Reader,
                     temporal_dims=("n",) * config.streamers[0].temporal_dims,
                     spatial_dims=config.streamers[0].spatial_dims,
-                    opts=(TransposeExtension(),) + remap,
+                    opts=transpose + remap,
                 ),
                 Streamer(  # B
                     StreamerType.Reader,
                     temporal_dims=("n",) * config.streamers[1].temporal_dims,
                     spatial_dims=config.streamers[1].spatial_dims,
-                    opts=(TransposeExtension(),) + remap,
+                    opts=transpose + remap,
                 ),
                 Streamer(  # D8
                     StreamerType.Writer,

@@ -61,12 +61,12 @@ class TiledConvLayer:
     def tiled_ox(self) -> int:
         """
         Returns the tiled output width based on the layer's output width and the tiling size for output height.
-        Ox is always padded to multiple of 8
+        Ox is always padded to multiple of 4 to fit the asplos_resnet array.
         """
-        if self.layer.ox % 8 == 0:
+        if self.layer.ox % 4 == 0:
             return self.layer.ox
         else:
-            return self.layer.ox + (8 - self.layer.ox % 8)
+            return self.layer.ox + (4 - self.layer.ox % 4)
 
     @property
     def tiled_oy(self) -> int:
@@ -80,7 +80,11 @@ class TiledConvLayer:
         """
         Returns the tiled output channels based on the layer's output channels and the tiling size for output channels.
         """
-        return ceil(self.layer.k / self.tile_k)
+        tiled = ceil(self.layer.k / self.tile_k)
+        if tiled % 8 == 0:
+            return tiled
+        else:
+            return tiled + (8 - tiled % 8)
 
     @property
     def tiled_ix(self) -> int:
@@ -143,6 +147,12 @@ class TiledConvLayer:
         Returns the total transfer size for the tiled operation.
         """
         return self.total_tile_size() * self.iters()
+
+    def tile_ops(self) -> int:
+        return self.tiled_ox * self.tiled_oy * self.layer.fx * self.layer.fy * self.tiled_c * self.tiled_k
+
+    def total_ops(self) -> int:
+        return self.tile_ops() * self.iters()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TiledConvLayer):
