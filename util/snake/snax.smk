@@ -95,7 +95,7 @@ rule aggregate_json:
             num_harts=range(config["num_harts"]),
         ),
     output:
-        temp("{file}_traces.json"),
+        "{file}_traces.json",
     run:
         merge_json(input, output[0])
 

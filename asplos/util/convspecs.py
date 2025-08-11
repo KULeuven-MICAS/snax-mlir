@@ -107,9 +107,12 @@ class TiledConvLayer:
         Ox is always padded to multiple of 8
         """
         if self.layer.c % 8 == 0:
-            return self.layer.c
+            c = self.layer.c
         else:
-            return self.layer.c + (8 - self.layer.c % 8)
+            c = self.layer.c + (8 - self.layer.c % 8)
+        if c >= 256:
+            c += 8
+        return c
 
     @property
     def padded_layer(self) -> ConvLayer:
