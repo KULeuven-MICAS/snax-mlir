@@ -142,7 +142,7 @@ class SNAXGEMMXAccelerator(
 
         # TODO: get this in the config
         remap: tuple[StreamerOpts, ...]
-        if config.m == config.n == config.k:
+        if ((config.m == config.n) and (config.m == config.k)) or config.m == 1:
             transpose = (TransposeExtension(),)
         else:
             transpose = ()
