@@ -16,7 +16,7 @@ builtin.module {
     "snax.cluster_sync_op"() : () -> ()
     "scf.if"(%5) ({
       linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%0, %1 : memref<64xi32>, memref<64xi32>) outs(%2 : memref<64xi32>) {
-      ^0(%arg0 : i32, %arg1 : i32, %arg2 : i32):
+      ^bb0(%arg0 : i32, %arg1 : i32, %arg2 : i32):
         %8 = arith.muli %arg0, %arg1 : i32
         linalg.yield %8 : i32
       }
@@ -52,7 +52,7 @@ builtin.module {
 // CHECK-NEXT:         "snax.cluster_sync_op"() : () -> ()
 // CHECK-NEXT:         scf.if %9 {
 // CHECK-NEXT:           linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%0, %1 : memref<64xi32>, memref<64xi32>) outs(%2 : memref<64xi32>) {
-// CHECK-NEXT:           ^0(%arg0 : i32, %arg1 : i32, %arg2 : i32):
+// CHECK-NEXT:           ^bb0(%arg0 : i32, %arg1 : i32, %arg2 : i32):
 // CHECK-NEXT:             %12 = arith.muli %arg0, %arg1 : i32
 // CHECK-NEXT:             linalg.yield %12 : i32
 // CHECK-NEXT:           }
@@ -79,7 +79,7 @@ builtin.module {
 // CHECK-NEXT:       "snax.cluster_sync_op"() : () -> ()
 // CHECK-NEXT:       scf.if %7 {
 // CHECK-NEXT:         linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%0, %1 : memref<64xi32>, memref<64xi32>) outs(%2 : memref<64xi32>) {
-// CHECK-NEXT:         ^0(%arg0 : i32, %arg1 : i32, %arg2 : i32):
+// CHECK-NEXT:         ^bb0(%arg0 : i32, %arg1 : i32, %arg2 : i32):
 // CHECK-NEXT:           %10 = arith.muli %arg0, %arg1 : i32
 // CHECK-NEXT:           linalg.yield %10 : i32
 // CHECK-NEXT:         }
@@ -100,7 +100,7 @@ builtin.module {
 // CHECK-NEXT:     "snax.cluster_sync_op"() : () -> ()
 // CHECK-NEXT:     scf.if %5 {
 // CHECK-NEXT:       linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%0, %1 : memref<64xi32>, memref<64xi32>) outs(%2 : memref<64xi32>) {
-// CHECK-NEXT:       ^0(%arg0 : i32, %arg1 : i32, %arg2 : i32):
+// CHECK-NEXT:       ^bb0(%arg0 : i32, %arg1 : i32, %arg2 : i32):
 // CHECK-NEXT:         %8 = arith.muli %arg0, %arg1 : i32
 // CHECK-NEXT:         linalg.yield %8 : i32
 // CHECK-NEXT:       }
