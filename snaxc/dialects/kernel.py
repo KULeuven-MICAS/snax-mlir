@@ -209,23 +209,26 @@ class MaxPoolOp(KernelOp, Parsable):
 
 
 @irdl_op_definition
-class AvgPool2DOp(KernelOp):
+class AvgPoolOp(KernelOp):
     """
     Operation representing a 2D average pooling operation.
     """
 
-    name = "kernel.avg_pool2d"
+    name = "kernel.avg_pool"
 
     input = operand_def(IntegerType)
-    output = result_def(IntegerType)
+    output = operand_def(IntegerType)
+
+    result = result_def(IntegerType)
 
     kernel_size = attr_def(IntegerAttr[I32])
 
-    assembly_format = "$input attr-dict `:` `(` type($input) `)` `->` type($result)"
+    # assembly_format = "$input attr-dict `:` `(` type($input) `)` `->` type($result)"
 
     def __init__(
         self,
         input: SSAValue | Operation,
+        output: SSAValue | Operation,
         result_type: Attribute,
         kernel_size: int | IntegerAttr[I32],
     ):
@@ -233,7 +236,7 @@ class AvgPool2DOp(KernelOp):
             kernel_size = IntegerAttr.from_int_and_width(kernel_size, 32)
 
         super().__init__(
-            operands=[input],
+            operands=[input, output],
             result_types=[result_type],
             attributes={"kernel_size": kernel_size},
         )
@@ -317,6 +320,7 @@ Kernel = Dialect(
         MacOp,
         QMacOp,
         MaxPoolOp,
+        AvgPoolOp,
         RescaleOp,
     ],
 )

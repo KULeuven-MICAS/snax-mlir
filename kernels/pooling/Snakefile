@@ -26,7 +26,7 @@ rule compile_snax:
         "{config[snaxc]} -c {config[snaxc-config]} -o {output} {input}"
 
 
-files = ["maxpool"]
+files = ["maxpool", "avgpool"]
 
 
 # Rules
@@ -40,6 +40,20 @@ rule all:
 #         temp("maxpool.mlir"),
 #     script:
 #         "maxpool.py"
+
+rule generate_avgpool:
+    output:
+        temp("avgpool.ppp.mlir"),
+    script:
+        "avgpool.py"
+
+rule tosa_to_kernel:
+    input:
+        "avgpool.ppp.mlir",
+    output:
+        temp("avgpool.mlir"),
+    shell:
+        "snax-opt -p convert-tosa-to-kernel -o {output} {input}"
 
 
 rule link_snax_binary:

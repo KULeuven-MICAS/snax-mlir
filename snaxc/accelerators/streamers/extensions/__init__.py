@@ -6,6 +6,7 @@ from snaxc.accelerators.streamers.streamers import (
 )
 
 from .add_extension import AddExtension
+from .avgpool_extension import AvgPoolExtension
 from .maxpool_extension import MaxPoolExtension
 from .memset_extension import MemSetExtension
 from .rescale_extension import RescaleDownExtension, RescaleUpExtension
@@ -14,6 +15,7 @@ from .transpose_extension import TransposeExtension
 
 XDMA_EXT_SET = (
     MaxPoolExtension,
+    AvgPoolExtension,
     MemSetExtension,
     TransposeExtension,
     RescaleDownExtension,
@@ -27,6 +29,7 @@ STREAMER_OPT_MAP = {
     HasChannelMask().name: HasChannelMask,
     HasAddressRemap().name: HasAddressRemap,
     MaxPoolExtension().name: MaxPoolExtension,
+    AvgPoolExtension().name: AvgPoolExtension,
     MemSetExtension().name: MemSetExtension,
     TransposeExtension().name: TransposeExtension,
     AddExtension().name: AddExtension,

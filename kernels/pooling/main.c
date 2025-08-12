@@ -17,6 +17,8 @@ int main() {
   (void)snrt_mcycle();
   snrt_cluster_hw_barrier();
 
+  printf("Starting main function...\n");
+
   _mlir_ciface_snax_main(results);
 
   snrt_cluster_hw_barrier();

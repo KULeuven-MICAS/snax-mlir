@@ -119,7 +119,7 @@ def avgpool_golden(
 if __name__ == "__main__":
     # Get the name of the current Python script and replace its extension with .mlir
     script_name = os.path.basename(__file__)
-    mlir_filename = os.path.splitext(script_name)[0] + ".mlir"
+    mlir_filename = os.path.splitext(script_name)[0] + ".ppp.mlir"
 
     # Generate IR and write it to the specified MLIR file
     output = StringIO()
