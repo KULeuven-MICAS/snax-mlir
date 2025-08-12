@@ -15,7 +15,6 @@ from xdsl.ir import (
 from xdsl.irdl import (
     AttrSizedOperandSegments,
     IRDLOperation,
-    ParameterDef,
     irdl_attr_definition,
     irdl_op_definition,
     prop_def,
@@ -44,15 +43,15 @@ class StridePattern(ParametrizedAttribute):
 
     name = "snax_stream.stride_pattern"
 
-    upper_bounds: ParameterDef[ArrayAttr[IntAttr]]
-    temporal_strides: ParameterDef[ArrayAttr[IntAttr]]
-    spatial_strides: ParameterDef[ArrayAttr[IntAttr]]
+    upper_bounds: ArrayAttr[IntAttr]
+    temporal_strides: ArrayAttr[IntAttr]
+    spatial_strides: ArrayAttr[IntAttr]
 
     def __init__(
         self,
-        upper_bounds: ParameterDef[ArrayAttr[IntAttr]] | Sequence[int],
-        temporal_strides: ParameterDef[ArrayAttr[IntAttr]] | Sequence[int],
-        spatial_strides: ParameterDef[ArrayAttr[IntAttr]] | Sequence[int],
+        upper_bounds: ArrayAttr[IntAttr] | Sequence[int],
+        temporal_strides: ArrayAttr[IntAttr] | Sequence[int],
+        spatial_strides: ArrayAttr[IntAttr] | Sequence[int],
     ):
         parameters: Sequence[Attribute] = []
         for arg in (upper_bounds, temporal_strides, spatial_strides):
@@ -68,11 +67,11 @@ class StridePattern(ParametrizedAttribute):
     def print_parameters(self, printer: Printer) -> None:
         with printer.in_angle_brackets():
             printer.print_string("ub = [")
-            printer.print_list(self.upper_bounds, lambda attr: printer.print(attr.data))
+            printer.print_list(self.upper_bounds, lambda attr: printer.print_int(attr.data))
             printer.print_string("], ts = [")
-            printer.print_list(self.temporal_strides, lambda attr: printer.print(attr.data))
+            printer.print_list(self.temporal_strides, lambda attr: printer.print_int(attr.data))
             printer.print_string("], ss = [")
-            printer.print_list(self.spatial_strides, lambda attr: printer.print(attr.data))
+            printer.print_list(self.spatial_strides, lambda attr: printer.print_int(attr.data))
             printer.print_string("]")
 
     def canonicalize(self) -> Self:

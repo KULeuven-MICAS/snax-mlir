@@ -166,8 +166,8 @@ class RescaleOp(KernelOp):
 
     input_zp = attr_def(IntegerAttr[I32])
     output_zp = attr_def(IntegerAttr[I32])
-    multiplier = attr_def(DenseArrayBase)
-    shift = attr_def(DenseArrayBase)
+    multiplier = attr_def(DenseArrayBase[IntegerType])
+    shift = attr_def(DenseArrayBase[IntegerType])
     max_int = attr_def(IntegerAttr[I32])
     min_int = attr_def(IntegerAttr[I32])
     double_round = attr_def(BoolAttr)
@@ -192,11 +192,11 @@ class RescaleOp(KernelOp):
         if isinstance(output_zp, int):
             output_zp = IntegerAttr.from_int_and_width(output_zp, 32)
         if not isinstance(multiplier, DenseArrayBase):
-            multiplier = DenseArrayBase.create_dense_int(
+            multiplier = DenseArrayBase.from_list(
                 IntegerType(32), [x if isinstance(x, int) else x.value.data for x in multiplier]
             )
         if not isinstance(shift, DenseArrayBase):
-            shift = DenseArrayBase.create_dense_int(
+            shift = DenseArrayBase.from_list(
                 IntegerType(32), [x if isinstance(x, int) else x.value.data for x in shift]
             )
         if isinstance(max_int, int):

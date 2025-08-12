@@ -1,6 +1,6 @@
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, scf
-from xdsl.ir import Block, BlockArgument, Operation, Use
+from xdsl.ir import Block, BlockArgument, IRUses, Operation
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     GreedyRewritePatternApplier,
@@ -212,5 +212,5 @@ class AccfgConfigOverlapPass(ModulePass):
         ).rewrite_module(op)
 
 
-def get_ops_from_uses(uses: set[Use]) -> tuple[Operation, ...]:
+def get_ops_from_uses(uses: IRUses) -> tuple[Operation, ...]:
     return tuple(set(use.operation for use in uses))
