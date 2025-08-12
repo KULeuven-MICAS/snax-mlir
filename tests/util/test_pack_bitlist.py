@@ -13,7 +13,7 @@ def test_pack_bitlist():
         [1, 128, 2, 128],
         [0, 8, 16, 24],
     ):
-        p.print(op)
+        p.print_op(op)
 
     assert (
         out.getvalue()
@@ -41,12 +41,12 @@ def test_pack_bitlist_mixed_vals():
     p = Printer(stream=out)
     input_vals = [arith.ConstantOp.from_int_and_width(v, builtin.i32) for v in [1, 128, 16]]
     for op in input_vals:
-        p.print(op)
+        p.print_op(op)
     for op in pack_bitlist(
         [input_vals[0], input_vals[1], 2, input_vals[1]],
         [0, 8, input_vals[2], 24],
     ):
-        p.print(op)
+        p.print_op(op)
 
     assert (
         out.getvalue()

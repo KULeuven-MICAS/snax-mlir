@@ -24,7 +24,6 @@ from xdsl.ir import (
 from xdsl.irdl import (
     AttrSizedOperandSegments,
     IRDLOperation,
-    ParameterDef,
     VerifyException,
     irdl_attr_definition,
     irdl_op_definition,
@@ -69,7 +68,7 @@ class EffectsAttr(Data[EffectsEnum]):
 
     def print_parameter(self, printer: Printer) -> None:
         with printer.in_angle_brackets():
-            printer.print(self.data.value)
+            printer.print_string(self.data.value)
 
 
 @irdl_attr_definition
@@ -80,7 +79,7 @@ class TokenType(ParametrizedAttribute, TypeAttribute):
 
     name = "accfg.token"
 
-    accelerator: ParameterDef[StringAttr]
+    accelerator: StringAttr
 
     def __init__(self, accelerator: str | StringAttr):
         if not isinstance(accelerator, StringAttr):
@@ -96,7 +95,7 @@ class StateType(ParametrizedAttribute, TypeAttribute):
 
     name = "accfg.state"
 
-    accelerator: ParameterDef[StringAttr]
+    accelerator: StringAttr
 
     def __init__(self, accelerator: str | StringAttr):
         if not isinstance(accelerator, StringAttr):
@@ -177,7 +176,7 @@ class LaunchOp(AccfgBaseOp):
             raise VerifyException("The token's accelerator does not match the launch accelerator!")
 
         # that the token is used
-        if len(self.token.uses) != 1 or not isinstance(next(iter(self.token.uses)).operation, AwaitOp):
+        if self.token.uses.get_length() != 1 or not isinstance(next(iter(self.token.uses)).operation, AwaitOp):
             raise VerifyException("Launch token must be used by exactly one await op")
 
         # that len(values) == len(param_names)
@@ -288,7 +287,7 @@ class SetupOp(AccfgBaseOp):
             raise ValueError("Must have received same number of values as parameter names")
 
     def print(self, printer: Printer):
-        printer.print(" ")
+        printer.print_string(" ")
         printer.print_string_literal(self.accelerator.data)
 
         if self.in_state:
@@ -309,9 +308,9 @@ class SetupOp(AccfgBaseOp):
         printer.print_string(") ")
 
         if self.attributes:
-            printer.print("attrs ")
+            printer.print_string("attrs ")
             printer.print_attr_dict(self.attributes)
-            printer.print(" ")
+            printer.print_string(" ")
 
         printer.print_string(": ")
         printer.print_attribute(self.out_state.type)

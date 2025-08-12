@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import cast
 
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, scf
@@ -191,7 +192,8 @@ class TransformDMA(RewritePattern):
                 return
             if isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
                 # if destination is tsl, use those tile sizes
-                tile_bounds = op.destination.type.layout.data.tile_bounds()
+                # TODO: remove cast when typing issue in xdsl is resolved
+                tile_bounds = cast(TiledStridedLayoutAttr, op.destination.type.layout).data.tile_bounds()
             else:
                 # otherwise, shape can be used as single-dimension tile sizes
                 # change dynamic size -1 to None
@@ -209,7 +211,8 @@ class TransformDMA(RewritePattern):
                 return
             if isinstance(op.source.type.layout, TiledStridedLayoutAttr):
                 # if destination is tsl, use those tile sizes
-                tile_bounds = op.source.type.layout.data.tile_bounds()
+                # TODO: remove cast when typing issue in xdsl is resolved
+                tile_bounds = cast(TiledStridedLayoutAttr, op.source.type.layout).data.tile_bounds()
             else:
                 # otherwise, shape can be used as single-dimension tile sizes
                 # change dynamic size -1 to None
@@ -224,6 +227,10 @@ class TransformDMA(RewritePattern):
         pointer_dst = ExtractAlignedPointerAsIndexOp.get(op.destination)
         ops_to_insert.append(pointer_src)
         ops_to_insert.append(pointer_dst)
+
+        # TODO: remove cast when typing issue in xdsl is resolved
+        tsl_source = cast(TiledStridedLayoutAttr, tsl_source)
+        tsl_dest = cast(TiledStridedLayoutAttr, tsl_dest)
 
         # apply offset if it is not zero
         if tsl_source.data.offset != 0:

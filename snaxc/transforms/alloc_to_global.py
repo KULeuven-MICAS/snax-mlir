@@ -61,7 +61,7 @@ class AllocToGlobal(RewritePattern):
         memref_global = memref.GlobalOp.get(
             builtin.StringAttr(global_sym_name),
             memref_type,
-            initial_value=builtin.DenseIntOrFPElementsAttr.create_dense_int(
+            initial_value=builtin.DenseIntOrFPElementsAttr.from_list(
                 builtin.TensorType(memref_type.element_type, memref_type.get_shape()), [77]
             ),
         )
