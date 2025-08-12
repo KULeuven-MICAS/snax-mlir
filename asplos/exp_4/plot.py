@@ -134,4 +134,4 @@ ax.legend(handles=handles, loc="upper left")
 
 # plt.title("Shared Memory Allocation per Layer with Dynamic and Static Peak Comparison")
 plt.tight_layout()
-plt.savefig("plot.svg")
+plt.savefig("plot.png", dpi=600)

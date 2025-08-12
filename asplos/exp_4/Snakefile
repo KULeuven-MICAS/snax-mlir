@@ -1,10 +1,11 @@
 rule all:
     input:
-        "plot.svg"
+        "plot.svg",
+
 
 rule optimize_tile_sizes:
     input:
-        "resnet_layers.yaml"
+        "resnet_layers.yaml",
     output:
         "tiled_resnet_layers.yaml",
     script:
@@ -13,7 +14,7 @@ rule optimize_tile_sizes:
 
 rule plot_figure:
     input:
-        "tiled_resnet_layers.yaml"
+        "tiled_resnet_layers.yaml",
     output:
         "plot.svg",
     script:
