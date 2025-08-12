@@ -7,13 +7,15 @@ config_matmul = get_asplos_matmul_config()
 
 config = get_asplos_matmul_config()
 
+
 rule plot_figure:
     input:
-        "summary.txt"
+        "summary.txt",
     output:
-        "plot.svg",
+        "plot.png",
     script:
         "plot.py"
+
 
 module snax_rules:
     snakefile:
@@ -26,20 +28,29 @@ use rule * from snax_rules exclude snax_opt_mlir, simulate as snax_*
 
 
 tests = ["matmul"]
-systems = ["2", "3", "4", "5", "6", "8"]
+systems = ["2", "3", "4", "5", "6", "7", "8"]
 layout = ["default", "cyclic", "banked"]
-M = [64, 72]#, 80, 96]
-N = [64, 72]#, 80, 96]
-K = [64, 72]#, 80, 96]
+M = [64, 72]  # , 80, 96]
+N = [64, 72]  # , 80, 96]
+K = [64, 72]  # , 80, 96]
 
 
 rule all:
     input:
-        "summary.txt"
+        "summary.txt",
+
 
 rule extract_cycles:
     input:
-        expand("{file}_m{m}_n{n}_k{k}_layout{layout}_sys{sys}_traces.json", file=tests, m=M, n=N, k=K, layout=layout, sys=systems),
+        expand(
+            "{file}_m{m}_n{n}_k{k}_layout{layout}_sys{sys}_traces.json",
+            file=tests,
+            m=M,
+            n=N,
+            k=K,
+            layout=layout,
+            sys=systems,
+        ),
     output:
         "summary.txt",
     shell:
@@ -63,7 +74,9 @@ rule simulate:
         "{file}_sys{sys}.vltlog",
     params:
         vltsim=lambda wildcards: (
-            os.environ["CONDA_PREFIX"] + "/snax-utils" + f"/asplos_matmul_{wildcards.sys}-rtl/bin/snitch_cluster.vlt"
+            os.environ["CONDA_PREFIX"]
+            + "/snax-utils"
+            + f"/asplos_matmul_{wildcards.sys}-rtl/bin/snitch_cluster.vlt"
         ),
     shell:
         "{params.vltsim} --prefix-trace={wildcards.file}_sys{wildcards.sys}_ {input}  2>&1 | tee {log}"
@@ -77,8 +90,8 @@ rule simulate:
 #         sys="|".join(systems),
 #     shell:
 #         "python matmul.py --m 64 --n 64 --k 64 --output {output}"
-# 
-# 
+#
+#
 # # matvec of 1x256x256
 # rule generate_matvec:
 #     output:
@@ -90,8 +103,8 @@ rule simulate:
 #         sys="|".join(systems),
 #     shell:
 #         "python matmul.py --m {params.m} --n 256 --k 256 --output {output}"
-# 
-# 
+#
+#
 # # early conv: only 3 input channels (other params are tiled such that they fit L1 memory)
 # # c = 3, k = 16, ox = 16, oy = 16, fx = 3, fy = 3
 # rule generate_earlyconv:
