@@ -6,7 +6,7 @@ import yaml
 from xdsl.dialects import get_all_dialects
 from xdsl.dialects.builtin import ModuleOp
 from xdsl.parser import Parser
-from xdsl.passes import ModulePass, PipelinePass
+from xdsl.passes import ModulePass, PassPipeline
 from xdsl.printer import Printer
 from xdsl.tools.command_line_tool import CommandLineTool
 from xdsl.transforms.canonicalize import CanonicalizePass
@@ -238,7 +238,7 @@ class SNAXCMain(CommandLineTool):
             pass_pipeline.append(PostprocessPass())
 
         # Initialize pipeline
-        self.pipeline = PipelinePass(tuple(pass_pipeline), callback)
+        self.pipeline = PassPipeline(tuple(pass_pipeline), callback)
 
 
 def main():
