@@ -14,8 +14,6 @@ int main() {
   computed = &results[0];
   golden = &results[1];
 
-  // allocate zero row in tcdm
-  snrt_l1alloc(256);
 
   (void)snrt_mcycle();
   snrt_cluster_hw_barrier();
@@ -37,6 +35,7 @@ int main() {
   int total_results = computed->shape[0] * computed->shape[1] *
                       computed->shape[2] * computed->shape[3];
 
+  // Check if the results are correct
   printf("Checking %d results...\n", total_results);
 
   int nerr = 0;

@@ -503,7 +503,7 @@ class SNAXPollingBarrier3(Accelerator, ABC):
                         has_side_effects=True,
                     ),
                     # check if not equal to zero
-                    comparison := arith.CmpiOp(status, zero, "ne"),
+                    comparison := arith.CmpiOp(status, zero, "eq"),
                     ConditionOp(comparison.results[0]),
                 ],
                 [
