@@ -1,4 +1,5 @@
 from typing import cast
+
 from xdsl.context import Context
 from xdsl.dialects import builtin, memref
 from xdsl.dialects.arith import AddiOp, ConstantOp, MuliOp, SubiOp

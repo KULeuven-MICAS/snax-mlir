@@ -3,7 +3,8 @@ from snaxc.dialects.snax_stream import StridePattern
 
 def test_canonicalize_stride_pattern():
     # bounds of 1 are removed
-    s = StridePattern([2, 1, 1], [0, 0, 0], [1]).canonicalize()
+    s = StridePattern([2, 1, 1], [0, 0, 0], [1])
+    s = s.canonicalize()
     assert s == StridePattern([2], [0], [1])
 
     s = StridePattern([1, 1, 1], [0, 0, 0], [1]).canonicalize()

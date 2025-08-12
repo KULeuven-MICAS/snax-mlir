@@ -58,7 +58,7 @@ class StridePattern(ParametrizedAttribute):
             if not isinstance(arg, ArrayAttr):
                 arg = ArrayAttr([IntAttr(x) for x in arg])
             parameters.append(arg)
-        super().__init__(parameters)
+        super().__init__(*parameters)
 
     def verify(self):
         if len(self.upper_bounds) != len(self.temporal_strides):
