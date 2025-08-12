@@ -14,7 +14,6 @@ int main() {
   computed = &results[0];
   golden = &results[1];
 
-
   (void)snrt_mcycle();
   snrt_cluster_hw_barrier();
 

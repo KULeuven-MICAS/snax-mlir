@@ -8,7 +8,7 @@ from snaxc.accelerators.configurable_accelerator import ConfigurableAccelerator
 from snaxc.accelerators.dispatching import DispatchTemplate
 from snaxc.accelerators.snax import (
     SNAXAccelerator,
-    SNAXPollingBarrier3,
+    SNAXPollingBarrier5,
     SNAXStreamer,
 )
 from snaxc.accelerators.streamers import (
@@ -64,7 +64,7 @@ c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
 
 class SNAXXDMAAccelerator(
     SNAXAccelerator,
-    SNAXPollingBarrier3,
+    SNAXPollingBarrier5,
     SNAXStreamer,
     DispatchTemplate,
     ConfigurableAccelerator,
@@ -85,6 +85,7 @@ class SNAXXDMAAccelerator(
 
         self.fields = self.streamer_setup_fields
         self.launch_fields = self.streamer_launch_fields
+        self.equal_to_zero = True
         # Supported kernels are given by all available extensions
         temp_supported_kernels = [
             ext.get_dma_extension_kernel()
