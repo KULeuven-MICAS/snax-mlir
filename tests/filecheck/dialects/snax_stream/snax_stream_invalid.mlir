@@ -4,7 +4,7 @@
   "stride_patterns" = [],
   "operandSegmentSizes" = array<i32: 0, 0>,
   "accelerator" = "accelerator_with_streamers"}> ({
-^0():
+^bb0():
 }) : () -> ()
 
 // CHECK: Operation does not verify: AcceleratorOp not found!
@@ -20,7 +20,7 @@
   "stride_patterns" = [],
   "operandSegmentSizes" = array<i32: 0, 0>,
   "accelerator" = "accelerator_without_streamers"}> ({
-^0():
+^bb0():
 }) : () -> ()
 
 // CHECK: Operation does not verify: Specified accelerator does not contain a StreamerConfigurationAttr
@@ -38,7 +38,7 @@
   "stride_patterns" = [],
   "operandSegmentSizes" = array<i32: 0, 0>,
   "accelerator" = "accelerator_with_streamers"}> ({
-^0():
+^bb0():
 }) : () -> ()
 
 // CHECK: Operation does not verify: Number of streamers does not equal number of stride patterns
@@ -59,7 +59,7 @@
               #snax_stream.stride_pattern<ub = [13, 2], ts = [13, 7], ss = [8, 1]>
   ], "operandSegmentSizes" = array<i32: 2, 1>,
   "accelerator" = "accelerator_with_streamers"}> ({
-^0():
+^bb0():
 }) : () -> ()
 
 // CHECK: Operation does not verify: Temporal stride pattern exceeds streamer dimensionality
@@ -80,7 +80,7 @@
               #snax_stream.stride_pattern<ub = [13, 2], ts = [13, 7], ss = [8, 1]>
   ], "operandSegmentSizes" = array<i32: 2, 1>,
   "accelerator" = "accelerator_with_streamers"}> ({
-^0():
+^bb0():
 }) : () -> ()
 
 // CHECK: Operation does not verify: Spatial stride pattern exceeds streamer dimensionality

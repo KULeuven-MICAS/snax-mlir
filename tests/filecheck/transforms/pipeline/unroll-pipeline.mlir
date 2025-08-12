@@ -6,7 +6,7 @@
 scf.for %i = %lb to %ub step %step {
   pipeline.pipeline {
     %0 = pipeline.index %i -> index {
-    ^0(%1 : index):
+    ^bb0(%1 : index):
       pipeline.yield %1 : index
     }
     pipeline.stage 0 {
@@ -45,7 +45,7 @@ scf.for %i = %lb to %ub step %step {
 scf.for %i = %lb to %ub step %step {
   pipeline.pipeline {
     %0 = pipeline.index %i -> index {
-    ^0(%1 : index):
+    ^bb0(%1 : index):
       pipeline.yield %1 : index
     }
     pipeline.stage 0 {

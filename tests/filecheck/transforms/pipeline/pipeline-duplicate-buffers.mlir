@@ -10,19 +10,19 @@
 scf.for %i = %lb to %ub step %step {
   pipeline.pipeline {
     pipeline.index %i -> {
-    ^0(%4 : index):
+    ^bb0(%4 : index):
       pipeline.yield
     }
     pipeline.stage 0 ins(%buffer0 : memref<1x2xi8>) outs(%buffer1 : memref<1x2xi8>) {
-    ^1(%5 : memref<1x2xi8>, %6 : memref<1x2xi8>):
+    ^bb1(%5 : memref<1x2xi8>, %6 : memref<1x2xi8>):
       "test.op"(%5, %6) : (memref<1x2xi8>, memref<1x2xi8>) -> ()
     }
     pipeline.stage 1 ins(%buffer1 : memref<1x2xi8>) outs(%buffer2 : memref<1x2xi8>) {
-    ^2(%7 : memref<1x2xi8>, %8 : memref<1x2xi8>):
+    ^bb2(%7 : memref<1x2xi8>, %8 : memref<1x2xi8>):
       "test.op"(%7, %8) : (memref<1x2xi8>, memref<1x2xi8>) -> ()
     }
     pipeline.stage 2 ins(%buffer2 : memref<1x2xi8>) outs(%buffer3 : memref<1x2xi8>) {
-    ^3(%9 : memref<1x2xi8>, %10 : memref<1x2xi8>):
+    ^bb3(%9 : memref<1x2xi8>, %10 : memref<1x2xi8>):
       "test.op"(%9, %10) : (memref<1x2xi8>, memref<1x2xi8>) -> ()
     }
   }
@@ -45,7 +45,7 @@ scf.for %i = %lb to %ub step %step {
 // CHECK-NEXT: scf.for %i = %lb to %ub step %step {
 // CHECK-NEXT:   pipeline.pipeline {
 // CHECK-NEXT:     %0, %1, %2, %3 = pipeline.index %i -> memref<1x2xi8>, memref<1x2xi8>, memref<1x2xi8>, memref<1x2xi8> {
-// CHECK-NEXT:     ^0(%4 : index):
+// CHECK-NEXT:     ^bb0(%4 : index):
 // CHECK-NEXT:       %5 = arith.constant 2 : index
 // CHECK-NEXT:       %6 = arith.constant 0 : index
 // CHECK-NEXT:       %7 = arith.remui %4, %5 : index
