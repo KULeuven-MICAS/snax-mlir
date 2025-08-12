@@ -52,7 +52,9 @@ class QuantizedBinaryOp:
 @irdl_op_definition
 class MulOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.mul"
-    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    assembly_format = (
+        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    )
 
     @property
     def equivalent_region(self) -> Region:
@@ -73,7 +75,9 @@ class MulOp(KernelOp, BinaryOp, Parsable):
 @irdl_op_definition
 class AddOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.add"
-    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    assembly_format = (
+        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    )
 
     @property
     def equivalent_region(self) -> Region:
@@ -94,7 +98,9 @@ class AddOp(KernelOp, BinaryOp, Parsable):
 @irdl_op_definition
 class MacOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.mac"
-    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    assembly_format = (
+        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
+    )
 
     @property
     def equivalent_region(self) -> Region:
@@ -199,6 +205,37 @@ class MaxPoolOp(KernelOp, Parsable):
         return cls(
             operands=[generic_op.body.block.args[-1], generic_op.body.block.args[0]],
             result_types=[generic_op.body.block.args[-1].type],
+        )
+
+
+@irdl_op_definition
+class AvgPool2DOp(KernelOp):
+    """
+    Operation representing a 2D average pooling operation.
+    """
+
+    name = "kernel.avg_pool2d"
+
+    input = operand_def(IntegerType)
+    output = result_def(IntegerType)
+
+    kernel_size = attr_def(IntegerAttr[I32])
+
+    assembly_format = "$input attr-dict `:` `(` type($input) `)` `->` type($result)"
+
+    def __init__(
+        self,
+        input: SSAValue | Operation,
+        result_type: Attribute,
+        kernel_size: int | IntegerAttr[I32],
+    ):
+        if isinstance(kernel_size, int):
+            kernel_size = IntegerAttr.from_int_and_width(kernel_size, 32)
+
+        super().__init__(
+            operands=[input],
+            result_types=[result_type],
+            attributes={"kernel_size": kernel_size},
         )
 
 
