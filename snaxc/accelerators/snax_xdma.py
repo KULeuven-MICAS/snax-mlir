@@ -51,7 +51,7 @@ default_streamer = StreamerConfiguration(
         ),
         Streamer(
             StreamerType.Writer,
-            ["r", "n", "n", "n", "n"],
+            ["n", "n", "n", "n", "n"],
             [8],
             [MemSetExtension(), TransposeExtension(), HasChannelMask(), HasByteMask()],
         ),
@@ -85,7 +85,6 @@ class SNAXXDMAAccelerator(
 
         self.fields = self.streamer_setup_fields
         self.launch_fields = self.streamer_launch_fields
-        self.equal_to_zero = True
         # Supported kernels are given by all available extensions
         temp_supported_kernels = [
             ext.get_dma_extension_kernel()
