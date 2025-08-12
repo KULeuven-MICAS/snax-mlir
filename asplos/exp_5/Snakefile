@@ -4,18 +4,21 @@ import os
 
 config = get_asplos_resnet_config()
 
+
 configfile: "tiled_resnet_layers.yaml"
+
 
 convspec_ids = [layer["layer"]["name"] for layer in config["layers"]]
 
 
 rule plot_figure:
     input:
-        "summary.txt"
+        "summary.txt",
     output:
         "plot.svg",
     script:
         "plot.py"
+
 
 module snax_rules:
     snakefile:
@@ -26,9 +29,10 @@ module snax_rules:
 
 use rule * from snax_rules exclude snax_opt_mlir as snax_*
 
+
 rule all:
     input:
-        "summary.txt"
+        "summary.txt",
 
 
 rule extract_cycles:
@@ -45,6 +49,7 @@ rule generate_convs:
         expand("{file}.mlir", file=convspec_ids),
     shell:
         "python generate_tiled_convs.py"
+
 
 rule compile_snax:
     input:

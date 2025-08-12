@@ -1,7 +1,6 @@
-import argparse
+from collections.abc import Sequence
 from dataclasses import dataclass
 from io import StringIO
-from typing import Sequence
 
 import numpy as np
 import tensorflow as tf
@@ -9,11 +8,9 @@ import yaml
 from dacite import from_dict
 from numpy._typing import NDArray
 from xdsl.builder import Builder
-from xdsl.dialects import builtin
-from xdsl.dialects import transform
+from xdsl.dialects import builtin, transform
 from xdsl.dialects.arith import ConstantOp
 from xdsl.dialects.builtin import (
-    AffineMapAttr,
     DenseArrayBase,
     DenseIntOrFPElementsAttr,
     IntegerType,
@@ -21,19 +18,15 @@ from xdsl.dialects.builtin import (
     TensorType,
     UnitAttr,
     i8,
-    i32,
     i64,
 )
 from xdsl.dialects.func import FuncOp, ReturnOp
-from xdsl.dialects.linalg import Conv2DNchwFchwOp, GenericOp, IteratorTypeAttr, YieldOp
+from xdsl.dialects.linalg import Conv2DNchwFchwOp
 from xdsl.dialects.tensor import EmptyOp
-from xdsl.ir import BlockArgument, SSAValue
-from xdsl.ir.affine import AffineMap
+from xdsl.ir import SSAValue
 from xdsl.printer import Printer
 
 from asplos.util.convspecs import TiledConfig
-from snaxc.dialects.kernel import RescaleOp
-from util.gemmx.simd_golden_model import postprocessing_simd_golden_model
 
 
 def scale_to_int8(arr):
