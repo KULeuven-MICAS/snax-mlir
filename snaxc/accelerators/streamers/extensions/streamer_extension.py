@@ -14,3 +14,8 @@ class StreamerExtension(StreamerOpts, ABC):
 
     name: str
     csr_length: int
+
+    def __eq__(self, value):
+        if not isinstance(value, StreamerExtension):
+            return False
+        return self.name == value.name and self.csr_length == value.csr_length
