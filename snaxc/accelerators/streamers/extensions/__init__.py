@@ -12,15 +12,6 @@ from .rescale_extension import RescaleDownExtension, RescaleUpExtension
 from .streamer_extension import *
 from .transpose_extension import TransposeExtension
 
-XDMA_EXT_SET = (
-    MaxPoolExtension,
-    MemSetExtension,
-    TransposeExtension,
-    RescaleDownExtension,
-    RescaleUpExtension,
-    AddExtension,
-)
-
 STREAMER_OPT_MAP = {
     HasBroadcast().name: HasBroadcast,
     HasByteMask().name: HasByteMask,

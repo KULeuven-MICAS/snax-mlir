@@ -3,7 +3,7 @@ from xdsl.ir import Operation
 
 from snaxc.accelerators.acc_context import AccContext
 from snaxc.accelerators.snax_xdma import SNAXXDMAAccelerator
-from snaxc.accelerators.streamers.extensions import XDMA_EXT_SET
+from snaxc.accelerators.streamers.xdma_kernels import XDMA_KERNEL_SET
 from snaxc.dialects import dart
 
 
@@ -20,14 +20,9 @@ def dispatch_to_dm(op: Operation, ctx: AccContext):
         ):
             kernel_op = str_op.body.block.first_op
             # Only dispatch to dm if the kernel is provided by a StreamerExtension
-            if any(
-                [
-                    ext.supported_kernel.is_same_kernel(kernel_op)
-                    for ext in XDMA_EXT_SET
-                    if ext.supported_kernel is not None
-                ]
-            ):
-                return True
+            for xdma_kernel in XDMA_KERNEL_SET:
+                if xdma_kernel.supported_kernel.is_same_kernel(kernel_op):
+                    return True
     return False
 
 
@@ -47,14 +42,10 @@ def dispatch_to_compute(op: Operation, ctx: AccContext):
         ):
             kernel_op = str_op.body.block.first_op
             # Dont dispatch to compute if the kernel is provided by a StreamerExtension
-            if any(
-                [
-                    not ext.supported_kernel.is_same_kernel(kernel_op)
-                    for ext in XDMA_EXT_SET
-                    if ext.supported_kernel is not None
-                ]
-            ):
-                return False
+            for xdma_kernel in XDMA_KERNEL_SET:
+                if xdma_kernel.supported_kernel.is_same_kernel(kernel_op):
+                    # If the kernel is provided by a StreamerExtension, we do not dispatch to compute
+                    return False
             return True
         return True
 
