@@ -170,8 +170,6 @@ class ApplyLayoutCastSubviewGlobal(RewritePattern):
         # the subview has an easier job to do
         if not isinstance(layout := op.dest.type.layout, TiledStridedLayoutAttr):
             return
-        # TODO: remove cast once xdsl typing issue is resolved
-        layout = cast(TiledStridedLayoutAttr, layout.data)
         # can only handle static layouts
         if layout.data.is_dynamic():
             return

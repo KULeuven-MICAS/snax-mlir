@@ -241,7 +241,7 @@ def _weave_states_in_region(
                         )
                         # extend the op results to return the new state
                         new_result = OpResult(arg.type, op, len(op.results))
-                        op.results = SSAValues(*op.results, new_result)
+                        op.results = SSAValues((*op.results, new_result))
 
                     # update states
                     for result in op.results:
