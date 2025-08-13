@@ -25,6 +25,7 @@ from snaxc.accelerators.streamers.extensions import (
     StreamerExtension,
     TransposeExtension,
 )
+from snaxc.accelerators.streamers.extensions.avgpool_extension import AvgPoolExtension
 from snaxc.accelerators.streamers.streamers import (
     Streamer,
     StreamerConfiguration,
@@ -46,7 +47,7 @@ default_streamer = StreamerConfiguration(
             [
                 MaxPoolExtension(),
                 AddExtension(),
-                # AvgPoolExtension(),
+                AvgPoolExtension(),
                 RescaleDownExtension(),
                 RescaleUpExtension(),
                 HasChannelMask(),
@@ -54,7 +55,7 @@ default_streamer = StreamerConfiguration(
         ),
         Streamer(
             StreamerType.Writer,
-            ["n", "n", "n", "n", "n"],
+            ["r", "n", "n", "n", "n"],
             [8],
             [MemSetExtension(), TransposeExtension(), HasChannelMask(), HasByteMask()],
         ),
