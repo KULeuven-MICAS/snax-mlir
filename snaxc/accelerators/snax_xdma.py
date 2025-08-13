@@ -33,6 +33,8 @@ from snaxc.accelerators.streamers.streamers import (
     StreamerSystemType,
     StreamerType,
 )
+from snaxc.accelerators.streamers.xdma_kernels import XDMA_KERNEL_SET
+from snaxc.accelerators.streamers.xdma_kernels.xdma_kernel import XDMAKernel
 from snaxc.dialects import accfg, dart, snax_stream
 from snaxc.dialects.kernel import KernelOp
 
@@ -91,17 +93,17 @@ class SNAXXDMAAccelerator(
 
         self.fields = self.streamer_setup_fields
         self.launch_fields = self.streamer_launch_fields
+
         # Supported kernels are given by all available extensions
-        temp_supported_kernels = [
-            ext.get_dma_extension_kernel()
-            for ext in default_streamer.streamers[0].opts
-            + default_streamer.streamers[1].opts
-            if isinstance(ext, StreamerExtension)
+        self.supported_kernels = [
+            xdma_kernel.supported_kernel
+            for xdma_kernel in XDMA_KERNEL_SET
+            if all(
+                extension in default_streamer.streamers[0].opts
+                or extension in default_streamer.streamers[1].opts
+                for extension in xdma_kernel.required_extensions
+            )
         ]
-        # Filter out None values and convert to tuple
-        self.supported_kernels = tuple(
-            kernel for kernel in temp_supported_kernels if kernel is not None
-        )
 
     def convert_to_acc_ops(self, op: Operation) -> Sequence[Operation]:
         """
@@ -160,6 +162,38 @@ class SNAXXDMAAccelerator(
                 ([c0 := arith.ConstantOp.from_int_and_width(0, i32)], c0.result)
             )
 
+        # Find kernel operation and check if it is supported
+        kernel_op = op.body.block.first_op
+        assert isinstance(
+            kernel_op, dart.GenericOp
+        ), "Expected a GenericOp in the StreamingRegionOp"
+        kernel_op = kernel_op.body.block.first_op
+        assert isinstance(kernel_op, KernelOp), "Expected a KernelOp in the GenericOp"
+
+        used_kernel = None
+        required_extensions = None
+        for xdma_kernel in XDMA_KERNEL_SET:
+            if xdma_kernel.supported_kernel.is_same_kernel(kernel_op):
+                required_extensions = xdma_kernel.required_extensions
+                used_kernel = xdma_kernel
+                break
+
+        if required_extensions is None:
+            raise RuntimeError(
+                "No suitable XDMA kernel found for the operation in the StreamingRegionOp."
+            )
+
+        if used_kernel is None:
+            raise RuntimeError(
+                "No suitable XDMA kernel found for the operation in the StreamingRegionOp."
+            )
+        assert isinstance(
+            used_kernel, XDMAKernel
+        ), "No suitable XDMA kernel found for the operation in the StreamingRegionOp."
+        current_required_extension_index_bypass = 0
+        current_required_extension_index_csr = 0
+
+        # Generate csr values further
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             # spatial strides
             for dim, flag in enumerate(streamer.spatial_dims):
@@ -237,14 +271,12 @@ class SNAXXDMAAccelerator(
             i = 0
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
-                    if isinstance(str_op := op.body.block.first_op, dart.GenericOp):
-                        if (
-                            ext.supported_kernel is not None
-                            and ext.supported_kernel.is_same_kernel(
-                                kernel_op := str_op.body.block.first_op
-                            )
-                        ):
-                            bypass -= 2**i
+                    if (
+                        required_extensions[current_required_extension_index_bypass]
+                        == ext
+                    ):  # TODO: check if == works
+                        current_required_extension_index_bypass += 1
+                        bypass -= 2**i
                     i += 1
             cst = arith.ConstantOp.from_int_and_width(bypass, i32)
             result.append(([cst], cst.result))
@@ -252,29 +284,18 @@ class SNAXXDMAAccelerator(
             # Extensions
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
-                    if isinstance(str_op := op.body.block.first_op, dart.GenericOp):
-                        if (
-                            ext.supported_kernel is not None
-                            and ext.supported_kernel.is_same_kernel(
-                                kernel_op := str_op.body.block.first_op
-                            )
-                        ):
-                            # Check for each extension what its csr values are
-                            assert isinstance(
-                                kernel_op, KernelOp
-                            ), "Expected a KernelOp in the GenericOp"
-                            for csr_val in ext.get_csr_values(kernel_op):
-                                cst = arith.ConstantOp.from_int_and_width(csr_val, i32)
-                                result.append(([cst], cst.result))
-                        else:
-                            for i in range(ext.csr_length):
-                                # If the kernel is not supported, we still need to add the CSR values
-                                # but they will be set to 0.
-                                cst = arith.ConstantOp.from_int_and_width(0, i32)
-                                result.append(([cst], cst.result))
+                    if required_extensions[current_required_extension_index_csr] == ext:
+                        for csr_val in used_kernel.get_csr_values(kernel_op)[
+                            current_required_extension_index_csr
+                        ]:
+                            cst = arith.ConstantOp.from_int_and_width(csr_val, i32)
+                            result.append(([cst], cst.result))
                     else:
-                        cst = arith.ConstantOp.from_int_and_width(0, i32)
-                        result.append(([cst], cst.result))
+                        for i in range(ext.csr_length):
+                            # If the kernel is not supported, we still need to add the CSR values
+                            # but they will be set to 0.
+                            cst = arith.ConstantOp.from_int_and_width(0, i32)
+                            result.append(([cst], cst.result))
 
         return result
 
@@ -348,45 +369,67 @@ class SNAXXDMAAccelerator(
         )
 
     def get_template(self, op: dart.StreamingRegionOpBase):
+        # Find kernel operation and check if it is supported
         kernel_op = op.body.block.first_op
         assert isinstance(
             kernel_op, dart.GenericOp
         ), "Expected a GenericOp in the StreamingRegionOp"
         kernel_op = kernel_op.body.block.first_op
         assert isinstance(kernel_op, KernelOp), "Expected a KernelOp in the GenericOp"
-        for streamer in self.streamer_config.data.streamers:
-            for ext in streamer.opts:
-                if isinstance(ext, StreamerExtension):
-                    if (
-                        ext.supported_kernel is not None
-                        and ext.supported_kernel.is_same_kernel(kernel_op)
-                    ):
-                        return ext.get_template(kernel_op)
-        raise RuntimeError(
-            "No suitable extension found for the kernel operation in the StreamingRegionOp."
-        )
+
+        used_kernel = None
+        required_extensions = None
+        for xdma_kernel in XDMA_KERNEL_SET:
+            if xdma_kernel.supported_kernel.is_same_kernel(kernel_op):
+                required_extensions = xdma_kernel.required_extensions
+                used_kernel = xdma_kernel
+                break
+
+        if required_extensions is None:
+            raise RuntimeError(
+                "No suitable XDMA kernel found for the operation in the StreamingRegionOp."
+            )
+
+        if used_kernel is None:
+            raise RuntimeError(
+                "No suitable XDMA kernel found for the operation in the StreamingRegionOp."
+            )
+        assert isinstance(
+            used_kernel, XDMAKernel
+        ), "No suitable XDMA kernel found for the operation in the StreamingRegionOp."
+
+        return used_kernel.get_template(kernel_op)
 
     def get_streamers(self, op: dart.StreamingRegionOpBase) -> Sequence[Streamer]:
+        # Find kernel operation and check if it is supported
         kernel_op = op.body.block.first_op
         assert isinstance(
             kernel_op, dart.GenericOp
         ), "Expected a GenericOp in the StreamingRegionOp"
         kernel_op = kernel_op.body.block.first_op
         assert isinstance(kernel_op, KernelOp), "Expected a KernelOp in the GenericOp"
-        for streamer in self.streamer_config.data.streamers:
-            for ext in streamer.opts:
-                if isinstance(ext, StreamerExtension):
-                    if (
-                        ext.supported_kernel is not None
-                        and ext.supported_kernel.is_same_kernel(kernel_op)
-                    ):
-                        return ext.get_streamers(
-                            streamer_config=self.streamer_config.data
-                        )
-        # If no specific extension is found, return the default streamers
-        raise RuntimeError(
-            "No suitable extension found for the kernel operation in the StreamingRegionOp."
-        )
+
+        used_kernel = None
+        required_extensions = None
+        for xdma_kernel in XDMA_KERNEL_SET:
+            if xdma_kernel.supported_kernel.is_same_kernel(kernel_op):
+                required_extensions = xdma_kernel.required_extensions
+                used_kernel = xdma_kernel
+                break
+
+        if required_extensions is None:
+            raise RuntimeError(
+                "No suitable XDMA kernel found for the operation in the StreamingRegionOp."
+            )
+
+        if used_kernel is None:
+            raise RuntimeError(
+                "No suitable XDMA kernel found for the operation in the StreamingRegionOp."
+            )
+        assert isinstance(
+            used_kernel, XDMAKernel
+        ), "No suitable XDMA kernel found for the operation in the StreamingRegionOp."
+        return used_kernel.get_streamers(self.streamer_config.data)
 
     def set_stride_patterns(
         self,
@@ -398,34 +441,39 @@ class SNAXXDMAAccelerator(
         Sequence[snax_stream.StridePattern],
         Sequence[Operation],
     ]:
+        # Find kernel operation and check if it is supported
         kernel_op = op.body.block.first_op
         assert isinstance(
             kernel_op, dart.GenericOp
         ), "Expected a GenericOp in the StreamingRegionOp"
         kernel_op = kernel_op.body.block.first_op
         assert isinstance(kernel_op, KernelOp), "Expected a KernelOp in the GenericOp"
-        for streamer in self.streamer_config.data.streamers:
-            for ext in streamer.opts:
-                if isinstance(ext, StreamerExtension):
-                    if (
-                        ext.supported_kernel is not None
-                        and ext.supported_kernel.is_same_kernel(kernel_op)
-                    ):
-                        new_in, new_out, new_snax_patterns, new_ops = (
-                            ext.set_stride_patterns(op, kernel_op, snax_stride_patterns)
-                        )
-                        # Ensure new_snax_patterns is of type Sequence[snax_stream.StridePattern]
-                        new_snax_patterns_casted = [
-                            pattern
-                            for pattern in new_snax_patterns
-                            if isinstance(pattern, snax_stream.StridePattern)
-                        ]
-                        return (
-                            new_in,
-                            new_out,
-                            new_snax_patterns_casted,
-                            new_ops,
-                        )
-        raise RuntimeError(
-            "No suitable extension found for the kernel operation in the AccessPatternOp."
+
+        used_kernel = None
+        for xdma_kernel in XDMA_KERNEL_SET:
+            if xdma_kernel.supported_kernel.is_same_kernel(kernel_op):
+                used_kernel = xdma_kernel
+                break
+
+        if used_kernel is None:
+            raise RuntimeError(
+                "No suitable XDMA kernel found for the operation in the StreamingRegionOp."
+            )
+        assert isinstance(
+            used_kernel, XDMAKernel
+        ), "No suitable XDMA kernel found for the operation in the StreamingRegionOp."
+        new_in, new_out, new_snax_patterns, new_ops = used_kernel.set_stride_patterns(
+            op, kernel_op, snax_stride_patterns
+        )
+        # Ensure new_snax_patterns is of type Sequence[snax_stream.StridePattern]
+        new_snax_patterns_casted = [
+            pattern
+            for pattern in new_snax_patterns
+            if isinstance(pattern, snax_stream.StridePattern)
+        ]
+        return (
+            new_in,
+            new_out,
+            new_snax_patterns_casted,
+            new_ops,
         )
