@@ -117,6 +117,126 @@ class RescaleClampPattern(RewritePattern):
             rewriter.erase_matched_op()
 
 
+class AvgPoolPattern(RewritePattern):
+    """
+    Transform tosa AvgPool2DOp into kernel.AvgPool2DOp
+    """
+
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, avgpool_op: tosa.AvgPool2DOp, rewriter: PatternRewriter):
+        # should have tensor inputs
+        if not isa(inp_type := avgpool_op.input.type, builtin.TensorType[Attribute]):
+            return
+
+        # Extract all values:
+        kernel_tuple = avgpool_op.kernel.get_values()
+        assert isa(kernel_tuple, tuple[int, ...])
+        stride = avgpool_op.stride.get_values()
+        assert isa(stride, tuple[int, ...])
+        pad = avgpool_op.pad.get_values()
+        assert isa(pad, tuple[int, ...])
+
+        kernel_size = kernel_tuple[0] * kernel_tuple[1]
+
+        # create linalg body with kernel op with the params of tosa ops
+        @Builder.implicit_region((inp_type.element_type, inp_type.element_type, inp_type.element_type))
+        def linalg_body(args: tuple[BlockArgument, ...]) -> None:
+            kernel_op = kernel.AvgPoolOp(
+                args[0],
+                args[-1],
+                args[-1].type,
+                kernel_size,
+            )
+            linalg.YieldOp(kernel_op)
+
+        # create elementwise linalg op
+        nb_dims = inp_type.get_num_dims()
+        assert nb_dims == 4, "AvgPool2DOp expects a 4D tensor input"
+
+        # destination type:
+        dim_idx_ops: list[arith.ConstantOp] = []
+        dim_ops: list[tensor.DimOp] = []
+        for dim_idx, shape in enumerate(inp_type.get_shape()):
+            if shape == -1:
+                # create dim op
+                dim_idx_ops.append(dim_idx := arith.ConstantOp.from_int_and_width(dim_idx, builtin.IndexType()))
+                dim_ops.append(tensor.DimOp(avgpool_op.input, dim_idx))
+
+        dim_op_values = [dim_op.result for dim_op in dim_ops]
+
+        outp_shape = inp_type.get_shape()
+        batch, m, n, channels = (
+            outp_shape[0],
+            outp_shape[1],
+            outp_shape[2],
+            outp_shape[3],
+        )
+        assert channels % 64 == 0, "Channels must be a multiple of 64"
+        output_m = (m - kernel_tuple[0] + pad[2]) // stride[0] + 1
+        output_n = (n - kernel_tuple[1] + pad[3]) // stride[1] + 1
+        output_shape = (batch, output_m, output_n, channels)
+        output_type = builtin.TensorType(inp_type.element_type, output_shape)
+        output_tensor = tensor.EmptyOp(dim_op_values, output_type)
+
+        kernel_tensor_type = builtin.TensorType(inp_type.element_type, kernel_tuple)
+        kernel_tensor_op = tensor.EmptyOp([], kernel_tensor_type)
+
+        new_op = linalg.GenericOp(
+            inputs=[avgpool_op.input, kernel_tensor_op.results[0]],
+            outputs=[output_tensor.tensor],
+            body=linalg_body,
+            indexing_maps=[
+                # Input tensor map: (d0, ((d1 * 2) + d4), ((d2 * 2) + d5), d3)
+                builtin.AffineMapAttr(
+                    AffineMap(
+                        6,
+                        0,
+                        (
+                            AffineDimExpr(0),  # d0
+                            AffineDimExpr(1) * 2 + AffineDimExpr(4),  # ((d1 * 2) + d4)
+                            AffineDimExpr(2) * 2 + AffineDimExpr(5),  # ((d2 * 2) + d5)
+                            AffineDimExpr(3),  # d3
+                        ),
+                    )
+                ),
+                # Kernel tensor map: (d4, d5)
+                builtin.AffineMapAttr(
+                    AffineMap(
+                        6,
+                        0,
+                        (
+                            AffineDimExpr(4),  # d4
+                            AffineDimExpr(5),  # d5
+                        ),
+                    )
+                ),
+                # Output tensor map: (d0, d1, d2, d3)
+                builtin.AffineMapAttr(
+                    AffineMap(
+                        6,
+                        0,
+                        (
+                            AffineDimExpr(0),  # d0
+                            AffineDimExpr(1),  # d1
+                            AffineDimExpr(2),  # d2
+                            AffineDimExpr(3),  # d3
+                        ),
+                    )
+                ),
+            ],
+            iterator_types=builtin.ArrayAttr(
+                [linalg.IteratorTypeAttr.parallel()] * 4 + [linalg.IteratorTypeAttr.reduction()] * 2
+            ),
+            result_types=(avgpool_op.output.type,),
+        )
+
+        # insert new op
+        rewriter.replace_op(
+            avgpool_op,
+            (*dim_idx_ops, *dim_ops, output_tensor, kernel_tensor_op, new_op),
+        )
+
+
 class ConvertTosaToKernelPass(ModulePass):
     """
     Converts tosa dialect ops to kernel ops wrapped in linalg generics.
@@ -126,3 +246,4 @@ class ConvertTosaToKernelPass(ModulePass):
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(RescaleClampPattern()).rewrite_module(op)
+        PatternRewriteWalker(AvgPoolPattern()).rewrite_module(op)

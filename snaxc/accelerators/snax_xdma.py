@@ -18,6 +18,7 @@ from snaxc.accelerators.streamers import (
 )
 from snaxc.accelerators.streamers.extensions import (
     AddExtension,
+    AddToLongExtension,
     MaxPoolExtension,
     MemSetExtension,
     RescaleDownExtension,
@@ -32,8 +33,7 @@ from snaxc.accelerators.streamers.streamers import (
     StreamerSystemType,
     StreamerType,
 )
-from snaxc.accelerators.streamers.xdma_kernels import XDMA_KERNEL_SET
-from snaxc.accelerators.streamers.xdma_kernels.xdma_kernel import XDMAKernel
+from snaxc.accelerators.streamers.xdma_kernels import XDMA_KERNEL_SET, XDMAKernel
 from snaxc.dialects import accfg, dart, snax_stream
 from snaxc.dialects.kernel import KernelOp
 
@@ -46,6 +46,7 @@ default_streamer = StreamerConfiguration(
             [
                 MaxPoolExtension(),
                 AddExtension(),
+                AddToLongExtension(),
                 RescaleDownExtension(),
                 RescaleUpExtension(),
                 HasChannelMask(),

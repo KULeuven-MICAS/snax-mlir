@@ -6,6 +6,7 @@ from snaxc.accelerators.streamers.streamers import (
 )
 
 from .add_extension import AddExtension
+from .add_to_long_extension import AddToLongExtension
 from .maxpool_extension import MaxPoolExtension
 from .memset_extension import MemSetExtension
 from .rescale_extension import RescaleDownExtension, RescaleUpExtension
@@ -18,6 +19,7 @@ STREAMER_OPT_MAP = {
     HasChannelMask().name: HasChannelMask,
     HasAddressRemap().name: HasAddressRemap,
     MaxPoolExtension().name: MaxPoolExtension,
+    AddToLongExtension().name: AddToLongExtension,
     MemSetExtension().name: MemSetExtension,
     TransposeExtension().name: TransposeExtension,
     AddExtension().name: AddExtension,
