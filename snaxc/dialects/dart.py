@@ -26,7 +26,6 @@ from xdsl.ir.affine import AffineMap
 from xdsl.irdl import (
     AttrSizedOperandSegments,
     IRDLOperation,
-    ParameterDef,
     irdl_attr_definition,
     irdl_op_definition,
     opt_prop_def,
@@ -65,10 +64,10 @@ class StreamType(
 
     name = "dart.stream"
 
-    element_type: ParameterDef[_StreamTypeElement]
+    element_type: _StreamTypeElement
 
     def __init__(self, element_type: _StreamTypeElement):
-        super().__init__([element_type])
+        super().__init__(element_type)
 
     def get_element_type(self) -> _StreamTypeElement:
         return self.element_type
@@ -174,10 +173,10 @@ class ScheduleOp(StreamingRegionOpBase):
     name = "dart.schedule"
 
     # The bounds of the iteration space of the schedule
-    bounds = prop_def(ParameterDef[ArrayAttr[IntegerAttr[IndexType]]])
+    bounds = prop_def(ArrayAttr[IntegerAttr[IndexType]])
 
     # The tiling factors for the different dimensions of inputs and outputs
-    tiles = prop_def(ParameterDef[ArrayAttr[ArrayAttr[IntegerAttr[IndexType]]]])
+    tiles = prop_def(ArrayAttr[ArrayAttr[IntegerAttr[IndexType]]])
 
     def __init__(
         self,
@@ -215,7 +214,7 @@ class AccessPatternOp(StreamingRegionOpBase):
     name = "dart.access_pattern"
 
     # The bounds of the iteration space of the schedule
-    bounds = prop_def(ParameterDef[ArrayAttr[IntegerAttr[IndexType]]])
+    bounds = prop_def(ArrayAttr[IntegerAttr[IndexType]])
 
     def __init__(
         self,

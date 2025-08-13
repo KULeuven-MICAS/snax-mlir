@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from xdsl.context import Context
 from xdsl.dialects import builtin, func, linalg, scf
-from xdsl.ir import Block, BlockArgument, Operation, OpResult, Region, SSAValue
+from xdsl.ir import Block, BlockArgument, Operation, OpResult, Region, SSAValue, SSAValues
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -241,7 +241,7 @@ def _weave_states_in_region(
                         )
                         # extend the op results to return the new state
                         new_result = OpResult(arg.type, op, len(op.results))
-                        op.results = (*op.results, new_result)
+                        op.results = SSAValues((*op.results, new_result))
 
                     # update states
                     for result in op.results:

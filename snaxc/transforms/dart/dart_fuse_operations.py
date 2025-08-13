@@ -39,7 +39,7 @@ class FuseElementwisePattern(RewritePattern):
         assert isinstance(result.type, builtin.TensorType)
 
         # check if the result has exactly one use
-        if len(result.uses) != 1:
+        if result.uses.get_length() != 1:
             return
 
         user_op = list(result.uses)[0].operation

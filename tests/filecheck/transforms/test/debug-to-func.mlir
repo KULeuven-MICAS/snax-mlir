@@ -4,7 +4,7 @@ builtin.module {
   func.func public @streamer_add(%arg0 : memref<?xi64>, %arg1 : memref<?xi64>, %arg2 : memref<?xi64>) {
     "debug.linalg"(%arg0, %arg1, %arg2) <{"debug_type" = "kernel_mac", "when" = "before", "level" = "none"}> : (memref<?xi64>, memref<?xi64>, memref<?xi64>) -> ()
     linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%arg0, %arg1 : memref<?xi64>, memref<?xi64>) outs(%arg2 : memref<?xi64>) {
-    ^0(%arg3 : i64, %arg4 : i64, %arg5 : i64):
+    ^bb0(%arg3 : i64, %arg4 : i64, %arg5 : i64):
       %0 = kernel.mac %arg3, %arg4 : i64, i64 -> i64
       linalg.yield %0 : i64
     }
@@ -24,7 +24,7 @@ builtin.module {
 // CHECK-NEXT:     %6 = arith.constant 5 : i32
 // CHECK-NEXT:     func.call @debug_kernel_mac(%3, %4, %5, %6) : (i32, i32, i32, i32) -> ()
 // CHECK-NEXT:     linalg.generic {indexing_maps = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], iterator_types = ["parallel"]} ins(%arg0, %arg1 : memref<?xi64>, memref<?xi64>) outs(%arg2 : memref<?xi64>) {
-// CHECK-NEXT:     ^0(%arg3 : i64, %arg4 : i64, %arg5 : i64):
+// CHECK-NEXT:     ^bb0(%arg3 : i64, %arg4 : i64, %arg5 : i64):
 // CHECK-NEXT:       %7 = kernel.mac %arg3, %arg4 : i64, i64 -> i64
 // CHECK-NEXT:       linalg.yield %7 : i64
 // CHECK-NEXT:     }

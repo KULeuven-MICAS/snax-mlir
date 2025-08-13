@@ -2,7 +2,7 @@
 
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<?xi32>, memref<?xi32>) -> (), "sym_visibility" = "public"}> ({
-  ^0(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>):
+  ^bb0(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>):
     "memref.copy"(%arg0, %arg1) : (memref<?xi32>, memref<?xi32>) -> ()
     "func.return"() : () -> ()
   }) : () -> ()
@@ -26,7 +26,7 @@
 
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<?x?xi32>, memref<?x?xi32>) -> (), "sym_visibility" = "public"}> ({
-  ^0(%arg0 : memref<?x?xi32>, %arg1 : memref<?x?xi32>):
+  ^bb0(%arg0 : memref<?x?xi32>, %arg1 : memref<?x?xi32>):
     "memref.copy"(%arg0, %arg1) : (memref<?x?xi32>, memref<?x?xi32>) -> ()
     "func.return"() : () -> ()
   }) : () -> ()
@@ -53,7 +53,7 @@
 
 "builtin.module"() ({
     "func.func"() <{"sym_name" = "transform_copy", "function_type" = (memref<5xi32, strided<[1], offset:?>, "L3">, memref<5xi32, strided<[1], offset:?>, "L1">) -> (), "sym_visibility" = "public"}> ({
-  ^0(%arg0 : memref<5xi32, strided<[1], offset:?>, "L3">, %arg1 : memref<5xi32, strided<[1], offset:?>, "L1">):
+  ^bb0(%arg0 : memref<5xi32, strided<[1], offset:?>, "L3">, %arg1 : memref<5xi32, strided<[1], offset:?>, "L1">):
     "memref.copy"(%arg0, %arg1) : (memref<5xi32, strided<[1], offset:?>, "L3">, memref<5xi32, strided<[1], offset:?>, "L1">) -> ()
     "func.return"() : () -> ()
   }) : () -> ()
@@ -98,7 +98,7 @@
 
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "transform_copy", "function_type" = (memref<?x?xi32, strided<[?, 1]>, "L3">, memref<?x?xi32, strided<[?, 1]>, "L1">) -> (), "sym_visibility" = "public"}> ({
-  ^0(%arg0 : memref<?x?xi32, strided<[?, 1]>, "L3">, %arg1 : memref<?x?xi32, strided<[?, 1]>, "L1">):
+  ^bb0(%arg0 : memref<?x?xi32, strided<[?, 1]>, "L3">, %arg1 : memref<?x?xi32, strided<[?, 1]>, "L1">):
     "memref.copy"(%arg0, %arg1) : (memref<?x?xi32, strided<[?, 1]>, "L3">, memref<?x?xi32, strided<[?, 1]>, "L1">) -> ()
     "func.return"() : () -> ()
   }) : () -> ()
@@ -147,7 +147,7 @@
 
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<5x5xi32, strided<[10, 1]>>, memref<5x5xi32, strided<[20, 1]>>) -> (), "sym_visibility" = "public"}> ({
-  ^0(%arg0 : memref<5x5xi32, strided<[10, 1]>>, %arg1 : memref<5x5xi32, strided<[20, 1]>>):
+  ^bb0(%arg0 : memref<5x5xi32, strided<[10, 1]>>, %arg1 : memref<5x5xi32, strided<[20, 1]>>):
     "memref.copy"(%arg0, %arg1) : (memref<5x5xi32, strided<[10, 1]>>, memref<5x5xi32, strided<[20, 1]>>) -> ()
     "func.return"() : () -> ()
   }) : () -> ()
@@ -186,7 +186,7 @@
 
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "transform_copy", "function_type" = (memref<8x8xi32, #tsl.tsl<[2, 4] -> (4, 1), [2, 4] -> (32, 8)>, "L3">, memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 1), [2, 4] -> (32, 4)>, "L1">) -> (), "sym_visibility" = "public"}> ({
-  ^0(%arg0 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (4, 1), [2, 4] -> (32, 8)>, "L3">, %arg1 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 1), [2, 4] -> (32, 4)>, "L1">):
+  ^bb0(%arg0 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (4, 1), [2, 4] -> (32, 8)>, "L3">, %arg1 : memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 1), [2, 4] -> (32, 4)>, "L1">):
     "memref.copy"(%arg0, %arg1) : (memref<8x8xi32, #tsl.tsl<[2, 4] -> (4, 1), [2, 4] -> (32, 8)>, "L3">, memref<8x8xi32, #tsl.tsl<[2, 4] -> (16, 1), [2, 4] -> (32, 4)>, "L1">) -> ()
     "func.return"() : () -> ()
   }) : () -> ()
