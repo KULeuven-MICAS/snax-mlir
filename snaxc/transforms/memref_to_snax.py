@@ -1,5 +1,3 @@
-from typing import cast
-
 from xdsl.context import Context
 from xdsl.dialects import builtin, memref
 from xdsl.dialects.arith import AddiOp, ConstantOp, MuliOp, SubiOp
@@ -94,8 +92,6 @@ class AllocOpRewrite(RewritePattern):
             # we need to compute the following for all strides:
             # sum_i( (bound_i - 1) * step_i) + 1
             #
-            # TODO: remove cast once xdsl typing issue is resolved
-            layout = cast(TiledStridedLayoutAttr, layout)
 
             # use shape ops to generate tsl bound ops
             insert_ops, bound_ops = layout.get_bound_ops(shape_ops)
