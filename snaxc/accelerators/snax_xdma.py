@@ -276,7 +276,7 @@ class SNAXXDMAAccelerator(
                         < len(required_extensions)
                         and required_extensions[current_required_extension_index_bypass]
                         == ext
-                    ):  # TODO: check if == works
+                    ):
                         current_required_extension_index_bypass += 1
                         bypass -= 2**i
                     i += 1
@@ -296,6 +296,7 @@ class SNAXXDMAAccelerator(
                         ]:
                             cst = arith.ConstantOp.from_int_and_width(csr_val, i32)
                             result.append(([cst], cst.result))
+                            current_required_extension_index_csr += 1
                     else:
                         for i in range(ext.csr_length):
                             # If the kernel is not supported, we still need to add the CSR values

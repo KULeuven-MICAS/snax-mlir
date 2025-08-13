@@ -37,11 +37,16 @@ class AvgPoolXDMA(XDMAKernel):
         Returns the CSR values for the MaxPool extension.
         This method should be implemented to provide the specific CSR values needed for the MaxPool extension.
         """
-        assert isinstance(op.properties["kernel_size"], IntegerAttr)
+        assert isinstance(op.attributes["kernel_size"], IntegerAttr)
         add_to_long_csr = [
-            op.properties["kernel_size"].value.data,
+            op.attributes["kernel_size"].value.data,
         ]
-        rescale_down_csr = [111, 222, 333, 444]  # TODO: PLACEHOLDER VALUES
+        rescale_down_csr = [
+            0,
+            (2**25) // op.attributes["kernel_size"].value.data,
+            0,
+            25
+        ]  # TODO: PLACEHOLDER VALUES: figure out how these are actually determined
 
         return [add_to_long_csr, rescale_down_csr]
 
