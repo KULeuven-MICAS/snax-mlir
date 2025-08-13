@@ -32,8 +32,6 @@ class LowerExtractAlignedPointerOp(RewritePattern):
         assert isa(source_type := subview.source.type, MemRefType[Attribute])
         if not isinstance(source_type.layout, TiledStridedLayoutAttr):
             return
-        # TODO: remove cast once xdsl typing issue is resolved
-        layout = cast(TiledStridedLayoutAttr, source_type.layout)
         dynamic_index_list = [
             i for i, offset in enumerate(subview.static_offsets.get_values()) if offset == SubviewOp.DYNAMIC_INDEX
         ]
@@ -45,11 +43,11 @@ class LowerExtractAlignedPointerOp(RewritePattern):
         bytes_op = ConstantOp.from_int_and_width(element_type.size, IndexType())
         ops_to_add.append(bytes_op)
         for offset, index in zip(subview.offsets, dynamic_index_list):
-            stride = layout.data.tstrides[index].strides[0].step
+            stride = source_type.layout.data.tstrides[index].strides[0].step
             assert stride is not None
             stride_op = ConstantOp.from_int_and_width(stride, IndexType())
             stride_bytes_op = MuliOp(stride_op, bytes_op)
-            bound = prod(cast(int, stride.bound) for stride in layout.data.tstrides[index].strides[1:])
+            bound = prod(cast(int, stride.bound) for stride in source_type.layout.data.tstrides[index].strides[1:])
             assert bound is not None
             bound_op = ConstantOp.from_int_and_width(bound, IndexType())
             offset_div = DivUIOp(offset, bound_op)

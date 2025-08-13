@@ -337,6 +337,8 @@ class ApplyLayoutCastMemrefAlloc(RewritePattern):
             return
 
         # apply transformation by allocating with the correct layout
+        # TODO: remove this call:
+        assert isinstance(op.dest.type.layout, builtin.MemRefLayoutAttr | builtin.NoneAttr)
         new_alloc_op = memref.AllocOp.get(
             alloc_op.memref.type.get_element_type(),
             alloc_op.alignment,
@@ -500,6 +502,8 @@ class RealizeMemrefCasts(RewritePattern):
                 dyn_operands.append(dim_op)
 
         # create alloc op
+        # TODO: remove this call when typing issue in xdsl is resolved
+        assert isinstance(dest_type.layout, builtin.MemRefLayoutAttr | builtin.NoneAttr)
         alloc_op = memref.AllocOp.get(
             dest_type.get_element_type(),
             64,  # default 64 alignment
