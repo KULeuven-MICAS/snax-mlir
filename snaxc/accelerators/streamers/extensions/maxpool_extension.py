@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from xdsl.dialects.builtin import ArrayAttr, IntAttr, i8
+from xdsl.dialects.builtin import i8
 from xdsl.ir import Operation, ParametrizedAttribute, SSAValue
 from xdsl.ir.affine import AffineMap
 
@@ -11,7 +11,7 @@ from snaxc.accelerators.streamers.streamers import (
     StreamerConfiguration,
     StreamerType,
 )
-from snaxc.dialects import dart, kernel, snax_stream
+from snaxc.dialects import dart, kernel
 from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 
 
@@ -36,52 +36,8 @@ class MaxPoolExtension(StreamerExtension):
         Returns the CSR values for the MaxPool extension.
         This method should be implemented to provide the specific CSR values needed for the MaxPool extension.
         """
-        # Example implementation, replace with actual logic
-        assert op.parent is not None, "Operation must be in a StreamingRegionOp"
-        assert op.parent.parent is not None, "Operation's parent must be in a StreamingRegionOp"
-        assert op.parent.parent.parent is not None, "Operation's must be in a StreamingRegionOp"
-        assert op.parent.parent.parent.parent is not None, "Operation's must be in a StreamingRegionOp"
-        assert op.parent.parent.parent.parent.parent is not None, "Operation must be in StreamingRegionOp"
-        assert isinstance(
-            streaming_region_op := op.parent.parent.parent.parent.parent.parent,
-            snax_stream.StreamingRegionOp,
-        ), "Operation must be in AccessPatternOp"
-
-        assert streaming_region_op.properties["stride_patterns"] is not None, (
-            "StreamingRegionOp must have stride pattern property"
-        )
-        assert isinstance(
-            stride_pattern := streaming_region_op.properties["stride_patterns"],
-            ArrayAttr,
-        ), "Stride patterns must be an Array"
-        assert isinstance(
-            stride_pattern.data,  # pyright: ignore[reportUnknownMemberType]
-            tuple,
-        ), "Stride patterns must be a tuple"
-        stride_pattern = stride_pattern.data  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
-        assert (
-            len(
-                stride_pattern  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-            )
-            == 2
-        ), "Stride patterns tuple must have length 2"
-        assert isinstance(
-            stride_pattern[1],  # pyright: ignore[reportUnknownMemberType]
-            snax_stream.StridePattern,
-        ), "Stride patterns must contain a StridePattern for the output"
-
-        stride_pattern = stride_pattern[1]  # pyright: ignore[reportUnknownMemberType]
-
-        assert isinstance(stride_pattern, snax_stream.StridePattern), "Stride pattern must be a StridePattern"
-
-        assert isinstance(stride_array := stride_pattern.parameters[0], ArrayAttr), (
-            "Stride pattern parameters must be ParametrizedAttributes"
-        )
-
-        assert len(stride_array.data) >= 1, "Stride pattern must have one parameter"  # pyright: ignore[reportUnknownArgumentType, reportUnknownMemberType]
-        assert isinstance(kernel_size := stride_array.data[0], IntAttr)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
-        assert isinstance(kernel_size := kernel_size.data, int), "Stride pattern first parameter must be an IntAttr"
-
+        kernel_size = op.parent_op().parent_op().properties["stride_patterns"].data[1].parameters[0].data[0].data  # pyright: ignore[reportUnknownVariableType, reportOptionalMemberAccess, reportUnknownMemberType, reportAttributeAccessIssue]
+        assert isinstance(kernel_size, int), "Kernel size must be an integer"
         return [kernel_size]
 
     def get_template(self, op: kernel.KernelOp) -> Template:

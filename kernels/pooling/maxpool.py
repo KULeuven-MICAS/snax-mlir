@@ -21,7 +21,6 @@ def maxpool(m: int = 28, n: int = 28, channels: int = 64):
     np.random.seed(42)  # For reproducibility
     # Define Variables For Program:
     a_type = TensorType(i8, (1, m, n, channels))
-    # a_vals = np.full((channels, m, n), -8737248 , dtype=np.int32)
     a_vals = np.random.randint(
         -128,
         127,
@@ -51,16 +50,8 @@ def maxpool(m: int = 28, n: int = 28, channels: int = 64):
     def func_body(_) -> None:
         # Declare constants
         a = ConstantOp(DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist()))
-        print(a_vals[:, :, 0])
-        # print(a_vals[:,:, 1])
-        # print(a_vals.flatten().tolist())
-        golden = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, golden_vals.flatten().tolist()))
-        print(golden_vals[:, :, 0])
-        # print(golden_vals[:,:, 1])
-        # print(golden_vals.flatten().tolist())
 
-        # # Declare result tensor type
-        # empty_tensor = EmptyOp([], output_type)
+        golden = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, golden_vals.flatten().tolist()))
 
         # Specify the operation
         result = MaxPool2DOp(

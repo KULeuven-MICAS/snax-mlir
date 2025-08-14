@@ -550,12 +550,10 @@ class SNAXPollingBarrier4(Accelerator, ABC):
 
 class SNAXPollingBarrier5(Accelerator, ABC):
     """
-    FIXME: Adapt this to an interrupt-style barrier for the newest RTL
-
     Abstract base class for SNAX Accelerators with different polling style barrier.
 
     The polling style barrier can be represented in C with:
-        while (read_csr(0x3cf));
+        while (!read_csr(0x3cf));
     """
 
     @staticmethod
