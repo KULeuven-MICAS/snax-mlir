@@ -23,6 +23,17 @@ class Parsable(ABC):
     @property
     def equivalent_region(self) -> Region: ...
 
+    @classmethod
+    def make_op_from_generic(cls, generic_op: linalg.GenericOp) -> KernelOp:
+        """
+        Create a kernel operation from a linalg.generic operation.
+        """
+        assert issubclass(cls, KernelOp)
+        return cls(
+            operands=generic_op.body.block.args[:-1],
+            result_types=[generic_op.body.block.args[-1].type],
+        )
+
 
 class BinaryOp:
     lhs = operand_def(IntegerType)
@@ -153,6 +164,79 @@ class QMacOp(KernelOp, QuantizedBinaryOp, Parsable):
 
 
 @irdl_op_definition
+class MaxPoolOp(KernelOp, Parsable):
+    """
+    Operation representing a max pooling operation.
+    """
+
+    name = "kernel.max_pool"
+
+    input = operand_def(IntegerType)
+    output = operand_def(IntegerType)
+
+    result = result_def(IntegerType)
+
+    @property
+    def equivalent_region(self) -> Region:
+        @Builder.implicit_region(
+            (
+                SSAValue.get(self.input).type,
+                IntegerType(8),
+                *self.result_types,
+            )
+        )
+        def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
+            max = arith.MaxSIOp(args[2], args[0])
+            linalg.YieldOp(max)
+
+        return equivalent_region
+
+    @classmethod
+    def make_op_from_generic(cls, generic_op: linalg.GenericOp) -> KernelOp:
+        """
+        Create a MaxPool operation from a linalg.generic operation.
+        """
+        return cls(
+            operands=[generic_op.body.block.args[-1], generic_op.body.block.args[0]],
+            result_types=[generic_op.body.block.args[-1].type],
+        )
+
+
+@irdl_op_definition
+class AvgPoolOp(KernelOp):
+    """
+    Operation representing a 2D average pooling operation.
+    """
+
+    name = "kernel.avg_pool"
+
+    input = operand_def(IntegerType)
+    output = operand_def(IntegerType)
+
+    result = result_def(IntegerType)
+
+    kernel_size = attr_def(IntegerAttr[I32])
+
+    # assembly_format = "$input attr-dict `:` `(` type($input) `)` `->` type($result)"
+
+    def __init__(
+        self,
+        input: SSAValue | Operation,
+        output: SSAValue | Operation,
+        result_type: Attribute,
+        kernel_size: int | IntegerAttr[I32],
+    ):
+        if isinstance(kernel_size, int):
+            kernel_size = IntegerAttr.from_int_and_width(kernel_size, 32)
+
+        super().__init__(
+            operands=[input, output],
+            result_types=[result_type],
+            attributes={"kernel_size": kernel_size},
+        )
+
+
+@irdl_op_definition
 class RescaleOp(KernelOp):
     """
     Operation applying rescaling according to the spec in
@@ -193,11 +277,13 @@ class RescaleOp(KernelOp):
             output_zp = IntegerAttr.from_int_and_width(output_zp, 32)
         if not isinstance(multiplier, DenseArrayBase):
             multiplier = DenseArrayBase.create_dense_int(
-                IntegerType(32), [x if isinstance(x, int) else x.value.data for x in multiplier]
+                IntegerType(32),
+                [x if isinstance(x, int) else x.value.data for x in multiplier],
             )
         if not isinstance(shift, DenseArrayBase):
             shift = DenseArrayBase.create_dense_int(
-                IntegerType(32), [x if isinstance(x, int) else x.value.data for x in shift]
+                IntegerType(32),
+                [x if isinstance(x, int) else x.value.data for x in shift],
             )
         if isinstance(max_int, int):
             max_int = IntegerAttr.from_int_and_width(max_int, 32)
@@ -220,6 +306,42 @@ class RescaleOp(KernelOp):
         )
 
 
+@irdl_op_definition
+class SoftMaxOp(KernelOp):
+    """
+    Operation representing a softmax operation.
+    """
+
+    name = "kernel.softmax"
+
+    input = operand_def(IntegerType)
+    stage = operand_def(IntegerType)
+
+    output = result_def(IntegerType)
+
+    scaling_factor = attr_def(IntegerAttr[I32])
+    vector_length = attr_def(IntegerAttr[I32])
+
+    def __init__(
+        self,
+        input: SSAValue | Operation,
+        stage: SSAValue | Operation,
+        output_type: Attribute,
+        scaling_factor: int | IntegerAttr[I32],
+        vector_length: int | IntegerAttr[I32],
+    ):
+        if isinstance(scaling_factor, int):
+            scaling_factor = IntegerAttr.from_int_and_width(scaling_factor, 32)
+        if isinstance(vector_length, int):
+            vector_length = IntegerAttr.from_int_and_width(vector_length, 32)
+
+        super().__init__(
+            operands=[input, stage],
+            result_types=[output_type],
+            attributes={"scaling_factor": scaling_factor, "vector_length": vector_length},
+        )
+
+
 Kernel = Dialect(
     "kernel",
     [
@@ -227,6 +349,9 @@ Kernel = Dialect(
         AddOp,
         MacOp,
         QMacOp,
+        MaxPoolOp,
+        AvgPoolOp,
         RescaleOp,
+        SoftMaxOp,
     ],
 )
