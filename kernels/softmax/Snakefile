@@ -42,7 +42,6 @@ rule generate_softmax:
         "softmax.py"
 
 
-
 rule link_snax_binary:
     input:
         "{file}.o",
