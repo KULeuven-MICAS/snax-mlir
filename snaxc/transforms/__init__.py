@@ -36,6 +36,11 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return ClearMemorySpace
 
+    def get_tosa_combine_rescale():
+        from snaxc.transforms.combine_rescale import TosaCombineRescale
+
+        return TosaCombineRescale
+
     def construct_pipeline():
         from snaxc.transforms.pipeline.construct_pipeline import (
             ConstructPipelinePass,
@@ -252,6 +257,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "accfg-trace-states": get_accfg_trace_states,
         "alloc-to-global": get_alloc_to_global,
         "clear-memory-space": get_clear_memory_space,
+        "tosa-combine-rescale": get_tosa_combine_rescale,
         "construct-pipeline": construct_pipeline,
         "convert-accfg-to-csr": get_convert_accfg_to_csr,
         "convert-dart-to-snax-stream": get_convert_dart_to_snax_stream,
