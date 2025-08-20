@@ -52,9 +52,7 @@ class QuantizedBinaryOp:
 @irdl_op_definition
 class MulOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.mul"
-    assembly_format = (
-        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
-    )
+    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
 
     @property
     def equivalent_region(self) -> Region:
@@ -75,9 +73,7 @@ class MulOp(KernelOp, BinaryOp, Parsable):
 @irdl_op_definition
 class AddOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.add"
-    assembly_format = (
-        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
-    )
+    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
 
     @property
     def equivalent_region(self) -> Region:
@@ -98,9 +94,7 @@ class AddOp(KernelOp, BinaryOp, Parsable):
 @irdl_op_definition
 class MacOp(KernelOp, BinaryOp, Parsable):
     name = "kernel.mac"
-    assembly_format = (
-        "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
-    )
+    assembly_format = "$lhs `,` $rhs attr-dict `:` type($lhs) `,` type($rhs) `->` type($result)"
 
     @property
     def equivalent_region(self) -> Region:
@@ -321,24 +315,30 @@ class SoftMaxOp(KernelOp):
     name = "kernel.softmax"
 
     input = operand_def(IntegerType)
+    stage = operand_def(IntegerType)
 
     output = result_def(IntegerType)
 
     scaling_factor = attr_def(IntegerAttr[I32])
+    vector_length = attr_def(IntegerAttr[I32])
 
     def __init__(
         self,
         input: SSAValue | Operation,
+        stage: SSAValue | Operation,
         output_type: Attribute,
         scaling_factor: int | IntegerAttr[I32],
+        vector_length: int | IntegerAttr[I32],
     ):
         if isinstance(scaling_factor, int):
             scaling_factor = IntegerAttr.from_int_and_width(scaling_factor, 32)
+        if isinstance(vector_length, int):
+            vector_length = IntegerAttr.from_int_and_width(vector_length, 32)
 
         super().__init__(
-            operands=[input],
+            operands=[input, stage],
             result_types=[output_type],
-            attributes={"scaling_factor": scaling_factor},
+            attributes={"scaling_factor": scaling_factor, "vector_length": vector_length},
         )
 
 

@@ -17,7 +17,7 @@ from xdsl.dialects.func import FuncOp, ReturnOp
 from xdsl.dialects.linalg import GenericOp, IteratorTypeAttr, YieldOp
 from xdsl.dialects.tensor import EmptyOp
 from xdsl.ir import BlockArgument
-from xdsl.ir.affine import AffineConstantExpr, AffineDimExpr, AffineMap
+from xdsl.ir.affine import AffineDimExpr, AffineMap
 from xdsl.printer import Printer
 
 from snaxc.dialects.kernel import SoftMaxOp
@@ -36,7 +36,7 @@ def softmax(m: int = 43, channels: int = 64):
         dtype=np.int32,
     )
 
-    kernel_type = TensorType(i8, (m, 1))
+    kernel_type = TensorType(i8, (3,))
 
     output_type = TensorType(i32, (m, channels))
     golden_vals = np.empty_like(a_vals, dtype=np.int32)
@@ -52,15 +52,9 @@ def softmax(m: int = 43, channels: int = 64):
     @Builder.implicit_region([])
     def func_body(_) -> None:
         # Declare constants
-        input_matrix = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist())
-        )
+        input_matrix = ConstantOp(DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist()))
 
-        golden = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(
-                output_type, golden_vals.flatten().tolist()
-            )
-        )
+        golden = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, golden_vals.flatten().tolist()))
 
         empty_kernel = EmptyOp([], kernel_type)
         empty_output = EmptyOp([], output_type)
@@ -75,7 +69,7 @@ def softmax(m: int = 43, channels: int = 64):
                     0,
                     (
                         AffineDimExpr(1),  # d1
-                        AffineDimExpr(0) + 16 * AffineDimExpr(2),  # (d0 + (16 * d2))
+                        AffineDimExpr(0),  # d0
                     ),
                 )
             ),
@@ -84,10 +78,7 @@ def softmax(m: int = 43, channels: int = 64):
                 AffineMap(
                     3,
                     0,
-                    (
-                        AffineConstantExpr(1),  # d4
-                        AffineDimExpr(0) + 16 * AffineDimExpr(2),  # d5
-                    ),
+                    (AffineDimExpr(2),),  # d3
                 )
             ),
             # Output tensor map: (d0, d1, d2, d3)
@@ -97,19 +88,23 @@ def softmax(m: int = 43, channels: int = 64):
                     0,
                     (
                         AffineDimExpr(1),  # d1
-                        AffineDimExpr(0) + 16 * AffineDimExpr(2),  # (d0 + (16 * d2))
+                        AffineDimExpr(0),  # d0
                     ),
                 )
             ),
+        ]
+
+        iterator_types = [
+            IteratorTypeAttr.parallel(),  # For the first dimension (m)
+            IteratorTypeAttr.parallel(),  # For the second dimension (channels)
+            IteratorTypeAttr.reduction(),  # For the third dimension (reduction)
         ]
 
         @Builder.implicit_region(arg_types)
         def init_body(args: tuple[BlockArgument, ...]) -> None:
             # Specify the operation
             result = SoftMaxOp(
-                args[0],
-                output_type=output_type,
-                scaling_factor=scaling_factor,
+                input=args[0], stage=args[1], output_type=i32, scaling_factor=scaling_factor, vector_length=m
             )
             YieldOp(result)
 
@@ -118,7 +113,7 @@ def softmax(m: int = 43, channels: int = 64):
             [empty_output.tensor],
             init_body,
             indexing_maps,
-            [IteratorTypeAttr.parallel()] * 3,
+            iterator_types,
             [output_type],
         )
 
@@ -149,26 +144,16 @@ def subtract_max(array: np.ndarray, max_value: np.int32):
     return new_array
 
 
-def integer_poly(
-    x: np.int32, inverse_scaling_factor: int, a: float, b: float, c: float
-):
+def integer_poly(x: np.int32, inverse_scaling_factor: int, a: float, b: float, c: float):
     a_scaled = int(a * inverse_scaling_factor)
     b_scaled = int(b * inverse_scaling_factor)
-    c_scaled = int(c * (inverse_scaling_factor**3)) >> math.floor(
-        math.log2(inverse_scaling_factor) * 2
-    )
+    c_scaled = int(c * (inverse_scaling_factor**3)) >> math.floor(math.log2(inverse_scaling_factor) * 2)
 
     output = np.int32(
-        (
-            (a_scaled * (int(x) + b_scaled) ** 2)
-            >> math.floor(math.log2(inverse_scaling_factor) * 2)
-        )
-        + c_scaled
+        ((a_scaled * (int(x) + b_scaled) ** 2) >> math.floor(math.log2(inverse_scaling_factor) * 2)) + c_scaled
     )
 
-    scaling_factor_out = (inverse_scaling_factor**3) >> math.floor(
-        math.log2(inverse_scaling_factor) * 2
-    )
+    scaling_factor_out = (inverse_scaling_factor**3) >> math.floor(math.log2(inverse_scaling_factor) * 2)
 
     return output, scaling_factor_out
 

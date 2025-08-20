@@ -45,7 +45,7 @@ class AvgPoolXDMA(XDMAKernel):
             0,
             (2**25) // op.attributes["kernel_size"].value.data,
             0,
-            25
+            25,
         ]  # TODO: PLACEHOLDER VALUES: figure out how these are actually determined
 
         return [add_to_long_csr, rescale_down_csr]
@@ -59,9 +59,7 @@ class AvgPoolXDMA(XDMAKernel):
         template_bounds = (64,)
         return Template(TemplatePattern(template_bounds, tp) for tp in template)
 
-    def get_streamers(
-        self, streamer_config: StreamerConfiguration
-    ) -> Sequence[Streamer]:
+    def get_streamers(self, streamer_config: StreamerConfiguration) -> Sequence[Streamer]:
         """
         Returns the streamers for this DMA extension.
         """

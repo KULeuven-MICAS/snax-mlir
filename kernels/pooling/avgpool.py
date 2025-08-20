@@ -40,9 +40,7 @@ def avgpool(m: int = 28, n: int = 28, channels: int = 64):
         i8,
         (1, (m - m_kernel) // m_stride + 1, (n - n_kernel) // n_stride + 1, channels),
     )
-    golden_vals_list_intermediate = avgpool_golden(
-        a_vals, m, n, channels, m_kernel, n_kernel, m_stride, n_stride
-    )
+    golden_vals_list_intermediate = avgpool_golden(a_vals, m, n, channels, m_kernel, n_kernel, m_stride, n_stride)
 
     golden_vals_list = np.zeros(
         (
@@ -79,17 +77,11 @@ def avgpool(m: int = 28, n: int = 28, channels: int = 64):
     @Builder.implicit_region([])
     def func_body(_) -> None:
         # Declare constants
-        a = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist())
-        )
+        a = ConstantOp(DenseIntOrFPElementsAttr.from_list(a_type, a_vals.flatten().tolist()))
         print(a_vals[:, :, 0])
         # print(a_vals[:,:, 1])
         # print(a_vals.flatten().tolist())
-        golden = ConstantOp(
-            DenseIntOrFPElementsAttr.from_list(
-                output_type, golden_vals.flatten().tolist()
-            )
-        )
+        golden = ConstantOp(DenseIntOrFPElementsAttr.from_list(output_type, golden_vals.flatten().tolist()))
         print(golden_vals[:, :, 0])
         # print(golden_vals[:,:, 1])
         # print(golden_vals.flatten().tolist())
@@ -189,13 +181,9 @@ def golden_model_rescale_down(
     # Step 5: Double rounding
     if double_round_i:
         if var_1 > 0:
-            var_4 = var_3 + np.int32(
-                1 << (30 - bits_to_shift_multiplier - bits_to_shift_input)
-            )
+            var_4 = var_3 + np.int32(1 << (30 - bits_to_shift_multiplier - bits_to_shift_input))
         else:
-            var_4 = var_3 - np.int32(
-                1 << (30 - bits_to_shift_multiplier - bits_to_shift_input)
-            )
+            var_4 = var_3 - np.int32(1 << (30 - bits_to_shift_multiplier - bits_to_shift_input))
     else:
         # If double rounding is not used, we just pass the value through
         var_4 = var_3

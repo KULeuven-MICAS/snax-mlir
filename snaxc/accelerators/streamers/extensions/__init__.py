@@ -10,6 +10,7 @@ from .add_to_long_extension import AddToLongExtension
 from .maxpool_extension import MaxPoolExtension
 from .memset_extension import MemSetExtension
 from .rescale_extension import RescaleDownExtension, RescaleUpExtension
+from .softmax_extension import SoftMaxExtension
 from .streamer_extension import *
 from .transpose_extension import TransposeExtension
 
@@ -25,4 +26,5 @@ STREAMER_OPT_MAP = {
     AddExtension().name: AddExtension,
     RescaleDownExtension().name: RescaleDownExtension,
     RescaleUpExtension().name: RescaleUpExtension,
+    SoftMaxExtension().name: SoftMaxExtension,
 }

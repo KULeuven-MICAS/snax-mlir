@@ -23,6 +23,7 @@ from snaxc.accelerators.streamers.extensions import (
     MemSetExtension,
     RescaleDownExtension,
     RescaleUpExtension,
+    SoftMaxExtension,
     StreamerExtension,
     TransposeExtension,
 )
@@ -56,7 +57,13 @@ default_streamer = StreamerConfiguration(
             StreamerType.Writer,
             ["r", "n", "n", "n", "n"],
             [8],
-            [MemSetExtension(), TransposeExtension(), HasChannelMask(), HasByteMask()],
+            [
+                MemSetExtension(),
+                TransposeExtension(),
+                SoftMaxExtension(),
+                HasChannelMask(),
+                HasByteMask(),
+            ],
         ),
     ],
     StreamerSystemType.DmaExt,
