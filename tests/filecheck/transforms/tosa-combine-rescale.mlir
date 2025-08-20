@@ -25,4 +25,3 @@ return %2 : tensor<64xi32>
 // CHECK-NEXT:    %0 = tosa.rescale %arg0 {input_zp = 38 : i32, output_zp = 0 : i32, multiplier = array<i32: 1657902019>, shift = array<i8: 13>, scale32 = true, double_round = true, per_channel = false} : (tensor<64xi8>) -> tensor<64xi32>
 // CHECK-NEXT:    func.return %0 : tensor<64xi32>
 // CHECK-NEXT:  }
-
