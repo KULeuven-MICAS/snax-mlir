@@ -546,3 +546,41 @@ class SNAXPollingBarrier4(Accelerator, ABC):
             result.extend((addr_op, write_op_1, write_op_2))
 
         return result
+
+
+class SNAXPollingBarrier5(Accelerator, ABC):
+    """
+    Abstract base class for SNAX Accelerators with different polling style barrier.
+
+    The polling style barrier can be represented in C with:
+        while (!read_csr(0x3cf));
+    """
+
+    @staticmethod
+    def lower_acc_await(acc_op: accfg.AcceleratorOp) -> Sequence[Operation]:
+        return [
+            WhileOp(
+                [],
+                [],
+                [
+                    barrier := arith.ConstantOp(acc_op.barrier),
+                    zero := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(0, 32)),
+                    status := llvm.InlineAsmOp(
+                        "csrr $0, $1",
+                        # I = any 12 bit immediate
+                        # =r = store result in A 32- or 64-bit
+                        # general-purpose register (depending on the platform XLEN)
+                        "=r, I",
+                        [barrier],
+                        [i32],
+                        has_side_effects=True,
+                    ),
+                    # check if not equal to zero
+                    comparison := arith.CmpiOp(status, zero, "eq"),
+                    ConditionOp(comparison.results[0]),
+                ],
+                [
+                    YieldOp(),
+                ],
+            ),
+        ]

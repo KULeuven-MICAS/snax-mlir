@@ -8,7 +8,7 @@ from snaxc.accelerators.configurable_accelerator import ConfigurableAccelerator
 from snaxc.accelerators.dispatching import DispatchTemplate
 from snaxc.accelerators.snax import (
     SNAXAccelerator,
-    SNAXPollingBarrier3,
+    SNAXPollingBarrier5,
     SNAXStreamer,
 )
 from snaxc.accelerators.streamers import (
@@ -51,7 +51,7 @@ default_streamer = StreamerConfiguration(
         ),
         Streamer(
             StreamerType.Writer,
-            ["n", "n", "n", "n", "n"],
+            ["r", "n", "n", "n", "n"],
             [8],
             [MemSetExtension(), TransposeExtension(), HasChannelMask(), HasByteMask()],
         ),
@@ -64,7 +64,7 @@ c0_attr = builtin.IntegerAttr(0, builtin.IndexType())
 
 class SNAXXDMAAccelerator(
     SNAXAccelerator,
-    SNAXPollingBarrier3,
+    SNAXPollingBarrier5,
     SNAXStreamer,
     DispatchTemplate,
     ConfigurableAccelerator,
