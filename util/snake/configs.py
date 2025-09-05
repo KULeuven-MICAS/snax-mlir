@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any
 
 from util.snake.flags import (
-    get_clang_flags,
     get_default_flags,
 )
 from util.snake.paths import get_default_paths, get_default_snax_paths
@@ -70,38 +69,6 @@ def get_snax_alu_config(snax_mlir_path: str | None = None) -> dict[str, Any]:
     config["num_harts"] = 2
     config["vltsim"] = snax_utils_path + "/snax-alu-rtl/bin/snitch_cluster.vlt"
     config["snaxc-config"] = utils_dir / "ssot" / "snax_alu.yaml"
-    return config
-
-
-def get_mlperf_tiny_config() -> dict[str, Any]:
-    config: dict[str, Any] = {}
-    config.update(get_default_paths())
-    config.update({"clangflags": get_clang_flags()})
-    config["num_chips"] = 1
-    config["num_harts"] = 2
-    config.update(
-        {
-            "snaxoptflags": ",".join(
-                [
-                    "preprocess",
-                    "snax-bufferize",
-                    "dispatch-kernels",
-                    "set-memory-space",
-                    "set-memory-layout",
-                    "realize-memref-casts",
-                    "reuse-memref-allocs",
-                    "insert-sync-barrier",
-                    "dispatch-regions",
-                    "snax-copy-to-dma",
-                    "memref-to-snax",
-                    "snax-to-func",
-                    "snax-allocate",
-                    "clear-memory-space",
-                    "postprocess",
-                ]
-            )
-        }
-    )
     return config
 
 
