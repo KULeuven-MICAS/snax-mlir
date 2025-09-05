@@ -2,7 +2,7 @@
 #include "stdint.h"
 #include <snrt.h>
 
-int snitch_main() {
+int main() {
   // Hello from Snitch
   printf("Hello from Snitch!\n");
 }

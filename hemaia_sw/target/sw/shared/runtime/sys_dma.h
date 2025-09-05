@@ -39,79 +39,81 @@ extern "C" {
 #define IDMA_REG64_FRONTEND_DONE_REG_OFFSET 0x30
 
 #ifdef __cplusplus
-}  // extern "C"
+} // extern "C"
 #endif
-#endif  // _IDMA_REG64_FRONTEND_REG_DEFS_
+#endif // _IDMA_REG64_FRONTEND_REG_DEFS_
 // End generated register defines for idma_reg64_frontend
 
 #include <stdint.h>
 
-#include "occamy_memory_map.h"
 #include "chip_id.h"
+#include "occamy_memory_map.h"
 
-#define IDMA_SRC_ADDR \
-    (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_SRC_ADDR_REG_OFFSET)
-#define IDMA_DST_ADDR \
-    (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_DST_ADDR_REG_OFFSET)
-#define IDMA_NUMBYTES_ADDR \
-    (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_NUM_BYTES_REG_OFFSET)
-#define IDMA_CONF_ADDR \
-    (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_CONF_REG_OFFSET)
-#define IDMA_STATUS_ADDR \
-    (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_STATUS_REG_OFFSET)
-#define IDMA_NEXTID_ADDR \
-    (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_NEXT_ID_REG_OFFSET)
-#define IDMA_DONE_ADDR \
-    (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_DONE_REG_OFFSET)
+#define IDMA_SRC_ADDR                                                          \
+  (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_SRC_ADDR_REG_OFFSET)
+#define IDMA_DST_ADDR                                                          \
+  (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_DST_ADDR_REG_OFFSET)
+#define IDMA_NUMBYTES_ADDR                                                     \
+  (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_NUM_BYTES_REG_OFFSET)
+#define IDMA_CONF_ADDR                                                         \
+  (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_CONF_REG_OFFSET)
+#define IDMA_STATUS_ADDR                                                       \
+  (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_STATUS_REG_OFFSET)
+#define IDMA_NEXTID_ADDR                                                       \
+  (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_NEXT_ID_REG_OFFSET)
+#define IDMA_DONE_ADDR                                                         \
+  (SYS_IDMA_CFG_BASE_ADDR + IDMA_REG64_FRONTEND_DONE_REG_OFFSET)
 
 #define IDMA_CONF_DECOUPLE 0
 #define IDMA_CONF_DEBURST 0
 #define IDMA_CONF_SERIALIZE 0
 
 inline volatile uint64_t *sys_dma_src_ptr(void) {
-    return (volatile uint64_t *)(IDMA_SRC_ADDR |
-                                 (uintptr_t)get_current_chip_baseaddress());
+  return (volatile uint64_t *)(IDMA_SRC_ADDR |
+                               (uintptr_t)get_current_chip_baseaddress());
 }
 inline volatile uint64_t *sys_dma_dst_ptr(void) {
-    return (volatile uint64_t *)(IDMA_DST_ADDR |
-                                 (uintptr_t)get_current_chip_baseaddress());
+  return (volatile uint64_t *)(IDMA_DST_ADDR |
+                               (uintptr_t)get_current_chip_baseaddress());
 }
 inline volatile uint64_t *sys_dma_num_bytes_ptr(void) {
-    return (volatile uint64_t *)(IDMA_NUMBYTES_ADDR |
-                                 (uintptr_t)get_current_chip_baseaddress());
+  return (volatile uint64_t *)(IDMA_NUMBYTES_ADDR |
+                               (uintptr_t)get_current_chip_baseaddress());
 }
 inline volatile uint64_t *sys_dma_conf_ptr(void) {
-    return (volatile uint64_t *)(IDMA_CONF_ADDR |
-                                 (uintptr_t)get_current_chip_baseaddress());
+  return (volatile uint64_t *)(IDMA_CONF_ADDR |
+                               (uintptr_t)get_current_chip_baseaddress());
 }
 inline volatile uint64_t *sys_dma_status_ptr(void) {
-    return (volatile uint64_t *)(IDMA_STATUS_ADDR |
-                                 (uintptr_t)get_current_chip_baseaddress());
+  return (volatile uint64_t *)(IDMA_STATUS_ADDR |
+                               (uintptr_t)get_current_chip_baseaddress());
 }
 inline volatile uint64_t *sys_dma_nextid_ptr(void) {
-    return (volatile uint64_t *)(IDMA_NEXTID_ADDR |
-                                 (uintptr_t)get_current_chip_baseaddress());
+  return (volatile uint64_t *)(IDMA_NEXTID_ADDR |
+                               (uintptr_t)get_current_chip_baseaddress());
 }
 inline volatile uint64_t *sys_dma_done_ptr(void) {
-    return (volatile uint64_t *)(IDMA_DONE_ADDR |
-                                 (uintptr_t)get_current_chip_baseaddress());
+  return (volatile uint64_t *)(IDMA_DONE_ADDR |
+                               (uintptr_t)get_current_chip_baseaddress());
 }
 
-static inline uint64_t sys_dma_memcpy(uint64_t dst, uint64_t src, uint64_t size) {
-    *(sys_dma_src_ptr()) = (uint64_t)src;
-    *(sys_dma_dst_ptr()) = (uint64_t)dst;
-    *(sys_dma_num_bytes_ptr()) = size;
-    *(sys_dma_conf_ptr()) =
-        (IDMA_CONF_DECOUPLE << IDMA_REG64_FRONTEND_CONF_DECOUPLE_BIT) |
-        (IDMA_CONF_DEBURST << IDMA_REG64_FRONTEND_CONF_DEBURST_BIT) |
-        (IDMA_CONF_SERIALIZE << IDMA_REG64_FRONTEND_CONF_SERIALIZE_BIT);
-    return *(sys_dma_nextid_ptr());
+static inline uint64_t sys_dma_memcpy(uint64_t dst, uint64_t src,
+                                      uint64_t size) {
+  *(sys_dma_src_ptr()) = (uint64_t)src;
+  *(sys_dma_dst_ptr()) = (uint64_t)dst;
+  *(sys_dma_num_bytes_ptr()) = size;
+  *(sys_dma_conf_ptr()) =
+      (IDMA_CONF_DECOUPLE << IDMA_REG64_FRONTEND_CONF_DECOUPLE_BIT) |
+      (IDMA_CONF_DEBURST << IDMA_REG64_FRONTEND_CONF_DEBURST_BIT) |
+      (IDMA_CONF_SERIALIZE << IDMA_REG64_FRONTEND_CONF_SERIALIZE_BIT);
+  return *(sys_dma_nextid_ptr());
 }
 
-static inline void sys_dma_blk_memcpy(uint64_t dst, uint64_t src, uint64_t size) {
-    volatile uint64_t tf_id = sys_dma_memcpy(dst, src, size);
+static inline void sys_dma_blk_memcpy(uint64_t dst, uint64_t src,
+                                      uint64_t size) {
+  volatile uint64_t tf_id = sys_dma_memcpy(dst, src, size);
 
-    while (*(sys_dma_done_ptr()) != tf_id) {
-        asm volatile("nop");
-    }
+  while (*(sys_dma_done_ptr()) != tf_id) {
+    asm volatile("nop");
+  }
 }

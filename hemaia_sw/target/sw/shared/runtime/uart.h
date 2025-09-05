@@ -4,9 +4,9 @@
 
 #pragma once
 
+#include "chip_id.h"
 #include <stdarg.h>
 #include <stdint.h>
-#include "chip_id.h"
 
 #include "occamy_base_addr.h"
 
@@ -43,60 +43,60 @@
 */
 
 inline static void write_reg_u8(uintptr_t addr, uint8_t value) {
-    volatile uint8_t *loc_addr = (volatile uint8_t *)addr;
-    *loc_addr = value;
+  volatile uint8_t *loc_addr = (volatile uint8_t *)addr;
+  *loc_addr = value;
 }
 
 inline static uint8_t read_reg_u8(uintptr_t addr) {
-    return *(volatile uint8_t *)addr;
+  return *(volatile uint8_t *)addr;
 }
 
 inline static int is_data_ready(uintptr_t address_prefix) {
-    return read_reg_u8(address_prefix | UART_LINE_STATUS) & 0x01;
+  return read_reg_u8(address_prefix | UART_LINE_STATUS) & 0x01;
 }
 
 inline static int is_data_overrun(uintptr_t address_prefix) {
-    return read_reg_u8(address_prefix | UART_LINE_STATUS) & 0x02;
+  return read_reg_u8(address_prefix | UART_LINE_STATUS) & 0x02;
 }
 
 inline static int is_transmit_empty(uintptr_t address_prefix) {
-    return read_reg_u8(address_prefix | UART_LINE_STATUS) & 0x20;
+  return read_reg_u8(address_prefix | UART_LINE_STATUS) & 0x20;
 }
 
 inline static int is_transmit_done(uintptr_t address_prefix) {
-    return read_reg_u8(address_prefix | UART_LINE_STATUS) & 0x40;
+  return read_reg_u8(address_prefix | UART_LINE_STATUS) & 0x40;
 }
 
 inline static void init_uart(uintptr_t address_prefix, uint32_t freq,
                              uint32_t baud) {
-    uint32_t divisor = freq / (baud << 4);
+  uint32_t divisor = freq / (baud << 4);
 
-    write_reg_u8(address_prefix | UART_INTERRUPT_ENABLE,
-                 0x00);  // Disable all interrupts
-    write_reg_u8(address_prefix | UART_LINE_CONTROL,
-                 0x80);  // Enable DLAB (set baud rate divisor)
-    write_reg_u8(address_prefix | UART_DLAB_LSB, divisor);  // divisor (lo byte)
-    write_reg_u8(address_prefix | UART_DLAB_MSB,
-                 (divisor >> 8) & 0xFF);  // divisor (hi byte)
-    write_reg_u8(address_prefix | UART_LINE_CONTROL,
-                 0x03);  // 8 bits, no parity, one stop bit
-    write_reg_u8(address_prefix | UART_FIFO_CONTROL,
-                 0xC7);  // Enable FIFO, clear them, with 14-byte threshold
-    write_reg_u8(address_prefix | UART_MODEM_CONTROL,
-                 0x22);  // Flow control enabled, auto flow control mode
+  write_reg_u8(address_prefix | UART_INTERRUPT_ENABLE,
+               0x00); // Disable all interrupts
+  write_reg_u8(address_prefix | UART_LINE_CONTROL,
+               0x80); // Enable DLAB (set baud rate divisor)
+  write_reg_u8(address_prefix | UART_DLAB_LSB, divisor); // divisor (lo byte)
+  write_reg_u8(address_prefix | UART_DLAB_MSB,
+               (divisor >> 8) & 0xFF); // divisor (hi byte)
+  write_reg_u8(address_prefix | UART_LINE_CONTROL,
+               0x03); // 8 bits, no parity, one stop bit
+  write_reg_u8(address_prefix | UART_FIFO_CONTROL,
+               0xC7); // Enable FIFO, clear them, with 14-byte threshold
+  write_reg_u8(address_prefix | UART_MODEM_CONTROL,
+               0x22); // Flow control enabled, auto flow control mode
 }
 inline static void print_char(uintptr_t address_prefix, char a) {
-    while (is_transmit_empty(address_prefix) == 0) {
-    };
+  while (is_transmit_empty(address_prefix) == 0) {
+  };
 
-    write_reg_u8(address_prefix | UART_THR, a);
+  write_reg_u8(address_prefix | UART_THR, a);
 }
 
 inline static uint8_t scan_char(uintptr_t address_prefix) {
-    while (is_data_ready(address_prefix) == 0) {
-    };
+  while (is_data_ready(address_prefix) == 0) {
+  };
 
-    return read_reg_u8(address_prefix | UART_RBR);
+  return read_reg_u8(address_prefix | UART_RBR);
 }
 
 int printf(const char *fmt, ...);
