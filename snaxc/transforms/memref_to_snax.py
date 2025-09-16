@@ -91,6 +91,7 @@ class AllocOpRewrite(RewritePattern):
             # to get the entire size needed for a TSL layout,
             # we need to compute the following for all strides:
             # sum_i( (bound_i - 1) * step_i) + 1
+            #
 
             # use shape ops to generate tsl bound ops
             insert_ops, bound_ops = layout.get_bound_ops(shape_ops)

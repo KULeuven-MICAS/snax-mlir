@@ -3,6 +3,7 @@ from xdsl.context import Context
 from xdsl.dialects import arith, builtin, linalg, tensor, tosa
 from xdsl.ir import Attribute, BlockArgument
 from xdsl.ir.affine import AffineDimExpr, AffineMap
+from xdsl.parser import Signedness
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -25,7 +26,7 @@ class RescaleClampPattern(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, rescale_op: tosa.RescaleOp, rewriter: PatternRewriter):
         # searching for the pattern rescale + clamp
-        if len(rescale_op.output.uses) != 1:
+        if rescale_op.output.uses.get_length() != 1:
             return
         if not isinstance(clamp_op := next(iter(rescale_op.output.uses)).operation, tosa.ClampOp):
             # no clamping op after, so we integrate clamping in rescale op to int8 range
@@ -63,7 +64,7 @@ class RescaleClampPattern(RewritePattern):
                 max_int = clamp_op.max_int.value.data
                 min_int = clamp_op.min_int.value.data
         else:
-            assert isinstance(rescale_op.output.type.element_type, builtin.IntegerType)
+            assert isa(rescale_op.output.type.element_type, builtin.IntegerType[int, Signedness])
             min_int, max_int = rescale_op.output.type.element_type.value_range()
             max_int = max_int // 2 - 1
         double_round = rescale_op.double_round.value.data

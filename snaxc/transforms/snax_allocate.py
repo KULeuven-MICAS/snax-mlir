@@ -25,10 +25,6 @@ from snaxc.dialects import snax
 from snaxc.util.snax_memory import L1, SnaxMemory
 
 
-def dense_array(pos: Sequence[int] | Sequence[builtin.IntAttr]):
-    return builtin.DenseArrayBase.create_dense_int(builtin.i64, pos)
-
-
 def create_memref_struct(
     alloc_op: snax.Alloc,
     pointer: SSAValue,
@@ -44,16 +40,20 @@ def create_memref_struct(
     ops_to_insert.append(llvm_struct)
 
     # insert pointer
-    llvm_struct = llvm.InsertValueOp(dense_array([0]), llvm_struct.res, pointer)
+    llvm_struct = llvm.InsertValueOp(builtin.DenseArrayBase.from_list(builtin.i64, [0]), llvm_struct.res, pointer)
     ops_to_insert.append(llvm_struct)
 
     # insert aligned pointer
-    llvm_struct = llvm.InsertValueOp(dense_array([1]), llvm_struct.res, aligned_pointer)
+    llvm_struct = llvm.InsertValueOp(
+        builtin.DenseArrayBase.from_list(builtin.i64, [1]), llvm_struct.res, aligned_pointer
+    )
     ops_to_insert.append(llvm_struct)
 
     # insert offset 0
     cst_zero = arith.ConstantOp.from_int_and_width(0, builtin.i32)
-    llvm_struct = llvm.InsertValueOp(dense_array([2]), llvm_struct.res, cst_zero.result)
+    llvm_struct = llvm.InsertValueOp(
+        builtin.DenseArrayBase.from_list(builtin.i64, [2]), llvm_struct.res, cst_zero.result
+    )
     ops_to_insert.extend([cst_zero, llvm_struct])
 
     # use shape operands to populate shape of memref descriptor
@@ -65,7 +65,9 @@ def create_memref_struct(
         else:
             assert isinstance(shape_op, Operation)
 
-        llvm_struct = llvm.InsertValueOp(dense_array([3, i]), llvm_struct.res, shape_op.results[0])
+        llvm_struct = llvm.InsertValueOp(
+            builtin.DenseArrayBase.from_list(builtin.i64, [3, i]), llvm_struct.res, shape_op.results[0]
+        )
         ops_to_insert.append(llvm_struct)
 
     return llvm_struct, ops_to_insert
@@ -120,9 +122,11 @@ class DynamicAllocs(RewritePattern):
         ops_to_insert.append(func_result)
 
         # extract the allocated pointer and aligned pointer from alloc function call
-        pointer_op = llvm.ExtractValueOp(dense_array([0]), func_result.results[0], llvm.LLVMPointerType.opaque())
+        pointer_op = llvm.ExtractValueOp(
+            builtin.DenseArrayBase.from_list(builtin.i64, [0]), func_result.results[0], llvm.LLVMPointerType.opaque()
+        )
         aligned_pointer_op = llvm.ExtractValueOp(
-            dense_array([1]), func_result.results[0], llvm.LLVMPointerType.opaque()
+            builtin.DenseArrayBase.from_list(builtin.i64, [1]), func_result.results[0], llvm.LLVMPointerType.opaque()
         )
         ops_to_insert.extend([pointer_op, aligned_pointer_op])
 

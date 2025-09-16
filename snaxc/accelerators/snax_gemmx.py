@@ -302,10 +302,10 @@ class SNAXGEMMXAccelerator(
                     max_int_val = rescale_op.max_int.value.data
                     min_int_val = rescale_op.min_int.value.data
                     double_round_val = rescale_op.double_round.value.data
-                    shift_vals_int = cast(tuple[int, ...], rescale_op.shift.get_values())
+                    shift_vals_int = rescale_op.shift.get_values()
                     if len(shift_vals_int) == 1:
                         shift_vals_int = (shift_vals_int[0],) * self.n
-                    mult_vals_int = cast(tuple[int, ...], rescale_op.multiplier.get_values())
+                    mult_vals_int = rescale_op.multiplier.get_values()
                     if len(mult_vals_int) == 1:
                         mult_vals_int = (mult_vals_int[0],) * self.n
                     zp_in_val = rescale_op.input_zp.value.data
@@ -402,8 +402,8 @@ class SNAXGEMMXAccelerator(
             max_int = arith.ConstantOp.from_int_and_width(rescale.max_int.value, i32)
             min_int = arith.ConstantOp.from_int_and_width(rescale.min_int.value, i32)
             double_round = arith.ConstantOp.from_int_and_width(rescale.double_round.value, i32)
-            shift_val = cast(int, rescale.shift.get_values()[0])
-            mult_val = cast(int, rescale.multiplier.get_values()[0])
+            shift_val = rescale.shift.get_values()[0]
+            mult_val = rescale.multiplier.get_values()[0]
             shift = arith.ConstantOp.from_int_and_width(shift_val, i32)
             mult = arith.ConstantOp.from_int_and_width(mult_val, i32)
             zp_in = arith.ConstantOp.from_int_and_width(rescale.input_zp.value, i32)
@@ -488,9 +488,9 @@ class SNAXGEMMXAccelerator(
         m = launch_op.attributes["m"]
         assert isa(m, builtin.IntegerAttr[IntegerType])
         mult_vals = launch_op.attributes["mult_vals"]
-        assert isinstance(mult_vals, DenseArrayBase)
+        assert isa(mult_vals, DenseArrayBase[IntegerType])
         shift_vals = launch_op.attributes["shift_vals"]
-        assert isinstance(shift_vals, DenseArrayBase)
+        assert isa(shift_vals, DenseArrayBase[IntegerType])
         new_m = builtin.IntegerAttr.from_int_and_width(m.value.data // (len(mult_vals) // self.n), m.type.width.data)
 
         ops.append(new_m_val := arith.ConstantOp(new_m))
@@ -502,14 +502,8 @@ class SNAXGEMMXAccelerator(
         # launch streamer once
         ops.append(csr_op(addr_streamer.result, launch_values["launch_streamer"]))
 
-        shift_vals = cast(
-            tuple[int, ...],
-            cast(DenseArrayBase, launch_op.attributes["shift_vals"]).get_values(),
-        )
-        mult_vals = cast(
-            tuple[int, ...],
-            cast(DenseArrayBase, launch_op.attributes["mult_vals"]).get_values(),
-        )
+        shift_vals = cast(DenseArrayBase[IntegerType], launch_op.attributes["shift_vals"]).get_values()
+        mult_vals = cast(DenseArrayBase[IntegerType], launch_op.attributes["mult_vals"]).get_values()
 
         for i in range(len(mult_vals) // self.n):
             # reprogram the shift and mult values

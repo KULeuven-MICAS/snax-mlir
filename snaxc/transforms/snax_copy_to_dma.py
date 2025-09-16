@@ -191,6 +191,7 @@ class TransformDMA(RewritePattern):
                 return
             if isinstance(op.destination.type.layout, TiledStridedLayoutAttr):
                 # if destination is tsl, use those tile sizes
+                # TODO: remove cast when typing issue in xdsl is resolved
                 tile_bounds = op.destination.type.layout.data.tile_bounds()
             else:
                 # otherwise, shape can be used as single-dimension tile sizes
@@ -209,6 +210,7 @@ class TransformDMA(RewritePattern):
                 return
             if isinstance(op.source.type.layout, TiledStridedLayoutAttr):
                 # if destination is tsl, use those tile sizes
+                # TODO: remove cast when typing issue in xdsl is resolved
                 tile_bounds = op.source.type.layout.data.tile_bounds()
             else:
                 # otherwise, shape can be used as single-dimension tile sizes

@@ -109,6 +109,8 @@ class InitMemRefAllocMemorySpace(RewritePattern):
             return
 
         # create new alloc op
+        # TODO: remove this call when typing issue in xdsl is resolved
+        assert isinstance(op.memref.type.layout, builtin.MemRefLayoutAttr | builtin.NoneAttr)
         new_op = memref.AllocOp.get(
             op.memref.type.element_type,
             op.alignment,

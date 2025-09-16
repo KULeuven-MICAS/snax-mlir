@@ -37,7 +37,7 @@ def transform_constant(source: DenseIntOrFPElementsAttr, dest_layout: Attribute)
     """
     Transform a constant op to a new layout.
     """
-    if isa(memref_type := source.type, builtin.MemRefType[builtin.FixedBitwidthType]):
+    if isa(memref_type := source.type, builtin.MemRefType[builtin.AnyDenseElement]):
         pass
 
     elif isinstance(source.type, builtin.TensorType):
@@ -71,7 +71,9 @@ def transform_constant(source: DenseIntOrFPElementsAttr, dest_layout: Attribute)
     bounds = cast(list[int], [stride.bound for stride in strides])
     order = np.argsort(cast(list[int], [stride.step for stride in strides]))
     # get data:
-    values = np.frombuffer(source.data.data, dtype=np.dtype(source.get_element_type().format))
+    source_element_type = source.get_element_type()
+    assert isinstance(source_element_type, builtin.StructPackableType)
+    values = np.frombuffer(source.data.data, dtype=np.dtype(source_element_type.format))
     # transform data:
     values = values.reshape(bounds).transpose(order[::-1])
     # update constant op:
@@ -83,7 +85,8 @@ def transform_constant(source: DenseIntOrFPElementsAttr, dest_layout: Attribute)
         memref_type.memory_space,
     )
 
-    new_value = DenseIntOrFPElementsAttr([new_type, BytesAttr(values.tobytes())])
+    data = BytesAttr(values.tobytes())
+    new_value = DenseIntOrFPElementsAttr(new_type, data)
 
     return new_value
 
@@ -157,7 +160,7 @@ class ApplyLayoutCastSubviewGlobal(RewritePattern):
         if not isinstance(const_source := subview.source.op, memref.GetGlobalOp):
             return
         # global op can only have one use, this subview:
-        if len(subview.source.uses) != 1:
+        if subview.source.uses.get_length() != 1:
             return
         global_op = SymbolTable.lookup_symbol(op, const_source.name_)
         if not isinstance(global_op, memref.GlobalOp):
@@ -206,13 +209,11 @@ class ApplyLayoutCastSubviewGlobal(RewritePattern):
                 return
             new_type = new_constant.type
             new_constant = DenseIntOrFPElementsAttr(
-                [
-                    builtin.TensorType(
-                        new_constant.type.get_element_type(),
-                        new_constant.type.get_shape(),
-                    ),
-                    new_constant.data,
-                ]
+                builtin.TensorType(
+                    new_constant.type.get_element_type(),
+                    new_constant.type.get_shape(),
+                ),
+                new_constant.data,
             )
         else:  # uninitialized global
             new_constant = builtin.UnitAttr()
@@ -334,6 +335,8 @@ class ApplyLayoutCastMemrefAlloc(RewritePattern):
             return
 
         # apply transformation by allocating with the correct layout
+        # TODO: remove this call:
+        assert isinstance(op.dest.type.layout, builtin.MemRefLayoutAttr | builtin.NoneAttr)
         new_alloc_op = memref.AllocOp.get(
             alloc_op.memref.type.get_element_type(),
             alloc_op.alignment,
@@ -380,13 +383,11 @@ class ApplyLayoutCastMemrefGlobal(RewritePattern):
                 return
             new_type = new_constant.type
             new_constant = DenseIntOrFPElementsAttr(
-                [
-                    builtin.TensorType(
-                        new_constant.type.get_element_type(),
-                        new_constant.type.get_shape(),
-                    ),
-                    new_constant.data,
-                ]
+                builtin.TensorType(
+                    new_constant.type.get_element_type(),
+                    new_constant.type.get_shape(),
+                ),
+                new_constant.data,
             )
         else:  # uninitialized global
             new_constant = builtin.UnitAttr()
@@ -499,6 +500,8 @@ class RealizeMemrefCasts(RewritePattern):
                 dyn_operands.append(dim_op)
 
         # create alloc op
+        # TODO: remove this call when typing issue in xdsl is resolved
+        assert isinstance(dest_type.layout, builtin.MemRefLayoutAttr | builtin.NoneAttr)
         alloc_op = memref.AllocOp.get(
             dest_type.get_element_type(),
             64,  # default 64 alignment

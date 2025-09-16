@@ -4,10 +4,11 @@ from typing import cast
 
 from xdsl.builder import Builder
 from xdsl.dialects import arith, linalg
-from xdsl.dialects.builtin import I32, BoolAttr, DenseArrayBase, IntegerType
+from xdsl.dialects.builtin import I32, BoolAttr, DenseArrayBase, IntegerType, Signedness
 from xdsl.ir import Attribute, BlockArgument, Dialect, Operation, Region, SSAValue
 from xdsl.irdl import attr_def, irdl_op_definition, operand_def, result_def
 from xdsl.parser import IntegerAttr, IRDLOperation
+from xdsl.utils.hints import isa
 
 
 class KernelOp(IRDLOperation, ABC):
@@ -139,10 +140,10 @@ class QMacOp(KernelOp, QuantizedBinaryOp, Parsable):
             )
         )
         def equivalent_region(args: tuple[BlockArgument, ...]) -> None:
-            assert isinstance(zp_lhs_type := args[2].type, IntegerType)
+            assert isa(zp_lhs_type := args[2].type, IntegerType[int, Signedness])
             extsi_lhs = arith.ExtSIOp(args[0], zp_lhs_type)
             subi_lhs = arith.SubiOp(extsi_lhs, args[2])
-            assert isinstance(zp_rhs_type := args[3].type, IntegerType)
+            assert isa(zp_rhs_type := args[3].type, IntegerType[int, Signedness])
             extsi_rhs = arith.ExtSIOp(args[1], zp_rhs_type)
             subi_rhs = arith.SubiOp(extsi_rhs, args[3])
             mul = arith.MuliOp(subi_lhs, subi_rhs)
@@ -166,8 +167,8 @@ class RescaleOp(KernelOp):
 
     input_zp = attr_def(IntegerAttr[I32])
     output_zp = attr_def(IntegerAttr[I32])
-    multiplier = attr_def(DenseArrayBase)
-    shift = attr_def(DenseArrayBase)
+    multiplier = attr_def(DenseArrayBase[IntegerType])
+    shift = attr_def(DenseArrayBase[IntegerType])
     max_int = attr_def(IntegerAttr[I32])
     min_int = attr_def(IntegerAttr[I32])
     double_round = attr_def(BoolAttr)
@@ -192,11 +193,11 @@ class RescaleOp(KernelOp):
         if isinstance(output_zp, int):
             output_zp = IntegerAttr.from_int_and_width(output_zp, 32)
         if not isinstance(multiplier, DenseArrayBase):
-            multiplier = DenseArrayBase.create_dense_int(
+            multiplier = DenseArrayBase.from_list(
                 IntegerType(32), [x if isinstance(x, int) else x.value.data for x in multiplier]
             )
         if not isinstance(shift, DenseArrayBase):
-            shift = DenseArrayBase.create_dense_int(
+            shift = DenseArrayBase.from_list(
                 IntegerType(32), [x if isinstance(x, int) else x.value.data for x in shift]
             )
         if isinstance(max_int, int):

@@ -91,8 +91,8 @@ def conv(spec: ConvSpec):
 
     res_types = [output_type, output_type]
 
-    dilations = DenseIntOrFPElementsAttr.tensor_from_list([spec.dilation], i64, [2])
-    strides = DenseIntOrFPElementsAttr.tensor_from_list([spec.stride], i64, [2])
+    dilations = DenseIntOrFPElementsAttr.from_list(TensorType(i64, [2]), [spec.dilation])
+    strides = DenseIntOrFPElementsAttr.from_list(TensorType(i64, [2]), [spec.stride])
 
     # Define Program:
 

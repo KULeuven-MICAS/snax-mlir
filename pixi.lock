@@ -185,7 +185,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/89/9b/599bcfc7064fbe5740919e78c5df18e5dceb0887e676256a1061bb5ae232/virtualenv-20.29.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/52/24/ab44c871b0f07f491e5d2ad12c9bd7358e527510618cb1b803a88e986db1/werkzeug-3.1.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl
-      - pypi: git+https://github.com/xdslproject/xdsl.git?rev=60e3b7970a3eb7fc16ab7e57c2928357bc5d0180#60e3b7970a3eb7fc16ab7e57c2928357bc5d0180
+      - pypi: git+https://github.com/xdslproject/xdsl.git?rev=40857df3e6202602ef1a2361d1ba2ca03584402a#40857df3e6202602ef1a2361d1ba2ca03584402a
       - pypi: ./
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -2160,9 +2160,9 @@ packages:
 - pypi: ./
   name: snax-mlir
   version: 0.2.2
-  sha256: dad56f8e665f75d443019b15ddd6754075dc35a987e0f3e1c06fb4dc0d232e77
+  sha256: f28964efda920b6894f4677113723d74e79f352eedc81eb048a636d3c9426dbb
   requires_dist:
-  - xdsl @ git+https://github.com/xdslproject/xdsl.git@60e3b7970a3eb7fc16ab7e57c2928357bc5d0180
+  - xdsl @ git+https://github.com/xdslproject/xdsl.git@40857df3e6202602ef1a2361d1ba2ca03584402a
   - minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2
   - numpy
   - dacite>=1.9.2,<2
@@ -2420,9 +2420,9 @@ packages:
   - pkg:pypi/wrapt?source=hash-mapping
   size: 63590
   timestamp: 1736869574299
-- pypi: git+https://github.com/xdslproject/xdsl.git?rev=60e3b7970a3eb7fc16ab7e57c2928357bc5d0180#60e3b7970a3eb7fc16ab7e57c2928357bc5d0180
+- pypi: git+https://github.com/xdslproject/xdsl.git?rev=40857df3e6202602ef1a2361d1ba2ca03584402a#40857df3e6202602ef1a2361d1ba2ca03584402a
   name: xdsl
-  version: 0.37.1.dev6+g60e3b797
+  version: 0.51.1.dev32+g40857df3e
   requires_dist:
   - immutabledict<4.2.2
   - typing-extensions>=4.7,<5
@@ -2431,35 +2431,22 @@ packages:
   - pytest-cov ; extra == 'dev'
   - coverage<8.0.0 ; extra == 'dev'
   - ipykernel ; extra == 'dev'
-  - pytest<8.4 ; extra == 'dev'
+  - pytest<8.5 ; extra == 'dev'
   - nbval<0.12 ; extra == 'dev'
-  - filecheck==1.0.2 ; extra == 'dev'
+  - filecheck==1.0.3 ; extra == 'dev'
   - lit<19.0.0 ; extra == 'dev'
-  - marimo==0.13.7 ; extra == 'dev'
+  - marimo==0.15.5 ; extra == 'dev'
   - pre-commit>=4.0.0,<5.0.0 ; extra == 'dev'
-  - ruff==0.11.9 ; extra == 'dev'
+  - ruff==0.13.0 ; extra == 'dev'
   - nbconvert>=7.7.2,<8.0.0 ; extra == 'dev'
   - textual-dev==1.7.0 ; extra == 'dev'
-  - pytest-asyncio==0.26.0 ; extra == 'dev'
-  - pyright==1.1.400 ; extra == 'dev'
+  - pytest-asyncio==1.2.0 ; extra == 'dev'
+  - pyright==1.1.405 ; extra == 'dev'
   - sympy==1.14.0 ; extra == 'dev'
-  - mkdocs-gen-files>=0.5.0 ; extra == 'docs'
-  - mkdocs-material>=9.5.49 ; extra == 'docs'
-  - mkdocs>=1.6.1 ; extra == 'docs'
-  - mkdocstrings[python]>=0.27.0 ; extra == 'docs'
-  - pymdown-extensions>=10.7 ; extra == 'docs'
-  - lzstring2 @ git+https://github.com/superlopuh/lz-string.git ; extra == 'docs'
-  - textual==3.2.0 ; extra == 'gui'
+  - textual>=6,<7 ; extra == 'gui'
   - pyclip==0.7 ; extra == 'gui'
   - jax==0.6.0 ; extra == 'jax'
-  - numpy==2.2.5 ; extra == 'jax'
-  - riscemu==2.2.7 ; extra == 'riscv'
-  - asv>=0.6.4 ; extra == 'bench'
-  - snakeviz>=2.2.2 ; extra == 'bench'
-  - viztracer>=1.0.1 ; extra == 'bench'
-  - flameprof>=0.4 ; extra == 'bench'
-  - orjson>=3.10.15 ; extra == 'bench'
-  - pyinstrument>=5.0.1 ; extra == 'bench'
+  - numpy==2.2.6 ; extra == 'jax'
   requires_python: '>=3.10'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/yaml-0.2.5-h7f98852_2.tar.bz2
   sha256: a4e34c710eeb26945bdbdaba82d3d74f60a78f54a874ec10d373811a5d217535

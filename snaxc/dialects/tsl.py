@@ -30,6 +30,9 @@ class TiledStridedLayoutAttr(MemRefLayoutAttr, Data[TiledStridedLayout]):
 
     name = "tsl.tsl"
 
+    def __hash__(self) -> int:
+        return hash(str(self.data))
+
     @classmethod
     def parse_parameter(cls, parser: AttrParser) -> TiledStridedLayout:
         with parser.in_angle_brackets():

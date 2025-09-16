@@ -3,12 +3,12 @@
 // test function with dispatchable ops to both cores
 "builtin.module"() ({
   "func.func"() <{"sym_name" = "simple_mult", "function_type" = (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> (), "sym_visibility" = "public"}> ({
-  ^0(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>):
+  ^bb0(%0 : memref<64xi32>, %1 : memref<64xi32>, %2 : memref<64xi32>):
     %alloc = "memref.alloc"() <{"operandSegmentSizes" = array<i32: 0, 0>}> {"alignment" = 64 : i64} : () -> memref<64xi32>
     "memref.copy"(%0, %1) : (memref<64xi32>, memref<64xi32>) -> ()
     "snax.cluster_sync_op"() : () -> ()
     "linalg.generic"(%0, %1, %2) <{"indexing_maps" = [affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>, affine_map<(d0) -> (d0)>], "iterator_types" = [#linalg.iterator_type<parallel>], "operandSegmentSizes" = array<i32: 2, 1>}> ({
-    ^1(%arg0 : i32, %arg1 : i32, %arg2 : i32):
+    ^bb1(%arg0 : i32, %arg1 : i32, %arg2 : i32):
       %3 = "arith.muli"(%arg0, %arg1) : (i32, i32) -> i32
       "linalg.yield"(%3) : (i32) -> ()
     }) : (memref<64xi32>, memref<64xi32>, memref<64xi32>) -> ()
