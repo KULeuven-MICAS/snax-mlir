@@ -1,7 +1,8 @@
-from xdsl.dialects.builtin import IntegerType, MemRefType
+from xdsl.dialects.builtin import IntegerType, MemRefType, Signedness
 from xdsl.dialects.llvm import LLVMArrayType, LLVMPointerType, LLVMStructType
 from xdsl.ir import Attribute
 from xdsl.utils.exceptions import VerifyException
+from xdsl.utils.hints import isa
 
 # this file contains useful helper functions to work with
 # llvm struct memref descriptors, which are used for lowering
@@ -68,7 +69,7 @@ class LLVMMemrefDescriptor:
         """
 
         el_type = memref_type.get_element_type()
-        assert isinstance(el_type, IntegerType)
+        assert isa(el_type, IntegerType[int, Signedness])
 
         return cls.from_rank_and_integer_type(memref_type.get_num_dims(), el_type)
 

@@ -3,6 +3,7 @@ from xdsl.context import Context
 from xdsl.dialects import arith, builtin, linalg, tensor, tosa
 from xdsl.ir import Attribute, BlockArgument
 from xdsl.ir.affine import AffineDimExpr, AffineMap
+from xdsl.parser import Signedness
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -63,7 +64,7 @@ class RescaleClampPattern(RewritePattern):
                 max_int = clamp_op.max_int.value.data
                 min_int = clamp_op.min_int.value.data
         else:
-            assert isinstance(rescale_op.output.type.element_type, builtin.IntegerType)
+            assert isa(rescale_op.output.type.element_type, builtin.IntegerType[int, Signedness])
             min_int, max_int = rescale_op.output.type.element_type.value_range()
             max_int = max_int // 2 - 1
         double_round = rescale_op.double_round.value.data
