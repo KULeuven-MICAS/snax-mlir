@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
-      - uses: prefix-dev/setup-pixi@v0.8.8
+      - uses: prefix-dev/setup-pixi@v0.9.0
         with:
           cache: true
           cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
@@ -18,4 +18,18 @@ jobs:
         working-directory: kernels/${{ matrix.kernel }}
     strategy:
       matrix:
-        kernel: [alloc, conv, simple_copy, transform_copy, gemm, gemmini, streamer_alu, streamer_matmul, tiled_add, mlp, xdma, rescale]
+        kernel:
+          [
+            alloc,
+            conv,
+            simple_copy,
+            transform_copy,
+            gemm,
+            gemmini,
+            streamer_alu,
+            streamer_matmul,
+            tiled_add,
+            mlp,
+            xdma,
+            rescale,
+          ]
