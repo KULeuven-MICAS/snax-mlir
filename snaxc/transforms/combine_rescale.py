@@ -22,7 +22,7 @@ class TosaCombineRescaleRewriter(RewritePattern):
         if isinstance(rescale_op.input.owner, Operation):
             if isinstance(rescale_op.input.owner, tosa.RescaleOp):
                 # Only combine if the input does not get used anywhere else
-                if len(rescale_op.input.uses) != 1:
+                if rescale_op.input.uses.get_length() != 1:
                     return
                 prev_rescale_op = rescale_op.input.owner
                 new_input = prev_rescale_op.input
