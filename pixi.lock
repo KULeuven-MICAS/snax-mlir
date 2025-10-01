@@ -185,7 +185,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/89/9b/599bcfc7064fbe5740919e78c5df18e5dceb0887e676256a1061bb5ae232/virtualenv-20.29.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/52/24/ab44c871b0f07f491e5d2ad12c9bd7358e527510618cb1b803a88e986db1/werkzeug-3.1.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl
-      - pypi: git+https://github.com/xdslproject/xdsl.git?rev=40857df3e6202602ef1a2361d1ba2ca03584402a#40857df3e6202602ef1a2361d1ba2ca03584402a
+      - pypi: git+https://github.com/xdslproject/xdsl.git?rev=50e24da282f21d07a99ec210d1aba9f68092d540#50e24da282f21d07a99ec210d1aba9f68092d540
       - pypi: ./
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -2160,9 +2160,9 @@ packages:
 - pypi: ./
   name: snax-mlir
   version: 0.2.2
-  sha256: f28964efda920b6894f4677113723d74e79f352eedc81eb048a636d3c9426dbb
+  sha256: bce8f8e0348749ddce3f406f89c9896f44458ad98d0e60a6f560cbcf5e857929
   requires_dist:
-  - xdsl @ git+https://github.com/xdslproject/xdsl.git@40857df3e6202602ef1a2361d1ba2ca03584402a
+  - xdsl @ git+https://github.com/xdslproject/xdsl.git@50e24da282f21d07a99ec210d1aba9f68092d540
   - minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2
   - numpy
   - dacite>=1.9.2,<2
@@ -2420,9 +2420,9 @@ packages:
   - pkg:pypi/wrapt?source=hash-mapping
   size: 63590
   timestamp: 1736869574299
-- pypi: git+https://github.com/xdslproject/xdsl.git?rev=40857df3e6202602ef1a2361d1ba2ca03584402a#40857df3e6202602ef1a2361d1ba2ca03584402a
+- pypi: git+https://github.com/xdslproject/xdsl.git?rev=50e24da282f21d07a99ec210d1aba9f68092d540#50e24da282f21d07a99ec210d1aba9f68092d540
   name: xdsl
-  version: 0.51.1.dev32+g40857df3e
+  version: 0.53.1.dev8+g50e24da28
   requires_dist:
   - immutabledict<4.2.2
   - typing-extensions>=4.7,<5
@@ -2435,9 +2435,9 @@ packages:
   - nbval<0.12 ; extra == 'dev'
   - filecheck==1.0.3 ; extra == 'dev'
   - lit<19.0.0 ; extra == 'dev'
-  - marimo==0.15.5 ; extra == 'dev'
+  - marimo==0.16.3 ; extra == 'dev'
   - pre-commit>=4.0.0,<5.0.0 ; extra == 'dev'
-  - ruff==0.13.0 ; extra == 'dev'
+  - ruff==0.13.2 ; extra == 'dev'
   - nbconvert>=7.7.2,<8.0.0 ; extra == 'dev'
   - textual-dev==1.7.0 ; extra == 'dev'
   - pytest-asyncio==1.2.0 ; extra == 'dev'
