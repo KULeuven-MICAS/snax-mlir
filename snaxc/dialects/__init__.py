@@ -26,6 +26,11 @@ def get_all_snax_dialects() -> dict[str, Callable[[], Dialect]]:
 
         return Kernel
 
+    def get_phs():
+        from snaxc.dialects.phs import Phs
+
+        return Phs
+
     def get_pipeline():
         from snaxc.dialects.pipeline import Pipeline
 
@@ -51,6 +56,7 @@ def get_all_snax_dialects() -> dict[str, Callable[[], Dialect]]:
         "dart": get_dart,
         "debug": get_debug,
         "kernel": get_kernel,
+        "phs": get_phs,
         "pipeline": get_pipeline,
         "snax": get_snax,
         "snax_stream": get_snax_stream,

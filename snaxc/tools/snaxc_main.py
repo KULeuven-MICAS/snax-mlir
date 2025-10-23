@@ -33,6 +33,7 @@ from snaxc.transforms.frontend.preprocess_mlir import PreprocessPass
 from snaxc.transforms.insert_accfg_op import InsertAccOp
 from snaxc.transforms.insert_sync_barrier import InsertSyncBarrier
 from snaxc.transforms.memref_to_snax import MemrefToSNAX
+from snaxc.transforms.phs.aggregate_bodies import AggregateBodyPass
 from snaxc.transforms.pipeline.construct_pipeline import ConstructPipelinePass
 from snaxc.transforms.pipeline.pipeline_canonicalize_for import PipelineCanonicalizeFor
 from snaxc.transforms.pipeline.pipeline_duplicate_buffers import PipelineDuplicateBuffersPass
