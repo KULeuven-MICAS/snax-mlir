@@ -4,7 +4,7 @@ from typing import cast
 from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.dialects.arith import AddiOp, ConstantOp, DivUIOp, MuliOp
-from xdsl.dialects.builtin import FixedBitwidthType, IndexType
+from xdsl.dialects.builtin import DYNAMIC_INDEX, FixedBitwidthType, IndexType
 from xdsl.dialects.memref import ExtractAlignedPointerAsIndexOp, SubviewOp
 from xdsl.ir import Attribute, Operation, OpResult
 from xdsl.parser import MemRefType
@@ -33,7 +33,7 @@ class LowerExtractAlignedPointerOp(RewritePattern):
         if not isinstance(source_type.layout, TiledStridedLayoutAttr):
             return
         dynamic_index_list = [
-            i for i, offset in enumerate(subview.static_offsets.get_values()) if offset == SubviewOp.DYNAMIC_INDEX
+            i for i, offset in enumerate(subview.static_offsets.get_values()) if offset == DYNAMIC_INDEX
         ]
         ops_to_add: list[Operation] = []
         aligned_pointer = ExtractAlignedPointerAsIndexOp.get(subview.source)
