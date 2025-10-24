@@ -31,8 +31,6 @@ class AggregateBodyPattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: linalg.GenericOp , rewriter: PatternRewriter):
-        #from xdsl.printer import Printer
-        #p = Printer()
         assert op.body.first_block is not None
 
 
@@ -43,53 +41,42 @@ class AggregateBodyPattern(RewritePattern):
         # Bail if not f32
         for arg in op.body.first_block.args:
             if not isinstance(arg.type, Float32Type):
-                #p.print_block(op.body.first_block)
                 return
 
         # Bail if it contains an unsupported operation
         for operation in op.body.first_block.walk():
             if not is_part_of(operation, allowed_ops):
-                #p.print_op(operation)
                 return
 
         # Bail if aggregate_to is not given
         if "aggregate_to" not in op.attributes.keys():
             return
 
-        accelerator_ref = op.attributes["aggregate_to"]
-        assert isinstance(accelerator_ref, SymbolRefAttr)
-
+        # else, go ahead and add to abstract pe operation
+        acc_ref = op.attributes["aggregate_to"]
+        assert isinstance(acc_ref, SymbolRefAttr)
         t = self.module.get_trait(SymbolTable)
-
         assert t is not None
-        if t.lookup_symbol(self.module, accelerator_ref) is None:
+        abstract_pe_op = t.lookup_symbol(self.module, acc_ref)
+
+        if abstract_pe_op is None:
+            # Abstract op does not exist yet, so create a new one for the current operation
             operation = op.body.first_block.ops.first
             assert isinstance(operation, FloatingPointLikeBinaryOperation)
-            if is_part_of(operation, bin_arithops):
-                in_types = [operation.lhs.type, operation.rhs.type, IndexType()]
-                out_types = [Float32Type()]
-                block = Block(arg_types=in_types)
-                lhs, rhs, switch = block.args
-                block.add_ops([
-                    result := phs.ChooseOpOp.from_operation(lhs, rhs, switch, type(operation),[Float32Type()]),
-                    phs.YieldOp(result)
-                ])
-                abstract_pe_op = phs.AbstractPEOperation(
-                    accelerator_ref.string_value(), (in_types,out_types),
-                    Region(block)
-                )
-                update = t.insert_or_update(self.module, abstract_pe_op)
-                assert update is None
+            abstract_pe_op = phs.AbstractPEOperation.from_operation(
+                acc_ref,
+                operation,
+            )
+            # Add the new one to the symbol table of the module
+            t.insert_or_update(self.module, abstract_pe_op)
         else:
+            assert isinstance(abstract_pe_op, phs.AbstractPEOperation)
             operation = op.body.first_block.ops.first
             assert isinstance(operation, FloatingPointLikeBinaryOperation)
-            abstract_pe_op = t.lookup_symbol(self.module, accelerator_ref)
-            assert isinstance(abstract_pe_op, phs.AbstractPEOperation)
             choose_op = abstract_pe_op.regions[0].ops.first
             assert isinstance(choose_op, phs.ChooseOpOp)
             if operation not in list(choose_op.operations()):
                 choose_op.add_operation(type(operation))
-
 
 
 class AggregateBodiesPass(ModulePass):

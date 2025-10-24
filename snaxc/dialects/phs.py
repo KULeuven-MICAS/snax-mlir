@@ -1,3 +1,4 @@
+from os import walk
 from typing import Iterator, Sequence, Type
 from xdsl.dialects.builtin import ArrayAttr, DictionaryAttr, Float32Type, IndexType, StringAttr, FunctionType
 from xdsl.dialects.func import FuncOpCallableInterface
@@ -15,7 +16,8 @@ from xdsl.irdl import (
     var_region_def,
     lazy_traits_def,
 )
-from xdsl.ir import Block, Dialect, Attribute, Region, SSAValue
+from xdsl.ir import Block, BlockArgument, Dialect, Attribute, Region, SSAValue
+from xdsl.parser import SymbolRefAttr
 from xdsl.traits import HasAncestor, IsTerminator, IsolatedFromAbove, Pure, SymbolOpInterface
 from xdsl.utils.exceptions import VerifyException
 from xdsl.dialects.arith import FloatingPointLikeBinaryOperation
@@ -58,11 +60,12 @@ class ChooseOpOp(IRDLOperation):
         lhs: Operation | SSAValue,
         rhs: Operation | SSAValue,
         switch: Operation | SSAValue,
-        default_region : Region = Region(),
-        case_regions : Sequence[Region] = [],
+        default_region: Region = Region(Block([YieldOp()])),
+        case_regions: Sequence[Region] = [],
         result_types: Sequence[Attribute] = [],
         attr_dict: dict[str, Attribute] | None = None,
     ):
+        # FIXME if you use an empty region this thing fails verification
         super().__init__(
             operands=(lhs, rhs, switch),
             regions=(default_region, case_regions),
@@ -77,18 +80,20 @@ class ChooseOpOp(IRDLOperation):
         switch: Operation | SSAValue,
         operation: type[FloatingPointLikeBinaryOperation],
         result_types: Sequence[Attribute] = [],
-    ):
+    ) -> "ChooseOpOp":
         return ChooseOpOp(
             lhs=lhs,
             rhs=rhs,
             switch=switch,
-            default_region=
-                Region(
-                    Block([
-                        result:=operation(lhs, rhs),
+            default_region=Region(
+                Block(
+                    [
+                        result := operation(lhs, rhs),
                         YieldOp(result),
-                ])),
-            result_types=result_types
+                    ]
+                )
+            ),
+            result_types=result_types,
         )
 
     def add_operation(self, operation: type[FloatingPointLikeBinaryOperation]):
@@ -97,16 +102,17 @@ class ChooseOpOp(IRDLOperation):
         """
         self.add_region(Region(Block([op := operation(self.lhs, self.rhs), YieldOp(op)])))
 
-    def operations(self) -> Iterator[FloatingPointLikeBinaryOperation]:
+    def operations(self) -> Iterator[FloatingPointLikeBinaryOperation | None]:
         """
         Get an iterator over the list of existing choices of operations
         """
         for region in self.regions:
             # Only yield the first operation in the region
             operation = region.ops.first
-            assert isinstance(operation, FloatingPointLikeBinaryOperation)
-            yield operation
-
+            if isinstance(operation, FloatingPointLikeBinaryOperation):
+                yield operation
+            else:
+                yield None
 
 
 @irdl_op_definition
@@ -153,7 +159,7 @@ class AbstractPEOperation(IRDLOperation):
 
     def __init__(
         self,
-        name : str,
+        name: str,
         function_type: FunctionType | tuple[Sequence[Attribute], Sequence[Attribute]],
         region: Region | type[Region.DEFAULT] = Region.DEFAULT,
         *,
@@ -184,12 +190,44 @@ class AbstractPEOperation(IRDLOperation):
         assert entry_block is not None
         block_arg_types = entry_block.arg_types
         if self.function_type.inputs.data != tuple(block_arg_types):
-            raise VerifyException(
-                "Expected entry block arguments to have the same types as the function "
-                "input types"
-            )
+            raise VerifyException("Expected entry block arguments to have the same types as the function input types")
 
-    def walk_choose_ops(self, *, reverse :bool, region_first : bool) -> Iterator[Operation]:
+    @staticmethod
+    def from_operation(acc_ref: SymbolRefAttr, operation: FloatingPointLikeBinaryOperation) -> "AbstractPEOperation":
+        """
+        Utility constructor that fills up an Abstract PE operation with a simple preset
+        based on an operation
+        """
+        switch_types = [IndexType()]
+        # Based on operation
+        in_types = [operation.lhs.type, operation.rhs.type]
+        out_types = [operation.result.type]
+        # Construct a new block based on the input of the
+        block_inputs = [*in_types, *switch_types]
+        block = Block(arg_types=block_inputs)
+        # Map block args to inputs and outputs to yield
+        lhs, rhs, switch = block.args
+        block.add_ops(
+            [
+                result := ChooseOpOp.from_operation(
+                    lhs, rhs, switch, operation=type(operation), result_types=out_types
+                ),
+                YieldOp(result),
+            ]
+        )
+        abstract_pe_op = AbstractPEOperation(acc_ref.string_value(), (block_inputs, out_types), Region(block))
+        return abstract_pe_op
+
+    def _add_extra_switch(self) -> BlockArgument:
+        block = self.regions[0].blocks.first
+        assert block is not None
+        # Add new switch at the end
+        self.function_type = FunctionType.from_lists(
+            list(self.function_type.inputs) + [IndexType()], list(self.function_type.outputs)
+        )
+        return block.insert_arg(IndexType(), len(block.args))
+
+    def walk_choose_ops(self, *, reverse: bool, region_first: bool) -> Iterator[Operation]:
         for op in self.walk(reverse=reverse, region_first=region_first):
             if isinstance(op, ChooseOpOp):
                 yield op
