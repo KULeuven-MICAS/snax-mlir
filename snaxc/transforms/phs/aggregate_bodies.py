@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from xdsl.dialects.builtin import ArrayAttr, Float32Type, IndexType, ModuleOp, SymbolRefAttr, FunctionType
-from xdsl.ir import Operation, Region, Block 
+from xdsl.ir import Operation, Region, Block
 from xdsl.passes import ModulePass
 from xdsl.context import Context
 from xdsl.dialects import linalg, builtin
@@ -10,14 +10,14 @@ from xdsl.traits import SymbolTable
 from snaxc.dialects import phs
 
 
-
-
-
-bin_arithops : list[type[Operation]] = [op for op in Arith.operations if issubclass(op, FloatingPointLikeBinaryOperation)]
+bin_arithops: list[type[Operation]] = [
+    op for op in Arith.operations if issubclass(op, FloatingPointLikeBinaryOperation)
+]
 linalg_yield = [linalg.YieldOp]
-allowed_ops : list[type[Operation]] = bin_arithops + linalg_yield
+allowed_ops: list[type[Operation]] = bin_arithops + linalg_yield
 
-def is_part_of(op : Operation, classes : list[type[Operation]]):
+
+def is_part_of(op: Operation, classes: list[type[Operation]]):
     for operation_class in classes:
         if isinstance(op, operation_class):
             return True
@@ -26,13 +26,11 @@ def is_part_of(op : Operation, classes : list[type[Operation]]):
 
 @dataclass(frozen=True)
 class AggregateBodyPattern(RewritePattern):
-
-    module : ModuleOp # FIXME, there are probably better ways to get this module?
+    module: ModuleOp  # FIXME, there are probably better ways to get this module?
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: linalg.GenericOp , rewriter: PatternRewriter):
+    def match_and_rewrite(self, op: linalg.GenericOp, rewriter: PatternRewriter):
         assert op.body.first_block is not None
-
 
         # Bail if it returns multiple outputs
         if len(op.results) > 1:
@@ -81,7 +79,7 @@ class AggregateBodyPattern(RewritePattern):
 
 class AggregateBodiesPass(ModulePass):
     name = "aggregate-bodies"
+
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(AggregateBodyPattern(module=op)).rewrite_module(op)
         return
-

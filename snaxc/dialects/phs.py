@@ -1,8 +1,10 @@
 from os import walk
 from typing import Iterator, Sequence, Type
+from xdsl import dialects
 from xdsl.dialects.builtin import ArrayAttr, DictionaryAttr, Float32Type, IndexType, StringAttr, FunctionType
 from xdsl.dialects.func import FuncOpCallableInterface
 from xdsl.dialects.utils import AbstractYieldOperation
+from xdsl.dialects import linalg
 from xdsl.irdl import (
     Operation,
     irdl_op_definition,
@@ -18,7 +20,7 @@ from xdsl.irdl import (
 )
 from xdsl.ir import Block, BlockArgument, Dialect, Attribute, Region, SSAValue
 from xdsl.parser import SymbolRefAttr
-from xdsl.traits import HasAncestor, IsTerminator, IsolatedFromAbove, Pure, SymbolOpInterface
+from xdsl.traits import HasAncestor, IsTerminator, IsolatedFromAbove, Pure, SymbolOpInterface, SymbolTable
 from xdsl.utils.exceptions import VerifyException
 from xdsl.dialects.arith import FloatingPointLikeBinaryOperation
 
@@ -40,6 +42,8 @@ class YieldOp(AbstractYieldOperation[Attribute]):
 class ChooseOpOp(IRDLOperation):
     name = "phs.choose_op"
 
+    name_prop = prop_def(StringAttr, prop_name="sym_name")
+
     lhs = operand_def(Float32Type)
     rhs = operand_def(Float32Type)
 
@@ -53,10 +57,15 @@ class ChooseOpOp(IRDLOperation):
 
     res = result_def(Float32Type)
 
-    assembly_format = "`(`$lhs`:`type($lhs)`,` $rhs`:`type($rhs)`)` `->` type($res) `with` $switch $default_region $case_regions attr-dict"
+    assembly_format = " $sym_name` ` `(`$lhs`:`type($lhs)`,` $rhs`:`type($rhs)`)` `->` type($res) `with` $switch $default_region $case_regions attr-dict"
+
+    traits = traits_def(SymbolOpInterface())
+
+    #from xdsl.dialects import func
 
     def __init__(
         self,
+        name: str,
         lhs: Operation | SSAValue,
         rhs: Operation | SSAValue,
         switch: Operation | SSAValue,
@@ -67,6 +76,9 @@ class ChooseOpOp(IRDLOperation):
     ):
         # FIXME if you use an empty region this thing fails verification
         super().__init__(
+            properties={
+                "sym_name": StringAttr(name),
+            },
             operands=(lhs, rhs, switch),
             regions=(default_region, case_regions),
             attributes=attr_dict,
@@ -75,6 +87,7 @@ class ChooseOpOp(IRDLOperation):
 
     @staticmethod
     def from_operation(
+        name: str,
         lhs: Operation | SSAValue,
         rhs: Operation | SSAValue,
         switch: Operation | SSAValue,
@@ -82,6 +95,7 @@ class ChooseOpOp(IRDLOperation):
         result_types: Sequence[Attribute] = [],
     ) -> "ChooseOpOp":
         return ChooseOpOp(
+            name=name,
             lhs=lhs,
             rhs=rhs,
             switch=switch,
@@ -155,7 +169,7 @@ class AbstractPEOperation(IRDLOperation):
     arg_attrs = opt_prop_def(ArrayAttr[DictionaryAttr])
     res_attrs = opt_prop_def(ArrayAttr[DictionaryAttr])
 
-    traits = traits_def(IsolatedFromAbove(), SymbolOpInterface(), FuncOpCallableInterface())
+    traits = traits_def(IsolatedFromAbove(), SymbolOpInterface(), FuncOpCallableInterface(), SymbolTable())
 
     def __init__(
         self,
@@ -210,13 +224,41 @@ class AbstractPEOperation(IRDLOperation):
         block.add_ops(
             [
                 result := ChooseOpOp.from_operation(
-                    lhs, rhs, switch, operation=type(operation), result_types=out_types
+                    "0", lhs, rhs, switch, operation=type(operation), result_types=out_types
                 ),
                 YieldOp(result),
             ]
         )
         abstract_pe_op = AbstractPEOperation(acc_ref.string_value(), (block_inputs, out_types), Region(block))
         return abstract_pe_op
+
+
+    def get_choose_op(self, symbol_name : str ) -> ChooseOpOp | None:
+        symbol = StringAttr(symbol_name)
+        t = self.get_trait(SymbolTable)
+        assert t is not None
+        choose_op_op = t.lookup_symbol(self, symbol)
+        if choose_op_op is None:
+            return choose_op_op
+        else:
+            assert isinstance(choose_op_op, ChooseOpOp)
+            return choose_op_op
+
+  #  @staticmethod
+  #  def from_generic_body(acc_ref: SymbolRefAttr, generic_body: Block) -> "AbstractPEOperation":
+  #      """
+  #      Add operations from a linalg generic body to the Abstract PE
+  #      """
+  #      linalg_yield = generic_body.ops.last
+  #      # Error if not a linalg body
+  #      assert isinstance(linalg_yield, linalg.YieldOp), 'No linalg.yield found, is this a valid linalg.generic body?'
+  #      # Error if multiple values are yielded
+  #      assert len(linalg_yield.results) == 1
+  #      linalg_yield.results[]
+  #      return None
+
+
+
 
     def _add_extra_switch(self) -> BlockArgument:
         block = self.regions[0].blocks.first
