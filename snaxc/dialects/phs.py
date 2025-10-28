@@ -1,5 +1,4 @@
 from typing import Iterator, Sequence, Generator
-from xdsl import dialects
 from xdsl.dialects.builtin import ArrayAttr, DictionaryAttr, Float32Type, IndexType, StringAttr, FunctionType
 from xdsl.dialects.func import FuncOpCallableInterface
 from xdsl.dialects.utils import AbstractYieldOperation
@@ -126,6 +125,11 @@ class AbstractPEOperation(IRDLOperation):
             assert isinstance(choose_op_op, ChooseOpOp)
             return choose_op_op
 
+    def get_terminator(self) -> YieldOp:
+        yield_op = self.body.ops.last
+        assert isinstance(yield_op, YieldOp)
+        return yield_op
+
   #  @staticmethod
   #  def from_generic_body(acc_ref: SymbolRefAttr, generic_body: Block) -> "AbstractPEOperation":
   #      """
@@ -142,7 +146,7 @@ class AbstractPEOperation(IRDLOperation):
 
 
 
-    def _add_extra_switch(self) -> BlockArgument:
+    def add_extra_switch(self) -> BlockArgument:
         block = self.regions[0].blocks.first
         assert block is not None
         # Add new switch at the end

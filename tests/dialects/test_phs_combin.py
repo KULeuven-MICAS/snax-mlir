@@ -1,3 +1,4 @@
+from os import walk
 from typing import Sequence
 from numpy import choose
 from xdsl.dialects.arith import AddfOp, FloatingPointLikeBinaryOperation, MulfOp, SubfOp
@@ -51,10 +52,29 @@ def test_combine() -> None:
             phs.YieldOp(result),
         ]
     )
+    blockC = Block(arg_types=block_inputs)
+    lhs, rhs, switch = blockC.args
+    blockC.add_ops(
+        [
+            result := phs.ChooseOpOp(
+                "0", lhs, rhs, switch, Region(Block([
+                    result_in := MulfOp(lhs, rhs),
+                    phs.YieldOp(result_in),
+                ])), result_types=out_types),
+            result_2 := phs.ChooseOpOp(
+            "1", lhs, result, switch, Region(Block([
+                result_in := MulfOp(lhs, rhs),
+                phs.YieldOp(result_in),
+            ])), result_types=out_types),
+            phs.YieldOp(result_2),
+        ]
+    )
     #printer.print_block(blockB)
     abstract_pe_a = phs.AbstractPEOperation("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockA))
     abstract_pe_b = phs.AbstractPEOperation("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockB))
+    abstract_pe_c = phs.AbstractPEOperation("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockC))
     append_to_abstract_graph(abstract_pe_a, abstract_pe_b)
+    append_to_abstract_graph(abstract_pe_c, abstract_pe_b)
     print(abstract_pe_b)
 
     return
@@ -63,7 +83,6 @@ def walk_block_reverse(operation: Operation | Block):
     if not isinstance(operation, Operation):
         return
     else:
-        print(operation)
         if isinstance(operation, phs.YieldOp):
             walk_block_reverse(operation.arguments[0].owner)
         if isinstance(operation, phs.ChooseOpOp):
@@ -80,7 +99,7 @@ def get_equivalent_owner(
     if isinstance(operand, BlockArgument):
         return abstract_graph.body.block.args[operand.index]
     elif isinstance(operand.owner, phs.ChooseOpOp):
-        return abstract_graph.get_choose_op(str(operand.owner.name_prop))
+        return abstract_graph.get_choose_op(operand.owner.name_prop.data)
 
 def are_equivalent(operand: Operand, abstract_operand: Operand) -> bool:
     """
@@ -92,7 +111,7 @@ def are_equivalent(operand: Operand, abstract_operand: Operand) -> bool:
         return operand.index == abstract_operand.index
     elif isinstance(operand.owner, phs.ChooseOpOp):
         assert isinstance(abstract_operand.owner, phs.ChooseOpOp), msg
-        return operand.owner.name_prop == abstract_operand.owner.name_prop
+        return operand.owner.name_prop.data == abstract_operand.owner.name_prop.data
     else:
         return False
 
@@ -101,8 +120,9 @@ def append_to_abstract_graph(
         graph : phs.AbstractPEOperation,
         abstract_graph : phs.AbstractPEOperation,
 ):
-    for choose_op in graph.body.ops:
-        if isinstance(choose_op, phs.ChooseOpOp):
+    for op in graph.body.ops:
+        if isinstance(op, phs.ChooseOpOp):
+            choose_op = op
             choose_op_id = choose_op.name_prop.data
             # Get the similar operation in the other one
             abstract_choose_op = abstract_graph.get_choose_op(choose_op_id)
@@ -120,7 +140,6 @@ def append_to_abstract_graph(
                     operations.append(type(op))
 
                 operations = [type(op) for op in choose_op.operations()]
-                print(choose_op_id)
                 abstract_choose_op = phs.ChooseOpOp.from_operations(
                     choose_op_id,
                     lhs,
@@ -129,13 +148,14 @@ def append_to_abstract_graph(
                     operations,
                     [Float32Type()]
                 )
-                abstract_graph.body.block.add_op(abstract_choose_op)
+                abstract_graph.body.block.insert_op_before(abstract_choose_op, abstract_graph.get_terminator())
             else:
                 # Make sure all connections are equivalent, otherwise add extra connections
                 for opnd, abst_opnd in zip(choose_op.operands, abstract_choose_op.operands,strict=True):
                     if are_equivalent(opnd, abst_opnd):
                         continue
                     else:
+                        # Add a mux to the switch
                         raise NotImplementedError()
 
             # Add operations to abstract_choose_op if they are not there yet
@@ -147,6 +167,24 @@ def append_to_abstract_graph(
                     assert isinstance(operation, FloatingPointLikeBinaryOperation)
                     missing_ops.append(type(operation))
             abstract_choose_op.add_operations(missing_ops)
+
+        elif isinstance(op, phs.YieldOp):
+            # Make sure all connections are equivalent, otherwise add extra connections
+            abstract_terminator = abstract_graph.get_terminator()
+            for i, (opnd, abst_opnd) in enumerate(zip(op.operands, abstract_terminator.operands, strict=True)):
+                if are_equivalent(opnd, abst_opnd):
+                    continue
+                else:
+                    # Add a mux to the switch
+                    equivalent_owner = get_equivalent_owner(opnd, abstract_graph)
+                    assert equivalent_owner is not None
+                    mux = phs.ChooseInputOp(lhs=abst_opnd, # this is the default connection
+                                      rhs=equivalent_owner,
+                                      switch=abstract_graph.add_extra_switch(),
+                                      result_types=[Float32Type()],
+                                      )
+                    abstract_graph.body.block.insert_op_before(mux,abstract_terminator)
+                    abstract_terminator.operands[i] = mux.results[0]
 
 
 if __name__ == "__main__":
