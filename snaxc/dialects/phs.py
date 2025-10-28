@@ -88,24 +88,26 @@ class AbstractPEOperation(IRDLOperation):
             raise VerifyException("Expected entry block arguments to have the same types as the function input types")
 
     @staticmethod
-    def from_operation(acc_ref: SymbolRefAttr, operation: FloatingPointLikeBinaryOperation) -> "AbstractPEOperation":
+    def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[FloatingPointLikeBinaryOperation]) -> "AbstractPEOperation":
         """
         Utility constructor that fills up an Abstract PE operation with a simple preset
         based on an operation
         """
         switch_types = [IndexType()]
         # Based on operation
-        in_types = [operation.lhs.type, operation.rhs.type]
-        out_types = [operation.result.type]
+        # FIXME check if all operations have the same types!
+        in_types = [operations[0].lhs.type, operations[0].rhs.type]
+        out_types = [operations[0].result.type]
         # Construct a new block based on the input of the
         block_inputs = [*in_types, *switch_types]
         block = Block(arg_types=block_inputs)
         # Map block args to inputs and outputs to yield
         lhs, rhs, switch = block.args
+        type_ops = [type(op) for op in operations]
         block.add_ops(
             [
-                result := ChooseOpOp.from_operation(
-                    "0", lhs, rhs, switch, operation=type(operation), result_types=out_types
+                result := ChooseOpOp.from_operations(
+                    "0", lhs, rhs, switch, operations=type_ops, result_types=out_types
                 ),
                 YieldOp(result),
             ]
@@ -201,37 +203,54 @@ class ChooseOpOp(IRDLOperation):
         )
 
     @staticmethod
-    def from_operation(
+    def from_operations(
         name: str,
         lhs: Operation | SSAValue,
         rhs: Operation | SSAValue,
         switch: Operation | SSAValue,
-        operation: type[FloatingPointLikeBinaryOperation],
+        operations: Sequence[type[FloatingPointLikeBinaryOperation]],
         result_types: Sequence[Attribute] = [],
     ) -> "ChooseOpOp":
+        # Default operation
+        case_regions : list[Region] = []
+        if len(operations) < 1:
+            for operation in operations[1:]:
+                case_regions.append(
+                    Region(
+                        Block(
+                            [
+                                result := operation(lhs, rhs),
+                                YieldOp(result),
+                            ]
+                        )
+                    )
+                )
+        default_region = Region(
+            Block(
+                [
+                    result := operations[0](lhs, rhs),
+                    YieldOp(result),
+                ]
+            )
+        )
         return ChooseOpOp(
             name=name,
             lhs=lhs,
             rhs=rhs,
             switch=switch,
-            default_region=Region(
-                Block(
-                    [
-                        result := operation(lhs, rhs),
-                        YieldOp(result),
-                    ]
-                )
-            ),
+            default_region=default_region,
+            case_regions=case_regions,
             result_types=result_types,
         )
 
-    def add_operation(self, operation: type[FloatingPointLikeBinaryOperation]):
+    def add_operations(self, operations: Sequence[type[FloatingPointLikeBinaryOperation]]):
         """
-        Add an operation to the list of choices
+        Add an operation to the list of choices, ignores Nones
         """
-        self.add_region(Region(Block([op := operation(self.lhs, self.rhs), YieldOp(op)])))
+        for operation in operations:
+            self.add_region(Region(Block([op := operation(self.lhs, self.rhs), YieldOp(op)])))
 
-    def operations(self) -> Iterator[FloatingPointLikeBinaryOperation | None]:
+    def operations(self) -> Iterator[FloatingPointLikeBinaryOperation]:
         """
         Get an iterator over the list of existing choices of operations
         """
@@ -240,8 +259,6 @@ class ChooseOpOp(IRDLOperation):
             operation = region.ops.first
             if isinstance(operation, FloatingPointLikeBinaryOperation):
                 yield operation
-            else:
-                yield None
 
 
 @irdl_op_definition

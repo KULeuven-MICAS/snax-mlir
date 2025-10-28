@@ -61,9 +61,9 @@ class AggregateBodyPattern(RewritePattern):
             # Abstract op does not exist yet, so create a new one for the current operation
             operation = op.body.first_block.ops.first
             assert isinstance(operation, FloatingPointLikeBinaryOperation)
-            abstract_pe_op = phs.AbstractPEOperation.from_operation(
+            abstract_pe_op = phs.AbstractPEOperation.from_operations(
                 acc_ref,
-                operation,
+                [operation],
             )
             # Add the new one to the symbol table of the module
             t.insert_or_update(self.module, abstract_pe_op)
@@ -74,7 +74,7 @@ class AggregateBodyPattern(RewritePattern):
             choose_op = abstract_pe_op.regions[0].ops.first
             assert isinstance(choose_op, phs.ChooseOpOp)
             if operation not in list(choose_op.operations()):
-                choose_op.add_operation(type(operation))
+                choose_op.add_operations([type(operation)])
 
 
 class AggregateBodiesPass(ModulePass):
