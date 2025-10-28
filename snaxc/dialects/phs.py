@@ -247,12 +247,14 @@ class ChooseOpOp(IRDLOperation):
             result_types=result_types,
         )
 
-    def add_operations(self, operations: Sequence[type[FloatingPointLikeBinaryOperation]]):
+    def insert_operations(self, operations: Sequence[FloatingPointLikeBinaryOperation]):
         """
-        Add an operation to the list of choices, ignores Nones
+        Add an operation to the list of choices if it is not present yet
         """
+        # FIXME, what if operation order is swapped? i.e. rhs on lhs side and vice versa?
         for operation in operations:
-            self.add_region(Region(Block([op := operation(self.lhs, self.rhs), YieldOp(op)])))
+            if operation.name not in [op.name for op in self.operations()]:
+                self.add_region(Region(Block([op := type(operation)(self.lhs, self.rhs), YieldOp(op)])))
 
     def operations(self) -> Iterator[FloatingPointLikeBinaryOperation]:
         """

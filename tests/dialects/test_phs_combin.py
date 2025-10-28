@@ -158,15 +158,7 @@ def append_to_abstract_graph(
                         # Add a mux to the switch
                         raise NotImplementedError()
 
-            # Add operations to abstract_choose_op if they are not there yet
-            # FIXME, what if operation order is swapped? i.e. rhs on lhs side and vice versa?
-            missing_ops : Sequence[type[FloatingPointLikeBinaryOperation]] = []
-            abstract_names = [op.name for op in abstract_choose_op.operations()]
-            for operation in choose_op.operations():
-                if operation.name not in abstract_names:
-                    assert isinstance(operation, FloatingPointLikeBinaryOperation)
-                    missing_ops.append(type(operation))
-            abstract_choose_op.add_operations(missing_ops)
+            abstract_choose_op.insert_operations(list(choose_op.operations()))
 
         elif isinstance(op, phs.YieldOp):
             # Make sure all connections are equivalent, otherwise add extra connections

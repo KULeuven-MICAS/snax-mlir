@@ -73,8 +73,7 @@ class AggregateBodyPattern(RewritePattern):
             assert isinstance(operation, FloatingPointLikeBinaryOperation)
             choose_op = abstract_pe_op.regions[0].ops.first
             assert isinstance(choose_op, phs.ChooseOpOp)
-            if operation not in list(choose_op.operations()):
-                choose_op.add_operations([type(operation)])
+            choose_op.insert_operations([operation])
 
 
 class AggregateBodiesPass(ModulePass):
