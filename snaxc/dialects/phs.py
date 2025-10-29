@@ -25,6 +25,10 @@ from xdsl.utils.exceptions import VerifyException
 
 @irdl_op_definition
 class YieldOp(AbstractYieldOperation[Attribute]):
+    """
+    Terminator operation for phs operations
+    """
+
     name = "phs.yield"
 
     traits = lazy_traits_def(
@@ -46,6 +50,12 @@ class YieldOp(AbstractYieldOperation[Attribute]):
 
 @irdl_op_definition
 class AbstractPEOperation(IRDLOperation):
+    """
+    Abstract Processing Element operation - an abstract representation of a single
+    processing element that can possibly support multiple sequences of operations
+    with the use of different switches.
+    """
+
     name = "phs.abstract_pe"
 
     name_prop = prop_def(StringAttr, prop_name="sym_name")
@@ -101,7 +111,7 @@ class AbstractPEOperation(IRDLOperation):
     ) -> "AbstractPEOperation":
         """
         Utility constructor that fills up an Abstract PE operation with a simple preset
-        based on an operation
+        based on a sequence of operations
         """
         switch_types = [IndexType()]
         # Based on operation
@@ -126,6 +136,9 @@ class AbstractPEOperation(IRDLOperation):
         return abstract_pe_op
 
     def get_choose_op(self, symbol_name: str) -> "ChooseOpOp | None":
+        """
+        Get a specific choose op inside the AbstractPEOp by symbol name
+        """
         t = self.get_trait(SymbolTable)
         assert t is not None, "No SymbolTable present in current operation"
         choose_op_op = t.lookup_symbol(self, symbol_name)
@@ -136,11 +149,17 @@ class AbstractPEOperation(IRDLOperation):
             return choose_op_op
 
     def get_terminator(self) -> YieldOp:
+        """
+        Get the terminating operation inside the AbstractPEOp body.
+        """
         yield_op = self.body.ops.last
         assert isinstance(yield_op, YieldOp)
         return yield_op
 
     def add_extra_switch(self) -> BlockArgument:
+        """
+        Add an extra switch to the Abstract PE operation
+        """
         block = self.regions[0].blocks.first
         assert block is not None
         # Add new switch at the end
@@ -149,14 +168,14 @@ class AbstractPEOperation(IRDLOperation):
         )
         return block.insert_arg(IndexType(), len(block.args))
 
-    def walk_choose_ops(self, *, reverse: bool = False, region_first: bool = False) -> "Iterator[ChooseOpOp]":
-        for op in self.walk(reverse=reverse, region_first=region_first):
-            if isinstance(op, ChooseOpOp):
-                yield op
-
 
 @irdl_op_definition
 class ChooseOpOp(IRDLOperation):
+    """
+    Operation to choose between operations contained in its region.
+    Very similar to scf.index_switch.
+    """
+
     name = "phs.choose_op"
 
     name_prop = prop_def(StringAttr, prop_name="sym_name")
@@ -165,8 +184,6 @@ class ChooseOpOp(IRDLOperation):
     rhs = operand_def(Float32Type)
 
     switch = operand_def(IndexType)
-
-    # cases = prop_def(DenseArrayBase.constr(i64))
 
     # This is quite similar to a scf.index_switch
     default_region = region_def("single_block")
@@ -205,7 +222,9 @@ class ChooseOpOp(IRDLOperation):
 
     @property
     def data_operands(self) -> Sequence[SSAValue]:
-        """Returns all operands except the switch."""
+        """
+        Returns all operands except the switch operands
+        """
         return self._operands[:-1]
 
     @staticmethod
@@ -217,6 +236,9 @@ class ChooseOpOp(IRDLOperation):
         operations: Sequence[type[FloatingPointLikeBinaryOperation]],
         result_types: Sequence[Attribute] = [],
     ) -> "ChooseOpOp":
+        """
+        Utility constructor to construct a ChooseOpOp from a set of given operations
+        """
         # Default operation
         case_regions: list[Region] = []
         if len(operations) < 1:
@@ -271,6 +293,11 @@ class ChooseOpOp(IRDLOperation):
 
 @irdl_op_definition
 class ChooseInputOp(IRDLOperation):
+    """
+    Operation to select between multiple inputs.
+    The input can be selected with the switch operand.
+    """
+
     name = "phs.choose_input"
 
     lhs = operand_def(Float32Type)
