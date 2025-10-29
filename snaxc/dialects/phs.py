@@ -35,6 +35,15 @@ class YieldOp(AbstractYieldOperation[Attribute]):
         )
     )
 
+    @property
+    def data_operands(self) -> Sequence[SSAValue]:
+        """
+        Return every operand except for switches.
+        Since there are no switches here, it should return all operands
+        """
+        return self._operands
+
+
 @irdl_op_definition
 class AbstractPEOperation(IRDLOperation):
     name = "phs.abstract_pe"
@@ -87,7 +96,9 @@ class AbstractPEOperation(IRDLOperation):
             raise VerifyException("Expected entry block arguments to have the same types as the function input types")
 
     @staticmethod
-    def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[FloatingPointLikeBinaryOperation]) -> "AbstractPEOperation":
+    def from_operations(
+        acc_ref: SymbolRefAttr, operations: Sequence[FloatingPointLikeBinaryOperation]
+    ) -> "AbstractPEOperation":
         """
         Utility constructor that fills up an Abstract PE operation with a simple preset
         based on an operation
@@ -114,8 +125,7 @@ class AbstractPEOperation(IRDLOperation):
         abstract_pe_op = AbstractPEOperation(acc_ref.string_value(), (block_inputs, out_types), Region(block))
         return abstract_pe_op
 
-
-    def get_choose_op(self, symbol_name : str ) -> "ChooseOpOp | None":
+    def get_choose_op(self, symbol_name: str) -> "ChooseOpOp | None":
         t = self.get_trait(SymbolTable)
         assert t is not None
         choose_op_op = t.lookup_symbol(self, symbol_name)
@@ -130,21 +140,18 @@ class AbstractPEOperation(IRDLOperation):
         assert isinstance(yield_op, YieldOp)
         return yield_op
 
-  #  @staticmethod
-  #  def from_generic_body(acc_ref: SymbolRefAttr, generic_body: Block) -> "AbstractPEOperation":
-  #      """
-  #      Add operations from a linalg generic body to the Abstract PE
-  #      """
-  #      linalg_yield = generic_body.ops.last
-  #      # Error if not a linalg body
-  #      assert isinstance(linalg_yield, linalg.YieldOp), 'No linalg.yield found, is this a valid linalg.generic body?'
-  #      # Error if multiple values are yielded
-  #      assert len(linalg_yield.results) == 1
-  #      linalg_yield.results[]
-  #      return None
-
-
-
+    #  @staticmethod
+    #  def from_generic_body(acc_ref: SymbolRefAttr, generic_body: Block) -> "AbstractPEOperation":
+    #      """
+    #      Add operations from a linalg generic body to the Abstract PE
+    #      """
+    #      linalg_yield = generic_body.ops.last
+    #      # Error if not a linalg body
+    #      assert isinstance(linalg_yield, linalg.YieldOp), 'No linalg.yield found, is this a valid linalg.generic body?'
+    #      # Error if multiple values are yielded
+    #      assert len(linalg_yield.results) == 1
+    #      linalg_yield.results[]
+    #      return None
 
     def add_extra_switch(self) -> BlockArgument:
         block = self.regions[0].blocks.first
@@ -206,6 +213,11 @@ class ChooseOpOp(IRDLOperation):
             result_types=(result_types,),
         )
 
+    @property
+    def data_operands(self) -> Sequence[SSAValue]:
+        """Returns all operands except the switch."""
+        return self._operands[:-1]
+
     @staticmethod
     def from_operations(
         name: str,
@@ -216,7 +228,7 @@ class ChooseOpOp(IRDLOperation):
         result_types: Sequence[Attribute] = [],
     ) -> "ChooseOpOp":
         # Default operation
-        case_regions : list[Region] = []
+        case_regions: list[Region] = []
         if len(operations) < 1:
             for operation in operations[1:]:
                 case_regions.append(
