@@ -1,26 +1,26 @@
-from typing import Iterator, Sequence, Generator
-from xdsl.dialects.builtin import ArrayAttr, DictionaryAttr, Float32Type, IndexType, StringAttr, FunctionType
+from collections.abc import Iterator, Sequence
+
+from xdsl.dialects.arith import FloatingPointLikeBinaryOperation
+from xdsl.dialects.builtin import ArrayAttr, DictionaryAttr, Float32Type, FunctionType, IndexType, StringAttr
 from xdsl.dialects.func import FuncOpCallableInterface
 from xdsl.dialects.utils import AbstractYieldOperation
-from xdsl.dialects import linalg
+from xdsl.ir import Attribute, Block, BlockArgument, Dialect, Region, SSAValue
 from xdsl.irdl import (
+    IRDLOperation,
     Operation,
     irdl_op_definition,
-    IRDLOperation,
+    lazy_traits_def,
     operand_def,
     opt_prop_def,
     prop_def,
-    result_def,
     region_def,
+    result_def,
     traits_def,
     var_region_def,
-    lazy_traits_def,
 )
-from xdsl.ir import Block, BlockArgument, Dialect, Attribute, Region, SSAValue
 from xdsl.parser import SymbolRefAttr
-from xdsl.traits import HasAncestor, HasParent, IsTerminator, IsolatedFromAbove, Pure, SymbolOpInterface, SymbolTable
+from xdsl.traits import HasAncestor, HasParent, IsolatedFromAbove, IsTerminator, Pure, SymbolOpInterface, SymbolTable
 from xdsl.utils.exceptions import VerifyException
-from xdsl.dialects.arith import FloatingPointLikeBinaryOperation
 
 
 @irdl_op_definition
@@ -140,19 +140,6 @@ class AbstractPEOperation(IRDLOperation):
         assert isinstance(yield_op, YieldOp)
         return yield_op
 
-    #  @staticmethod
-    #  def from_generic_body(acc_ref: SymbolRefAttr, generic_body: Block) -> "AbstractPEOperation":
-    #      """
-    #      Add operations from a linalg generic body to the Abstract PE
-    #      """
-    #      linalg_yield = generic_body.ops.last
-    #      # Error if not a linalg body
-    #      assert isinstance(linalg_yield, linalg.YieldOp), 'No linalg.yield found, is this a valid linalg.generic body?'
-    #      # Error if multiple values are yielded
-    #      assert len(linalg_yield.results) == 1
-    #      linalg_yield.results[]
-    #      return None
-
     def add_extra_switch(self) -> BlockArgument:
         block = self.regions[0].blocks.first
         assert block is not None
@@ -187,7 +174,10 @@ class ChooseOpOp(IRDLOperation):
 
     res = result_def(Float32Type)
 
-    assembly_format = " $sym_name` ` `(`$lhs`:`type($lhs)`,` $rhs`:`type($rhs)`)` `->` type($res) `with` $switch $default_region $case_regions attr-dict"
+    assembly_format = (
+        " $sym_name` ` `(`$lhs`:`type($lhs)`,` $rhs`:`type($rhs)`)` `->`"
+        + " type($res) `with` $switch $default_region $case_regions attr-dict"
+    )
 
     traits = traits_def(SymbolOpInterface(), HasParent(AbstractPEOperation))
 

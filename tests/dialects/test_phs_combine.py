@@ -1,8 +1,9 @@
-from snaxc.dialects import phs
-from snaxc.transforms.phs.combine import append_to_abstract_graph
 from xdsl.dialects.arith import AddfOp, DivfOp, MulfOp, SubfOp
 from xdsl.dialects.builtin import Float32Type, FunctionType, IndexType
 from xdsl.ir import Block, Region
+
+from snaxc.dialects import phs
+from snaxc.transforms.phs.combine import append_to_abstract_graph
 
 
 def test_combine() -> None:
@@ -230,6 +231,7 @@ def test_combine() -> None:
     append_to_abstract_graph(abstract_pe_e, abstract_pe_b)
     print(abstract_pe_b)
     return
+
 
 if __name__ == "__main__":
     test_combine()

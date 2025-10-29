@@ -1,7 +1,8 @@
-from snaxc.dialects import phs
 from xdsl.dialects.builtin import Float32Type
 from xdsl.ir import BlockArgument
 from xdsl.irdl import Operand
+
+from snaxc.dialects import phs
 
 
 def get_equivalent_owner(operand: Operand, abstract_graph: phs.AbstractPEOperation) -> BlockArgument | phs.ChooseOpOp:
@@ -53,9 +54,8 @@ def are_equivalent(operand: Operand, abstract_operand: Operand) -> bool:
     else:
         return False
 
-def uncollide_inputs(
-    op: phs.YieldOp | phs.ChooseOpOp, abst_op: phs.YieldOp | phs.ChooseOpOp
-):
+
+def uncollide_inputs(op: phs.YieldOp | phs.ChooseOpOp, abst_op: phs.YieldOp | phs.ChooseOpOp):
     """
     Check if operations are routed similarly, if they are routed differently,
     add extra inputs with choose_input operations
@@ -129,9 +129,3 @@ def append_to_abstract_graph(
             raise NotImplementedError("Don't expect non-abstract input graph to have choose_input ops")
         else:
             raise NotImplementedError("Only expect choose_op_op and yield_op in non-abstract graph")
-
-
-
-
-if __name__ == "__main__":
-    test_combine()
