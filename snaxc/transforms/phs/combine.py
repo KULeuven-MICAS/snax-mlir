@@ -72,7 +72,7 @@ def uncollide_inputs(op: phs.YieldOp | phs.ChooseOpOp, abst_op: phs.YieldOp | ph
             mux = phs.ChooseInputOp(
                 lhs=abst_opnd,  # this is the default connection
                 rhs=equivalent_owner,  # this is the conflicting connection
-                switch=abstract_graph.add_extra_switch(),  # extra switch to control input
+                switch=abstract_graph.add_switch(),  # extra switch to control input
                 result_types=[Float32Type()],
             )
             abstract_graph.body.block.insert_op_before(mux, abst_op)
@@ -106,7 +106,7 @@ def append_to_abstract_graph(
                 lhs = get_equivalent_owner(choose_op.lhs, abstract_graph)
                 rhs = get_equivalent_owner(choose_op.rhs, abstract_graph)
                 # Add an extra switch to the PE to control this choice
-                switch = abstract_graph.add_extra_switch()
+                switch = abstract_graph.add_switch()
                 operations = [type(op) for op in choose_op.operations()]
                 abstract_choose_op = phs.ChooseOpOp.from_operations(
                     choose_op_id, lhs, rhs, switch, operations, [Float32Type()]

@@ -156,7 +156,7 @@ class AbstractPEOperation(IRDLOperation):
         assert isinstance(yield_op, YieldOp)
         return yield_op
 
-    def add_extra_switch(self) -> BlockArgument:
+    def add_switch(self) -> BlockArgument:
         """
         Add an extra switch to the Abstract PE operation
         """
