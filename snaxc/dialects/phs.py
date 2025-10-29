@@ -127,7 +127,7 @@ class AbstractPEOperation(IRDLOperation):
 
     def get_choose_op(self, symbol_name: str) -> "ChooseOpOp | None":
         t = self.get_trait(SymbolTable)
-        assert t is not None
+        assert t is not None, "No SymbolTable present in current operation"
         choose_op_op = t.lookup_symbol(self, symbol_name)
         if choose_op_op is None:
             return choose_op_op
