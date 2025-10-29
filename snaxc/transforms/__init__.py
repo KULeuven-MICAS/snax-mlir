@@ -16,11 +16,6 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return AccfgDeduplicate
 
-    def get_aggregate_bodies():
-        from snaxc.transforms.phs.aggregate_bodies import AggregateBodiesPass
-
-        return AggregateBodiesPass
-
     def get_accfg_insert_resets():
         from snaxc.transforms.accfg_insert_resets import InsertResetsPass
 
@@ -260,7 +255,6 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "accfg-dedup": get_accfg_dedup,
         "accfg-insert-resets": get_accfg_insert_resets,
         "accfg-trace-states": get_accfg_trace_states,
-        "aggregate-bodies": get_aggregate_bodies,
         "alloc-to-global": get_alloc_to_global,
         "clear-memory-space": get_clear_memory_space,
         "tosa-combine-rescale": get_tosa_combine_rescale,
