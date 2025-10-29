@@ -69,12 +69,38 @@ def test_combine() -> None:
             phs.YieldOp(result_2),
         ]
     )
+    blockD = Block(arg_types=block_inputs)
+    lhs, rhs, switch = blockD.args
+    blockD.add_ops(
+        [
+            result := phs.ChooseOpOp(
+                "0", lhs, rhs, switch, Region(Block([
+                    result_in := MulfOp(lhs, rhs),
+                    phs.YieldOp(result_in),
+                ])), result_types=out_types),
+            result_2 := phs.ChooseOpOp(
+            "1", lhs, result, switch, Region(Block([
+                result_in := MulfOp(lhs, rhs),
+                phs.YieldOp(result_in),
+            ])), result_types=out_types),
+            result_3 := phs.ChooseOpOp(
+            "2", result, result_2, switch, Region(Block([
+                result_in := MulfOp(lhs, rhs),
+                phs.YieldOp(result_in),
+            ])), result_types=out_types),
+            phs.YieldOp(result_3),
+        ]
+    )
     #printer.print_block(blockB)
     abstract_pe_a = phs.AbstractPEOperation("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockA))
     abstract_pe_b = phs.AbstractPEOperation("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockB))
     abstract_pe_c = phs.AbstractPEOperation("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockC))
+    abstract_pe_d = phs.AbstractPEOperation("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockD))
     append_to_abstract_graph(abstract_pe_a, abstract_pe_b)
     append_to_abstract_graph(abstract_pe_c, abstract_pe_b)
+    print(abstract_pe_b)
+    print(abstract_pe_d)
+    append_to_abstract_graph(abstract_pe_d, abstract_pe_b)
     print(abstract_pe_b)
 
     return
@@ -96,22 +122,42 @@ def get_equivalent_owner(
     """
     Get operand of an operation in graph to match to abstract_graph
     """
+    # If in the current graph the operand is a BlockArgument
+    # return the BlockArgument in the abstract_graph
     if isinstance(operand, BlockArgument):
         return abstract_graph.body.block.args[operand.index]
+    # If in the current graph the operand is the result of a previous choice
+    # get the same choice block in the abstract graph
     elif isinstance(operand.owner, phs.ChooseOpOp):
         return abstract_graph.get_choose_op(operand.owner.name_prop.data)
 
+def get_abstract_possibilities(operand: Operand, possibilities : list[str | int] = []) -> list[str | int]:
+    """
+    Get all possible paths on the abstract graph (goes past choose_ops)
+    """
+    if isinstance(operand.owner, phs.ChooseInputOp):
+        possibilities = get_abstract_possibilities(operand.owner.lhs, possibilities)
+        possibilities = get_abstract_possibilities(operand.owner.rhs, possibilities)
+        return possibilities
+    elif isinstance(operand, BlockArgument):
+        possibilities.append(operand.index)
+        return possibilities
+    elif isinstance(operand.owner, phs.ChooseOpOp):
+        possibilities.append(operand.owner.name_prop.data)
+        return possibilities
+    else:
+        raise NotImplementedError()
+
+
 def are_equivalent(operand: Operand, abstract_operand: Operand) -> bool:
     """
-    Check if operand of an operation in graph matches path to abstract_graph
+    Check if operand of an operation in graph matches path to abstract_graph,
+    or any paths exposed by choose_ops
     """
-    msg = "abstract operand and regular operand owner type should be equal"
     if isinstance(operand, BlockArgument):
-        assert isinstance(abstract_operand, BlockArgument), msg
-        return operand.index == abstract_operand.index
+        return any([operand.index == poss for poss in get_abstract_possibilities(abstract_operand)])
     elif isinstance(operand.owner, phs.ChooseOpOp):
-        assert isinstance(abstract_operand.owner, phs.ChooseOpOp), msg
-        return operand.owner.name_prop.data == abstract_operand.owner.name_prop.data
+        return any([operand.owner.name_prop.data == poss for poss in get_abstract_possibilities(abstract_operand)])
     else:
         return False
 
@@ -132,8 +178,7 @@ def append_to_abstract_graph(
                 assert isinstance(lhs, (BlockArgument, phs.ChooseOpOp))
                 rhs = get_equivalent_owner(choose_op.rhs, abstract_graph)
                 assert isinstance(rhs, (BlockArgument, phs.ChooseOpOp))
-                switch = get_equivalent_owner(choose_op.switch, abstract_graph)
-                assert isinstance(switch, (BlockArgument, phs.ChooseOpOp))
+                switch = abstract_graph.add_extra_switch()
                 operations: Sequence[type[FloatingPointLikeBinaryOperation]] = []
                 for op in choose_op.operations():
                     assert isinstance(op, FloatingPointLikeBinaryOperation)
