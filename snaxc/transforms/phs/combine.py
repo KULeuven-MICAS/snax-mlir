@@ -5,7 +5,7 @@ from xdsl.irdl import Operand
 from snaxc.dialects import phs
 
 
-def get_equivalent_owner(operand: Operand, abstract_graph: phs.AbstractPEOperation) -> BlockArgument | phs.ChooseOp:
+def get_equivalent_owner(operand: Operand, abstract_graph: phs.PEOp) -> BlockArgument | phs.ChooseOp:
     """
     Get operand of an operation in graph to match to abstract_graph.
 
@@ -62,7 +62,7 @@ def uncollide_inputs(op: phs.YieldOp | phs.ChooseOp, abst_op: phs.YieldOp | phs.
     """
     # Make sure all connections are equivalent, otherwise add extra connections
     abstract_graph = abst_op.parent_op()
-    assert isinstance(abstract_graph, phs.AbstractPEOperation)
+    assert isinstance(abstract_graph, phs.PEOp)
     for i, (opnd, abst_opnd) in enumerate(zip(op.data_operands, abst_op.data_operands, strict=True)):
         if are_equivalent(opnd, abst_opnd):
             continue
@@ -81,8 +81,8 @@ def uncollide_inputs(op: phs.YieldOp | phs.ChooseOp, abst_op: phs.YieldOp | phs.
 
 
 def append_to_abstract_graph(
-    graph: phs.AbstractPEOperation,
-    abstract_graph: phs.AbstractPEOperation,
+    graph: phs.PEOp,
+    abstract_graph: phs.PEOp,
 ):
     """
     Insert graph into abstract_graph such that abstract_graph assumes the capabilities of graph.
@@ -90,7 +90,7 @@ def append_to_abstract_graph(
     If a capability is missing from a ChooseOp, it is added.
     If operations are not routed in abstract_graph the way they are routed in graph,
     ChooseInputOps are inserted automatically to prevent colliding inputs.
-    Addition of such a ChooseInputOp adds an extra switch to the abstract_graph's AbstractPEOperation
+    Addition of such a ChooseInputOp adds an extra switch to the abstract_graph's PEOp
     """
     for op in graph.body.ops:
         if isinstance(op, phs.ChooseOp):

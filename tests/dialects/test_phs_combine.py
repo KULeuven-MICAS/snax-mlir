@@ -22,9 +22,7 @@ def test_combine() -> None:
             phs.YieldOp(result),
         ]
     )
-    abstract_pe_a = phs.AbstractPEOperation(
-        "myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockA)
-    )
+    abstract_pe_a = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockA))
 
     blockB = Block(arg_types=block_inputs)
     lhs, rhs, switch = blockB.args
@@ -34,9 +32,7 @@ def test_combine() -> None:
             phs.YieldOp(result),
         ]
     )
-    abstract_pe_b = phs.AbstractPEOperation(
-        "myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockB)
-    )
+    abstract_pe_b = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockB))
 
     block_inputs = [*in_types, IndexType(), IndexType()]
     blockC = Block(arg_types=block_inputs)
@@ -48,9 +44,7 @@ def test_combine() -> None:
             phs.YieldOp(result_2),
         ]
     )
-    abstract_pe_c = phs.AbstractPEOperation(
-        "myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockC)
-    )
+    abstract_pe_c = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockC))
 
     block_inputs = [*in_types, IndexType(), IndexType(), IndexType()]
     blockD = Block(arg_types=block_inputs)
@@ -63,9 +57,7 @@ def test_combine() -> None:
             phs.YieldOp(result_3),
         ]
     )
-    abstract_pe_d = phs.AbstractPEOperation(
-        "myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockD)
-    )
+    abstract_pe_d = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockD))
 
     blockE = Block(arg_types=block_inputs)
     lhs, rhs, switch1, switch2, switch3 = blockE.args
@@ -77,9 +69,7 @@ def test_combine() -> None:
             phs.YieldOp(result_3),
         ]
     )
-    abstract_pe_e = phs.AbstractPEOperation(
-        "myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockE)
-    )
+    abstract_pe_e = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockE))
     print("A")
     print(abstract_pe_a)
     print("B")

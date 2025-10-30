@@ -34,7 +34,7 @@ class YieldOp(AbstractYieldOperation[Attribute]):
     traits = lazy_traits_def(
         lambda: (
             IsTerminator(),
-            HasAncestor(AbstractPEOperation),
+            HasAncestor(PEOp),
             Pure(),
         )
     )
@@ -49,14 +49,14 @@ class YieldOp(AbstractYieldOperation[Attribute]):
 
 
 @irdl_op_definition
-class AbstractPEOperation(IRDLOperation):
+class PEOp(IRDLOperation):
     """
-    Abstract Processing Element operation - an abstract representation of a single
+    Processing Element operation - an abstract representation of a single
     processing element that can possibly support multiple sequences of operations
     with the use of different switches.
     """
 
-    name = "phs.abstract_pe"
+    name = "phs.pe"
 
     name_prop = prop_def(StringAttr, prop_name="sym_name")
 
@@ -106,9 +106,7 @@ class AbstractPEOperation(IRDLOperation):
             raise VerifyException("Expected entry block arguments to have the same types as the function input types")
 
     @staticmethod
-    def from_operations(
-        acc_ref: SymbolRefAttr, operations: Sequence[FloatingPointLikeBinaryOperation]
-    ) -> "AbstractPEOperation":
+    def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[FloatingPointLikeBinaryOperation]) -> "PEOp":
         """
         Utility constructor that fills up an Abstract PE operation with a simple preset
         based on a sequence of operations
@@ -130,7 +128,7 @@ class AbstractPEOperation(IRDLOperation):
                 YieldOp(result),
             ]
         )
-        abstract_pe_op = AbstractPEOperation(acc_ref.string_value(), (block_inputs, out_types), Region(block))
+        abstract_pe_op = PEOp(acc_ref.string_value(), (block_inputs, out_types), Region(block))
         return abstract_pe_op
 
     def get_choose_op(self, symbol_name: str) -> "ChooseOp | None":
@@ -139,12 +137,12 @@ class AbstractPEOperation(IRDLOperation):
         """
         t = self.get_trait(SymbolTable)
         assert t is not None, "No SymbolTable present in current operation"
-        choose_op_op = t.lookup_symbol(self, symbol_name)
-        if choose_op_op is None:
-            return choose_op_op
+        choose_op = t.lookup_symbol(self, symbol_name)
+        if choose_op is None:
+            return choose_op
         else:
-            assert isinstance(choose_op_op, ChooseOp)
-            return choose_op_op
+            assert isinstance(choose_op, ChooseOp)
+            return choose_op
 
     def get_terminator(self) -> YieldOp:
         """
@@ -194,7 +192,7 @@ class ChooseOp(IRDLOperation):
         + " type($res) `with` $switch $default_region $case_regions attr-dict"
     )
 
-    traits = traits_def(SymbolOpInterface(), HasParent(AbstractPEOperation))
+    traits = traits_def(SymbolOpInterface(), HasParent(PEOp))
 
     def __init__(
         self,
@@ -241,24 +239,8 @@ class ChooseOp(IRDLOperation):
         case_regions: list[Region] = []
         if len(operations) < 1:
             for operation in operations[1:]:
-                case_regions.append(
-                    Region(
-                        Block(
-                            [
-                                result := operation(lhs, rhs),
-                                YieldOp(result),
-                            ]
-                        )
-                    )
-                )
-        default_region = Region(
-            Block(
-                [
-                    result := operations[0](lhs, rhs),
-                    YieldOp(result),
-                ]
-            )
-        )
+                case_regions.append(Region(Block([result := operation(lhs, rhs), YieldOp(result)])))
+        default_region = Region(Block([result := operations[0](lhs, rhs), YieldOp(result)]))
         return ChooseOp(
             name=name,
             lhs=lhs,
@@ -323,7 +305,7 @@ class ChooseInputOp(IRDLOperation):
 Phs = Dialect(
     "phs",
     [
-        AbstractPEOperation,
+        PEOp,
         ChooseInputOp,
         ChooseOp,
         YieldOp,
