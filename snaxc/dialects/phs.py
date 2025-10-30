@@ -273,7 +273,7 @@ class ChooseOp(IRDLOperation):
 @irdl_op_definition
 class ChooseInputOp(IRDLOperation):
     """
-    Operation to select between multiple inputs.
+    Operation to select between two inputs.
     The input can be selected with the switch operand.
     """
 
