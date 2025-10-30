@@ -30,7 +30,7 @@ def get_abstract_possibilities(operand: Operand) -> list[str | int]:
     """
     Get all possible paths on the abstract graph (goes past choose_ops)
     """
-    if isinstance(operand.owner, phs.ChooseInputOp):
+    if isinstance(operand.owner, phs.MuxOp):
         possibilities_lhs = get_abstract_possibilities(operand.owner.lhs)
         possibilities_rhs = get_abstract_possibilities(operand.owner.rhs)
         return possibilities_lhs + possibilities_rhs
@@ -39,7 +39,7 @@ def get_abstract_possibilities(operand: Operand) -> list[str | int]:
     elif isinstance(operand.owner, phs.ChooseOp):
         return [operand.owner.name_prop.data]
     else:
-        raise NotImplementedError("Only expect owners to be block arguments, ChooseOp or ChooseInputOps")
+        raise NotImplementedError("Only expect owners to be block arguments, ChooseOp or MuxOps")
 
 
 def are_equivalent(operand: Operand, abstract_operand: Operand) -> bool:
@@ -69,7 +69,7 @@ def uncollide_inputs(op: phs.YieldOp | phs.ChooseOp, abst_op: phs.YieldOp | phs.
         else:
             # Add a mux to the switch
             equivalent_owner = get_equivalent_owner(opnd, abstract_graph)
-            mux = phs.ChooseInputOp(
+            mux = phs.MuxOp(
                 lhs=abst_opnd,  # this is the default connection
                 rhs=equivalent_owner,  # this is the conflicting connection
                 switch=abstract_graph.add_switch(),  # extra switch to control input
@@ -89,8 +89,8 @@ def append_to_abstract_graph(
     If certain ChooseOp nodes in abstract_graph don't exist they are added.
     If a capability is missing from a ChooseOp, it is added.
     If operations are not routed in abstract_graph the way they are routed in graph,
-    ChooseInputOps are inserted automatically to prevent colliding inputs.
-    Addition of such a ChooseInputOp adds an extra switch to the abstract_graph's PEOp
+    MuxOps are inserted automatically to prevent colliding inputs.
+    Addition of such a MuxOp adds an extra switch to the abstract_graph's PEOp
     """
     for op in graph.body.ops:
         if isinstance(op, phs.ChooseOp):
@@ -125,7 +125,7 @@ def append_to_abstract_graph(
             # Make sure all connections are equivalent, otherwise add extra connections
             uncollide_inputs(op, abstract_graph.get_terminator())
 
-        elif isinstance(op, phs.ChooseInputOp):
+        elif isinstance(op, phs.MuxOp):
             raise NotImplementedError("Don't expect non-abstract input graph to have choose_input ops")
         else:
             raise NotImplementedError("Only expect choose_op and yield_op in non-abstract graph")

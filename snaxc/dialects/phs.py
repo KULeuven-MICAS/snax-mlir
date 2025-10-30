@@ -271,13 +271,13 @@ class ChooseOp(IRDLOperation):
 
 
 @irdl_op_definition
-class ChooseInputOp(IRDLOperation):
+class MuxOp(IRDLOperation):
     """
     Operation to select between two inputs.
     The input can be selected with the switch operand.
     """
 
-    name = "phs.choose_input"
+    name = "phs.mux"
 
     lhs = operand_def(Float32Type)
     rhs = operand_def(Float32Type)
@@ -305,7 +305,7 @@ Phs = Dialect(
     "phs",
     [
         PEOp,
-        ChooseInputOp,
+        MuxOp,
         ChooseOp,
         YieldOp,
     ],
