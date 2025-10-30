@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from collections.abc import Iterator, Sequence
+from typing import cast
 
 from xdsl.dialects.arith import FloatingPointLikeBinaryOperation
 from xdsl.dialects.builtin import ArrayAttr, DictionaryAttr, Float32Type, FunctionType, IndexType, StringAttr
@@ -16,9 +19,11 @@ from xdsl.irdl import (
     region_def,
     result_def,
     traits_def,
+    var_operand_def,
     var_region_def,
 )
-from xdsl.parser import SymbolRefAttr
+from xdsl.parser import Parser, SymbolRefAttr
+from xdsl.printer import Printer
 from xdsl.traits import HasAncestor, HasParent, IsolatedFromAbove, IsTerminator, Pure, SymbolOpInterface, SymbolTable
 from xdsl.utils.exceptions import VerifyException
 
@@ -106,7 +111,7 @@ class PEOp(IRDLOperation):
             raise VerifyException("Expected entry block arguments to have the same types as the function input types")
 
     @staticmethod
-    def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[FloatingPointLikeBinaryOperation]) -> "PEOp":
+    def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[FloatingPointLikeBinaryOperation]) -> PEOp:
         """
         Utility constructor that fills up an Abstract PE operation with a simple preset
         based on a sequence of operations
@@ -131,7 +136,7 @@ class PEOp(IRDLOperation):
         pe_op = PEOp(acc_ref.string_value(), (block_inputs, out_types), Region(block))
         return pe_op
 
-    def get_choose_op(self, symbol_name: str) -> "ChooseOp | None":
+    def get_choose_op(self, symbol_name: str) -> ChooseOp | None:
         """
         Get a specific choose op inside the AbstractPEOp by symbol name
         """
@@ -187,11 +192,6 @@ class ChooseOp(IRDLOperation):
 
     res = result_def(Float32Type)
 
-    assembly_format = (
-        " $sym_name` ` `(`$lhs`:`type($lhs)`,` $rhs`:`type($rhs)`)` `->`"
-        + " type($res) `with` $switch $default_region $case_regions attr-dict"
-    )
-
     traits = traits_def(SymbolOpInterface(), HasParent(PEOp))
 
     def __init__(
@@ -230,13 +230,13 @@ class ChooseOp(IRDLOperation):
         switch: Operation | SSAValue,
         operations: Sequence[type[FloatingPointLikeBinaryOperation]],
         result_types: Sequence[Attribute] = [],
-    ) -> "ChooseOp":
+    ) -> ChooseOp:
         """
         Utility constructor to construct a ChooseOp from a set of given operations
         """
         # Default operation
         case_regions: list[Region] = []
-        if len(operations) < 1:
+        if len(operations) > 1:
             for operation in operations[1:]:
                 case_regions.append(Region(Block([result := operation(lhs, rhs), YieldOp(result)])))
         default_region = Region(Block([result := operations[0](lhs, rhs), YieldOp(result)]))
@@ -268,6 +268,73 @@ class ChooseOp(IRDLOperation):
             operation = region.ops.first
             if isinstance(operation, FloatingPointLikeBinaryOperation):
                 yield operation
+
+    def print(self, printer: Printer):
+        printer.print_string(" @")
+        printer.print_string(self.name_prop.data)
+        printer.print_string(" with ")
+        printer.print_operand(self.operands[-1])
+        printer.print_string(" (")
+        for i, opnd in enumerate(self.operands[:-1]):
+            printer.print_operand(opnd)
+            printer.print_string(" : ")
+            printer.print_attribute(opnd.type)
+            if i != len(self.operands) - 2:
+                printer.print_string(", ")
+        printer.print_string(") -> ")
+        for i, opnd in enumerate(self.results):
+            printer.print_attribute(opnd.type)
+            if i != len(self.results) - 1:
+                printer.print_string(", ")
+
+        with printer.indented():
+            for i, region in enumerate(self.regions):
+                printer.print_string(f"\n{i}) ")
+                # FIXME, what if multiple operations?
+                for op in list(region.block.ops)[:-1]:
+                    printer.print_string(op.name)
+
+    @classmethod
+    def parse(cls: type[ChooseOp], parser: Parser) -> ChooseOp:
+        name_prop = parser.parse_symbol_name()
+        parser.parse_keyword("with")
+        switch = parser.parse_operand()
+
+        def parse_itm() -> tuple[SSAValue, Attribute]:
+            val = parser.parse_operand()
+            parser.parse_punctuation(":")
+            typ = parser.parse_type()
+            return val, typ
+
+        args: list[tuple[SSAValue, Attribute]] = parser.parse_comma_separated_list(Parser.Delimiter.PAREN, parse_itm)
+        assert len(args) == 2, "Expect to have lhs and rhs operand for ChooseOp"
+
+        parser.parse_comma_separated_list
+        parser.parse_punctuation("->")
+        res_typ = parser.parse_type()
+
+        def get_op() -> type[Operation] | None:
+            if parser.parse_optional_integer() is None:
+                return None
+            parser.parse_optional_punctuation(")")
+            operation_ident = parser.parse_optional_identifier()
+            # FIXME is there a public thing I can use to do this?
+            return parser._get_op_by_name(operation_ident)  # pyright: ignore
+
+        parsed_operations: list[type[Operation]] = []
+        while True:
+            parsed_operation = get_op()
+            if parsed_operation is not None:
+                parsed_operations.append(parsed_operation)
+            else:
+                break
+
+        assert len(parsed_operations) >= 1, "Expected to parse at least one operation!"
+        for operation in parsed_operations:
+            assert issubclass(operation, FloatingPointLikeBinaryOperation)
+        typed_operations = cast(Sequence[type[FloatingPointLikeBinaryOperation]], parsed_operations)
+        choose_op = cls.from_operations(name_prop.data, args[0][0], args[1][0], switch, typed_operations, [res_typ])
+        return choose_op
 
 
 @irdl_op_definition
@@ -301,12 +368,45 @@ class MuxOp(IRDLOperation):
         )
 
 
+@irdl_op_definition
+class CallOp(IRDLOperation):
+    name = "phs.call"
+
+    name_prop = prop_def(StringAttr, prop_name="sym_name")
+
+    lhs = operand_def(Float32Type)
+    rhs = operand_def(Float32Type)
+    switches = var_operand_def(IndexType)
+    res = result_def(Float32Type)
+
+    traits = traits_def(SymbolOpInterface())
+
+    def __init__(
+        self,
+        name: str,
+        lhs: Operation | SSAValue,
+        rhs: Operation | SSAValue,
+        switches: Sequence[Operation | SSAValue],
+        result_types: Sequence[Attribute] = [],
+        attr_dict: dict[str, Attribute] | None = None,
+    ):
+        super().__init__(
+            properties={
+                "sym_name": StringAttr(name),
+            },
+            operands=(lhs, rhs, switches),
+            attributes=attr_dict,
+            result_types=(result_types,),
+        )
+
+
 Phs = Dialect(
     "phs",
     [
         PEOp,
         MuxOp,
         ChooseOp,
+        CallOp,
         YieldOp,
     ],
 )
