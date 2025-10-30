@@ -126,16 +126,14 @@ class AbstractPEOperation(IRDLOperation):
         type_ops = [type(op) for op in operations]
         block.add_ops(
             [
-                result := ChooseOpOp.from_operations(
-                    "0", lhs, rhs, switch, operations=type_ops, result_types=out_types
-                ),
+                result := ChooseOp.from_operations("0", lhs, rhs, switch, operations=type_ops, result_types=out_types),
                 YieldOp(result),
             ]
         )
         abstract_pe_op = AbstractPEOperation(acc_ref.string_value(), (block_inputs, out_types), Region(block))
         return abstract_pe_op
 
-    def get_choose_op(self, symbol_name: str) -> "ChooseOpOp | None":
+    def get_choose_op(self, symbol_name: str) -> "ChooseOp | None":
         """
         Get a specific choose op inside the AbstractPEOp by symbol name
         """
@@ -145,7 +143,7 @@ class AbstractPEOperation(IRDLOperation):
         if choose_op_op is None:
             return choose_op_op
         else:
-            assert isinstance(choose_op_op, ChooseOpOp)
+            assert isinstance(choose_op_op, ChooseOp)
             return choose_op_op
 
     def get_terminator(self) -> YieldOp:
@@ -170,13 +168,13 @@ class AbstractPEOperation(IRDLOperation):
 
 
 @irdl_op_definition
-class ChooseOpOp(IRDLOperation):
+class ChooseOp(IRDLOperation):
     """
     Operation to choose between operations contained in its region.
     Very similar to scf.index_switch.
     """
 
-    name = "phs.choose_op"
+    name = "phs.choose"
 
     name_prop = prop_def(StringAttr, prop_name="sym_name")
 
@@ -235,9 +233,9 @@ class ChooseOpOp(IRDLOperation):
         switch: Operation | SSAValue,
         operations: Sequence[type[FloatingPointLikeBinaryOperation]],
         result_types: Sequence[Attribute] = [],
-    ) -> "ChooseOpOp":
+    ) -> "ChooseOp":
         """
-        Utility constructor to construct a ChooseOpOp from a set of given operations
+        Utility constructor to construct a ChooseOp from a set of given operations
         """
         # Default operation
         case_regions: list[Region] = []
@@ -261,7 +259,7 @@ class ChooseOpOp(IRDLOperation):
                 ]
             )
         )
-        return ChooseOpOp(
+        return ChooseOp(
             name=name,
             lhs=lhs,
             rhs=rhs,
@@ -327,7 +325,7 @@ Phs = Dialect(
     [
         AbstractPEOperation,
         ChooseInputOp,
-        ChooseOpOp,
+        ChooseOp,
         YieldOp,
     ],
 )

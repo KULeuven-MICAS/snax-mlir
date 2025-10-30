@@ -18,22 +18,7 @@ def test_combine() -> None:
     lhs, rhs, switch = blockA.args
     blockA.add_ops(
         [
-            result := phs.ChooseOpOp(
-                "0",
-                lhs,
-                rhs,
-                switch,
-                Region(
-                    Block(
-                        [
-                            result := AddfOp(rhs, lhs),
-                            phs.YieldOp(result),
-                        ]
-                    )
-                ),
-                [Region(Block([result := SubfOp(rhs, lhs), phs.YieldOp(result)]))],
-                result_types=out_types,
-            ),
+            result := phs.ChooseOp.from_operations("0", lhs, rhs, switch, [AddfOp, SubfOp], out_types),
             phs.YieldOp(result),
         ]
     )
@@ -45,21 +30,7 @@ def test_combine() -> None:
     lhs, rhs, switch = blockB.args
     blockB.add_ops(
         [
-            result := phs.ChooseOpOp(
-                "0",
-                lhs,
-                rhs,
-                switch,
-                Region(
-                    Block(
-                        [
-                            result := MulfOp(lhs, rhs),
-                            phs.YieldOp(result),
-                        ]
-                    )
-                ),
-                result_types=out_types,
-            ),
+            result := phs.ChooseOp.from_operations("0", lhs, rhs, switch, [MulfOp], out_types),
             phs.YieldOp(result),
         ]
     )
@@ -72,36 +43,8 @@ def test_combine() -> None:
     lhs, rhs, switch1, switch2 = blockC.args
     blockC.add_ops(
         [
-            result := phs.ChooseOpOp(
-                "0",
-                lhs,
-                rhs,
-                switch1,
-                Region(
-                    Block(
-                        [
-                            result_in := MulfOp(lhs, rhs),
-                            phs.YieldOp(result_in),
-                        ]
-                    )
-                ),
-                result_types=out_types,
-            ),
-            result_2 := phs.ChooseOpOp(
-                "1",
-                lhs,
-                result,
-                switch2,
-                Region(
-                    Block(
-                        [
-                            result_in := MulfOp(lhs, rhs),
-                            phs.YieldOp(result_in),
-                        ]
-                    )
-                ),
-                result_types=out_types,
-            ),
+            result := phs.ChooseOp.from_operations("0", lhs, rhs, switch1, [MulfOp], out_types),
+            result_2 := phs.ChooseOp.from_operations("1", lhs, result, switch2, [MulfOp], out_types),
             phs.YieldOp(result_2),
         ]
     )
@@ -114,51 +57,9 @@ def test_combine() -> None:
     lhs, rhs, switch1, switch2, switch3 = blockD.args
     blockD.add_ops(
         [
-            result := phs.ChooseOpOp(
-                "0",
-                lhs,
-                rhs,
-                switch1,
-                Region(
-                    Block(
-                        [
-                            result_in := MulfOp(lhs, rhs),
-                            phs.YieldOp(result_in),
-                        ]
-                    )
-                ),
-                result_types=out_types,
-            ),
-            result_2 := phs.ChooseOpOp(
-                "1",
-                lhs,
-                result,
-                switch2,
-                Region(
-                    Block(
-                        [
-                            result_in := MulfOp(lhs, rhs),
-                            phs.YieldOp(result_in),
-                        ]
-                    )
-                ),
-                result_types=out_types,
-            ),
-            result_3 := phs.ChooseOpOp(
-                "2",
-                result,
-                result_2,
-                switch3,
-                Region(
-                    Block(
-                        [
-                            result_in := MulfOp(lhs, rhs),
-                            phs.YieldOp(result_in),
-                        ]
-                    )
-                ),
-                result_types=out_types,
-            ),
+            result := phs.ChooseOp.from_operations("0", lhs, rhs, switch1, [MulfOp], out_types),
+            result_2 := phs.ChooseOp.from_operations("1", lhs, result, switch2, [MulfOp], out_types),
+            result_3 := phs.ChooseOp.from_operations("2", result, result_2, switch3, [MulfOp], out_types),
             phs.YieldOp(result_3),
         ]
     )
@@ -170,51 +71,9 @@ def test_combine() -> None:
     lhs, rhs, switch1, switch2, switch3 = blockE.args
     blockE.add_ops(
         [
-            result := phs.ChooseOpOp(
-                "0",
-                lhs,
-                rhs,
-                switch1,
-                Region(
-                    Block(
-                        [
-                            result_in := AddfOp(lhs, rhs),
-                            phs.YieldOp(result_in),
-                        ]
-                    )
-                ),
-                result_types=out_types,
-            ),
-            result_2 := phs.ChooseOpOp(
-                "1",
-                lhs,
-                result,
-                switch2,
-                Region(
-                    Block(
-                        [
-                            result_in := AddfOp(lhs, rhs),
-                            phs.YieldOp(result_in),
-                        ]
-                    )
-                ),
-                result_types=out_types,
-            ),
-            result_3 := phs.ChooseOpOp(
-                "2",
-                result,
-                rhs,
-                switch3,
-                Region(
-                    Block(
-                        [
-                            result_in := DivfOp(lhs, rhs),
-                            phs.YieldOp(result_in),
-                        ]
-                    )
-                ),
-                result_types=out_types,
-            ),
+            result := phs.ChooseOp.from_operations("0", lhs, rhs, switch1, [AddfOp], out_types),
+            result_2 := phs.ChooseOp.from_operations("1", lhs, result, switch2, [AddfOp], out_types),
+            result_3 := phs.ChooseOp.from_operations("2", result, rhs, switch3, [DivfOp], out_types),
             phs.YieldOp(result_3),
         ]
     )
