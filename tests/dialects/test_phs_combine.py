@@ -22,7 +22,7 @@ def test_combine() -> None:
             phs.YieldOp(result),
         ]
     )
-    abstract_pe_a = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockA))
+    pe_a = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockA))
 
     blockB = Block(arg_types=block_inputs)
     lhs, rhs, switch = blockB.args
@@ -32,7 +32,7 @@ def test_combine() -> None:
             phs.YieldOp(result),
         ]
     )
-    abstract_pe_b = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockB))
+    pe_b = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockB))
 
     block_inputs = [*in_types, IndexType(), IndexType()]
     blockC = Block(arg_types=block_inputs)
@@ -44,7 +44,7 @@ def test_combine() -> None:
             phs.YieldOp(result_2),
         ]
     )
-    abstract_pe_c = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockC))
+    pe_c = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockC))
 
     block_inputs = [*in_types, IndexType(), IndexType(), IndexType()]
     blockD = Block(arg_types=block_inputs)
@@ -57,7 +57,7 @@ def test_combine() -> None:
             phs.YieldOp(result_3),
         ]
     )
-    abstract_pe_d = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockD))
+    pe_d = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockD))
 
     blockE = Block(arg_types=block_inputs)
     lhs, rhs, switch1, switch2, switch3 = blockE.args
@@ -69,29 +69,29 @@ def test_combine() -> None:
             phs.YieldOp(result_3),
         ]
     )
-    abstract_pe_e = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockE))
+    pe_e = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), Region(blockE))
     print("A")
-    print(abstract_pe_a)
+    print(pe_a)
     print("B")
-    print(abstract_pe_b)
+    print(pe_b)
     print("A+B")
-    append_to_abstract_graph(abstract_pe_a, abstract_pe_b)
-    print(abstract_pe_b)
+    append_to_abstract_graph(pe_a, pe_b)
+    print(pe_b)
     print("C")
-    print(abstract_pe_c)
+    print(pe_c)
     print("A+B+C")
-    append_to_abstract_graph(abstract_pe_c, abstract_pe_b)
-    print(abstract_pe_b)
+    append_to_abstract_graph(pe_c, pe_b)
+    print(pe_b)
     print("D")
-    print(abstract_pe_d)
+    print(pe_d)
     print("A+B+C+D")
-    append_to_abstract_graph(abstract_pe_d, abstract_pe_b)
-    print(abstract_pe_b)
+    append_to_abstract_graph(pe_d, pe_b)
+    print(pe_b)
     print("E")
-    print(abstract_pe_e)
+    print(pe_e)
     print("A+B+C+D+E")
-    append_to_abstract_graph(abstract_pe_e, abstract_pe_b)
-    print(abstract_pe_b)
+    append_to_abstract_graph(pe_e, pe_b)
+    print(pe_b)
     return
 
 

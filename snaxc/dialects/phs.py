@@ -74,7 +74,7 @@ class PEOp(IRDLOperation):
         self,
         name: str,
         function_type: FunctionType | tuple[Sequence[Attribute], Sequence[Attribute]],
-        region: Region | type[Region.DEFAULT] = Region.DEFAULT,
+        region: Region | None = None,
         *,
         arg_attrs: ArrayAttr[DictionaryAttr] | None = None,
         res_attrs: ArrayAttr[DictionaryAttr] | None = None,
@@ -128,8 +128,8 @@ class PEOp(IRDLOperation):
                 YieldOp(result),
             ]
         )
-        abstract_pe_op = PEOp(acc_ref.string_value(), (block_inputs, out_types), Region(block))
-        return abstract_pe_op
+        pe_op = PEOp(acc_ref.string_value(), (block_inputs, out_types), Region(block))
+        return pe_op
 
     def get_choose_op(self, symbol_name: str) -> "ChooseOp | None":
         """
@@ -200,12 +200,11 @@ class ChooseOp(IRDLOperation):
         lhs: Operation | SSAValue,
         rhs: Operation | SSAValue,
         switch: Operation | SSAValue,
-        default_region: Region = Region(Block([YieldOp()])),
+        default_region: Region,
         case_regions: Sequence[Region] = [],
         result_types: Sequence[Attribute] = [],
         attr_dict: dict[str, Attribute] | None = None,
     ):
-        # FIXME if you use an empty region this thing fails verification
         super().__init__(
             properties={
                 "sym_name": StringAttr(name),
