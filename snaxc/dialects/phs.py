@@ -286,13 +286,14 @@ class ChooseOp(IRDLOperation):
             printer.print_attribute(opnd.type)
             if i != len(self.results) - 1:
                 printer.print_string(", ")
-
+        printer.print_string(" {")
         with printer.indented():
             for i, region in enumerate(self.regions):
                 printer.print_string(f"\n{i}) ")
                 # FIXME, what if multiple operations?
                 for op in list(region.block.ops)[:-1]:
                     printer.print_string(op.name)
+        printer.print_string("\n}")
 
     @classmethod
     def parse(cls: type[ChooseOp], parser: Parser) -> ChooseOp:
@@ -312,14 +313,15 @@ class ChooseOp(IRDLOperation):
         parser.parse_comma_separated_list
         parser.parse_punctuation("->")
         res_typ = parser.parse_type()
+        parser.parse_punctuation("{")
 
         def get_op() -> type[Operation] | None:
             if parser.parse_optional_integer() is None:
                 return None
-            parser.parse_optional_punctuation(")")
-            operation_ident = parser.parse_optional_identifier()
+            parser.parse_punctuation(")")
+            operation_ident = parser.parse_identifier()
             # FIXME is there a public thing I can use to do this?
-            return parser._get_op_by_name(operation_ident)  # pyright: ignore
+            return parser._get_op_by_name(operation_ident)  # pyright: ignore [reportPrivateUsage]
 
         parsed_operations: list[type[Operation]] = []
         while True:
@@ -330,6 +332,7 @@ class ChooseOp(IRDLOperation):
                 break
 
         assert len(parsed_operations) >= 1, "Expected to parse at least one operation!"
+        parser.parse_punctuation("}")
         for operation in parsed_operations:
             assert issubclass(operation, FloatingPointLikeBinaryOperation)
         typed_operations = cast(Sequence[type[FloatingPointLikeBinaryOperation]], parsed_operations)
