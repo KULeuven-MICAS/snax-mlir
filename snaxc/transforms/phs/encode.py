@@ -1,9 +1,8 @@
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, linalg
-from xdsl.dialects.builtin import AffineMapAttr, FunctionType, ModuleOp, TensorType
-from xdsl.ir import Block, Operation, Region
-from xdsl.ir.affine import AffineExpr, AffineMap
-from xdsl.parser import DenseIntOrFPElementsAttr, Float32Type, SymbolRefAttr
+from xdsl.dialects.builtin import FunctionType, ModuleOp
+from xdsl.ir import Operation
+from xdsl.parser import Float32Type, SymbolRefAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
 from xdsl.rewriter import InsertPoint
@@ -103,102 +102,3 @@ class PhsEncodePass(ModulePass):
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(EncodeLinalgGeneric(), apply_recursively=False).rewrite_module(op)
-
-
-if __name__ == "__main__":
-
-    def create_generic() -> linalg.GenericOp:
-        # Inputs
-        tensor_type = TensorType(element_type=Float32Type(), shape=[1, 3])
-        tensor_val_type = DenseIntOrFPElementsAttr.from_list(type=tensor_type, data=[1.0, 2.0, 3.1])
-        tensor_cst = arith.ConstantOp(tensor_val_type)
-
-        # Body creation
-        body_block = Block(arg_types=[Float32Type(), Float32Type()])
-        rhs, lhs = body_block.args
-
-        ops = [
-            added := arith.AddfOp(rhs, lhs),
-            final_add := arith.AddfOp(
-                lhs,
-                added,
-            ),
-            linalg.YieldOp(final_add),
-        ]
-        body_block.add_ops(ops)
-        body = Region(body_block)
-
-        # Affine Map Creation
-        d0 = AffineExpr.dimension(0)
-        d1 = AffineExpr.dimension(1)
-
-        indexing_map = AffineMap(num_dims=2, num_symbols=0, results=(d0, d1))
-        im_attr = AffineMapAttr(indexing_map)
-
-        generic = linalg.GenericOp(
-            inputs=[tensor_cst.result, tensor_cst.result],
-            outputs=[],
-            body=body,
-            indexing_maps=[im_attr, im_attr, im_attr],
-            iterator_types=[
-                linalg.IteratorTypeAttr.parallel(),
-                linalg.IteratorTypeAttr.parallel(),
-                linalg.IteratorTypeAttr.parallel(),
-            ],
-            result_types=[tensor_type],
-        )
-        generic.attributes.update({"acc": SymbolRefAttr("accelerator0")})
-        return generic
-
-    def create_generic2() -> linalg.GenericOp:
-        # Inputs
-        tensor_type = TensorType(element_type=Float32Type(), shape=[1, 3])
-        tensor_val_type = DenseIntOrFPElementsAttr.from_list(type=tensor_type, data=[1.0, 2.0, 3.1])
-        tensor_cst = arith.ConstantOp(tensor_val_type)
-
-        # Body creation
-        body_block = Block(arg_types=[Float32Type(), Float32Type()])
-        rhs, lhs = body_block.args
-
-        ops = [
-            added := arith.MulfOp(rhs, lhs),
-            final_add := arith.AddfOp(
-                lhs,
-                added,
-            ),
-            linalg.YieldOp(final_add),
-        ]
-        body_block.add_ops(ops)
-        body = Region(body_block)
-
-        # Affine Map Creation
-        d0 = AffineExpr.dimension(0)
-        d1 = AffineExpr.dimension(1)
-
-        indexing_map = AffineMap(num_dims=2, num_symbols=0, results=(d0, d1))
-        im_attr = AffineMapAttr(indexing_map)
-
-        generic = linalg.GenericOp(
-            inputs=[tensor_cst.result, tensor_cst.result],
-            outputs=[],
-            body=body,
-            indexing_maps=[im_attr, im_attr, im_attr],
-            iterator_types=[
-                linalg.IteratorTypeAttr.parallel(),
-                linalg.IteratorTypeAttr.parallel(),
-                linalg.IteratorTypeAttr.parallel(),
-            ],
-            result_types=[tensor_type],
-        )
-        generic.attributes.update({MAGIC_ATTR_NAME: SymbolRefAttr("accelerator0")})
-        return generic
-
-    def encode_generic(module_op: ModuleOp) -> ModuleOp:
-        PatternRewriteWalker(EncodeLinalgGeneric(), apply_recursively=False).rewrite_module(module_op)
-        return module_op
-
-    generic = create_generic()
-    module_op = ModuleOp([create_generic(), create_generic2()])
-    print(module_op)
-    module_op = encode_generic(module_op)
-    print(module_op)
