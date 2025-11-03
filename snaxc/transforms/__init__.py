@@ -147,11 +147,6 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return MemrefToSNAX
 
-    def get_phs_encode():
-        from snaxc.transforms.phs.encode import PhsEncodePass
-
-        return PhsEncodePass
-
     def get_pipeline_canonicalize_for():
         from snaxc.transforms.pipeline.pipeline_canonicalize_for import (
             PipelineCanonicalizeFor,
@@ -283,7 +278,6 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "insert-accfg-op": get_insert_accfg_op,
         "insert-sync-barrier": get_insert_sync_barrier,
         "memref-to-snax": get_memref_to_snax,
-        "phs-encode": get_phs_encode,
         "pipeline-canonicalize-for": get_pipeline_canonicalize_for,
         "pipeline-duplicate-buffers": get_pipeline_duplicate_buffers,
         "postprocess": get_postprocess_mlir,

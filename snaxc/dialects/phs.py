@@ -28,7 +28,6 @@ from xdsl.irdl import (
     region_def,
     result_def,
     traits_def,
-    var_operand_def,
     var_region_def,
 )
 from xdsl.parser import Parser, SymbolRefAttr
@@ -468,45 +467,12 @@ class MuxOp(IRDLOperation):
         )
 
 
-@irdl_op_definition
-class CallOp(IRDLOperation):
-    name = "phs.call"
-
-    name_prop = prop_def(StringAttr, prop_name="sym_name")
-
-    lhs = operand_def(Float32Type)
-    rhs = operand_def(Float32Type)
-    switches = var_operand_def(IndexType)
-    res = result_def(Float32Type)
-
-    traits = traits_def(SymbolOpInterface())
-
-    def __init__(
-        self,
-        name: str,
-        lhs: Operation | SSAValue,
-        rhs: Operation | SSAValue,
-        switches: Sequence[Operation | SSAValue],
-        result_types: Sequence[Attribute] = [],
-        attr_dict: dict[str, Attribute] | None = None,
-    ):
-        super().__init__(
-            properties={
-                "sym_name": StringAttr(name),
-            },
-            operands=(lhs, rhs, switches),
-            attributes=attr_dict,
-            result_types=(result_types,),
-        )
-
-
 Phs = Dialect(
     "phs",
     [
         PEOp,
         MuxOp,
         ChooseOp,
-        CallOp,
         YieldOp,
     ],
 )
