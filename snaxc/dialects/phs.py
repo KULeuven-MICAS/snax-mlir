@@ -184,25 +184,23 @@ class PEOp(IRDLOperation):
         )
         return block.insert_arg(IndexType(), len(block.args))
 
-    def get_switches(self) -> list[BlockArgument[Attribute]]:
-        """
-        Get BlockArguments that relate to switches in PE operation
-        """
+    def _get_block_args(self) -> list[BlockArgument[Attribute]]:
         block = self.regions[0].blocks.first
         assert block is not None
-        block_args = list(block.args)
+        return list(block.args)
+
+    def get_switches(self) -> list[BlockArgument[Attribute]]:
+        """
+        Get BlockArguments that relate to switch input in PE operation
+        """
         # The last switch_no arguments are the switches
-        return block_args[-self.switch_no.value.data :]
+        return self._get_block_args()[-self.switch_no.value.data :]
 
     def data_operands(self) -> list[BlockArgument[Attribute]]:
         """
-        Get BlockArguments that relate to switches in PE operation
+        Get BlockArguments that relate to data input in PE operation
         """
-        block = self.regions[0].blocks.first
-        assert block is not None
-        block_args = list(block.args)
-        # The last switch_no arguments are the switches
-        return block_args[: -self.switch_no.value.data]
+        return self._get_block_args()[: -self.switch_no.value.data]
 
     def print(self, printer: Printer):
         printer.print_string(" @")
