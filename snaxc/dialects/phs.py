@@ -4,7 +4,16 @@ from collections.abc import Iterator, Sequence
 from typing import cast
 
 from xdsl.dialects.arith import FloatingPointLikeBinaryOperation
-from xdsl.dialects.builtin import ArrayAttr, DictionaryAttr, Float32Type, FunctionType, IndexType, StringAttr
+from xdsl.dialects.builtin import (
+    I64,
+    ArrayAttr,
+    DictionaryAttr,
+    Float32Type,
+    FunctionType,
+    IndexType,
+    IntegerAttr,
+    StringAttr,
+)
 from xdsl.dialects.func import FuncOpCallableInterface
 from xdsl.dialects.utils import AbstractYieldOperation
 from xdsl.ir import Attribute, Block, BlockArgument, Dialect, Region, SSAValue
@@ -70,6 +79,9 @@ class PEOp(IRDLOperation):
     body = region_def("single_block")
 
     function_type = prop_def(FunctionType)
+
+    switch_no = prop_def(IntegerAttr[I64])  # the last switch_no block_args are considered switches
+
     arg_attrs = opt_prop_def(ArrayAttr[DictionaryAttr])
     res_attrs = opt_prop_def(ArrayAttr[DictionaryAttr])
 
@@ -79,6 +91,7 @@ class PEOp(IRDLOperation):
         self,
         name: str,
         function_type: FunctionType | tuple[Sequence[Attribute], Sequence[Attribute]],
+        switch_no: int = 0,
         region: Region | None = None,
         *,
         arg_attrs: ArrayAttr[DictionaryAttr] | None = None,
@@ -93,6 +106,7 @@ class PEOp(IRDLOperation):
             properties={
                 "sym_name": StringAttr(name),
                 "function_type": function_type,
+                "switch_no": IntegerAttr.from_int_and_width(switch_no, 64),
                 "arg_attrs": arg_attrs,
                 "res_attrs": res_attrs,
             },
@@ -113,8 +127,8 @@ class PEOp(IRDLOperation):
     @staticmethod
     def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[FloatingPointLikeBinaryOperation]) -> PEOp:
         """
-        Utility constructor that fills up an Abstract PE operation with a simple preset
-        based on a sequence of operations
+        Utility constructor that fills up a PE operation with a single ChooseOp that supports
+        all operations given in "operations"
         """
         switch_types = [IndexType()]
         # Based on operation
@@ -133,12 +147,12 @@ class PEOp(IRDLOperation):
                 YieldOp(result),
             ]
         )
-        pe_op = PEOp(acc_ref.string_value(), (block_inputs, out_types), Region(block))
+        pe_op = PEOp(acc_ref.string_value(), (block_inputs, out_types), 1, Region(block))
         return pe_op
 
     def get_choose_op(self, symbol_name: str) -> ChooseOp | None:
         """
-        Get a specific choose op inside the AbstractPEOp by symbol name
+        Get a specific choose op inside the PEOp by symbol name
         """
         t = self.get_trait(SymbolTable)
         assert t is not None, "No SymbolTable present in current operation"
@@ -151,7 +165,7 @@ class PEOp(IRDLOperation):
 
     def get_terminator(self) -> YieldOp:
         """
-        Get the terminating operation inside the AbstractPEOp body.
+        Get the terminating operation inside the PEOp body.
         """
         yield_op = self.body.ops.last
         assert isinstance(yield_op, YieldOp)
@@ -159,15 +173,100 @@ class PEOp(IRDLOperation):
 
     def add_switch(self) -> BlockArgument:
         """
-        Add an extra switch to the Abstract PE operation
+        Add an extra switch to the PE operation
         """
         block = self.regions[0].blocks.first
         assert block is not None
         # Add new switch at the end
+        self.switch_no = IntegerAttr.from_int_and_width(self.switch_no.value.data + 1, 64)
         self.function_type = FunctionType.from_lists(
             list(self.function_type.inputs) + [IndexType()], list(self.function_type.outputs)
         )
         return block.insert_arg(IndexType(), len(block.args))
+
+    def get_switches(self) -> list[BlockArgument[Attribute]]:
+        """
+        Get BlockArguments that relate to switches in PE operation
+        """
+        block = self.regions[0].blocks.first
+        assert block is not None
+        block_args = list(block.args)
+        # The last switch_no arguments are the switches
+        return block_args[-self.switch_no.value.data :]
+
+    def data_operands(self) -> list[BlockArgument[Attribute]]:
+        """
+        Get BlockArguments that relate to switches in PE operation
+        """
+        block = self.regions[0].blocks.first
+        assert block is not None
+        block_args = list(block.args)
+        # The last switch_no arguments are the switches
+        return block_args[: -self.switch_no.value.data]
+
+    def print(self, printer: Printer):
+        printer.print_string(" @")
+        printer.print_string(self.name_prop.data)
+        printer.print_string(" with ")
+        first_switch = True
+        # First print switches
+        for block_arg in self.get_switches():
+            if not first_switch:
+                printer.print_string(", ")
+            printer.print_operand(block_arg)
+            first_switch = False
+
+        # After switches, print operands
+        printer.print_string(" (")
+        data_operands = self.data_operands()
+        for i, opnd in enumerate(data_operands):
+            printer.print_operand(opnd)
+            printer.print_string(" : ")
+            printer.print_attribute(opnd.type)
+            if i != len(data_operands) - 1:
+                printer.print_string(", ")
+
+        printer.print_string(") {")
+        with printer.indented():
+            for op in self.regions[0].block.ops:
+                printer.print_string("\n")
+                printer.print_op(op)
+
+        printer.print_string("\n}")
+
+    @classmethod
+    def parse(cls: type[PEOp], parser: Parser) -> PEOp:
+        name_prop = parser.parse_symbol_name()
+        parser.parse_keyword("with")
+
+        switches: list[Parser.Argument] = []
+        while True:
+            arg = parser.parse_optional_argument(expect_type=False)
+            if arg is None:
+                break
+            arg = arg.resolve(IndexType())
+            parser.parse_optional_punctuation(",")
+            switches.append(arg)
+
+        parser.parse_punctuation("(")
+        lhs = parser.parse_argument(expect_type=True)
+        parser.parse_punctuation(",")
+        rhs = parser.parse_argument(expect_type=True)
+        parser.parse_punctuation(")")
+
+        input_args = [lhs, rhs, *switches]
+        region = parser.parse_region(arguments=input_args)
+        yield_op = region.block.ops.last
+        assert isinstance(yield_op, YieldOp)
+        in_types = [arg.type for arg in input_args]
+        out_types = yield_op.operand_types
+        pe_op = cls(
+            name_prop.data,
+            function_type=FunctionType.from_lists(in_types, out_types),
+            switch_no=len(switches),
+            region=region,
+        )
+        return pe_op
 
 
 @irdl_op_definition

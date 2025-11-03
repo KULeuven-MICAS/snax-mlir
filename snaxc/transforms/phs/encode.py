@@ -122,6 +122,7 @@ class EncodeLinalgGeneric(RewritePattern):
         pe = phs.PEOp(
             acc_symbol_ref.string_value(),
             function_type=FunctionType.from_lists(body_copy.block.arg_types, linalg_yield.operand_types),
+            switch_no=0,
             region=body_copy,
         )
         for op in pe.body.ops:
