@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
 
-from xdsl.dialects.arith import FloatingPointLikeBinaryOperation
 from xdsl.dialects.builtin import (
     I64,
     ArrayAttr,
@@ -124,26 +123,38 @@ class PEOp(IRDLOperation):
             raise VerifyException("Expected entry block arguments to have the same types as the function input types")
 
     @staticmethod
-    def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[FloatingPointLikeBinaryOperation]) -> PEOp:
+    def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[Operation]) -> PEOp:
         """
         Utility constructor that fills up a PE operation with a single ChooseOp that supports
         all operations given in "operations"
         """
+        # There will be only on switch of index type
         switch_types = [IndexType()]
-        # Based on operation
-        # FIXME check if all operations have the same types!
-        in_types = [operations[0].lhs.type, operations[0].rhs.type]
-        out_types = [operations[0].result.type]
+
+        # Check whether all operations have equal types
+        in_types = operations[0].operand_types
+        out_types = operations[0].result_types
+        for operation in operations[1:]:
+            for typ_a, typ_b in zip(operations[0].operand_types, operation.operand_types, strict=True):
+                assert type(typ_a) is type(typ_b), "expect operand types of all operations to be equal"
+            for typ_a, typ_b in zip(operations[0].result_types, operation.result_types, strict=True):
+                assert type(typ_a) is type(typ_b), "expect result types of all operations to be equal"
+
         # Construct a new block based on the input of the
         block_inputs = [*in_types, *switch_types]
         block = Block(arg_types=block_inputs)
+
         # Map block args to inputs and outputs to yield
-        lhs, rhs, switch = block.args
+        data_operands = block.args[:-1]
+        switch = block.args[-1]
         type_ops = [type(op) for op in operations]
+
+        # Create the new operation
+        choose_op = ChooseOp.from_operations("0", data_operands, switch, operations=type_ops, result_types=out_types)
         block.add_ops(
             [
-                result := ChooseOp.from_operations("0", lhs, rhs, switch, operations=type_ops, result_types=out_types),
-                YieldOp(result),
+                choose_op,
+                YieldOp(choose_op),
             ]
         )
         pe_op = PEOp(acc_ref.string_value(), (block_inputs, out_types), 1, Region(block))
@@ -438,20 +449,24 @@ class MuxOp(IRDLOperation):
     switch = operand_def(IndexType)
     res = result_def()
 
-    assembly_format = "`(`$lhs`:`type($lhs)`,` $rhs`:`type($rhs) `)` `->` type($res) `with` $switch attr-dict"
+    assembly_format = "`with` $switch ` ``(`$lhs`:`type($lhs)`,` $rhs`:`type($rhs) `)` `->` type($res)  attr-dict"
 
     def __init__(
         self,
         lhs: Operation | SSAValue,
         rhs: Operation | SSAValue,
         switch: Operation | SSAValue,
-        result_types: Sequence[Attribute],
         attr_dict: dict[str, Attribute] | None = None,
     ):
+        if isinstance(lhs, Operation):
+            out_type = lhs.results[0].type
+        else:
+            out_type = lhs.type
         super().__init__(
             operands=(lhs, rhs, switch),
             attributes=attr_dict,
-            result_types=(result_types,),
+            # All types should be equal
+            result_types=(out_type,),
         )
 
 

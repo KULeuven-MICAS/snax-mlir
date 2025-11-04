@@ -1,4 +1,5 @@
-from xdsl.dialects.builtin import Float32Type
+from collections.abc import Sequence
+
 from xdsl.ir import BlockArgument
 from xdsl.irdl import Operand
 
@@ -73,7 +74,6 @@ def uncollide_inputs(op: phs.YieldOp | phs.ChooseOp, abst_op: phs.YieldOp | phs.
                 lhs=abst_opnd,  # this is the default connection
                 rhs=equivalent_owner,  # this is the conflicting connection
                 switch=abstract_graph.add_switch(),  # extra switch to control input
-                result_types=[Float32Type()],
             )
             abstract_graph.body.block.insert_op_before(mux, abst_op)
             # Reroute the new mux outcome to the abstract terminator
@@ -103,13 +103,14 @@ def append_to_abstract_graph(
             # If for this id none exists yet, create a new one and fill it with the operations
             if abstract_choose_op is None:
                 # create the abstract_choose_op
-                lhs = get_equivalent_owner(choose_op.lhs, abstract_graph)
-                rhs = get_equivalent_owner(choose_op.rhs, abstract_graph)
+                equivalent_opnds: Sequence[BlockArgument | phs.ChooseOp] = []
+                for data_opnd in choose_op.data_operands:
+                    equivalent_opnds.append(get_equivalent_owner(data_opnd, abstract_graph))
                 # Add an extra switch to the PE to control this choice
                 switch = abstract_graph.add_switch()
                 operations = [type(op) for op in choose_op.operations()]
                 abstract_choose_op = phs.ChooseOp.from_operations(
-                    choose_op_id, lhs, rhs, switch, operations, [Float32Type()]
+                    choose_op_id, equivalent_opnds, switch, operations, choose_op.result_types
                 )
                 abstract_graph.body.block.insert_op_before(abstract_choose_op, abstract_graph.get_terminator())
             # If for this id a choose_op exists, make sure the right connections are there
