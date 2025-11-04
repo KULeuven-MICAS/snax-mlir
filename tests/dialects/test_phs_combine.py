@@ -105,7 +105,7 @@ def test_combine() -> None:
     print(pe_e)
     print("A+B+C+D+E")
     append_to_abstract_graph(pe_e, pe_b)
-    # This will try to add i32 things to an f32 node
+    # This will try to add i32 operands to a choose_op with f32 operands
     with pytest.raises(AssertionError):
         append_to_abstract_graph(pe_f, pe_b)
     print(pe_b)

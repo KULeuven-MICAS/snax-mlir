@@ -11,13 +11,13 @@ builtin.module {
       0) arith.mulf
       1) arith.addf
     }
-    %10 = phs.mux(%8 : f32, %9 : f32) -> f32 with %2
-    %11 = phs.mux(%9 : f32, %7 : f32) -> f32 with %5
+    %10 = phs.mux with %2 (%8 : f32, %9 : f32) -> f32
+    %11 = phs.mux with %5 (%9 : f32, %7 : f32) -> f32
     %12 = phs.choose @_2 with %3 (%8 : f32, %11 : f32) -> f32 {
       0) arith.mulf
       1) arith.divf
     }
-    %13 = phs.mux(%10 : f32, %12 : f32) -> f32 with %4
+    %13 = phs.mux with %4 (%10 : f32, %12 : f32) -> f32
     phs.yield %13 : f32
   }
 }
@@ -32,13 +32,13 @@ builtin.module {
 // CHECK-NEXT:       0) arith.mulf
 // CHECK-NEXT:       1) arith.addf
 // CHECK-NEXT:     }
-// CHECK-NEXT:     %10 = phs.mux(%8 : f32, %9 : f32) -> f32 with %2
-// CHECK-NEXT:     %11 = phs.mux(%9 : f32, %7 : f32) -> f32 with %5
+// CHECK-NEXT:     %10 = phs.mux with %2 (%8 : f32, %9 : f32) -> f32
+// CHECK-NEXT:     %11 = phs.mux with %5 (%9 : f32, %7 : f32) -> f32
 // CHECK-NEXT:     %12 = phs.choose @_2 with %3 (%8 : f32, %11 : f32) -> f32 {
 // CHECK-NEXT:       0) arith.mulf
 // CHECK-NEXT:       1) arith.divf
 // CHECK-NEXT:     }
-// CHECK-NEXT:     %13 = phs.mux(%10 : f32, %12 : f32) -> f32 with %4
+// CHECK-NEXT:     %13 = phs.mux with %4 (%10 : f32, %12 : f32) -> f32
 // CHECK-NEXT:     phs.yield %13 : f32
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
