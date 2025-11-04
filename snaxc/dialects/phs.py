@@ -7,7 +7,6 @@ from xdsl.dialects.builtin import (
     I64,
     ArrayAttr,
     DictionaryAttr,
-    Float32Type,
     FunctionType,
     IndexType,
     IntegerAttr,
@@ -434,10 +433,10 @@ class MuxOp(IRDLOperation):
 
     name = "phs.mux"
 
-    lhs = operand_def(Float32Type)
-    rhs = operand_def(Float32Type)
+    lhs = operand_def()
+    rhs = operand_def()
     switch = operand_def(IndexType)
-    res = result_def(Float32Type)
+    res = result_def()
 
     assembly_format = "`(`$lhs`:`type($lhs)`,` $rhs`:`type($rhs) `)` `->` type($res) `with` $switch attr-dict"
 
