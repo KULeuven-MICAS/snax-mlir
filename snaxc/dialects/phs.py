@@ -1,7 +1,19 @@
+from __future__ import annotations
+
 from collections.abc import Iterator, Sequence
+from typing import cast
 
 from xdsl.dialects.arith import FloatingPointLikeBinaryOperation
-from xdsl.dialects.builtin import ArrayAttr, DictionaryAttr, Float32Type, FunctionType, IndexType, StringAttr
+from xdsl.dialects.builtin import (
+    I64,
+    ArrayAttr,
+    DictionaryAttr,
+    Float32Type,
+    FunctionType,
+    IndexType,
+    IntegerAttr,
+    StringAttr,
+)
 from xdsl.dialects.func import FuncOpCallableInterface
 from xdsl.dialects.utils import AbstractYieldOperation
 from xdsl.ir import Attribute, Block, BlockArgument, Dialect, Region, SSAValue
@@ -18,7 +30,8 @@ from xdsl.irdl import (
     traits_def,
     var_region_def,
 )
-from xdsl.parser import SymbolRefAttr
+from xdsl.parser import Parser, SymbolRefAttr
+from xdsl.printer import Printer
 from xdsl.traits import HasAncestor, HasParent, IsolatedFromAbove, IsTerminator, Pure, SymbolOpInterface, SymbolTable
 from xdsl.utils.exceptions import VerifyException
 
@@ -65,6 +78,9 @@ class PEOp(IRDLOperation):
     body = region_def("single_block")
 
     function_type = prop_def(FunctionType)
+
+    switch_no = prop_def(IntegerAttr[I64])  # the last switch_no block_args are considered switches
+
     arg_attrs = opt_prop_def(ArrayAttr[DictionaryAttr])
     res_attrs = opt_prop_def(ArrayAttr[DictionaryAttr])
 
@@ -74,6 +90,7 @@ class PEOp(IRDLOperation):
         self,
         name: str,
         function_type: FunctionType | tuple[Sequence[Attribute], Sequence[Attribute]],
+        switch_no: int = 0,
         region: Region | None = None,
         *,
         arg_attrs: ArrayAttr[DictionaryAttr] | None = None,
@@ -88,6 +105,7 @@ class PEOp(IRDLOperation):
             properties={
                 "sym_name": StringAttr(name),
                 "function_type": function_type,
+                "switch_no": IntegerAttr.from_int_and_width(switch_no, 64),
                 "arg_attrs": arg_attrs,
                 "res_attrs": res_attrs,
             },
@@ -106,10 +124,10 @@ class PEOp(IRDLOperation):
             raise VerifyException("Expected entry block arguments to have the same types as the function input types")
 
     @staticmethod
-    def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[FloatingPointLikeBinaryOperation]) -> "PEOp":
+    def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[FloatingPointLikeBinaryOperation]) -> PEOp:
         """
-        Utility constructor that fills up an Abstract PE operation with a simple preset
-        based on a sequence of operations
+        Utility constructor that fills up a PE operation with a single ChooseOp that supports
+        all operations given in "operations"
         """
         switch_types = [IndexType()]
         # Based on operation
@@ -128,12 +146,12 @@ class PEOp(IRDLOperation):
                 YieldOp(result),
             ]
         )
-        pe_op = PEOp(acc_ref.string_value(), (block_inputs, out_types), Region(block))
+        pe_op = PEOp(acc_ref.string_value(), (block_inputs, out_types), 1, Region(block))
         return pe_op
 
-    def get_choose_op(self, symbol_name: str) -> "ChooseOp | None":
+    def get_choose_op(self, symbol_name: str) -> ChooseOp | None:
         """
-        Get a specific choose op inside the AbstractPEOp by symbol name
+        Get a specific choose op inside the PEOp by symbol name
         """
         t = self.get_trait(SymbolTable)
         assert t is not None, "No SymbolTable present in current operation"
@@ -146,7 +164,7 @@ class PEOp(IRDLOperation):
 
     def get_terminator(self) -> YieldOp:
         """
-        Get the terminating operation inside the AbstractPEOp body.
+        Get the terminating operation inside the PEOp body.
         """
         yield_op = self.body.ops.last
         assert isinstance(yield_op, YieldOp)
@@ -154,15 +172,98 @@ class PEOp(IRDLOperation):
 
     def add_switch(self) -> BlockArgument:
         """
-        Add an extra switch to the Abstract PE operation
+        Add an extra switch to the PE operation
         """
         block = self.regions[0].blocks.first
         assert block is not None
         # Add new switch at the end
+        self.switch_no = IntegerAttr.from_int_and_width(self.switch_no.value.data + 1, 64)
         self.function_type = FunctionType.from_lists(
             list(self.function_type.inputs) + [IndexType()], list(self.function_type.outputs)
         )
         return block.insert_arg(IndexType(), len(block.args))
+
+    def _get_block_args(self) -> list[BlockArgument[Attribute]]:
+        block = self.regions[0].blocks.first
+        assert block is not None
+        return list(block.args)
+
+    def get_switches(self) -> list[BlockArgument[Attribute]]:
+        """
+        Get BlockArguments that relate to switch input in PE operation
+        """
+        # The last switch_no arguments are the switches
+        return self._get_block_args()[-self.switch_no.value.data :]
+
+    def data_operands(self) -> list[BlockArgument[Attribute]]:
+        """
+        Get BlockArguments that relate to data input in PE operation
+        """
+        return self._get_block_args()[: -self.switch_no.value.data]
+
+    def print(self, printer: Printer):
+        printer.print_string(" @")
+        printer.print_string(self.name_prop.data)
+        printer.print_string(" with ")
+        first_switch = True
+        # First print switches
+        for block_arg in self.get_switches():
+            if not first_switch:
+                printer.print_string(", ")
+            printer.print_operand(block_arg)
+            first_switch = False
+
+        # After switches, print operands
+        printer.print_string(" (")
+        data_operands = self.data_operands()
+        for i, opnd in enumerate(data_operands):
+            printer.print_operand(opnd)
+            printer.print_string(" : ")
+            printer.print_attribute(opnd.type)
+            if i != len(data_operands) - 1:
+                printer.print_string(", ")
+
+        printer.print_string(") {")
+        with printer.indented():
+            for op in self.regions[0].block.ops:
+                printer.print_string("\n")
+                printer.print_op(op)
+
+        printer.print_string("\n}")
+
+    @classmethod
+    def parse(cls: type[PEOp], parser: Parser) -> PEOp:
+        name_prop = parser.parse_symbol_name()
+        parser.parse_keyword("with")
+
+        switches: list[Parser.Argument] = []
+        while True:
+            arg = parser.parse_optional_argument(expect_type=False)
+            if arg is None:
+                break
+            arg = arg.resolve(IndexType())
+            parser.parse_optional_punctuation(",")
+            switches.append(arg)
+
+        parser.parse_punctuation("(")
+        lhs = parser.parse_argument(expect_type=True)
+        parser.parse_punctuation(",")
+        rhs = parser.parse_argument(expect_type=True)
+        parser.parse_punctuation(")")
+
+        input_args = [lhs, rhs, *switches]
+        region = parser.parse_region(arguments=input_args)
+        yield_op = region.block.ops.last
+        assert isinstance(yield_op, YieldOp)
+        in_types = [arg.type for arg in input_args]
+        out_types = yield_op.operand_types
+        pe_op = cls(
+            name_prop.data,
+            function_type=FunctionType.from_lists(in_types, out_types),
+            switch_no=len(switches),
+            region=region,
+        )
+        return pe_op
 
 
 @irdl_op_definition
@@ -186,11 +287,6 @@ class ChooseOp(IRDLOperation):
     case_regions = var_region_def("single_block")
 
     res = result_def(Float32Type)
-
-    assembly_format = (
-        " $sym_name` ` `(`$lhs`:`type($lhs)`,` $rhs`:`type($rhs)`)` `->`"
-        + " type($res) `with` $switch $default_region $case_regions attr-dict"
-    )
 
     traits = traits_def(SymbolOpInterface(), HasParent(PEOp))
 
@@ -230,13 +326,13 @@ class ChooseOp(IRDLOperation):
         switch: Operation | SSAValue,
         operations: Sequence[type[FloatingPointLikeBinaryOperation]],
         result_types: Sequence[Attribute] = [],
-    ) -> "ChooseOp":
+    ) -> ChooseOp:
         """
         Utility constructor to construct a ChooseOp from a set of given operations
         """
         # Default operation
         case_regions: list[Region] = []
-        if len(operations) < 1:
+        if len(operations) > 1:
             for operation in operations[1:]:
                 case_regions.append(Region(Block([result := operation(lhs, rhs), YieldOp(result)])))
         default_region = Region(Block([result := operations[0](lhs, rhs), YieldOp(result)]))
@@ -268,6 +364,76 @@ class ChooseOp(IRDLOperation):
             operation = region.ops.first
             if isinstance(operation, FloatingPointLikeBinaryOperation):
                 yield operation
+
+    def print(self, printer: Printer):
+        printer.print_string(" @")
+        printer.print_string(self.name_prop.data)
+        printer.print_string(" with ")
+        printer.print_operand(self.operands[-1])
+        printer.print_string(" (")
+        for i, opnd in enumerate(self.operands[:-1]):
+            printer.print_operand(opnd)
+            printer.print_string(" : ")
+            printer.print_attribute(opnd.type)
+            if i != len(self.operands) - 2:
+                printer.print_string(", ")
+        printer.print_string(") -> ")
+        for i, opnd in enumerate(self.results):
+            printer.print_attribute(opnd.type)
+            if i != len(self.results) - 1:
+                printer.print_string(", ")
+        printer.print_string(" {")
+        with printer.indented():
+            for i, region in enumerate(self.regions):
+                printer.print_string(f"\n{i}) ")
+                # FIXME, what if multiple operations?
+                for op in list(region.block.ops)[:-1]:
+                    printer.print_string(op.name)
+        printer.print_string("\n}")
+
+    @classmethod
+    def parse(cls: type[ChooseOp], parser: Parser) -> ChooseOp:
+        name_prop = parser.parse_symbol_name()
+        parser.parse_keyword("with")
+        switch = parser.parse_operand()
+
+        def parse_itm() -> tuple[SSAValue, Attribute]:
+            val = parser.parse_operand()
+            parser.parse_punctuation(":")
+            typ = parser.parse_type()
+            return val, typ
+
+        args: list[tuple[SSAValue, Attribute]] = parser.parse_comma_separated_list(Parser.Delimiter.PAREN, parse_itm)
+        assert len(args) == 2, "Expect to have lhs and rhs operand for ChooseOp"
+
+        parser.parse_comma_separated_list
+        parser.parse_punctuation("->")
+        res_typ = parser.parse_type()
+        parser.parse_punctuation("{")
+
+        def get_op() -> type[Operation] | None:
+            if parser.parse_optional_integer() is None:
+                return None
+            parser.parse_punctuation(")")
+            operation_ident = parser.parse_identifier()
+            # FIXME is there a public thing I can use to do this?
+            return parser._get_op_by_name(operation_ident)  # pyright: ignore [reportPrivateUsage]
+
+        parsed_operations: list[type[Operation]] = []
+        while True:
+            parsed_operation = get_op()
+            if parsed_operation is not None:
+                parsed_operations.append(parsed_operation)
+            else:
+                break
+
+        assert len(parsed_operations) >= 1, "Expected to parse at least one operation!"
+        parser.parse_punctuation("}")
+        for operation in parsed_operations:
+            assert issubclass(operation, FloatingPointLikeBinaryOperation)
+        typed_operations = cast(Sequence[type[FloatingPointLikeBinaryOperation]], parsed_operations)
+        choose_op = cls.from_operations(name_prop.data, args[0][0], args[1][0], switch, typed_operations, [res_typ])
+        return choose_op
 
 
 @irdl_op_definition
