@@ -15,7 +15,10 @@ MAGIC_ATTR_NAME = "phs_acc"
 
 
 class EncodeLinalgGeneric(RewritePattern):
-    _count: dict[str, int] = {}
+    def __init__(self):
+        super().__init__()
+        # This variable should be new for each instance of this rewritepattern
+        self._count: dict[str, int] = {}
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.GenericOp, rewriter: PatternRewriter):
@@ -45,11 +48,14 @@ class EncodeLinalgGeneric(RewritePattern):
                 yield_op = phs.YieldOp(op.operands[0])
                 rewriter.replace_op(op, yield_op)
             else:
+                id = self._get_id(op)
                 choose_op = phs.ChooseOp.from_operations(
-                    self._get_id(op), op.operands, pe.add_switch(), [type(op)], result_types=op.result_types
+                    id, op.operands, pe.add_switch(), [type(op)], result_types=op.result_types
                 )
                 rewriter.replace_op(op, choose_op)
 
+        # Reset ids for next encountered linalg
+        self._reset_ids()
         # Get enclosing module_op
         toplevel = linalg_op.get_toplevel_object()
         assert isinstance(toplevel, ModuleOp), "Expect top-level IR object to be a ModuleOp"
@@ -66,9 +72,6 @@ class EncodeLinalgGeneric(RewritePattern):
             msg = f"Symbol for {acc_symbol_ref.string_value} already exists, but is not a PEOp"
             assert isinstance(abstract_pe, phs.PEOp), msg
             append_to_abstract_graph(pe, abstract_pe)
-
-        # Reset ids for next encountered linalg
-        self._reset_ids()
 
     def _get_id(self, op: Operation):
         """
@@ -92,7 +95,7 @@ class EncodeLinalgGeneric(RewritePattern):
         """
         Reset all counts for arity assignment
         """
-        self._count = {}
+        self._count.clear()
 
 
 class PhsEncodePass(ModulePass):

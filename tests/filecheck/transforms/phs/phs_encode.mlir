@@ -1,4 +1,4 @@
-// RUN: snax-opt %s -p phs-encode| filecheck %s
+// RUN: snax-opt %s -p phs-encode --split-input-file | filecheck %s
 
 func.func @elementwise_add_2d(%arg0: tensor<?x?xf32>, %arg1: tensor<?x?xf32>) -> tensor<?x?xf32> {
   %c0 = arith.constant 0 : index
@@ -47,6 +47,7 @@ func.func @elementwise_add_2d(%arg0: tensor<?x?xf32>, %arg1: tensor<?x?xf32>) ->
 // CHECK-NEXT:   phs.yield %add : f32
 // CHECK-NEXT: }
 
+// -----
 
 func.func @elementwise_add_2d_integer(%arg0: tensor<?x?xi32>, %arg1: tensor<?x?xi32>) -> tensor<?x?xi32> {
   %c0 = arith.constant 0 : index
