@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Sequence
-from typing import cast
 
 from xdsl.dialects.arith import FloatingPointLikeBinaryOperation
 from xdsl.dialects.builtin import (
@@ -28,7 +27,9 @@ from xdsl.irdl import (
     region_def,
     result_def,
     traits_def,
+    var_operand_def,
     var_region_def,
+    var_result_def,
 )
 from xdsl.parser import Parser, SymbolRefAttr
 from xdsl.printer import Printer
@@ -277,8 +278,7 @@ class ChooseOp(IRDLOperation):
 
     name_prop = prop_def(StringAttr, prop_name="sym_name")
 
-    lhs = operand_def(Float32Type)
-    rhs = operand_def(Float32Type)
+    data_operands = var_operand_def()
 
     switch = operand_def(IndexType)
 
@@ -286,15 +286,14 @@ class ChooseOp(IRDLOperation):
     default_region = region_def("single_block")
     case_regions = var_region_def("single_block")
 
-    res = result_def(Float32Type)
+    res = var_result_def()
 
     traits = traits_def(SymbolOpInterface(), HasParent(PEOp))
 
     def __init__(
         self,
         name: str,
-        lhs: Operation | SSAValue,
-        rhs: Operation | SSAValue,
+        data_operands: Sequence[Operation | SSAValue],
         switch: Operation | SSAValue,
         default_region: Region,
         case_regions: Sequence[Region] = [],
@@ -305,77 +304,71 @@ class ChooseOp(IRDLOperation):
             properties={
                 "sym_name": StringAttr(name),
             },
-            operands=(lhs, rhs, switch),
+            operands=(data_operands, switch),
             regions=(default_region, case_regions),
             attributes=attr_dict,
             result_types=(result_types,),
         )
 
-    @property
-    def data_operands(self) -> Sequence[SSAValue]:
-        """
-        Returns all operands except the switch operands
-        """
-        return self._operands[:-1]
-
     @staticmethod
     def from_operations(
         name: str,
-        lhs: Operation | SSAValue,
-        rhs: Operation | SSAValue,
+        data_operands: Sequence[Operation | SSAValue],
         switch: Operation | SSAValue,
-        operations: Sequence[type[FloatingPointLikeBinaryOperation]],
+        operations: Sequence[type[Operation]],
         result_types: Sequence[Attribute] = [],
     ) -> ChooseOp:
         """
         Utility constructor to construct a ChooseOp from a set of given operations
         """
         # Default operation
+        default_region = Region(Block([result := operations[0](*data_operands), YieldOp(result)]))
+        # Non-default
         case_regions: list[Region] = []
         if len(operations) > 1:
             for operation in operations[1:]:
-                case_regions.append(Region(Block([result := operation(lhs, rhs), YieldOp(result)])))
-        default_region = Region(Block([result := operations[0](lhs, rhs), YieldOp(result)]))
+                case_regions.append(Region(Block([result := operation(*data_operands), YieldOp(result)])))
         return ChooseOp(
             name=name,
-            lhs=lhs,
-            rhs=rhs,
+            data_operands=data_operands,
             switch=switch,
             default_region=default_region,
             case_regions=case_regions,
             result_types=result_types,
         )
 
-    def insert_operations(self, operations: Sequence[FloatingPointLikeBinaryOperation]):
+    def insert_operations(self, operations: Sequence[Operation]):
         """
         Add an operation to the list of choices if it is not present yet
         """
         # FIXME, what if operation order is swapped? i.e. rhs on lhs side and vice versa?
         for operation in operations:
             if operation.name not in [op.name for op in self.operations()]:
-                self.add_region(Region(Block([op := type(operation)(self.lhs, self.rhs), YieldOp(op)])))
+                self.add_region(Region(Block([op := type(operation)(*self.data_operands), YieldOp(op)])))
 
-    def operations(self) -> Iterator[FloatingPointLikeBinaryOperation]:
+    def operations(self) -> Iterator[Operation]:
         """
         Get an iterator over the list of existing choices of operations
         """
         for region in self.regions:
             # Only yield the first operation in the region
             operation = region.ops.first
-            if isinstance(operation, FloatingPointLikeBinaryOperation):
-                yield operation
+            assert operation is not None
+            yield operation
 
     def print(self, printer: Printer):
         printer.print_string(" @")
         printer.print_string(self.name_prop.data)
         printer.print_string(" with ")
-        printer.print_operand(self.operands[-1])
+        # Print the one switch
+        printer.print_operand(self.switch)
+        # Print the data operands
         printer.print_string(" (")
-        for i, opnd in enumerate(self.operands[:-1]):
+        for i, opnd in enumerate(self.data_operands):
             printer.print_operand(opnd)
             printer.print_string(" : ")
             printer.print_attribute(opnd.type)
-            if i != len(self.operands) - 2:
+            if i != len(self.data_operands) - 1:
                 printer.print_string(", ")
         printer.print_string(") -> ")
         for i, opnd in enumerate(self.results):
@@ -404,7 +397,6 @@ class ChooseOp(IRDLOperation):
             return val, typ
 
         args: list[tuple[SSAValue, Attribute]] = parser.parse_comma_separated_list(Parser.Delimiter.PAREN, parse_itm)
-        assert len(args) == 2, "Expect to have lhs and rhs operand for ChooseOp"
 
         parser.parse_comma_separated_list
         parser.parse_punctuation("->")
@@ -429,10 +421,7 @@ class ChooseOp(IRDLOperation):
 
         assert len(parsed_operations) >= 1, "Expected to parse at least one operation!"
         parser.parse_punctuation("}")
-        for operation in parsed_operations:
-            assert issubclass(operation, FloatingPointLikeBinaryOperation)
-        typed_operations = cast(Sequence[type[FloatingPointLikeBinaryOperation]], parsed_operations)
-        choose_op = cls.from_operations(name_prop.data, args[0][0], args[1][0], switch, typed_operations, [res_typ])
+        choose_op = cls.from_operations(name_prop.data, [el[0] for el in args], switch, parsed_operations, [res_typ])
         return choose_op
 
 

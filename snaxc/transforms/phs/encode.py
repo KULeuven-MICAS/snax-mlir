@@ -1,8 +1,8 @@
 from xdsl.context import Context
-from xdsl.dialects import arith, builtin, linalg
+from xdsl.dialects import builtin, linalg
 from xdsl.dialects.builtin import FunctionType, ModuleOp
 from xdsl.ir import Operation
-from xdsl.parser import Float32Type, SymbolRefAttr
+from xdsl.parser import SymbolRefAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
 from xdsl.rewriter import InsertPoint
@@ -41,16 +41,14 @@ class EncodeLinalgGeneric(RewritePattern):
             region=body_copy,
         )
         for op in pe.body.ops:
-            if isinstance(op, arith.FloatingPointLikeBinaryOperation):
-                choose_op = phs.ChooseOp.from_operations(
-                    self._get_id(op), op.lhs, op.rhs, pe.add_switch(), [type(op)], result_types=[Float32Type()]
-                )
-                rewriter.replace_op(op, choose_op)
-            elif isinstance(op, linalg.YieldOp):
+            if isinstance(op, linalg.YieldOp):
                 yield_op = phs.YieldOp(op.operands[0])
                 rewriter.replace_op(op, yield_op)
             else:
-                raise NotImplementedError()
+                choose_op = phs.ChooseOp.from_operations(
+                    self._get_id(op), op.operands, pe.add_switch(), [type(op)], result_types=op.result_types
+                )
+                rewriter.replace_op(op, choose_op)
 
         # Get enclosing module_op
         toplevel = linalg_op.get_toplevel_object()
