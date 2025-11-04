@@ -116,6 +116,12 @@ def append_to_abstract_graph(
             # If for this id a choose_op exists, make sure the right connections are there
             # then add all the operations that are not yet in the abstract choose_op
             else:
+                # Make sure all types are the same
+                msg = "Type of {} does not match the type of the choose_op in the abstract graph"
+                for typ, abstract_typ in zip(choose_op.operand_types, abstract_choose_op.operand_types, strict=True):
+                    assert type(typ) is type(abstract_typ), msg.format("operands")
+                for typ, abstract_typ in zip(choose_op.result_types, abstract_choose_op.result_types, strict=True):
+                    assert type(typ) is type(abstract_typ), msg.format("results")
                 # Make sure all connections are equivalent, otherwise add extra connections
                 uncollide_inputs(choose_op, abstract_choose_op)
                 # If all connections are equivalent or muxed, add remaining missing operations
