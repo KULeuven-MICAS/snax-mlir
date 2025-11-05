@@ -94,5 +94,5 @@ clang = "==20.1.7"
 lld = "==20.1.7"
 snax-cluster-prebuilt = "==0.2.15"
 snakemake-minimal = "*"
-pyright = ">=1.1.390,<2"
+pyright = ">=1.1.407,<2"
 vcd-to-csv = { version = ">=0.1.0,<0.2", channel = "kuleuven-micas" }
