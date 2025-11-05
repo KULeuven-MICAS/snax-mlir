@@ -1,5 +1,6 @@
-from xdsl.dialects.arith import AddfOp, DivfOp, MulfOp, SubfOp
-from xdsl.dialects.builtin import Float32Type, FunctionType, IndexType
+import pytest
+from xdsl.dialects.arith import AddfOp, AddiOp, DivfOp, MulfOp, MuliOp, SubfOp
+from xdsl.dialects.builtin import Float32Type, FunctionType, IndexType, i32
 from xdsl.ir import Block, Region
 
 from snaxc.dialects import phs
@@ -18,7 +19,7 @@ def test_combine() -> None:
     lhs, rhs, switch = blockA.args
     blockA.add_ops(
         [
-            result := phs.ChooseOp.from_operations("_0", lhs, rhs, switch, [AddfOp, SubfOp], out_types),
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch, [AddfOp, SubfOp], out_types),
             phs.YieldOp(result),
         ]
     )
@@ -28,7 +29,7 @@ def test_combine() -> None:
     lhs, rhs, switch = blockB.args
     blockB.add_ops(
         [
-            result := phs.ChooseOp.from_operations("_0", lhs, rhs, switch, [MulfOp], out_types),
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch, [MulfOp], out_types),
             phs.YieldOp(result),
         ]
     )
@@ -39,8 +40,8 @@ def test_combine() -> None:
     lhs, rhs, switch1, switch2 = blockC.args
     blockC.add_ops(
         [
-            result := phs.ChooseOp.from_operations("_0", lhs, rhs, switch1, [MulfOp], out_types),
-            result_2 := phs.ChooseOp.from_operations("_1", lhs, result, switch2, [MulfOp], out_types),
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [MulfOp], out_types),
+            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [MulfOp], out_types),
             phs.YieldOp(result_2),
         ]
     )
@@ -51,9 +52,9 @@ def test_combine() -> None:
     lhs, rhs, switch1, switch2, switch3 = blockD.args
     blockD.add_ops(
         [
-            result := phs.ChooseOp.from_operations("_0", lhs, rhs, switch1, [MulfOp], out_types),
-            result_2 := phs.ChooseOp.from_operations("_1", lhs, result, switch2, [MulfOp], out_types),
-            result_3 := phs.ChooseOp.from_operations("_2", result, result_2, switch3, [MulfOp], out_types),
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [MulfOp], out_types),
+            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [MulfOp], out_types),
+            result_3 := phs.ChooseOp.from_operations("_2", [result, result_2], switch3, [MulfOp], out_types),
             phs.YieldOp(result_3),
         ]
     )
@@ -63,13 +64,26 @@ def test_combine() -> None:
     lhs, rhs, switch1, switch2, switch3 = blockE.args
     blockE.add_ops(
         [
-            result := phs.ChooseOp.from_operations("_0", lhs, rhs, switch1, [AddfOp], out_types),
-            result_2 := phs.ChooseOp.from_operations("_1", lhs, result, switch2, [AddfOp], out_types),
-            result_3 := phs.ChooseOp.from_operations("_2", result, rhs, switch3, [DivfOp], out_types),
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [AddfOp], out_types),
+            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [AddfOp], out_types),
+            result_3 := phs.ChooseOp.from_operations("_2", [result, rhs], switch3, [DivfOp], out_types),
             phs.YieldOp(result_3),
         ]
     )
     pe_e = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), 3, Region(blockE))
+
+    blockF = Block(arg_types=[i32, i32, IndexType(), IndexType(), IndexType()])
+    lhs, rhs, switch1, switch2, switch3 = blockF.args
+    out_types = [i32]
+    blockF.add_ops(
+        [
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [AddiOp], out_types),
+            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [AddiOp], out_types),
+            result_3 := phs.ChooseOp.from_operations("_2", [result, rhs], switch3, [MuliOp], out_types),
+            phs.YieldOp(result_3),
+        ]
+    )
+    pe_f = phs.PEOp("myfirstaccelerator", FunctionType.from_lists(block_inputs, out_types), 3, Region(blockF))
     print("A")
     print(pe_a)
     print("B")
@@ -91,7 +105,11 @@ def test_combine() -> None:
     print(pe_e)
     print("A+B+C+D+E")
     append_to_abstract_graph(pe_e, pe_b)
+    # This will try to add i32 operands to a choose_op with f32 operands
+    with pytest.raises(AssertionError):
+        append_to_abstract_graph(pe_f, pe_b)
     print(pe_b)
+    print(pe_f)
     return
 
 

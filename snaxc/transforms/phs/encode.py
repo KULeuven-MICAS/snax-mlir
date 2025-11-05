@@ -1,8 +1,8 @@
 from xdsl.context import Context
-from xdsl.dialects import arith, builtin, linalg
+from xdsl.dialects import builtin, linalg
 from xdsl.dialects.builtin import FunctionType, ModuleOp
 from xdsl.ir import Operation
-from xdsl.parser import Float32Type, SymbolRefAttr
+from xdsl.parser import SymbolRefAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
 from xdsl.rewriter import InsertPoint
@@ -15,7 +15,10 @@ MAGIC_ATTR_NAME = "phs_acc"
 
 
 class EncodeLinalgGeneric(RewritePattern):
-    _count: dict[str, int] = {}
+    def __init__(self):
+        super().__init__()
+        # This variable should be new for each instance of this rewritepattern
+        self._count: dict[str, int] = {}
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.GenericOp, rewriter: PatternRewriter):
@@ -41,17 +44,18 @@ class EncodeLinalgGeneric(RewritePattern):
             region=body_copy,
         )
         for op in pe.body.ops:
-            if isinstance(op, arith.FloatingPointLikeBinaryOperation):
-                choose_op = phs.ChooseOp.from_operations(
-                    self._get_id(op), op.lhs, op.rhs, pe.add_switch(), [type(op)], result_types=[Float32Type()]
-                )
-                rewriter.replace_op(op, choose_op)
-            elif isinstance(op, linalg.YieldOp):
+            if isinstance(op, linalg.YieldOp):
                 yield_op = phs.YieldOp(op.operands[0])
                 rewriter.replace_op(op, yield_op)
             else:
-                raise NotImplementedError()
+                id = self._get_id(op)
+                choose_op = phs.ChooseOp.from_operations(
+                    id, op.operands, pe.add_switch(), [type(op)], result_types=op.result_types
+                )
+                rewriter.replace_op(op, choose_op)
 
+        # Reset ids for next encountered linalg
+        self._reset_ids()
         # Get enclosing module_op
         toplevel = linalg_op.get_toplevel_object()
         assert isinstance(toplevel, ModuleOp), "Expect top-level IR object to be a ModuleOp"
@@ -69,32 +73,33 @@ class EncodeLinalgGeneric(RewritePattern):
             assert isinstance(abstract_pe, phs.PEOp), msg
             append_to_abstract_graph(pe, abstract_pe)
 
-        # Reset ids for next encountered linalg
-        self._reset_ids()
-
     def _get_id(self, op: Operation):
         """
-        Use Arity to group together operations in similar encoding spaces such that e.g.:
-        * the second encountered binary op will be assigned to id "_2_1"
-        * the first encountered ternary op is assigned to id "_3_0"
-        * ...
+        Use input and output types to group together operations in similar encoding spaces such that e.g.:
+        e.g. the second encountered op with in0 : i32 in1 : i32 and out0 : f32 is be assigned to id
+        "i_i32_i32_o_f32"
         """
-        # TODO, add types to this assignment?
-        arity = len(op.operands)
-        key = f"_{arity}_opnd"
+        key = "i_"
+        for opnd in op.operands:
+            key += f"{opnd.type}_"
+
+        key += "o_"
+        for res in op.results:
+            key += f"{res.type}_"
+
         if key in self._count:
             current_count = self._count[key] + 1
             self._count[key] = current_count
-            return key + "_" + str(current_count)
+            return key + str(current_count)
         else:
             self._count[key] = 0
-            return key + "_0"
+            return key + "0"
 
     def _reset_ids(self):
         """
         Reset all counts for arity assignment
         """
-        self._count = {}
+        self._count.clear()
 
 
 class PhsEncodePass(ModulePass):
