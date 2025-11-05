@@ -4,6 +4,7 @@ from xdsl.context import Context
 from xdsl.dialects import arith, builtin, func, scf
 from xdsl.dialects.arith import AddiOp, ConstantOp, MuliOp
 from xdsl.dialects.builtin import (
+    DYNAMIC_INDEX,
     FixedBitwidthType,
     IndexType,
     IntAttr,
@@ -129,7 +130,7 @@ def extract_strides(memreftype: MemRefType) -> list[int | None]:
         # based on shape of the memref type
         strides = [1]
         for size in reversed(memreftype.shape.data[1:]):
-            if size.data == -1 or strides[0] is None:
+            if size.data == DYNAMIC_INDEX or strides[0] is None:
                 strides = [None] + strides
             else:
                 strides = [size.data * strides[0]] + strides
@@ -214,7 +215,7 @@ class TransformDMA(RewritePattern):
                 tile_bounds = op.source.type.layout.data.tile_bounds()
             else:
                 # otherwise, shape can be used as single-dimension tile sizes
-                # change dynamic size -1 to None
+                # change dynamic size to None
                 tile_bounds = [[x.data] if x.data > 0 else [None] for x in op.source.type.shape.data]
             tsl_dest = TiledStridedLayoutAttr(TiledStridedLayout.from_strides(strides, tile_bounds, offset))
 
