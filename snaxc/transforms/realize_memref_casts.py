@@ -491,8 +491,7 @@ class RealizeMemrefCasts(RewritePattern):
         shapes = [x.data for x in dest_type.shape.data]
         dyn_operands: list[Operation] = []
         for i in range(len(shapes)):
-            # Dynamic shapes are represented as -1
-            if shapes[i] == -1:
+            if shapes[i] == builtin.DYNAMIC_INDEX:
                 ## create dim op
                 index = arith.ConstantOp.from_int_and_width(i, builtin.IndexType())
                 dim_op = memref.DimOp.from_source_and_index(source_op.source, index.result)
