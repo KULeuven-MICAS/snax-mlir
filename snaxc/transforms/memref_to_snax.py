@@ -2,6 +2,7 @@ from xdsl.context import Context
 from xdsl.dialects import builtin, memref
 from xdsl.dialects.arith import AddiOp, ConstantOp, MuliOp, SubiOp
 from xdsl.dialects.builtin import (
+    DYNAMIC_INDEX,
     FixedBitwidthType,
     IndexType,
     NoneAttr,
@@ -59,7 +60,7 @@ class AllocOpRewrite(RewritePattern):
             alloc_args.append(size.op)
 
         for shape in alloc_op.memref.type.shape.data:
-            if shape.data == -1:
+            if shape.data == DYNAMIC_INDEX:
                 # dynamic op
                 shape_ops.append(alloc_args.pop(0))
             else:
