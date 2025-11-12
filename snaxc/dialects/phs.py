@@ -15,6 +15,7 @@ from xdsl.dialects.func import FuncOpCallableInterface
 from xdsl.dialects.utils import AbstractYieldOperation
 from xdsl.ir import Attribute, Block, BlockArgument, Dialect, Region, SSAValue
 from xdsl.irdl import (
+    AttrSizedOperandSegments,
     IRDLOperation,
     Operation,
     irdl_op_definition,
@@ -211,6 +212,29 @@ class PEOp(IRDLOperation):
         Get BlockArguments that relate to data input in PE operation
         """
         return self._get_block_args()[: -self.switch_no.value.data]
+
+    def is_concrete(self) -> bool:
+        """
+        Verify that a PEOp is fully specified by its body.
+        I.e. there's really only one set of operations that can be performed.
+        This means that this check will verify whether:
+        * All choose_ops in this PEOp have exactly one operation.
+        * There are no MuxOps in this PEOp
+        """
+        for operation in self.body.ops:
+            if isinstance(operation, MuxOp):
+                # If there's a MuxOp, multiple choices exist and the PE is not concrete
+                return False
+            elif isinstance(operation, ChooseOp):
+                # If there are multiple operations to be chosen, the PE is not concrete
+                return len(list(operation.operations())) == 1
+            elif isinstance(operation, YieldOp):
+                # If we reach the YieldOp without any issue, the PE is concrete
+                return True
+            else:
+                raise NotImplementedError("Don't expect any other operations besides MuxOp, YieldOp or ChooseOp")
+        # No operations exist in the body
+        raise NotImplementedError("No operations found in the PEOp body")
 
     def print(self, printer: Printer):
         printer.print_string(" @")
@@ -470,9 +494,44 @@ class MuxOp(IRDLOperation):
         )
 
 
+@irdl_op_definition
+class CallOp(IRDLOperation):
+    name = "phs.call"
+
+    name_prop = prop_def(StringAttr, prop_name="sym_name")
+
+    data_operands = var_operand_def()
+
+    switches = var_operand_def(IndexType)
+    res = var_result_def()
+
+    traits = traits_def(SymbolOpInterface())
+    irdl_options = [AttrSizedOperandSegments()]
+
+    assembly_format = " $sym_name `with` $switches `(`$data_operands type($data_operands)`)` `->` type($res) attr-dict"
+
+    def __init__(
+        self,
+        name: str,
+        data_operands: Sequence[Operation | SSAValue],
+        switches: Sequence[Operation | SSAValue],
+        result_types: Sequence[Attribute] = [],
+        attr_dict: dict[str, Attribute] | None = None,
+    ):
+        super().__init__(
+            properties={
+                "sym_name": StringAttr(name),
+            },
+            operands=(data_operands, switches),
+            attributes=attr_dict,
+            result_types=(result_types,),
+        )
+
+
 Phs = Dialect(
     "phs",
     [
+        CallOp,
         PEOp,
         MuxOp,
         ChooseOp,
