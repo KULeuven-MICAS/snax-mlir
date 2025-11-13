@@ -1,5 +1,9 @@
+from collections.abc import Sequence
+
 import pytest
 from create_input import create_test_input
+from xdsl.ir import Block, Operation, Region
+from xdsl.printer import Printer
 
 from snaxc.transforms.phs.combine import append_to_abstract_graph
 from snaxc.transforms.phs.decode import decode_abstract_graph
@@ -31,9 +35,10 @@ def test_decode() -> None:
     print(pe_b)
     print(pe_f)
 
-    from xdsl.printer import Printer
-
     printer = Printer()
+
+    def wrap_region(ops: Sequence[Operation]):
+        printer.print_region(Region(Block(ops)))
 
     # PE a is not concrete - it has two operations in its choose_op
     with pytest.raises(AssertionError):
@@ -41,22 +46,23 @@ def test_decode() -> None:
         print(pe_b)
         print("CONCRETE")
         print(pe_a)
-        printer.print_region(decode_abstract_graph(pe_b, pe_a))
+        wrap_region(decode_abstract_graph(pe_b, pe_a))
+
     print("ABSTRACT")
     print(pe_b)
     print("CONCRETE")
     print(pe_c)
-    printer.print_region(decode_abstract_graph(pe_b, pe_c))
+    wrap_region(decode_abstract_graph(pe_b, pe_c))
     print("ABSTRACT")
     print(pe_b)
     print("CONCRETE")
     print(pe_d)
-    printer.print_region(decode_abstract_graph(pe_b, pe_d))
+    wrap_region(decode_abstract_graph(pe_b, pe_d))
     print("ABSTRACT")
     print(pe_b)
     print("CONCRETE")
     print(pe_e)
-    printer.print_region(decode_abstract_graph(pe_b, pe_e))
+    wrap_region(decode_abstract_graph(pe_b, pe_e))
 
     return
 
