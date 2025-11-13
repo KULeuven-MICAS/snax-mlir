@@ -229,7 +229,8 @@ class PEOp(IRDLOperation):
                 # If there are multiple operations to be chosen, the PE is not concrete
                 if len(list(operation.operations())) == 1:
                     continue
-                return False
+                else:
+                    return False
             elif isinstance(operation, YieldOp):
                 # If we reach the YieldOp without any issue, the PE is concrete
                 return True
