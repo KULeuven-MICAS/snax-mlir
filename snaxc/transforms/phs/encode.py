@@ -31,14 +31,38 @@ class EncodeLinalgGeneric(RewritePattern):
         if not isinstance(acc_symbol_ref, SymbolRefAttr):
             return
 
+        # Convert the linalg body to a phs body in a pe operation
+        pe = self.convert_linalg_body_to_phs(linalg_op, acc_symbol_ref.string_value(), rewriter)
+
+        # Get enclosing module_op
+        toplevel = linalg_op.get_toplevel_object()
+        assert isinstance(toplevel, ModuleOp), "Expect top-level IR object to be a ModuleOp"
+
+        # Check if a PE with the current id exists
+        top_table = toplevel.get_trait(SymbolTable)
+        assert top_table is not None, "Could not find the top-level symbol table"
+        abstract_pe = top_table.lookup_symbol(toplevel, acc_symbol_ref)
+        if abstract_pe is None:
+            # If a PE with this id does not exist yet, simply insert it
+            rewriter.insert_op(pe, InsertPoint.at_start(toplevel.regions[0].block))
+        else:
+            # If a PE with this id already exists, combine it with the previous
+            msg = f"Symbol for {acc_symbol_ref.string_value()} already exists, but is not a PEOp"
+            assert isinstance(abstract_pe, phs.PEOp), msg
+            append_to_abstract_graph(pe, abstract_pe)
+
+    def convert_linalg_body_to_phs(self, linalg_op: linalg.GenericOp, name: str, rewriter: PatternRewriter) -> phs.PEOp:
+        """
+        Perform conversion from linalg body -> phs body
+        """
+
         # Get a copy for conversion of the linalg block
         body_copy = linalg_op.body.clone()
         linalg_yield = body_copy.block.ops.last
         assert isinstance(linalg_yield, linalg.YieldOp)
 
-        # Perform conversion from linalg body -> phs body
         pe = phs.PEOp(
-            acc_symbol_ref.string_value(),
+            name,
             function_type=FunctionType.from_lists(body_copy.block.arg_types, linalg_yield.operand_types),
             switch_no=0,
             region=body_copy,
@@ -56,22 +80,7 @@ class EncodeLinalgGeneric(RewritePattern):
 
         # Reset ids for next encountered linalg
         self._reset_ids()
-        # Get enclosing module_op
-        toplevel = linalg_op.get_toplevel_object()
-        assert isinstance(toplevel, ModuleOp), "Expect top-level IR object to be a ModuleOp"
-
-        # Check if a PE with the current id exists
-        top_table = toplevel.get_trait(SymbolTable)
-        assert top_table is not None, "Could not find the top-level symbol table"
-        abstract_pe = top_table.lookup_symbol(toplevel, acc_symbol_ref)
-        if abstract_pe is None:
-            # If a PE with this id does not exist yet, simply insert it
-            rewriter.insert_op(pe, InsertPoint.at_start(toplevel.regions[0].block))
-        else:
-            # If a PE with this id already exists, combine it with the previous
-            msg = f"Symbol for {acc_symbol_ref.string_value} already exists, but is not a PEOp"
-            assert isinstance(abstract_pe, phs.PEOp), msg
-            append_to_abstract_graph(pe, abstract_pe)
+        return pe
 
     def _get_id(self, op: Operation):
         """
