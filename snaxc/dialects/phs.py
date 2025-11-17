@@ -499,6 +499,10 @@ class MuxOp(IRDLOperation):
 
 @irdl_op_definition
 class CallOp(IRDLOperation):
+    """
+    Operation to call a named PEOp operation with data operands and switches.
+    """
+
     name = "phs.call"
 
     name_prop = prop_def(StringAttr, prop_name="sym_name")

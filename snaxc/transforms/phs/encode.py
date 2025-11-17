@@ -47,7 +47,7 @@ class EncodeLinalgGeneric(RewritePattern):
             rewriter.insert_op(pe, InsertPoint.at_start(toplevel.regions[0].block))
         else:
             # If a PE with this id already exists, combine it with the previous
-            msg = f"Symbol for {acc_symbol_ref.string_value} already exists, but is not a PEOp"
+            msg = f"Symbol for {acc_symbol_ref.string_value()} already exists, but is not a PEOp"
             assert isinstance(abstract_pe, phs.PEOp), msg
             append_to_abstract_graph(pe, abstract_pe)
 

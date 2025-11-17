@@ -102,6 +102,7 @@ def search_mapping(
         del mapping[mux]
         if sol is not None:
             return sol
+    return
 
 
 def decode_abstract_graph(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence[Operation]:
@@ -120,7 +121,7 @@ def decode_abstract_graph(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence
     assert graph.is_concrete(), "Given graph is not concrete, unclear what choices should be made"
 
     # Make sure the amount of data_operands is the same for both
-    len_msg = "Expect no of data_operands to be equal, got graph:{} abstract_graph:{}"
+    len_msg = "Expect number of data_operands to be equal, got graph:{} abstract_graph:{}"
     graph_len = len(list(graph.data_operands()))
     abstract_graph_len = len(list(abstract_graph.data_operands()))
     assert graph_len == abstract_graph_len, len_msg.format(graph_len, abstract_graph_len)
@@ -131,8 +132,8 @@ def decode_abstract_graph(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence
     graph_name = graph.name_prop.data
     assert abstract_graph_name == graph_name, acc_msg.format(abstract_graph_name, graph_name)
 
-    call_switches: Sequence[arith.ConstantOp | phs.MuxOp] = []  # for final values
-    mux_switches: Sequence[phs.MuxOp] = []  # keep track of muxes
+    call_switches: list[arith.ConstantOp | phs.MuxOp] = []  # for final values
+    mux_switches: list[phs.MuxOp] = []  # keep track of muxes
 
     for switch in abstract_graph.get_switches():
         switchee = switch.get_user_of_unique_use()
@@ -145,7 +146,6 @@ def decode_abstract_graph(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence
                 # The current choose_op is not needed in the graph -> Map to default = zero
                 call_switches.append(arith.ConstantOp.from_int_and_width(0, IndexType()))
                 continue
-            assert equivalent_choice is not None
             target_operation = list(equivalent_choice.operations())[0]
             assert isinstance(target_operation, Operation)
             for i, operation in enumerate(switchee.operations()):
