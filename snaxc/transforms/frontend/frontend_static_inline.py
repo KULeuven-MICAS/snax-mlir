@@ -48,13 +48,13 @@ class StaticInlinePass(ModulePass):
 
         for dynamic_input in dynamic_inputs:
             assert isa(dynamic_input, builtin.TensorType[Attribute])
-            new_shape = [self.value if x == -1 else x for x in dynamic_input.get_shape()]
+            new_shape = [self.value if x == builtin.DYNAMIC_INDEX else x for x in dynamic_input.get_shape()]
             static_inputs.append(builtin.TensorType(dynamic_input.get_element_type(), new_shape))
         dynamic_inputs = cast(list[builtin.TensorType[Attribute]], dynamic_inputs)
 
         for dynamic_output in dynamic_outputs:
             assert isa(dynamic_output, builtin.TensorType[Attribute])
-            new_shape = [self.value if x == -1 else x for x in dynamic_output.get_shape()]
+            new_shape = [self.value if x == builtin.DYNAMIC_INDEX else x for x in dynamic_output.get_shape()]
             static_outputs.append(builtin.TensorType(dynamic_output.get_element_type(), new_shape))
         dynamic_outputs = cast(list[builtin.TensorType[Attribute]], dynamic_outputs)
 
