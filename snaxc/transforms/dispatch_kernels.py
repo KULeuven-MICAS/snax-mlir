@@ -2,7 +2,7 @@ from collections.abc import Iterable
 
 from xdsl.context import Context
 from xdsl.dialects import builtin, linalg
-from xdsl.dialects.builtin import ShapedType
+from xdsl.dialects.builtin import DYNAMIC_INDEX, ShapedType
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     PatternRewriter,
@@ -84,7 +84,7 @@ class DispatchTemplatePattern(RewritePattern):
             suffix = "_stream"
             # check if no dynamic operands
             for operand in (o.type for o in linalg_op.operands if isinstance(o.type, ShapedType)):
-                if -1 in operand.get_shape():
+                if DYNAMIC_INDEX in operand.get_shape():
                     suffix = ""
                     break
 

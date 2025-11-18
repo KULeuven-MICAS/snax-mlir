@@ -33,15 +33,15 @@
   %1 = "memref.alloc"(%0) <{"alignment" = 64 : i64, "operandSegmentSizes" = array<i32: 1, 0>}> : (index) -> memref<?x16xi32, "L1">
 }) : () -> ()
 
-// CHECK:  builtin.module {
-// CHECK-NEXT:    %0 = "test.op"() : () -> index
-// CHECK-NEXT:    %1 = arith.constant 16 : index
-// CHECK-NEXT:    %2 = arith.constant 4 : index
-// CHECK-NEXT:    %3 = arith.muli %0, %2 : index
-// CHECK-NEXT:    %4 = arith.muli %1, %3 : index
-// CHECK-NEXT:    %5 = "snax.alloc"(%4, %0, %1) <{memory_space = "L1", alignment = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
-// CHECK-NEXT:    %6 = builtin.unrealized_conversion_cast %5 : !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)> to memref<?x16xi32, "L1">
-// CHECK-NEXT:  }
+// CHECK:      builtin.module {
+// CHECK-NEXT:   %0 = "test.op"() : () -> index
+// CHECK-NEXT:   %1 = arith.constant 16 : index
+// CHECK-NEXT:   %2 = arith.constant 4 : index
+// CHECK-NEXT:   %3 = arith.muli %0, %2 : index
+// CHECK-NEXT:   %4 = arith.muli %1, %3 : index
+// CHECK-NEXT:   %5 = "snax.alloc"(%4, %0, %1) <{memory_space = "L1", alignment = 64 : i64}> : (index, index, index) -> !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)>
+// CHECK-NEXT:   %6 = builtin.unrealized_conversion_cast %5 : !llvm.struct<(!llvm.ptr, !llvm.ptr, i32, !llvm.array<2 x i32>, !llvm.array<2 x i32>)> to memref<?x16xi32, "L1">
+// CHECK-NEXT: }
 
 // -----
 

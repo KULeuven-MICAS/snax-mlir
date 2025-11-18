@@ -1,6 +1,6 @@
 from xdsl.context import Context
 from xdsl.dialects import affine, arith, builtin, memref, scf
-from xdsl.dialects.builtin import IndexType, IntegerAttr
+from xdsl.dialects.builtin import DYNAMIC_INDEX, IndexType, IntegerAttr
 from xdsl.ir import Block, Operation, SSAValue
 from xdsl.ir.affine import AffineConstantExpr
 from xdsl.parser import AffineExpr
@@ -161,7 +161,7 @@ class MoveMemrefDims(RewritePattern):
             """
             static_sizes = subview.static_sizes.get_values()
             target = static_sizes[index]
-            if not target == memref.SubviewOp.DYNAMIC_INDEX:
+            if not target == DYNAMIC_INDEX:
                 assert isinstance(target, int)
                 return target
             else:
@@ -169,7 +169,7 @@ class MoveMemrefDims(RewritePattern):
                 # indexed w.r.t. the total number of dynamic sizes.
                 magic_numbers = 0
                 for i in range(index):
-                    if static_sizes[i] == memref.SubviewOp.DYNAMIC_INDEX:
+                    if static_sizes[i] == DYNAMIC_INDEX:
                         magic_numbers += 1
                 return subview.sizes[magic_numbers]
 

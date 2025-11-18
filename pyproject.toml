@@ -5,7 +5,7 @@ version = "0.2.2"
 requires-python = "== 3.12.*"
 
 dependencies = [
-  "xdsl @ git+https://github.com/xdslproject/xdsl.git@40857df3e6202602ef1a2361d1ba2ca03584402a",
+  "xdsl @ git+https://github.com/xdslproject/xdsl.git@50e24da282f21d07a99ec210d1aba9f68092d540",
   "minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2",
   "numpy",
   "dacite>=1.9.2,<2",
@@ -89,10 +89,10 @@ default = { features = ["dev", "nn", "viz"] }
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
-mlir = { version = "==20.1.1", channel = "kuleuven-micas" }
-clang = "==20.1.1"
-lld = "==20.1.1"
+mlir = { version = "==20.1.7", channel = "kuleuven-micas" }
+clang = "==20.1.7"
+lld = "==20.1.7"
 snax-cluster-prebuilt = "==0.2.15"
 snakemake-minimal = "*"
-pyright = ">=1.1.390,<2"
+pyright = ">=1.1.407,<2"
 vcd-to-csv = { version = ">=0.1.0,<0.2", channel = "kuleuven-micas" }
