@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from xdsl.context import Context
 from xdsl.dialects import builtin, tosa
 from xdsl.dialects.builtin import DenseIntOrFPElementsAttr, TensorType, i8, i32
-from xdsl.ir import OpResult, Operation
+from xdsl.ir import Operation, OpResult
 from xdsl.irdl import Operand
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -69,7 +69,7 @@ class TosaCombineRescaleRewriter(RewritePattern):
                 new_rescale_op = tosa.RescaleOp(
                     operands=[new_input, multiplier, shift, input_zp, output_zp],
                     result_types=[new_output_type],
-                    properties={val: attr for (val, attr) in rescale_op.properties.items()}
+                    properties={val: attr for (val, attr) in rescale_op.properties.items()},
                 )
 
                 # Replace the old ops with the new combined op
