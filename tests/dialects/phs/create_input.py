@@ -15,9 +15,11 @@ def create_test_input():
     blockA = Block(arg_types=block_inputs)
     # Map block args to inputs and outputs to yield
     lhs, rhs, switch = blockA.args
+    addf_op = AddfOp(lhs, rhs)
+    subf_op = SubfOp(lhs, rhs)
     blockA.add_ops(
         [
-            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch, [AddfOp, SubfOp], out_types),
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch, [addf_op, subf_op], out_types),
             phs.YieldOp(result),
         ]
     )
@@ -25,9 +27,10 @@ def create_test_input():
 
     blockB = Block(arg_types=block_inputs)
     lhs, rhs, switch = blockB.args
+    mulf_op = MulfOp(lhs, rhs)
     blockB.add_ops(
         [
-            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch, [MulfOp], out_types),
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch, [mulf_op], out_types),
             phs.YieldOp(result),
         ]
     )
@@ -36,10 +39,12 @@ def create_test_input():
     block_inputs = [*in_types, IndexType(), IndexType()]
     blockC = Block(arg_types=block_inputs)
     lhs, rhs, switch1, switch2 = blockC.args
+    mulf_op = MulfOp(lhs, rhs)
+    mulf2_op = MulfOp(lhs, mulf_op)
     blockC.add_ops(
         [
-            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [MulfOp], out_types),
-            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [MulfOp], out_types),
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [mulf_op], out_types),
+            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [mulf2_op], out_types),
             phs.YieldOp(result_2),
         ]
     )
@@ -48,11 +53,14 @@ def create_test_input():
     block_inputs = [*in_types, IndexType(), IndexType(), IndexType()]
     blockD = Block(arg_types=block_inputs)
     lhs, rhs, switch1, switch2, switch3 = blockD.args
+    mulf_op = MulfOp(lhs, rhs)
+    mulf2_op = MulfOp(lhs, mulf_op)
+    mulf3_op = MulfOp(mulf_op, mulf2_op)
     blockD.add_ops(
         [
-            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [MulfOp], out_types),
-            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [MulfOp], out_types),
-            result_3 := phs.ChooseOp.from_operations("_2", [result, result_2], switch3, [MulfOp], out_types),
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [mulf_op], out_types),
+            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [mulf2_op], out_types),
+            result_3 := phs.ChooseOp.from_operations("_2", [result, result_2], switch3, [mulf3_op], out_types),
             phs.YieldOp(result_3),
         ]
     )
@@ -60,11 +68,14 @@ def create_test_input():
 
     blockE = Block(arg_types=block_inputs)
     lhs, rhs, switch1, switch2, switch3 = blockE.args
+    addf_op = AddfOp(lhs, rhs)
+    addf2_op = AddfOp(lhs, addf_op)
+    divf_op = DivfOp(addf2_op, rhs)
     blockE.add_ops(
         [
-            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [AddfOp], out_types),
-            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [AddfOp], out_types),
-            result_3 := phs.ChooseOp.from_operations("_2", [result, rhs], switch3, [DivfOp], out_types),
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [addf_op], out_types),
+            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [addf2_op], out_types),
+            result_3 := phs.ChooseOp.from_operations("_2", [result, rhs], switch3, [divf_op], out_types),
             phs.YieldOp(result_3),
         ]
     )
@@ -72,12 +83,15 @@ def create_test_input():
 
     blockF = Block(arg_types=[i32, i32, IndexType(), IndexType(), IndexType()])
     lhs, rhs, switch1, switch2, switch3 = blockF.args
+    addi_op = AddiOp(lhs, rhs)
+    addi2_op = AddiOp(lhs, addi_op)
+    muli_op = MuliOp(addi_op, rhs)
     out_types = [i32]
     blockF.add_ops(
         [
-            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [AddiOp], out_types),
-            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [AddiOp], out_types),
-            result_3 := phs.ChooseOp.from_operations("_2", [result, rhs], switch3, [MuliOp], out_types),
+            result := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch1, [addi_op], out_types),
+            result_2 := phs.ChooseOp.from_operations("_1", [lhs, result], switch2, [addi2_op], out_types),
+            result_3 := phs.ChooseOp.from_operations("_2", [result, rhs], switch3, [muli_op], out_types),
             phs.YieldOp(result_3),
         ]
     )

@@ -108,9 +108,8 @@ def append_to_abstract_graph(
                     equivalent_opnds.append(get_equivalent_owner(data_opnd, abstract_graph))
                 # Add an extra switch to the PE to control this choice
                 switch = abstract_graph.add_switch()
-                operations = [type(op) for op in choose_op.operations()]
                 abstract_choose_op = phs.ChooseOp.from_operations(
-                    choose_op_id, equivalent_opnds, switch, operations, choose_op.result_types
+                    choose_op_id, equivalent_opnds, switch, list(choose_op.operations()), choose_op.result_types
                 )
                 abstract_graph.body.block.insert_op_before(abstract_choose_op, abstract_graph.get_terminator())
             # If for this id a choose_op exists, make sure the right connections are there
