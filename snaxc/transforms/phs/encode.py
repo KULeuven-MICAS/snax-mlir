@@ -74,7 +74,7 @@ class EncodeLinalgGeneric(RewritePattern):
             else:
                 id = self._get_id(op)
                 choose_op = phs.ChooseOp.from_operations(
-                    id, op.operands, pe.add_switch(), [type(op)], result_types=op.result_types
+                    id, op.operands, pe.add_switch(), [op], result_types=op.result_types
                 )
                 rewriter.replace_op(op, choose_op)
 

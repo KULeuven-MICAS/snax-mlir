@@ -148,10 +148,9 @@ class PEOp(IRDLOperation):
         # Map block args to inputs and outputs to yield
         data_operands = block.args[:-1]
         switch = block.args[-1]
-        type_ops = [type(op) for op in operations]
 
         # Create the new operation
-        choose_op = ChooseOp.from_operations("0", data_operands, switch, operations=type_ops, result_types=out_types)
+        choose_op = ChooseOp.from_operations("0", data_operands, switch, operations=operations, result_types=out_types)
         block.add_ops(
             [
                 choose_op,
@@ -352,19 +351,26 @@ class ChooseOp(IRDLOperation):
         name: str,
         data_operands: Sequence[Operation | SSAValue],
         switch: Operation | SSAValue,
-        operations: Sequence[type[Operation]],
+        operations: Sequence[Operation],
         result_types: Sequence[Attribute] = [],
     ) -> ChooseOp:
         """
         Utility constructor to construct a ChooseOp from a set of given operations
         """
         # Default operation
-        default_region = Region(Block([result := operations[0](*data_operands), YieldOp(result)]))
+        value_mapper = {
+            SSAValue.get(arg): SSAValue.get(val) for arg, val in zip(operations[0].operands, data_operands, strict=True)
+        }
+        default_region = Region(Block([result := operations[0].clone(value_mapper), YieldOp(result)]))
         # Non-default
         case_regions: list[Region] = []
         if len(operations) > 1:
             for operation in operations[1:]:
-                case_regions.append(Region(Block([result := operation(*data_operands), YieldOp(result)])))
+                value_mapper = {
+                    SSAValue.get(arg): SSAValue.get(val)
+                    for arg, val in zip(operation.operands, data_operands, strict=True)
+                }
+                case_regions.append(Region(Block([result := operation.clone(value_mapper), YieldOp(result)])))
         return ChooseOp(
             name=name,
             data_operands=data_operands,
