@@ -144,7 +144,8 @@ class AllocOpRewrite(RewritePattern):
             alloc_op.alignment,
         )
         conversion_cast_op = UnrealizedConversionCastOp.get([snax_alloc], [alloc_op.memref.type])
-        rewriter.replace_matched_op(
+        rewriter.replace_op(
+            alloc_op,
             [*ops_to_add, snax_alloc, conversion_cast_op],
             new_results=conversion_cast_op.outputs,
         )

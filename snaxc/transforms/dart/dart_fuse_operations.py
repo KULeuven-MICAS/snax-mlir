@@ -166,7 +166,7 @@ class FuseElementwisePattern(RewritePattern):
                 raise RuntimeError("Can only fuse with generic bodies")
 
         rewriter.replace_op(user_op, streaming_region_op)
-        rewriter.erase_matched_op()
+        rewriter.erase_op(op)
 
 
 @dataclass(frozen=True)

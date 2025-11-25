@@ -115,7 +115,7 @@ class RescaleClampPattern(RewritePattern):
         # insert new op
         rewriter.replace_op(clamp_op, (*dim_idx_ops, *dim_ops, output_tensor, new_op))
         if rescale_op is not clamp_op:
-            rewriter.erase_matched_op()
+            rewriter.erase_op(rescale_op)
 
 
 class ConvertTosaToKernelPass(ModulePass):

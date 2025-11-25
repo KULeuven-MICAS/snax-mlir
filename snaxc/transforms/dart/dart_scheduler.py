@@ -77,7 +77,7 @@ class AutoflowScheduler(RewritePattern):
             op.result_types,
         )
 
-        rewriter.replace_matched_op(schedule_op)
+        rewriter.replace_op(op, schedule_op)
 
 
 @dataclass(frozen=True)

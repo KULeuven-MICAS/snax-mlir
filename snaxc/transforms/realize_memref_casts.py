@@ -112,7 +112,7 @@ class DeleteUnusedLayoutCasts(RewritePattern):
     def match_and_rewrite(self, op: MemorySpaceCastOp | LayoutCast, rewriter: PatternRewriter):
         if not op.dest.uses:
             # if the cast is not used anymore, we can remove it
-            rewriter.erase_matched_op()
+            rewriter.erase_op(op)
             return
 
 
@@ -138,7 +138,7 @@ class UpdateMemrefLayoutCasts(RewritePattern):
                 op.dest.type.memory_space,
             ),
         )
-        rewriter.replace_matched_op(new_cast)
+        rewriter.replace_op(op, new_cast)
 
 
 class ApplyLayoutCastSubviewGlobal(RewritePattern):
@@ -310,7 +310,7 @@ class ApplyLayoutCastArithConstant(RewritePattern):
 
         # layout cast becomes unnecessary
         op.dest.replace_by(op.source)
-        rewriter.erase_matched_op()
+        rewriter.erase_op(op)
 
 
 class ApplyLayoutCastMemrefAlloc(RewritePattern):
@@ -349,7 +349,7 @@ class ApplyLayoutCastMemrefAlloc(RewritePattern):
 
         # layout cast becomes unnecessary
         op.dest.replace_by(op.source)
-        rewriter.erase_matched_op()
+        rewriter.erase_op(op)
 
 
 class ApplyLayoutCastMemrefGlobal(RewritePattern):
@@ -439,7 +439,7 @@ class ApplyLayoutCastMemrefGlobal(RewritePattern):
 
         # layout cast becomes unnecessary
         op.dest.replace_by(op.source)
-        rewriter.erase_matched_op()
+        rewriter.erase_op(op)
 
 
 class RealizeMemrefCasts(RewritePattern):
@@ -482,7 +482,7 @@ class RealizeMemrefCasts(RewritePattern):
         if source_type == dest_type:
             # canonicalize away unnecessary cast
             op.dest.replace_by(op.source)
-            rewriter.erase_matched_op()
+            rewriter.erase_op(op)
             return
 
         # create allocation
@@ -559,7 +559,7 @@ class RealizeMemrefCasts(RewritePattern):
                 break
 
         # insert all ops
-        rewriter.replace_matched_op(ops_to_add)
+        rewriter.replace_op(op, ops_to_add)
 
 
 class RealizeMemrefCastsPass(ModulePass):

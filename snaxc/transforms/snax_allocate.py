@@ -136,7 +136,7 @@ class DynamicAllocs(RewritePattern):
         module_op = alloc_op.get_toplevel_object()
         assert isinstance(module_op, builtin.ModuleOp)
 
-        rewriter.replace_matched_op(ops_to_insert, created_struct.results)
+        rewriter.replace_op(alloc_op, ops_to_insert, created_struct.results)
 
         func_op = func.FuncOp.external(
             "snax_alloc_l1",
@@ -207,7 +207,7 @@ class StaticAllocs(RewritePattern):
         created_struct, ops_to_insert_struct = create_memref_struct(op, pointer.output)
         ops_to_insert.extend(ops_to_insert_struct)
 
-        rewriter.replace_matched_op(ops_to_insert, created_struct.results)
+        rewriter.replace_op(op, ops_to_insert, created_struct.results)
 
 
 @dataclass

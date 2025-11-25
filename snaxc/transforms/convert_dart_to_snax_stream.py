@@ -141,7 +141,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
             body=rewriter.move_region_contents_to_new_regions(op.body),
         )
 
-        rewriter.replace_matched_op([*ops_to_add, new_op], new_op.results)
+        rewriter.replace_op(op, [*ops_to_add, new_op], new_op.results)
 
 
 @dataclass(frozen=True)

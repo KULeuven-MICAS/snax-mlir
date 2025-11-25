@@ -123,7 +123,7 @@ class StreamifyGenericOpPattern(RewritePattern):
         assert isinstance(yield_op := generic.body.block.last_op, linalg.YieldOp)
         rewriter.replace_op(yield_op, dart.YieldOp(yield_op.operands[0]))
 
-        rewriter.replace_matched_op(streaming_region_op)
+        rewriter.replace_op(op, streaming_region_op)
 
         # Add explicit adds for outputs that were not empty tensors
         for output in outputs_to_add:

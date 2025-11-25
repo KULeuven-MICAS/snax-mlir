@@ -12,7 +12,7 @@ from xdsl.pattern_rewriter import (
 class RemoveMemrefCopyPattern(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, memref_copy: memref.CopyOp, rewriter: PatternRewriter):
-        rewriter.erase_matched_op()
+        rewriter.erase_op(memref_copy)
 
 
 class RemoveMemrefCopyPass(ModulePass):

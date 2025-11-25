@@ -38,13 +38,14 @@ class SimplifyRedundantSetupCalls(RewritePattern):
             return
 
         # Step 5: Replace matched op with reduced version
-        rewriter.replace_matched_op(
+        rewriter.replace_op(
+            op,
             accfg.SetupOp(
                 [val for _, val in new_params],
                 [param for param, _ in new_params],
                 op.accelerator,
                 op.in_state,
-            )
+            ),
         )
 
 
@@ -73,7 +74,8 @@ class MergeSetupOps(RewritePattern):
         state.update(dict(op.iter_params()))
         rewriter.erase_op(prev_op, safe_erase=False)
 
-        rewriter.replace_matched_op(
+        rewriter.replace_op(
+            op,
             accfg.SetupOp(state.values(), state.keys(), op.accelerator, prev_op.in_state),
         )
 
@@ -87,7 +89,7 @@ class ElideEmptySetupOps(RewritePattern):
     def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
         if len(op.values) == 0 and op.in_state is not None:
             op.out_state.replace_by(op.in_state)
-            rewriter.erase_matched_op()
+            rewriter.erase_op(op)
 
 
 class PullSetupOpsOutOfLoops(RewritePattern):
@@ -230,7 +232,7 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
         # erase the op, replacing all uses of its out state by
         # its in_state.
         op.out_state.replace_by(op.in_state)
-        rewriter.erase_matched_op()
+        rewriter.erase_op(op)
 
 
 @dataclass(frozen=True)

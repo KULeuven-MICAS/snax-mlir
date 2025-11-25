@@ -54,7 +54,7 @@ class LowerExtractAlignedPointerOp(RewritePattern):
             offset_op = MuliOp(offset_div, stride_bytes_op)
             aligned_pointer = AddiOp(aligned_pointer, offset_op)
             ops_to_add.extend([stride_op, stride_bytes_op, bound_op, offset_div, offset_op, aligned_pointer])
-        rewriter.replace_matched_op(ops_to_add)
+        rewriter.replace_op(op, ops_to_add)
 
 
 class ConvertMemrefToArithPass(ModulePass):

@@ -78,7 +78,7 @@ class LayoutResolution(RewritePattern):
             op.accelerator,
             op.result_types,
         )
-        rewriter.replace_matched_op([*new_inputs, *new_outputs, access_pattern_op], access_pattern_op.results)
+        rewriter.replace_op(op, [*new_inputs, *new_outputs, access_pattern_op], access_pattern_op.results)
 
 
 @dataclass(frozen=True)

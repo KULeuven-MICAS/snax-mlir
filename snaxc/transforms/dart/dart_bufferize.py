@@ -75,7 +75,8 @@ class BufferizeStreamingRegion(RewritePattern):
             new_results += to_tensor_op.results
 
         # replace the old operation
-        rewriter.replace_matched_op(
+        rewriter.replace_op(
+            op,
             (new_op,) + tuple(memref_to_tensors.values()),
             new_results,
         )
