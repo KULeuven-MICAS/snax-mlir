@@ -38,14 +38,18 @@ func.func @elementwise_add_2d(%arg0: tensor<?x?xf32>, %arg1: tensor<?x?xf32>) ->
   return %result2 : tensor<?x?xf32>
 }
 
-
-// CHECK: phs.pe @acc1 with %0 (%in0 : f32, %in1 : f32, %out : f32) {
-// CHECK-NEXT:   %add = phs.choose @i_f32_f32_o_f32_0 with %0 (%in0 : f32, %in1 : f32) -> f32 {
-// CHECK-NEXT:     0) arith.addf
-// CHECK-NEXT:     1) arith.mulf
-// CHECK-NEXT:   }
-// CHECK-NEXT:   phs.yield %add : f32
-// CHECK-NEXT: }
+// CHECK:  phs.pe @acc1 with %0 (%in0 : f32, %in1 : f32, %out : f32) {
+// CHECK-NEXT:    %add = phs.choose @i_f32_f32_o_f32_0 with %0 (%in0 : f32, %in1 : f32) -> f32
+// CHECK-NEXT:      0) {
+// CHECK-NEXT:        %add_1 = arith.addf %in0, %in1 : f32
+// CHECK-NEXT:        phs.yield %add_1 : f32
+// CHECK-NEXT:      }
+// CHECK-NEXT:      1) {
+// CHECK-NEXT:        %1 = arith.mulf %in0, %in1 : f32
+// CHECK-NEXT:        phs.yield %1 : f32
+// CHECK-NEXT:      }
+// CHECK-NEXT:    phs.yield %add : f32
+// CHECK-NEXT:  }
 
 // -----
 
@@ -87,10 +91,15 @@ func.func @elementwise_add_2d_integer(%arg0: tensor<?x?xi32>, %arg1: tensor<?x?x
   return %result2 : tensor<?x?xi32>
 }
 
-// CHECK: phs.pe @acc2 with %0 (%in0 : i32, %in1 : i32, %out : i32) {
-// CHECK-NEXT:   %add = phs.choose @i_i32_i32_o_i32_0 with %0 (%in0 : i32, %in1 : i32) -> i32 {
-// CHECK-NEXT:     0) arith.addi
-// CHECK-NEXT:     1) arith.muli
-// CHECK-NEXT:   }
-// CHECK-NEXT:   phs.yield %add : i32
-// CHECK-NEXT: }
+// CHECK:  phs.pe @acc2 with %0 (%in0 : i32, %in1 : i32, %out : i32) {
+// CHECK-NEXT:    %add = phs.choose @i_i32_i32_o_i32_0 with %0 (%in0 : i32, %in1 : i32) -> i32
+// CHECK-NEXT:      0) {
+// CHECK-NEXT:        %add_1 = arith.addi %in0, %in1 : i32
+// CHECK-NEXT:        phs.yield %add_1 : i32
+// CHECK-NEXT:      }
+// CHECK-NEXT:      1) {
+// CHECK-NEXT:        %1 = arith.muli %in0, %in1 : i32
+// CHECK-NEXT:        phs.yield %1 : i32
+// CHECK-NEXT:      }
+// CHECK-NEXT:    phs.yield %add : i32
+// CHECK-NEXT:  }
