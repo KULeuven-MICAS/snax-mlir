@@ -282,13 +282,17 @@ class PEOp(IRDLOperation):
             parser.parse_optional_punctuation(",")
             switches.append(arg)
 
+        data_operands: list[Parser.Argument] = []
         parser.parse_punctuation("(")
-        lhs = parser.parse_argument(expect_type=True)
-        parser.parse_punctuation(",")
-        rhs = parser.parse_argument(expect_type=True)
+        while True:
+            arg = parser.parse_optional_argument(expect_type=True)
+            if arg is None:
+                break
+            parser.parse_optional_punctuation(",")
+            data_operands.append(arg)
         parser.parse_punctuation(")")
 
-        input_args = [lhs, rhs, *switches]
+        input_args = [*data_operands, *switches]
         region = parser.parse_region(arguments=input_args)
         yield_op = region.block.ops.last
         assert isinstance(yield_op, YieldOp)
@@ -418,14 +422,10 @@ class ChooseOp(IRDLOperation):
             printer.print_attribute(opnd.type)
             if i != len(self.results) - 1:
                 printer.print_string(", ")
-        printer.print_string(" {")
         with printer.indented():
             for i, region in enumerate(self.regions):
                 printer.print_string(f"\n{i}) ")
-                # FIXME, what if multiple operations?
-                for op in list(region.block.ops)[:-1]:
-                    printer.print_string(op.name)
-        printer.print_string("\n}")
+                printer.print_region(region)
 
     @classmethod
     def parse(cls: type[ChooseOp], parser: Parser) -> ChooseOp:
@@ -444,28 +444,33 @@ class ChooseOp(IRDLOperation):
         parser.parse_comma_separated_list
         parser.parse_punctuation("->")
         res_typ = parser.parse_type()
-        parser.parse_punctuation("{")
 
-        def get_op() -> type[Operation] | None:
+        def get_choice() -> Region | None:
             if parser.parse_optional_integer() is None:
                 return None
             parser.parse_punctuation(")")
-            operation_ident = parser.parse_identifier()
-            # FIXME is there a public thing I can use to do this?
-            return parser._get_op_by_name(operation_ident)  # pyright: ignore [reportPrivateUsage]
+            return parser.parse_region()
 
-        parsed_operations: list[type[Operation]] = []
+        parsed_regions: list[Region] = []
         while True:
-            parsed_operation = get_op()
-            if parsed_operation is not None:
-                parsed_operations.append(parsed_operation)
+            parsed_region = get_choice()
+            if parsed_region is not None:
+                parsed_regions.append(parsed_region)
             else:
                 break
 
-        assert len(parsed_operations) >= 1, "Expected to parse at least one operation!"
-        parser.parse_punctuation("}")
-        choose_op = cls.from_operations(name_prop.data, [el[0] for el in args], switch, parsed_operations, [res_typ])
-        return choose_op
+        if len(parsed_regions) == 0:
+            parser.raise_error("Expected to parse at least one region!")
+        else:
+            name = name_prop.data
+            data_operands = [el[0] for el in args]
+            default_region = parsed_regions[0]
+            if len(parsed_regions) > 1:
+                case_regions = parsed_regions[1:]
+            else:
+                case_regions = []
+            choose_op = cls(name, data_operands, switch, default_region, case_regions, [res_typ])
+            return choose_op
 
 
 @irdl_op_definition
