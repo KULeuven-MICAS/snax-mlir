@@ -104,7 +104,7 @@ class DynamicAllocs(RewritePattern):
         func_call = func.CallOp(
             "snax_alloc_l1",
             [alloc_op.size, alignment_op],
-            [llvm.LLVMPointerType.opaque()],
+            [llvm.LLVMPointerType()],
         )
         ops_to_insert.append(func_call)
 
@@ -112,8 +112,8 @@ class DynamicAllocs(RewritePattern):
         # the allocated pointer and the aligned pointer
         func_result_type = llvm.LLVMStructType.from_type_list(
             [
-                llvm.LLVMPointerType.opaque(),  # pointer
-                llvm.LLVMPointerType.opaque(),  # aligned_pointer
+                llvm.LLVMPointerType(),  # pointer
+                llvm.LLVMPointerType(),  # aligned_pointer
             ]
         )
 
@@ -123,10 +123,10 @@ class DynamicAllocs(RewritePattern):
 
         # extract the allocated pointer and aligned pointer from alloc function call
         pointer_op = llvm.ExtractValueOp(
-            builtin.DenseArrayBase.from_list(builtin.i64, [0]), func_result.results[0], llvm.LLVMPointerType.opaque()
+            builtin.DenseArrayBase.from_list(builtin.i64, [0]), func_result.results[0], llvm.LLVMPointerType()
         )
         aligned_pointer_op = llvm.ExtractValueOp(
-            builtin.DenseArrayBase.from_list(builtin.i64, [1]), func_result.results[0], llvm.LLVMPointerType.opaque()
+            builtin.DenseArrayBase.from_list(builtin.i64, [1]), func_result.results[0], llvm.LLVMPointerType()
         )
         ops_to_insert.extend([pointer_op, aligned_pointer_op])
 
@@ -141,7 +141,7 @@ class DynamicAllocs(RewritePattern):
         func_op = func.FuncOp.external(
             "snax_alloc_l1",
             [builtin.IndexType()] * 2,
-            [llvm.LLVMPointerType.opaque()],
+            [llvm.LLVMPointerType()],
         )
 
         SymbolTable.insert_or_update(module_op, func_op)

@@ -46,8 +46,8 @@ class LLVMMemrefDescriptor:
         return cls(
             LLVMStructType.from_type_list(
                 [
-                    LLVMPointerType.opaque(),
-                    LLVMPointerType.opaque(),
+                    LLVMPointerType(),
+                    LLVMPointerType(),
                     integer_type,
                     LLVMArrayType.from_size_and_type(rank, integer_type),
                     LLVMArrayType.from_size_and_type(rank, integer_type),
