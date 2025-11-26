@@ -1,2 +1,4 @@
 # SCM syntax highlighting
 pixi.lock linguist-language=YAML linguist-generated=true
+# Exclude pixi lock from diff changes
+pixi.lock -diff
