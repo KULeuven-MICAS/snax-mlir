@@ -524,8 +524,7 @@ class SNAXGEMMXAccelerator(
             ops.append(csr_op(addr_gemmx.result, launch_values["launch_gemmx"]))
 
             # await the accelerator only
-            ops.append(cst_0 := arith.ConstantOp.from_int_and_width(0, 32))
-            ops.append(csr_op(addr_gemmx.result, cst_0.result))
+            ops.extend(self.lower_acc_await(self.generate_acc_op()))
 
         return ops
 
