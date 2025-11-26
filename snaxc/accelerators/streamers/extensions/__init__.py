@@ -5,7 +5,7 @@ from snaxc.accelerators.streamers.streamers import (
     HasChannelMask,
 )
 
-from .add_extension import AddExtension
+from .add_extension import AddExtension, AddLongExtension
 from .maxpool_extension import MaxPoolExtension
 from .memset_extension import MemSetExtension
 from .rescale_extension import RescaleDownExtension, RescaleUpExtension
@@ -19,6 +19,7 @@ XDMA_EXT_SET = (
     RescaleDownExtension,
     RescaleUpExtension,
     AddExtension,
+    AddLongExtension,
 )
 
 STREAMER_OPT_MAP = {
@@ -30,6 +31,7 @@ STREAMER_OPT_MAP = {
     MemSetExtension().name: MemSetExtension,
     TransposeExtension().name: TransposeExtension,
     AddExtension().name: AddExtension,
+    AddLongExtension().name: AddLongExtension,
     RescaleDownExtension().name: RescaleDownExtension,
     RescaleUpExtension().name: RescaleUpExtension,
 }

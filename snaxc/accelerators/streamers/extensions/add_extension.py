@@ -81,3 +81,8 @@ class AddExtension(StreamerExtension):
         new_stride_patterns = [new_stride_pattern, snax_stride_patterns[-1]]
 
         return new_inputs, new_outputs, new_stride_patterns, []
+
+
+class AddLongExtension(AddExtension):
+    name = "add_ext_long"
+    supported_kernel = None
