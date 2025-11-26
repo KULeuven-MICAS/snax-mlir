@@ -52,7 +52,7 @@ class PipelineDuplicateBuffers(RewritePattern):
                 index=op.index,
                 body=rewriter.move_region_contents_to_new_regions(op.body),
             )
-            rewriter.replace_matched_op(new_stage)
+            rewriter.replace_op(op, new_stage)
             return
 
         in_uses = [

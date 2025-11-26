@@ -109,7 +109,7 @@ class MatchSimpleCopy(RewritePattern):
         )
 
         # insert ops and replace op
-        rewriter.insert_op_before_matched_op(ops_to_insert)
+        rewriter.insert_op(ops_to_insert)
         rewriter.replace_op(op, func_call)
 
 
@@ -343,7 +343,7 @@ class TransformDMA(RewritePattern):
             func_call = func.CallOp("snax_dma_1d_transfer", [pointer_src, pointer_dst, total_size_op], [])
 
             # insert ops and replace op
-            rewriter.insert_op_before_matched_op(ops_to_insert)
+            rewriter.insert_op(ops_to_insert)
             rewriter.replace_op(op, func_call)
             return
         else:
@@ -376,7 +376,7 @@ class TransformDMA(RewritePattern):
                 ],
                 [],
             )
-            rewriter.insert_op_before_matched_op(ops_to_insert)
+            rewriter.insert_op(ops_to_insert)
             rewriter.replace_op(op, func_call)
             return
 
@@ -464,7 +464,7 @@ class TransformDMA(RewritePattern):
                 assert isinstance(next_for_op, scf.ForOp)
                 for_loop = next_for_op
 
-        rewriter.insert_op_before_matched_op(ops_to_insert)
+        rewriter.insert_op(ops_to_insert)
         rewriter.replace_op(op, outermost_for_loop)
 
 

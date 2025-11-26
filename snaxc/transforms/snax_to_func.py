@@ -18,7 +18,7 @@ class InsertFunctionCall(RewritePattern):
     def match_and_rewrite(self, func_op: snax.ClusterSyncOp, rewriter: PatternRewriter):
         """Swap cluster sync op with function call"""
         func_call = func.CallOp("snax_cluster_hw_barrier", [], [])
-        rewriter.replace_matched_op(func_call)
+        rewriter.replace_op(func_op, func_call)
 
 
 class ClearL1ToFunc(RewritePattern):
@@ -35,13 +35,13 @@ class ClearL1ToFunc(RewritePattern):
             assert (module_op := module_op.parent_op())
         SymbolTable.insert_or_update(module_op, func_decl)
 
-        rewriter.replace_matched_op(func_call)
+        rewriter.replace_op(clear, func_call)
 
 
 class EraseDeallocs(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: DeallocOp, rewriter: PatternRewriter):
-        rewriter.erase_matched_op()
+        rewriter.erase_op(op)
 
 
 class SNAXToFunc(ModulePass):

@@ -70,7 +70,7 @@ class InitFuncMemorySpace(RewritePattern):
         )
 
         # Replace function op
-        rewriter.replace_matched_op(new_op)
+        rewriter.replace_op(op, new_op)
 
 
 class InitMemRefGlobalMemorySpace(RewritePattern):
@@ -95,7 +95,7 @@ class InitMemRefGlobalMemorySpace(RewritePattern):
         new_op = memref.GetGlobalOp(op.name_.root_reference.data, new_memref_type)
 
         # replace op
-        rewriter.replace_matched_op(new_op)
+        rewriter.replace_op(op, new_op)
 
 
 class InitMemRefAllocMemorySpace(RewritePattern):
@@ -121,7 +121,7 @@ class InitMemRefAllocMemorySpace(RewritePattern):
         )
 
         # replace op
-        rewriter.replace_matched_op(new_op, new_results=[new_op.memref])
+        rewriter.replace_op(op, new_op, new_results=[new_op.memref])
 
 
 class InitStreamAndLinalgMemorySpace(RewritePattern):
@@ -155,7 +155,7 @@ class InitStreamAndLinalgMemorySpace(RewritePattern):
             assert isa(optype := operand.type, builtin.MemRefType[Attribute])
             if cast_op is None:
                 cast_op = memref.MemorySpaceCastOp.from_type_and_target_space(operand, optype, L1.attribute)
-                rewriter.insert_op_before_matched_op(cast_op)
+                rewriter.insert_op(cast_op)
 
             return cast_op
 
@@ -204,7 +204,7 @@ class HandleFuncReturns(RewritePattern):
                     func_return_output_type,
                     func_op_output.memory_space,
                 )
-                rewriter.insert_op_before_matched_op(cast_op)
+                rewriter.insert_op(cast_op)
 
                 # replace return value with cast
                 new_arguments.append(cast_op)
@@ -219,7 +219,7 @@ class HandleFuncReturns(RewritePattern):
         new_op = func.ReturnOp(*new_arguments)
 
         # replace op
-        rewriter.replace_matched_op(new_op)
+        rewriter.replace_op(op, new_op)
 
 
 class UpdateSubviewOperations(RewritePattern):
@@ -244,7 +244,7 @@ class UpdateSubviewOperations(RewritePattern):
                     op.source.type.memory_space,
                 ),
             )
-            rewriter.replace_matched_op(new_op)
+            rewriter.replace_op(op, new_op)
 
 
 class SetMemorySpace(ModulePass):

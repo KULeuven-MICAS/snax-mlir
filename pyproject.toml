@@ -4,8 +4,9 @@ description = "Driving SNAX with MLIR"
 version = "0.2.2"
 requires-python = "== 3.12.*"
 
+
 dependencies = [
-  "xdsl @ git+https://github.com/xdslproject/xdsl.git@50e24da282f21d07a99ec210d1aba9f68092d540",
+  "xdsl @ git+https://github.com/xdslproject/xdsl.git@3e3014612f899d1da69059e769f90b7e8eff864f",
   "minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2",
   "numpy",
   "dacite>=1.9.2,<2",
@@ -14,7 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 
 # All optional dependencies for plotting and parsing
-dev = ["pre-commit", "filecheck==1.0.0", "lit", "pytest"]
+dev = ["pre-commit", "filecheck==1.0.3", "lit", "pytest"]
 
 # All optional dependencies for graphical plotting
 viz = ["pandas", "matplotlib"]
@@ -89,9 +90,9 @@ default = { features = ["dev", "nn", "viz"] }
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
-mlir = { version = "==20.1.7", channel = "kuleuven-micas" }
-clang = "==20.1.7"
-lld = "==20.1.7"
+mlir = { version = "==21.1.1", channel = "kuleuven-micas" }
+clang = "==21.1.1"
+lld = "==21.1.1"
 snax-cluster-prebuilt = "==0.2.15"
 snakemake-minimal = "*"
 pyright = ">=1.1.407,<2"

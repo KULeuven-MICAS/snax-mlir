@@ -77,7 +77,7 @@ class AllocToGlobal(RewritePattern):
         # replace op by get global
         memref_get = memref.GetGlobalOp(global_sym_name, op.results[0].type)
 
-        rewriter.replace_matched_op(memref_get)
+        rewriter.replace_op(op, memref_get)
 
 
 @dataclass(frozen=True)

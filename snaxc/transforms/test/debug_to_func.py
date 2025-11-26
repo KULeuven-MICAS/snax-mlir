@@ -47,7 +47,7 @@ class DebugToFunc(RewritePattern):
 
         func_call = func.CallOp(f"debug_{op.debug_type.data}", [ptr_a, ptr_b, ptr_c, when], [])
         ops_to_insert.append(func_call)
-        rewriter.replace_matched_op(ops_to_insert)
+        rewriter.replace_op(op, ops_to_insert)
 
         func_decl = func.FuncOp.external(
             f"debug_{op.debug_type.data}",

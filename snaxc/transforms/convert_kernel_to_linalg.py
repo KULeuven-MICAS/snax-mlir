@@ -43,8 +43,8 @@ class LowerRescale(RewritePattern):
         clamped_max = MinSIOp(with_zp_out, max)
         clamped_min = MaxSIOp(clamped_max, min)
         trunced_final = TruncIOp(clamped_min, builtin.i8)
-        rewriter.replace_matched_op(
-            [with_zp_in, extended, multed, shifted, trunced, with_zp_out, clamped_max, clamped_min, trunced_final]
+        rewriter.replace_op(
+            op, [with_zp_in, extended, multed, shifted, trunced, with_zp_out, clamped_max, clamped_min, trunced_final]
         )
 
 
@@ -66,7 +66,8 @@ class LowerLinalgBody(RewritePattern):
             return
 
         # replace linalg op
-        rewriter.replace_matched_op(
+        rewriter.replace_op(
+            linalg_op,
             linalg.GenericOp(
                 linalg_op.inputs,
                 linalg_op.outputs,
@@ -76,7 +77,7 @@ class LowerLinalgBody(RewritePattern):
                 linalg_op.result_types,
                 linalg_op.library_call,
                 linalg_op.doc,
-            )
+            ),
         )
 
 

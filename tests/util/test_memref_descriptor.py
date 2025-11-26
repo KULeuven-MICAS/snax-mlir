@@ -9,8 +9,8 @@ from snaxc.util.memref_descriptor import LLVMMemrefDescriptor
 def test_llvmmemrefdescriptor_init():
     descriptor = LLVMStructType.from_type_list(
         [
-            LLVMPointerType.opaque(),
-            LLVMPointerType.opaque(),
+            LLVMPointerType(),
+            LLVMPointerType(),
             i32,
             LLVMArrayType.from_size_and_type(2, i32),
             LLVMArrayType.from_size_and_type(2, i32),
@@ -57,8 +57,8 @@ def test_llvmmemrefdescriptor_from_memref_type():
 def test_llvmmemrefdescriptor_verify_valid_descriptor():
     descriptor = LLVMStructType.from_type_list(
         [
-            LLVMPointerType.opaque(),
-            LLVMPointerType.opaque(),
+            LLVMPointerType(),
+            LLVMPointerType(),
             i32,
             LLVMArrayType.from_size_and_type(2, i32),
             LLVMArrayType.from_size_and_type(2, i32),
@@ -72,8 +72,8 @@ def test_llvmmemrefdescriptor_verify_valid_descriptor():
 def test_llvmmemrefdescriptor_verify_invalid_descriptor():
     descriptor = LLVMStructType.from_type_list(
         [
-            LLVMPointerType.opaque(),
-            LLVMPointerType.opaque(),
+            LLVMPointerType(),
+            LLVMPointerType(),
             i32,
             LLVMArrayType.from_size_and_type(2, i32),
             i32,  # Invalid type
@@ -87,8 +87,8 @@ def test_llvmmemrefdescriptor_verify_invalid_descriptor():
 def test_llvmmemrefdescriptor_verify_invalid_shape_and_strides():
     descriptor = LLVMStructType.from_type_list(
         [
-            LLVMPointerType.opaque(),
-            LLVMPointerType.opaque(),
+            LLVMPointerType(),
+            LLVMPointerType(),
             i32,
             LLVMArrayType.from_size_and_type(2, i32),
             LLVMArrayType.from_size_and_type(3, i32),  # Invalid dimension
@@ -102,11 +102,11 @@ def test_llvmmemrefdescriptor_verify_invalid_shape_and_strides():
 def test_llvmmemrefdescriptor_verify_invalid_shape_and_strides_type():
     descriptor = LLVMStructType.from_type_list(
         [
-            LLVMPointerType.opaque(),
-            LLVMPointerType.opaque(),
+            LLVMPointerType(),
+            LLVMPointerType(),
             i32,
             LLVMArrayType.from_size_and_type(2, i32),
-            LLVMArrayType.from_size_and_type(2, LLVMPointerType.opaque()),  # Invalid type
+            LLVMArrayType.from_size_and_type(2, LLVMPointerType()),  # Invalid type
         ]
     )
     memref_descriptor = LLVMMemrefDescriptor(descriptor)

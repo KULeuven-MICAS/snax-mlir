@@ -111,7 +111,8 @@ def conv(spec: ConvSpec):
             (input_c.result, weight_c.result),
             (empty_tensor.results[0],),
             (output_type,),
-            {"dilations": dilations, "strides": strides},
+            strides=strides,
+            dilations=dilations,
         )
 
         ReturnOp(result, golden_c)

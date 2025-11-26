@@ -51,7 +51,8 @@ class LowerAccfgSetupToCsr(LowerAccfgBasePattern):
         acc_op, acc_info = self.get_acc(op.get_acc_name())
         # grab a dict that translates field names to CSR addresses:
         # emit the llvm assembly code to set csr values:
-        rewriter.replace_matched_op(
+        rewriter.replace_op(
+            op,
             acc_info.lower_acc_setup(op, acc_op),
             [None],
             safe_erase=False,
@@ -69,7 +70,8 @@ class LowerAccfgLaunchToCsr(LowerAccfgBasePattern):
         acc_op, acc_info = self.get_acc(op.get_acc_name())
         # acc_op, acc_info = self.get_acc(op.state.type.accelerator.data)
         # insert an op that sets the launch CSR to 1
-        rewriter.replace_matched_op(
+        rewriter.replace_op(
+            op,
             acc_info.lower_acc_launch(op, acc_op),
             [op.state],
             safe_erase=False,
@@ -86,7 +88,8 @@ class LowerAccfgAwaitToCsr(LowerAccfgBasePattern):
         acc_op, acc_info = self.get_acc(op.get_acc_name())
 
         # emit a snax_hwpe-style barrier
-        rewriter.replace_matched_op(
+        rewriter.replace_op(
+            op,
             acc_info.lower_acc_await(acc_op),
             safe_erase=False,
         )
@@ -171,7 +174,7 @@ class RemoveAcceleratorOps(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: accfg.AcceleratorOp, rewriter: PatternRewriter, /):
-        rewriter.erase_matched_op()
+        rewriter.erase_op(op)
 
 
 class ConvertAccfgToCsrPass(ModulePass):

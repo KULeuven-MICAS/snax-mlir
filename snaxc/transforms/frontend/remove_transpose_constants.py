@@ -65,5 +65,5 @@ class RemoveTransposeConstants(RewritePattern):
         op.results[0].replace_by(new_const_op.results[0])
 
         # delete const op and linalg op
-        rewriter.erase_matched_op()
+        rewriter.erase_op(op)
         rewriter.erase_op(const_op)

@@ -75,7 +75,7 @@ class ChangeForStep(RewritePattern):
 
         # insert the ops
         rewriter.insert_op(new_iter_var, InsertPoint.at_start(new_for.body.block))
-        rewriter.replace_matched_op((new_step, new_ub, new_for))
+        rewriter.replace_op(op, (new_step, new_ub, new_for))
 
 
 @dataclass
@@ -138,7 +138,7 @@ class MergeForLoops(RewritePattern):
         assert isinstance(op.body.block.last_op, YieldOp)
         rewriter.erase_op(op.body.block.last_op)
         rewriter.inline_block(op.body.block, InsertPoint.before(op))
-        rewriter.erase_matched_op()  # remove remaining empty for loop
+        rewriter.erase_op(op)  # remove remaining empty for loop
 
 
 @dataclass(frozen=True)

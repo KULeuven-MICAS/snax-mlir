@@ -1,27 +1,22 @@
 // RUN: snax-opt %s -p tosa-combine-rescale --split-input-file | filecheck %s
 
 func.func public @rescale_combined(%arg0: tensor<64xi8>) -> tensor<64xi32> {
-%0 = tosa.rescale %arg0 {double_round = true, input_zp = 38 : i32, multiplier = array<i32: 1073741824>, output_zp = 0 : i32, per_channel = false, scale32 = true, shift = array<i8: 10>} : (tensor<64xi8>) -> tensor<64xi32>
-%1 = tosa.rescale %0 {double_round = true, input_zp = 0 : i32, multiplier = array<i32: 1657902019>, output_zp = 0 : i32, per_channel = false, scale32 = true, shift = array<i8: 33>} : (tensor<64xi32>) -> tensor<64xi32>
-return %1 : tensor<64xi32>
+    %input_zp = "tosa.const"() <{ values = dense<38> : tensor<1xi32> }> : () -> tensor<1xi32>
+    %output_zp = "tosa.const"() <{ values = dense<0> : tensor<1xi32> }> : () -> tensor<1xi32>
+    %multiplier = "tosa.const"() <{ values = dense<1073741824> : tensor<1xi32> }> : () -> tensor<1xi32>
+    %shift = "tosa.const"() <{ values = dense<10> : tensor<1xi32> }> : () -> tensor<1xi32>
+    %0 = tosa.rescale %arg0, %multiplier, %shift, %input_zp, %output_zp {"rounding_mode" = "DOUBLE_ROUND", "per_channel" = false, "scale32" = true, "input_unsigned" = false, output_unsigned = false} : (tensor<64xi8>, tensor<1xi32>, tensor<1xi32>, tensor<1xi32>, tensor<1xi32>) -> tensor<64xi32>
+    %input_zp_2 = "tosa.const"() <{ values = dense<0> : tensor<1xi32> }> : () -> tensor<1xi32>
+    %output_zp_2 = "tosa.const"() <{ values = dense<0> : tensor<1xi32> }> : () -> tensor<1xi32>
+    %multiplier_2 = "tosa.const"() <{ values = dense<1657902019> : tensor<1xi32> }> : () -> tensor<1xi32>
+    %shift_2 = "tosa.const"() <{ values = dense<33> : tensor<1xi32> }> : () -> tensor<1xi32>
+    %1 = tosa.rescale %0, %multiplier_2, %shift_2, %input_zp_2, %output_zp_2 {"rounding_mode" = "DOUBLE_ROUND", "per_channel" = false, "scale32" = true, "input_unsigned" = false, output_unsigned = false} : (tensor<64xi32>, tensor<1xi32>, tensor<1xi32>, tensor<1xi32>, tensor<1xi32>) -> tensor<64xi32>
+    return %1 : tensor<64xi32>
 }
 
-// CHECK:  func.func public @rescale_combined(%arg0 : tensor<64xi8>) -> tensor<64xi32> {
-// CHECK-NEXT:    %0 = tosa.rescale %arg0 {input_zp = 38 : i32, output_zp = 0 : i32, multiplier = array<i32: 1657902019>, shift = array<i8: 13>, scale32 = true, double_round = true, per_channel = false} : (tensor<64xi8>) -> tensor<64xi32>
-// CHECK-NEXT:    func.return %0 : tensor<64xi32>
-// CHECK-NEXT:  }
-
-
-// -----
-func.func public @rescale_combined(%arg0: tensor<64xi8>) -> tensor<64xi32> {
-%0 = tosa.rescale %arg0 {double_round = true, input_zp = 38 : i32, multiplier = array<i32: 1073741824>, output_zp = 0 : i32, per_channel = false, scale32 = true, shift = array<i8: 10>} : (tensor<64xi8>) -> tensor<64xi32>
-%1 = tosa.rescale %0 {double_round = true, input_zp = 0 : i32, multiplier = array<i32: 16>, output_zp = 0 : i32, per_channel = false, scale32 = true, shift = array<i8: 4>} : (tensor<64xi32>) -> tensor<64xi32>
-%2 = tosa.rescale %1 {double_round = true, input_zp = 0 : i32, multiplier = array<i32: 1657902019>, output_zp = 0 : i32, per_channel = false, scale32 = true, shift = array<i8: 33>} : (tensor<64xi32>) -> tensor<64xi32>
-return %2 : tensor<64xi32>
-}
-
-
-// CHECK:  func.func public @rescale_combined(%arg0 : tensor<64xi8>) -> tensor<64xi32> {
-// CHECK-NEXT:    %0 = tosa.rescale %arg0 {input_zp = 38 : i32, output_zp = 0 : i32, multiplier = array<i32: 1657902019>, shift = array<i8: 13>, scale32 = true, double_round = true, per_channel = false} : (tensor<64xi8>) -> tensor<64xi32>
-// CHECK-NEXT:    func.return %0 : tensor<64xi32>
-// CHECK-NEXT:  }
+// CHECK:         %0 = "tosa.const"() <{values = dense<38> : tensor<1xi32>}> : () -> tensor<1xi32>
+// CHECK-NEXT:    %1 = "tosa.const"() <{values = dense<0> : tensor<1xi32>}> : () -> tensor<1xi32>
+// CHECK-NEXT:    %2 = "tosa.const"() <{values = dense<1657902019> : tensor<1xi32>}> : () -> tensor<1xi32>
+// CHECK-NEXT:    %3 = "tosa.const"() <{values = dense<13> : tensor<1xi8>}> : () -> tensor<1xi8>
+// CHECK-NEXT:    %4 = tosa.rescale %arg0, %2, %3, %0, %1 {rounding_mode = "DOUBLE_ROUND", per_channel = false, scale32 = true, input_unsigned = false, output_unsigned = false} : (tensor<64xi8>, tensor<1xi32>, tensor<1xi8>, tensor<1xi32>, tensor<1xi32>) -> tensor<64xi32>
+// CHECK-NEXT:    func.return %4 : tensor<64xi32>

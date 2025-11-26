@@ -47,7 +47,7 @@ class ConvertLinalgToAcceleratorPattern(RewritePattern):
 
         # Lookup the accelerator interface based on the library_call
         acc = self.ctx.get_acc(library_call_name)
-        rewriter.replace_matched_op(acc.convert_to_acc_ops(op))
+        rewriter.replace_op(op, acc.convert_to_acc_ops(op))
 
 
 @dataclass
@@ -62,7 +62,7 @@ class ConvertSnaxStreamToAcceleratorPattern(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: StreamingRegionOp, rewriter: PatternRewriter):
         acc = self.ctx.get_acc(op.accelerator.data)
-        rewriter.replace_matched_op(acc.convert_to_acc_ops(op))
+        rewriter.replace_op(op, acc.convert_to_acc_ops(op))
 
 
 @dataclass

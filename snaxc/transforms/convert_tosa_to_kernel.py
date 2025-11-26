@@ -1,8 +1,9 @@
 from xdsl.builder import Builder
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, linalg, tensor, tosa
-from xdsl.ir import Attribute, BlockArgument
+from xdsl.ir import Attribute, BlockArgument, OpResult
 from xdsl.ir.affine import AffineDimExpr, AffineMap
+from xdsl.irdl import Operand
 from xdsl.parser import Signedness
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
@@ -25,6 +26,7 @@ class RescaleClampPattern(RewritePattern):
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, rescale_op: tosa.RescaleOp, rewriter: PatternRewriter):
+        tosa.RescaleOp
         # searching for the pattern rescale + clamp
         if rescale_op.output.uses.get_length() != 1:
             return
@@ -42,33 +44,38 @@ class RescaleClampPattern(RewritePattern):
             return
 
         # create linalg body with kernel op with the params of tosa ops
+        def extract_const(operand: Operand):
+            assert isinstance(operand, OpResult)
+            assert isinstance(const := operand.op, tosa.ConstOp)
+            return const.values.get_values()
 
         # Extract all values:
-        builtin.i32.verify_value(rescale_op.input_zp.value.data)
-        builtin.i32.verify_value(rescale_op.output_zp.value.data)
-        input_zp = rescale_op.input_zp.value.data
-        output_zp = rescale_op.output_zp.value.data
-        multiplier = rescale_op.multiplier.get_values()
+        assert isinstance(input_zp := extract_const(rescale_op.input_zp)[0], int)
+        builtin.i32.verify_value(input_zp)
+        assert isinstance(output_zp := extract_const(rescale_op.output_zp)[0], int)
+        builtin.i32.verify_value(output_zp)
+        multiplier = extract_const(rescale_op.multiplier)
         assert isa(multiplier, tuple[int, ...])
-        shift = rescale_op.shift.get_values()
+        shift = extract_const(rescale_op.shift)
         assert isa(shift, tuple[int, ...])
         if isinstance(clamp_op, tosa.ClampOp):
+            assert isinstance(clamp_op.max_val, builtin.IntegerAttr)
+            assert isinstance(clamp_op.min_val, builtin.IntegerAttr)
             if rescale_op.output.type.element_type == builtin.i8:
-                builtin.i8.verify_value(clamp_op.max_int.value.data)
-                builtin.i8.verify_value(clamp_op.min_int.value.data)
-                max_int = clamp_op.max_int.value.data
-                min_int = clamp_op.min_int.value.data
+                builtin.i8.verify_value(clamp_op.max_val.value.data)
+                builtin.i8.verify_value(clamp_op.min_val.value.data)
+                max_int = clamp_op.max_val.value.data
+                min_int = clamp_op.min_val.value.data
             else:
-                builtin.i32.verify_value(clamp_op.max_int.value.data)
-                builtin.i32.verify_value(clamp_op.min_int.value.data)
-                max_int = clamp_op.max_int.value.data
-                min_int = clamp_op.min_int.value.data
+                builtin.i32.verify_value(clamp_op.max_val.value.data)
+                builtin.i32.verify_value(clamp_op.min_val.value.data)
+                max_int = clamp_op.max_val.value.data
+                min_int = clamp_op.min_val.value.data
         else:
             assert isa(rescale_op.output.type.element_type, builtin.IntegerType[int, Signedness])
             min_int, max_int = rescale_op.output.type.element_type.value_range()
             max_int = max_int // 2 - 1
-        double_round = rescale_op.double_round.value.data
-        assert double_round in (0, -1)
+        double_round = rescale_op.rounding_mode.data == "DOUBLE_ROUND"
 
         @Builder.implicit_region((inp_type.element_type, out_type.element_type))
         def linalg_body(args: tuple[BlockArgument, ...]) -> None:
@@ -81,7 +88,7 @@ class RescaleClampPattern(RewritePattern):
                 shift,
                 max_int,
                 min_int,
-                bool(double_round),
+                double_round,
             )
             linalg.YieldOp(kernel_op)
 
@@ -115,7 +122,7 @@ class RescaleClampPattern(RewritePattern):
         # insert new op
         rewriter.replace_op(clamp_op, (*dim_idx_ops, *dim_ops, output_tensor, new_op))
         if rescale_op is not clamp_op:
-            rewriter.erase_matched_op()
+            rewriter.erase_op(rescale_op)
 
 
 class ConvertTosaToKernelPass(ModulePass):
