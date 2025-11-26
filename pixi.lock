@@ -112,7 +112,7 @@ environments:
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-interface-scheduler-plugins-2.0.2-pyhd4c3c12_0.conda
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-interface-storage-plugins-4.2.3-pyhd4c3c12_0.conda
       - conda: https://conda.anaconda.org/bioconda/noarch/snakemake-minimal-9.13.7-pyhdfd78af_0.conda
-      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.17-hb0f4dca_0.conda
+      - conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.18-hb0f4dca_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/sysroot_linux-64-2.28-h4ee821c_8.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tabulate-0.9.0-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/throttler-1.2.2-pyhd8ed1ab_0.conda
@@ -2127,19 +2127,18 @@ packages:
   - pkg:pypi/snakemake?source=hash-mapping
   size: 866236
   timestamp: 1762533314130
-- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.17-hb0f4dca_0.conda
-  sha256: fcac03f3a58cc37bb047c33a19aebc858f7784e8503467fa505c7e580134391b
-  md5: acfc635141180c52c7d0f106c714e8e9
+- conda: https://conda.anaconda.org/kuleuven-micas/linux-64/snax-cluster-prebuilt-0.2.18-hb0f4dca_0.conda
+  sha256: 491de4852bbd28442a23bb556e6c1db737ada57231cdf13c647c625e92c83ca7
+  md5: e82871a9edbf0d1ac57697c2b28346c4
   depends:
-  - libgcc >=14
   - libstdcxx >=14
   - libgcc >=14
-  size: 21618516
-  timestamp: 1763631353160
+  size: 21733870
+  timestamp: 1764164898573
 - pypi: ./
   name: snax-mlir
   version: 0.2.2
-  sha256: 7b1093a97a3cb8664812d64ee6ca56b007a0ecf6267bf32584cc205cc8d83b0e
+  sha256: 315f96932fe520013de54d37a2591339ae56c5d494f7310645bf1a9cc81c4642
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@3e3014612f899d1da69059e769f90b7e8eff864f
   - minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2
