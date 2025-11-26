@@ -7,17 +7,16 @@ from xdsl.builder import Builder
 from xdsl.dialects.arith import ConstantOp
 from xdsl.dialects.builtin import (
     BoolAttr,
-    DenseArrayBase,
     DenseIntOrFPElementsAttr,
-    IntegerAttr,
     ModuleOp,
+    StringAttr,
     TensorType,
     i1,
     i8,
     i32,
 )
 from xdsl.dialects.func import FuncOp, ReturnOp
-from xdsl.dialects.tosa import RescaleOp
+from xdsl.dialects.tosa import ConstOp, RescaleOp
 from xdsl.printer import Printer
 
 
@@ -55,17 +54,19 @@ def rescale_down(n: int = 64):
         # empty_tensor = EmptyOp([], output_type)
 
         # Specify the operation
+        input_zp_op = ConstOp(DenseIntOrFPElementsAttr.from_list(TensorType(i32, (1,)), (0,)))
+        output_zp_op = ConstOp(DenseIntOrFPElementsAttr.from_list(TensorType(i32, (1,)), (0,)))
+        multiplier_op = ConstOp(DenseIntOrFPElementsAttr.from_list(TensorType(i32, (1,)), (1140768826,)))
+        shift_op = ConstOp(DenseIntOrFPElementsAttr.from_list(TensorType(i8, (1,)), (47,)))
         result = RescaleOp(
-            operands=[a.result],
+            operands=[a.result, multiplier_op, shift_op, input_zp_op, output_zp_op],
             result_types=[output_type],
             properties={
-                "input_zp": IntegerAttr(0, i32),
-                "output_zp": IntegerAttr(0, i32),
-                "multiplier": DenseArrayBase.create_dense_int(i32, [1140768826]),
-                "shift": DenseArrayBase.create_dense_int(i32, [47]),
                 "scale32": BoolAttr(True, i1),
-                "double_round": BoolAttr(True, i1),
+                "rounding_mode": StringAttr("DOUBLE_ROUND"),
                 "per_channel": BoolAttr(False, i1),
+                "input_unsigned": BoolAttr(False, i1),
+                "output_unsigned": BoolAttr(False, i1),
             },
         )
 
