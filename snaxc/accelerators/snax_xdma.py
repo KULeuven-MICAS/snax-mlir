@@ -25,6 +25,7 @@ from snaxc.accelerators.streamers.extensions import (
     StreamerExtension,
     TransposeExtension,
 )
+from snaxc.accelerators.streamers.extensions.add_extension import AddLongExtension
 from snaxc.accelerators.streamers.streamers import (
     Streamer,
     StreamerConfiguration,
@@ -44,6 +45,7 @@ default_streamer = StreamerConfiguration(
             [
                 MaxPoolExtension(),
                 AddExtension(),
+                AddLongExtension(),
                 RescaleDownExtension(),
                 RescaleUpExtension(),
                 HasChannelMask(),
@@ -76,7 +78,7 @@ class SNAXXDMAAccelerator(
     name = "snax_xdma"
 
     supported_kernels = ()
-    max_multicast_dest = 25
+    max_multicast_dest = 16
 
     def __init__(self, streamer_config: StreamerConfiguration = default_streamer) -> None:
         assert default_streamer.size() == 2, "SNAX XDMA only supports two streamers (reader and writer)."
@@ -205,7 +207,7 @@ class SNAXXDMAAccelerator(
                     result.append(([n1], n1.result))
 
             # Bypass option
-            bypass = 2 ** len([opt for opt in streamer.opts if isinstance(opt, StreamerExtension)]) - 1
+            bypass = 0
             i = 0
             for ext in streamer.opts:
                 if isinstance(ext, StreamerExtension):
@@ -213,7 +215,7 @@ class SNAXXDMAAccelerator(
                         if ext.supported_kernel is not None and ext.supported_kernel.is_same_kernel(
                             kernel_op := str_op.body.block.first_op
                         ):
-                            bypass -= 2**i
+                            bypass += 2**i
                     i += 1
             cst = arith.ConstantOp.from_int_and_width(bypass, i32)
             result.append(([cst], cst.result))

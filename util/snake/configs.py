@@ -44,7 +44,7 @@ def get_snax_xdma_config(snax_mlir_path: str | None = None) -> dict[str, Any]:
     # use CONDA_PREFIX to access pixi env
     snax_utils_path = os.environ["CONDA_PREFIX"] + "/snax-utils"
     utils_dir = Path(__file__).resolve().parent.parent
-    snitch_sw_path = snax_utils_path + "/snax-kul-cluster-mixed-narrow-wide"
+    snitch_sw_path = snax_utils_path + "/snax-compiler_test_cluster"
     config: dict[str, Any] = {}
     config.update(get_default_paths())
     config.update(get_default_snax_paths())
