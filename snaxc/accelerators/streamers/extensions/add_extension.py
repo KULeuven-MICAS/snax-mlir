@@ -85,3 +85,4 @@ class AddExtension(StreamerExtension):
 
 class AddLongExtension(AddExtension):
     name = "add_ext_long"
+    supported_kernel = None
