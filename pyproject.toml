@@ -90,7 +90,7 @@ default = { features = ["dev", "nn", "viz"] }
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
-mlir = { version = "==21.1.1", channel = "kuleuven-micas" }
+mlir = { version = "==21.1.1" }
 clang = "==21.1.1"
 lld = "==21.1.1"
 snax-cluster-prebuilt = "==0.2.19"
