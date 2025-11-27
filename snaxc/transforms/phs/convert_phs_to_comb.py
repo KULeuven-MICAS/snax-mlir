@@ -82,7 +82,7 @@ class ConvertPeOps(RewritePattern):
         ports_attr = ArrayAttr(ports)
         mod_type = hw.ModuleType(ports_attr)
         new_op = hw.HWModuleOp(sym_name=pe.name_prop, module_type=mod_type, body=pe.body.clone())
-        rewriter.replace_matched_op(new_op)
+        rewriter.replace_op(pe, new_op)
 
 
 class ConvertChooseOps(RewritePattern):
@@ -94,7 +94,7 @@ class ConvertChooseOps(RewritePattern):
                 # Move all non-yield operations outside the choice block
                 if not isinstance(op, phs.YieldOp):
                     op.detach()
-                    rewriter.insert_op_before_matched_op(op)
+                    rewriter.insert_op(op)
                 # put all yielded results in one big array
                 else:
                     if not len(list(op.operands)) == 1:
@@ -105,7 +105,7 @@ class ConvertChooseOps(RewritePattern):
         rewriter.insert_op(create_array := hw.ArrayCreateOp(*yield_results))
         index_bw = get_choice_bitwdith(choose_op)
         rewriter.replace_value_with_new_type(choose_op.switch, builtin.IntegerType(index_bw))
-        rewriter.replace_matched_op(hw.ArrayGetOp(create_array, choose_op.switch))
+        rewriter.replace_op(choose_op, hw.ArrayGetOp(create_array, choose_op.switch))
 
 
 def get_choice_bitwdith(choice: phs.ChooseOp):
@@ -116,7 +116,7 @@ class ConvertYieldOps(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, yield_op: phs.YieldOp, rewriter: PatternRewriter):
         output_op = hw.OutputOp(yield_op.operands)
-        rewriter.replace_matched_op(output_op)
+        rewriter.replace_op(yield_op, output_op)
 
 
 class ConvertPhsToCombPass(ModulePass):
