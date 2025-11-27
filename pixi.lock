@@ -2139,7 +2139,7 @@ packages:
 - pypi: ./
   name: snax-mlir
   version: 0.2.2
-  sha256: 38de635b57602dd03c201c97eb5b4309c672af1044e1136e69718506df0e98b2
+  sha256: 7c803312c9fec7a0204ed1e043400f55620918e50326e6466cef410443c1a1dc
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@3e3014612f899d1da69059e769f90b7e8eff864f
   - minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2
