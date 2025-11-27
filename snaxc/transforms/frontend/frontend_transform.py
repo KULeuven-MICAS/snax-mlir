@@ -4,12 +4,13 @@ from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.dialects.transform import NamedSequenceOp
 from xdsl.passes import ModulePass
+from xdsl.pattern_rewriter import PatternRewriteWalker
 from xdsl.transforms.mlir_opt import MLIROptPass
+from xdsl.transforms.test_transform_dialect_erase_schedule import EraseTransformNamedSequenceOps
 
 MLIR_FLAGS: tuple[tuple[str, ...], ...] = (
     (
         "--transform-interpreter",
-        "--test-transform-dialect-erase-schedule",
         "--mlir-print-op-generic",
         "--mlir-print-local-scope",
     ),
@@ -28,3 +29,4 @@ class FrontendTransformPass(ModulePass):
             return
         for flags in MLIR_FLAGS:
             MLIROptPass(generic=True, arguments=flags).apply(ctx, op)
+        PatternRewriteWalker((EraseTransformNamedSequenceOps()), apply_recursively=False).rewrite_module(op)
