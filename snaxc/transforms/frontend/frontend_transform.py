@@ -29,4 +29,4 @@ class FrontendTransformPass(ModulePass):
             return
         for flags in MLIR_FLAGS:
             MLIROptPass(generic=True, arguments=flags).apply(ctx, op)
-        PatternRewriteWalker((EraseTransformNamedSequenceOps()), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(EraseTransformNamedSequenceOps(), apply_recursively=False).rewrite_module(op)

@@ -4,6 +4,7 @@ from util.snake.paths import get_default_paths
 config.update(get_default_paths())
 config["snaxoptflags"] = ",".join(
     [
+        "test-transform-dialect-erase-schedule",
         "preprocess",
         "insert-accfg-op{accelerator=gemmini}",
         "convert-linalg-to-accfg",
@@ -22,7 +23,7 @@ config["cflags"] = [
 ]
 
 config["mliroptflags"] = [
-    "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.quantized_matmul}, test-transform-dialect-erase-schedule, linalg-generalize-named-ops)' --mlir-print-local-scope --mlir-print-op-generic"
+    "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.quantized_matmul}, linalg-generalize-named-ops)' --mlir-print-local-scope --mlir-print-op-generic"
 ]
 
 config["lowertollvmpasses"] = [
