@@ -1,3 +1,0 @@
-# Specific settings for snax-kul-cluster-mixed-narrow-wide RTL
-SNITCH_SW_PATH = ${CONDA_PREFIX}/snax-utils/snax-kul-cluster-mixed-narrow-wide/
-VLTSIM        = ${CONDA_PREFIX}/snax-utils/snax-kul-cluster-mixed-narrow-wide-rtl/bin/snitch_cluster.vlt
