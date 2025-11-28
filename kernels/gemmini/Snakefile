@@ -4,6 +4,7 @@ from util.snake.paths import get_default_paths
 config.update(get_default_paths())
 config["snaxoptflags"] = ",".join(
     [
+        "test-transform-dialect-erase-schedule",
         "preprocess",
         "insert-accfg-op{accelerator=gemmini}",
         "convert-linalg-to-accfg",
@@ -22,7 +23,27 @@ config["cflags"] = [
 ]
 
 config["mliroptflags"] = [
-    "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.quantized_matmul}, test-transform-dialect-erase-schedule, linalg-generalize-named-ops)' --mlir-print-local-scope --mlir-print-op-generic"
+    "--pass-pipeline='builtin.module(transform-interpreter{debug-bind-trailing-args=linalg.quantized_matmul}, linalg-generalize-named-ops)' --mlir-print-local-scope --mlir-print-op-generic"
+]
+
+config["lowertollvmpasses"] = [
+    "--convert-vector-to-scf",
+    "--convert-linalg-to-loops",
+    "--lower-affine",
+    "--convert-scf-to-cf",
+    "--canonicalize",
+    "--cse",
+    "--convert-vector-to-llvm=reassociate-fp-reductions",
+    "--convert-math-to-llvm",
+    "--expand-strided-metadata",
+    "--lower-affine",
+    "--finalize-memref-to-llvm",
+    "--convert-func-to-llvm",
+    "--convert-arith-to-llvm",
+    "--convert-cf-to-llvm",
+    "--convert-index-to-llvm",
+    "--convert-ub-to-llvm",
+    "--reconcile-unrealized-casts",
 ]
 
 
@@ -60,7 +81,7 @@ rule postprocess_mlir:
     output:
         "{file}.ll.mlir",
     shell:
-        "{config[mlir-opt]} --test-lower-to-llvm -o {output} {input}"
+        "{config[mlir-opt]} {config[lowertollvmpasses]} -o {output} {input}"
 
 
 rule translate_mlir:
