@@ -77,7 +77,7 @@ typeCheckingMode = "strict"
 "include" = ["snaxc", "tests"]
 
 
-[tool.pixi.project]
+[tool.pixi.workspace]
 channels = ["conda-forge", "bioconda", "kuleuven-micas"]
 platforms = ["linux-64"]
 
