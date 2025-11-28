@@ -56,6 +56,7 @@ LDFLAGS += -L$(SNITCH_SW_PATH)/target/snitch_cluster/sw/runtime/rtl-generic
 LDFLAGS += -L$(SNITCH_SW_PATH)/target/snitch_cluster/sw/runtime/rtl-generic/build
 LDFLAGS += -nostdlib
 LDFLAGS += -lsnRuntime
+LDFLAGS += -fuse-ld=lld
 
 # useful for debugging at llvm level:
 %.ll: %.c
