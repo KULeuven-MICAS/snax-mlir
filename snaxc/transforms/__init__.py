@@ -85,10 +85,10 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return ConvertMemrefToArithPass
 
-    def get_convert_phs_to_comb():
-        from snaxc.transforms.phs.convert_phs_to_comb import ConvertPhsToCombPass
+    def get_convert_phs_to_hw():
+        from snaxc.transforms.phs.convert_phs_to_hw import ConvertPhsToHWPass
 
-        return ConvertPhsToCombPass
+        return ConvertPhsToHWPass
 
     def get_convert_tosa_to_kernel():
         from snaxc.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
@@ -270,7 +270,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "tosa-combine-rescale": get_tosa_combine_rescale,
         "construct-pipeline": construct_pipeline,
         "convert-accfg-to-csr": get_convert_accfg_to_csr,
-        "convert-phs-to-comb": get_convert_phs_to_comb,
+        "convert-phs-to-hw": get_convert_phs_to_hw,
         "convert-dart-to-snax-stream": get_convert_dart_to_snax_stream,
         "convert-kernel-to-linalg": get_convert_kernel_to_linalg,
         "convert-linalg-to-accfg": get_convert_linalg_to_accfg,

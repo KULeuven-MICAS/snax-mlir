@@ -99,8 +99,8 @@ class ConvertYieldOps(RewritePattern):
         rewriter.replace_op(yield_op, output_op)
 
 
-class ConvertPhsToCombPass(ModulePass):
-    name = "convert-phs-to-comb"
+class ConvertPhsToHWPass(ModulePass):
+    name = "convert-phs-to-hw"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         MLIROptPass(
