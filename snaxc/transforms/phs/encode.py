@@ -9,7 +9,7 @@ from xdsl.rewriter import InsertPoint
 from xdsl.traits import SymbolTable
 
 from snaxc.dialects import phs
-from snaxc.transforms.phs.combine import append_to_abstract_graph
+from snaxc.phs.combine import append_to_abstract_graph
 
 MAGIC_ATTR_NAME = "phs_acc"
 
