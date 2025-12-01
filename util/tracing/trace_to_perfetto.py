@@ -2,13 +2,14 @@
 
 import argparse
 import json
-import yaml
 import typing
 from concurrent.futures import ProcessPoolExecutor
 
-from snaxc.tools.config_parser import parse_config
+import yaml
+
 from snaxc.accelerators import get_all_accelerators
 from snaxc.accelerators.snax import SNAXAccelerator
+from snaxc.tools.config_parser import parse_config
 from util.tracing.annotation import (
     BarrierEventGenerator,
     DMAEventGenerator,
