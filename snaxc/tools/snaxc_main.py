@@ -168,7 +168,7 @@ class SNAXCMain(CommandLineTool):
             "--test-ignore-transform",
             default=False,
             action="store_true",
-            help="disable all dynamic layout transformations, expect wrong results"
+            help="disable all dynamic layout transformations, expect wrong results",
         )
 
     def setup_pipeline(self):
