@@ -26,9 +26,9 @@ class ConvertPeOps(RewritePattern):
     def match_and_rewrite(self, pe: phs.PEOp, rewriter: PatternRewriter):
         def get_switch_bw(arg: BlockArgument) -> int:
             use = arg.get_unique_use()
-            assert use is not None, "Don't expect multiple users for switch"
+            assert use is not None, "Expect single user for switch"
             if isinstance(use.operation, phs.ChooseOp):
-                return get_choice_bitwdith(use.operation)
+                return get_choice_bitwidth(use.operation)
             elif isinstance(use.operation, phs.MuxOp):
                 return 1
             else:
@@ -83,12 +83,12 @@ class ConvertChooseOps(RewritePattern):
                         assert not isinstance(operand, Block)
                         yield_results.append(operand)
         rewriter.insert_op(create_array := hw.ArrayCreateOp(*yield_results))
-        index_bw = get_choice_bitwdith(choose_op)
+        index_bw = get_choice_bitwidth(choose_op)
         rewriter.replace_value_with_new_type(choose_op.switch, builtin.IntegerType(index_bw))
         rewriter.replace_op(choose_op, hw.ArrayGetOp(create_array, choose_op.switch))
 
 
-def get_choice_bitwdith(choice: phs.ChooseOp):
+def get_choice_bitwidth(choice: phs.ChooseOp):
     return (len(list(choice.operations())) - 1).bit_length()
 
 
