@@ -86,13 +86,9 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
                 self.state.number_of_setups += 1
             # if it's a launch insn
             elif ins.csr in self.launch_fields:
+                self.state.number_of_launches += 1
                 # check that we haven't met the launch threshold yet
-                if self.state.number_of_launches < len(self.launch_fields):
-                    self.state.number_of_launches += 1
-                    # this launch counts as a setup
-                    # self.state.number_of_setups += 1
-                # otherwise, end this event, switch to launch event
-                else:
+                if self.state.number_of_launches == len(self.launch_fields):
                     events.append(
                         DurationEvent(
                             "setup",
@@ -109,11 +105,9 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
             # if we see a setup ins, count it
             if ins.csr in self.fields:
                 self.state.number_of_setups += 1
-            # if we see a write to a launch
-            elif ins.csr in self.launch_fields:
-                self.state.number_of_zero_writes += 1
-            # if we wrote two zeros, transition to stalled state
-            if self.state.number_of_zero_writes > 1:
+            # go to stall state if we see a write to a launch
+            # or a read from the barrier addr
+            if ins.csr in self.launch_fields or ins.csr == self.barrier_addr:
                 events.append(
                     DurationEvent(
                         "launched",
@@ -126,15 +120,16 @@ class SNAXAcceleratorEventGenerator(EventGenerator):
                 self.state = Stalled(start=state.clock_cycle)
         elif isinstance(self.state, Stalled):
             # stalled state is resolved with the next CSR ins
-            events.append(
-                DurationEvent(
-                    "stalled",
-                    self.state.start,
-                    state.clock_cycle - self.state.start,
-                    ["snax"],
-                    {},
+            if ins.csr != self.barrier_addr:
+                events.append(
+                    DurationEvent(
+                        "stalled",
+                        self.state.start,
+                        state.clock_cycle - self.state.start,
+                        ["snax"],
+                        {},
+                    )
                 )
-            )
-            self.state = None
+                self.state = None
 
         return events
