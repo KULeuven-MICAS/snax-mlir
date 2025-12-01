@@ -164,6 +164,13 @@ class SNAXCMain(CommandLineTool):
             help="disable all backend passes",
         )
 
+        arg_parser.add_argument(
+            "--test-ignore-transform",
+            default=False,
+            action="store_true",
+            help="disable all dynamic layout transformations, expect wrong results",
+        )
+
     def setup_pipeline(self):
         """
         Creates a pipeline that consists of all the passes specified.
@@ -225,7 +232,7 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(ConvertDartToSnaxStream())
         pass_pipeline.append(ConvertLinalgToAccPass())
         pass_pipeline.append(ConvertAccfgToCsrPass())
-        pass_pipeline.append(SNAXCopyToDMA())
+        pass_pipeline.append(SNAXCopyToDMA(test_ignore_transform=self.args.test_ignore_transform))
         pass_pipeline.append(SNAXToFunc())
         pass_pipeline.append(ConvertMemrefToArithPass())
         if self.args.debug:
