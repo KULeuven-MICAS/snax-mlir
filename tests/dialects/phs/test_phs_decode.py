@@ -5,8 +5,8 @@ from create_input import create_test_input
 from xdsl.ir import Block, Operation, Region
 from xdsl.printer import Printer
 
-from snaxc.transforms.phs.combine import append_to_abstract_graph
-from snaxc.transforms.phs.decode import decode_abstract_graph
+from snaxc.phs.combine import append_to_abstract_graph
+from snaxc.phs.decode import decode_abstract_graph
 
 
 def test_decode() -> None:

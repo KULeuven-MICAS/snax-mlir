@@ -1,7 +1,7 @@
 import pytest
 from create_input import create_test_input
 
-from snaxc.transforms.phs.combine import append_to_abstract_graph
+from snaxc.phs.combine import append_to_abstract_graph
 
 
 def test_combine() -> None:
