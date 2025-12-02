@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 
 from xdsl.context import Context
@@ -62,6 +62,9 @@ class AccContext(Context):
         if (accelerator := self.get_optional_accelerator(name)) is None:
             raise Exception(f"Accelerator {name} is not registered")
         return accelerator
+
+    def get_all_accelerators(self) -> Sequence[Accelerator]:
+        return [registered_accelerator() for registered_accelerator in self._registered_accelerators.values()]
 
     def get_acc_op_from_module(self, name: str, module: ModuleOp) -> tuple[AcceleratorOp, Accelerator]:
         """

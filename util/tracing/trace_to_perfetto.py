@@ -5,8 +5,11 @@ import json
 import typing
 from concurrent.futures import ProcessPoolExecutor
 
+import yaml
+
 from snaxc.accelerators import get_all_accelerators
 from snaxc.accelerators.snax import SNAXAccelerator
+from snaxc.tools.config_parser import parse_config
 from util.tracing.annotation import (
     BarrierEventGenerator,
     DMAEventGenerator,
@@ -17,7 +20,7 @@ from util.tracing.snax_event_generator import SNAXAcceleratorEventGenerator
 from util.tracing.state import get_trace_state
 
 
-def worker(file: str, accelerator: str):
+def worker(file: str, accelerator: str | None = None, accelerator_config: str | None = None):
     events = []
     generators = [
         BarrierEventGenerator(),
@@ -27,6 +30,13 @@ def worker(file: str, accelerator: str):
     if accelerator is not None:
         accelerator_op = get_all_accelerators()[accelerator]().generate_acc_op()
         generators.append(SNAXAcceleratorEventGenerator(accelerator_op))
+
+    if accelerator_config is not None:
+        with open(accelerator_config) as f:
+            config = yaml.safe_load(f)
+        context = parse_config(config)
+        for registered_accelerator in context.get_all_accelerators():
+            generators.append(SNAXAcceleratorEventGenerator(registered_accelerator.generate_acc_op()))
 
     with open(file) as f:
         for index, l in enumerate(f):
@@ -76,6 +86,11 @@ def parse_arguments():
         default=None,
         help="SNAX accelerator for SNAX Event Annotator",
     )
+    parser.add_argument(
+        "--accelerator_config",
+        default=None,
+        help="SNAX accelerator config",
+    )
     parser.add_argument("--elf", help="ELF from which the traces were generated")
     parser.add_argument(
         "-o",
@@ -113,6 +128,7 @@ def process_traces(
     elf: str,
     addr2line: str,
     accelerator: str | None = None,
+    accelerator_config: str | None = None,
     output: typing.IO[str] | None = None,
     annotate_kernels: bool = False,
     sequential: bool = False,
@@ -137,11 +153,11 @@ def process_traces(
     if not sequential:
         # Submit trace processing tasks to the executor
         for hartid, file in enumerate(traces):
-            futures.append(executor.submit(worker, file, accelerator))
+            futures.append(executor.submit(worker, file, accelerator, accelerator_config))
     else:
         # Process traces sequentially for debuggin purposes
         for hartid, file in enumerate(traces):
-            result = worker(file, accelerator)
+            result = worker(file, accelerator, accelerator_config)
             futures.append(result)
 
     # Calculate events using provided inputs and arguments
@@ -176,6 +192,7 @@ if __name__ == "__main__":
         args.elf,
         args.addr2line,
         args.accelerator,
+        args.accelerator_config,
         args.output,
         args.annotate_kernels,
         args.sequential,
