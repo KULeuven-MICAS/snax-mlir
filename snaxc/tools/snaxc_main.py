@@ -10,10 +10,14 @@ from xdsl.passes import ModulePass, PassPipeline
 from xdsl.printer import Printer
 from xdsl.tools.command_line_tool import CommandLineTool
 from xdsl.transforms.canonicalize import CanonicalizePass
+from xdsl.transforms.experimental.function_constant_pinning import FunctionConstantPinningPass
+from xdsl.transforms.mlir_opt import MLIROptPass
 
 from snaxc.accelerators.acc_context import AccContext
 from snaxc.dialects import get_all_snax_dialects
 from snaxc.tools.config_parser import parse_config
+from snaxc.transforms.accfg_config_overlap import AccfgConfigOverlapPass
+from snaxc.transforms.accfg_dedup import AccfgDeduplicate
 from snaxc.transforms.alloc_to_global import AllocToGlobalPass
 from snaxc.transforms.backend.postprocess_mlir import PostprocessPass
 from snaxc.transforms.clear_memory_space import ClearMemorySpace
@@ -231,14 +235,26 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(DartLayoutResolutionPass())
         pass_pipeline.append(ConvertDartToSnaxStream())
         pass_pipeline.append(ConvertLinalgToAccPass())
-        pass_pipeline.append(ConvertAccfgToCsrPass())
         pass_pipeline.append(SNAXCopyToDMA(test_ignore_transform=self.args.test_ignore_transform))
         pass_pipeline.append(SNAXToFunc())
         pass_pipeline.append(ConvertMemrefToArithPass())
         if self.args.debug:
             pass_pipeline.append(DebugToFuncPass())
         pass_pipeline.append(ClearMemorySpace())
-        pass_pipeline.append(CanonicalizePass())
+        pass_pipeline.append(FunctionConstantPinningPass())
+        pass_pipeline.append(
+            MLIROptPass(
+                arguments=(
+                    "--canonicalize",
+                    "--mlir-print-op-generic",
+                    "--mlir-print-local-scope",
+                    "--allow-unregistered-dialect",
+                )
+            )
+        )
+        pass_pipeline.append(AccfgDeduplicate())
+        pass_pipeline.append(AccfgConfigOverlapPass())
+        pass_pipeline.append(ConvertAccfgToCsrPass())
 
         # Convert to llvm:
         if not self.args.no_backend:
