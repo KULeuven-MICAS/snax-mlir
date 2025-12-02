@@ -157,6 +157,16 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return PhsEncodePass
 
+    def get_phs_export_to_verilog():
+        from snaxc.transforms.phs.export_to_verilog import PhsExportToVerilogPass
+
+        return PhsExportToVerilogPass
+
+    def get_phs_export_phs():
+        from snaxc.transforms.phs.export_phs import PhsExportPhsPass
+
+        return PhsExportPhsPass
+
     def get_pipeline_canonicalize_for():
         from snaxc.transforms.pipeline.pipeline_canonicalize_for import (
             PipelineCanonicalizeFor,
@@ -290,6 +300,8 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "insert-sync-barrier": get_insert_sync_barrier,
         "memref-to-snax": get_memref_to_snax,
         "phs-encode": get_phs_encode,
+        "phs-export-phs": get_phs_export_phs,
+        "phs-export-to-verilog": get_phs_export_to_verilog,
         "pipeline-canonicalize-for": get_pipeline_canonicalize_for,
         "pipeline-duplicate-buffers": get_pipeline_duplicate_buffers,
         "postprocess": get_postprocess_mlir,

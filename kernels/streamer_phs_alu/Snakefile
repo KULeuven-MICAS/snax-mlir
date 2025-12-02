@@ -1,0 +1,33 @@
+# Rules
+rule all:
+    input:
+        "acc1_pe.sv",
+
+
+rule apply_transform:
+    input:
+        "addition.mlir",
+        "transform_schedule.mlir",
+    output:
+        temp("addition_transformed.mlir"),
+    shell:
+        "mlir-opt --linalg-generalize-named-ops --transform-preload-library=transform-library-paths={input[1]} --transform-interpreter {input[0]} -o {output[0]}"
+
+
+rule compile_mlir:
+    input:
+        "addition_transformed.mlir",
+    output:
+        temp("addition_phs.mlir"),
+        temp("acc1_pe.mlir"),
+    shell:
+        'snax-opt -p phs-encode,phs-export-phs{{output=\\"{output[1]}\\"}} {input} -o {output[0]}'
+
+
+rule export_verilog:
+    input:
+        "acc1_pe.mlir",
+    output:
+        "acc1_pe.sv",
+    shell:
+        'snax-opt -p convert-phs-to-hw,phs-export-to-verilog{{output=\\"{output[0]}\\"}} {input}'
