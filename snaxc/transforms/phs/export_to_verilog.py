@@ -31,7 +31,7 @@ class PhsExportToVerilogPass(ModulePass):
         printer.print_op(op)
 
         completed_process = subprocess.run(
-            [executable, "--format=allooo", "-o", f"{self.output}"],
+            [executable, "--format=mlir", "-o", f"{self.output}"],
             input=stream.getvalue(),
             capture_output=False,
             text=True,
