@@ -35,8 +35,8 @@ def worker(file: str, accelerator: str | None = None, accelerator_config: str | 
         with open(accelerator_config) as f:
             config = yaml.safe_load(f)
         context = parse_config(config)
-        for registered_accelerator in context._registered_accelerators.values():
-            generators.append(SNAXAcceleratorEventGenerator(registered_accelerator().generate_acc_op()))
+        for registered_accelerator in context.get_all_accelerators():
+            generators.append(SNAXAcceleratorEventGenerator(registered_accelerator.generate_acc_op()))
 
     with open(file) as f:
         for index, l in enumerate(f):
