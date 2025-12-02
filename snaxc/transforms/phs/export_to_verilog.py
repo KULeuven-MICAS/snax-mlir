@@ -12,6 +12,12 @@ from xdsl.utils.exceptions import DiagnosticException
 
 @dataclass(frozen=True)
 class PhsExportToVerilogPass(ModulePass):
+    """
+    Pass that exports MLIR IR to Verilog using the firtool executable from CIRCT.
+    Args:
+        output (str): Path to the output Verilog file.
+    """
+
     name = "phs-export-to-verilog"
 
     output: str
@@ -23,11 +29,10 @@ class PhsExportToVerilogPass(ModulePass):
         stream = StringIO()
         printer = Printer(print_generic_format=True, stream=stream)
         printer.print_op(op)
-        my_string = stream.getvalue()
 
         completed_process = subprocess.run(
-            [executable, "--format=mlir", "-o", f"{self.output}"],
-            input=my_string,
+            [executable, "--format=allooo", "-o", f"{self.output}"],
+            input=stream.getvalue(),
             capture_output=False,
             text=True,
         )
