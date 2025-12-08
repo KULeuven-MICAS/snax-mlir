@@ -1,0 +1,689 @@
+   18000       15        M 0x00001000 csrr    a0, mhartid            #; mhartid = 1, (wrb) a0  <-- 1
+   32000       29        M 0x00001004 auipc   a1, 0x0                #; (wrb) a1  <-- 4100
+   46000       43        M 0x00001008 addi    a1, a1, 32             #; a1  = 4100, (wrb) a1  <-- 4132
+   60000       57        M 0x0000100c auipc   t0, 0x0                #; (wrb) t0  <-- 4108
+   74000       71        M 0x00001010 lw      t0, 20(t0)             #; t0  = 4108, t0  <~~ Word[0x00001020]
+   87000       84        M                                           #; (lsu) t0  <-- 0x80000000
+   88000       85        M 0x00001014 jalr    t0                     #; t0  = 0x80000000, (wrb) ra  <-- 4120, goto 0x80000000
+  145000      142        M 0x80000000 li      t0, 0                  #; (wrb) t0  <-- 0
+  146000      143        M 0x80000004 li      t1, 0                  #; (wrb) t1  <-- 0
+  147000      144        M 0x80000008 li      t2, 0                  #; (wrb) t2  <-- 0
+  148000      145        M 0x8000000c li      t3, 0                  #; (wrb) t3  <-- 0
+  149000      146        M 0x80000010 li      t4, 0                  #; (wrb) t4  <-- 0
+  150000      147        M 0x80000014 li      t5, 0                  #; (wrb) t5  <-- 0
+  151000      148        M 0x80000018 li      t6, 0                  #; (wrb) t6  <-- 0
+  152000      149        M 0x8000001c li      a0, 0                  #; (wrb) a0  <-- 0
+  159000      156        M 0x80000020 li      a1, 0                  #; (wrb) a1  <-- 0
+  160000      157        M 0x80000024 li      a2, 0                  #; (wrb) a2  <-- 0
+  161000      158        M 0x80000028 li      a3, 0                  #; (wrb) a3  <-- 0
+  162000      159        M 0x8000002c li      a4, 0                  #; (wrb) a4  <-- 0
+  163000      160        M 0x80000030 li      a5, 0                  #; (wrb) a5  <-- 0
+  164000      161        M 0x80000034 li      a6, 0                  #; (wrb) a6  <-- 0
+  165000      162        M 0x80000038 li      a7, 0                  #; (wrb) a7  <-- 0
+  166000      163        M 0x8000003c li      s0, 0                  #; (wrb) s0  <-- 0
+  173000      170        M 0x80000040 li      s1, 0                  #; (wrb) s1  <-- 0
+  174000      171        M 0x80000044 li      s2, 0                  #; (wrb) s2  <-- 0
+  175000      172        M 0x80000048 li      s3, 0                  #; (wrb) s3  <-- 0
+  176000      173        M 0x8000004c li      s4, 0                  #; (wrb) s4  <-- 0
+  177000      174        M 0x80000050 li      s5, 0                  #; (wrb) s5  <-- 0
+  178000      175        M 0x80000054 li      s6, 0                  #; (wrb) s6  <-- 0
+  179000      176        M 0x80000058 li      s7, 0                  #; (wrb) s7  <-- 0
+  180000      177        M 0x8000005c li      s8, 0                  #; (wrb) s8  <-- 0
+  187000      184        M 0x80000060 li      s9, 0                  #; (wrb) s9  <-- 0
+  188000      185        M 0x80000064 li      s10, 0                 #; (wrb) s10 <-- 0
+  189000      186        M 0x80000068 li      s11, 0                 #; (wrb) s11 <-- 0
+  190000      187        M 0x8000006c csrr    t0, misa               #; misa = 0x40801101, (wrb) t0  <-- 0x40801101
+  191000      188        M 0x80000070 andi    t0, t0, 40             #; t0  = 0x40801101, (wrb) t0  <-- 0
+  192000      189        M 0x80000074 beqz    t0, pc + 132           #; t0  = 0, taken, goto 0x800000f8
+  214000      211        M 0x800000f8 auipc   gp, 0xb                #; (wrb) gp  <-- 0x8000b0f8
+  215000      212        M 0x800000fc addi    gp, gp, -1576          #; gp  = 0x8000b0f8, (wrb) gp  <-- 0x8000aad0
+  228000      225        M 0x80000100 csrr    a0, unknown_bc1        #; csr@bc1 = 0x10000000, (wrb) a0  <-- 0x10000000
+  229000      226        M 0x80000104 li      a1, 22                 #; (wrb) a1  <-- 22
+  230000      227        M 0x80000108 lui     a2, 0x10000            #; (wrb) a2  <-- 0x10000000
+  231000      228        M 0x8000010c sub     a0, a0, a2             #; a0  = 0x10000000, a2  = 0x10000000, (wrb) a0  <-- 0
+  232000      229        M 0x80000110 srl     t0, a0, a1             #; a0  = 0, a1  = 22, (wrb) t0  <-- 0
+  233000      230        M 0x80000114 csrr    a0, unknown_bc3        #; csr@bc3 = 0x00020001, (wrb) a0  <-- 0x00020001
+  234000      231        M 0x80000118 slli    a0, a0, 16             #; a0  = 0x00020001, (wrb) a0  <-- 0x00010000
+  235000      232        M 0x8000011c srli    a0, a0, 16             #; a0  = 0x00010000, (wrb) a0  <-- 1
+  242000      239        M 0x80000120 csrr    a1, unknown_bc3        #; csr@bc3 = 0x00020001, (wrb) a1  <-- 0x00020001
+  243000      240        M 0x80000124 srli    a1, a1, 16             #; a1  = 0x00020001, (wrb) a1  <-- 2
+  244000      241        M 0x80000128 lui     a2, 0x10000            #; (wrb) a2  <-- 0x10000000
+  245000      242        M 0x8000012c li      t1, 0                  #; (wrb) t1  <-- 0
+  246000      243        M 0x80000130 mul     t0, t1, t0             #; t1  = 0, t0  = 0
+  250000      247        M                                           #; (acc) t0  <-- 0
+  251000      248        M 0x80000134 add     a2, a2, t0             #; a2  = 0x10000000, t0  = 0, (wrb) a2  <-- 0x10000000
+  252000      249        M 0x80000138 lui     t0, 0x20               #; (wrb) t0  <-- 0x00020000
+  253000      250        M 0x8000013c add     a2, a2, t0             #; a2  = 0x10000000, t0  = 0x00020000, (wrb) a2  <-- 0x10020000
+  256000      253        M 0x80000140 auipc   t0, 0xa                #; (wrb) t0  <-- 0x8000a140
+  257000      254        M 0x80000144 addi    t0, t0, 400            #; t0  = 0x8000a140, (wrb) t0  <-- 0x8000a2d0
+  258000      255        M 0x80000148 auipc   t1, 0xa                #; (wrb) t1  <-- 0x8000a148
+  259000      256        M 0x8000014c addi    t1, t1, 392            #; t1  = 0x8000a148, (wrb) t1  <-- 0x8000a2d0
+  260000      257        M 0x80000150 sub     t0, t0, t1             #; t0  = 0x8000a2d0, t1  = 0x8000a2d0, (wrb) t0  <-- 0
+  261000      258        M 0x80000154 sub     a2, a2, t0             #; a2  = 0x10020000, t0  = 0, (wrb) a2  <-- 0x10020000
+  262000      259        M 0x80000158 auipc   t0, 0xa                #; (wrb) t0  <-- 0x8000a158
+  263000      260        M 0x8000015c addi    t0, t0, 392            #; t0  = 0x8000a158, (wrb) t0  <-- 0x8000a2e0
+  270000      267        M 0x80000160 auipc   t1, 0xa                #; (wrb) t1  <-- 0x8000a160
+  271000      268        M 0x80000164 addi    t1, t1, 368            #; t1  = 0x8000a160, (wrb) t1  <-- 0x8000a2d0
+  272000      269        M 0x80000168 sub     t0, t0, t1             #; t0  = 0x8000a2e0, t1  = 0x8000a2d0, (wrb) t0  <-- 16
+  273000      270        M 0x8000016c sub     a2, a2, t0             #; a2  = 0x10020000, t0  = 16, (wrb) a2  <-- 0x1001fff0
+  274000      271        M 0x80000170 addi    a2, a2, -8             #; a2  = 0x1001fff0, (wrb) a2  <-- 0x1001ffe8
+  275000      272        M 0x80000174 sw      zero, 0(a2)            #; a2  = 0x1001ffe8, 0 ~~> Word[0x1001ffe8]
+  276000      273        M 0x80000178 slli    t0, a0, 10             #; a0  = 1, (wrb) t0  <-- 1024
+  277000      274        M 0x8000017c sub     sp, a2, t0             #; a2  = 0x1001ffe8, t0  = 1024, (wrb) sp  <-- 0x1001fbe8
+  284000      281        M 0x80000180 sll     t1, a1, t2             #; a1  = 2, t2  = 0, (wrb) t1  <-- 2
+  285000      282        M 0x80000184 sub     a2, a2, t1             #; a2  = 0x1001ffe8, t1  = 2, (wrb) a2  <-- 0x1001ffe6
+  286000      283        M 0x80000188 slli    t0, a0, 3              #; a0  = 1, (wrb) t0  <-- 8
+  287000      284        M 0x8000018c slli    t1, a1, 3              #; a1  = 2, (wrb) t1  <-- 16
+  288000      285        M 0x80000190 sub     sp, sp, t0             #; sp  = 0x1001fbe8, t0  = 8, (wrb) sp  <-- 0x1001fbe0
+  289000      286        M 0x80000194 sub     a2, a2, t1             #; a2  = 0x1001ffe6, t1  = 16, (wrb) a2  <-- 0x1001ffd6
+  290000      287        M 0x80000198 auipc   t0, 0xa                #; (wrb) t0  <-- 0x8000a198
+  291000      288        M 0x8000019c addi    t0, t0, 304            #; t0  = 0x8000a198, (wrb) t0  <-- 0x8000a2c8
+  298000      295        M 0x800001a0 auipc   t1, 0xa                #; (wrb) t1  <-- 0x8000a1a0
+  299000      296        M 0x800001a4 addi    t1, t1, 296            #; t1  = 0x8000a1a0, (wrb) t1  <-- 0x8000a2c8
+  300000      297        M 0x800001a8 sub     t0, t0, t1             #; t0  = 0x8000a2c8, t1  = 0x8000a2c8, (wrb) t0  <-- 0
+  301000      298        M 0x800001ac sub     sp, sp, t0             #; sp  = 0x1001fbe0, t0  = 0, (wrb) sp  <-- 0x1001fbe0
+  302000      299        M 0x800001b0 auipc   t0, 0xa                #; (wrb) t0  <-- 0x8000a1b0
+  303000      300        M 0x800001b4 addi    t0, t0, 288            #; t0  = 0x8000a1b0, (wrb) t0  <-- 0x8000a2d0
+  304000      301        M 0x800001b8 auipc   t1, 0xa                #; (wrb) t1  <-- 0x8000a1b8
+  305000      302        M 0x800001bc addi    t1, t1, 272            #; t1  = 0x8000a1b8, (wrb) t1  <-- 0x8000a2c8
+  312000      309        M 0x800001c0 sub     t0, t0, t1             #; t0  = 0x8000a2d0, t1  = 0x8000a2c8, (wrb) t0  <-- 8
+  313000      310        M 0x800001c4 sub     sp, sp, t0             #; sp  = 0x1001fbe0, t0  = 8, (wrb) sp  <-- 0x1001fbd8
+  314000      311        M 0x800001c8 andi    sp, sp, -8             #; sp  = 0x1001fbd8, (wrb) sp  <-- 0x1001fbd8
+  315000      312        M 0x800001cc mv      tp, sp                 #; sp  = 0x1001fbd8, (wrb) tp  <-- 0x1001fbd8
+  316000      313        M 0x800001d0 andi    sp, sp, -8             #; sp  = 0x1001fbd8, (wrb) sp  <-- 0x1001fbd8
+  317000      314        M 0x800001d4 jal     pc + 0x277c            #; (wrb) ra  <-- 0x800001d8, goto 0x80002950
+  326000      323        M 0x80002950 addi    sp, sp, -16            #; sp  = 0x1001fbd8, (wrb) sp  <-- 0x1001fbc8
+  327000      324        M 0x80002954 sw      ra, 12(sp)             #; sp  = 0x1001fbc8, 0x800001d8 ~~> Word[0x1001fbd4]
+  328000      325        M 0x80002958 sw      s0, 8(sp)              #; sp  = 0x1001fbc8, 0 ~~> Word[0x1001fbd0]
+  329000      326        M 0x8000295c csrr    a5, unknown_bc3        #; csr@bc3 = 0x00020001, (wrb) a5  <-- 0x00020001
+  340000      337        M 0x80002960 slli    a0, a5, 16             #; a5  = 0x00020001, (wrb) a0  <-- 0x00010000
+  341000      338        M 0x80002964 srli    a2, a5, 16             #; a5  = 0x00020001, (wrb) a2  <-- 2
+  342000      339        M 0x80002968 srli    a0, a0, 16             #; a0  = 0x00010000, (wrb) a0  <-- 1
+  343000      340        M 0x8000296c addi    a1, a2, -1             #; a2  = 2, (wrb) a1  <-- 1
+  344000      341        M 0x80002970 bltu    a0, a1, pc + 276       #; a0  = 1, a1  = 1, not taken
+  345000      342        M 0x80002974 mv      a3, tp                 #; tp  = 0x1001fbd8, (wrb) a3  <-- 0x1001fbd8
+  346000      343        M 0x80002978 auipc   a4, 0x8                #; (wrb) a4  <-- 0x8000a978
+  347000      344        M 0x8000297c sw      a3, 4(sp)              #; sp  = 0x1001fbc8, 0x1001fbd8 ~~> Word[0x1001fbcc]
+  354000      351        M 0x80002980 addi    a6, a4, -1712          #; a4  = 0x8000a978, (wrb) a6  <-- 0x8000a2c8
+  355000      352        M 0x80002984 lw      a3, 4(sp)              #; sp  = 0x1001fbc8, a3  <~~ Word[0x1001fbcc]
+  356000      353        M 0x80002988 auipc   a4, 0x8                #; (wrb) a4  <-- 0x8000a988
+  357000      354        M 0x8000298c addi    a4, a4, -1728          #; a4  = 0x8000a988, (wrb) a4  <-- 0x8000a2c8
+  358000      355        M 0x80002990 sub     a7, a4, a6             #; a4  = 0x8000a2c8, a6  = 0x8000a2c8, (wrb) a7  <-- 0
+  359000      356        M 0x80002994 bnez    a7, pc + 32            #; a7  = 0, not taken, (lsu) a3  <-- 0x1001fbd8
+  360000      357        M 0x80002998 srli    a5, a5, 17             #; a5  = 0x00020001, (wrb) a5  <-- 1
+  361000      358        M 0x8000299c beqz    a5, pc + 128           #; a5  = 1, not taken
+  368000      365        M 0x800029a0 mv      a5, a1                 #; a1  = 1, (wrb) a5  <-- 1
+  369000      366        M 0x800029a4 lw      zero, 4(sp)            #; sp  = 0x1001fbc8, zero <~~ Word[0x1001fbcc]
+  370000      367        M 0x800029a8 addi    a5, a5, -1             #; a5  = 1, (wrb) a5  <-- 0
+  371000      368        M 0x800029ac bnez    a5, pc - 8             #; a5  = 0, not taken
+  372000      369        M 0x800029b0 j       pc + 0x6c              #; goto 0x80002a1c
+  386000      383        M 0x80002a1c auipc   a5, 0x8                #; (wrb) a5  <-- 0x8000aa1c
+  400000      397        M 0x80002a20 auipc   a6, 0x8                #; (wrb) a6  <-- 0x8000aa20
+  401000      398        M 0x80002a24 addi    a7, a5, -1876          #; a5  = 0x8000aa1c, (wrb) a7  <-- 0x8000a2c8
+  402000      399        M 0x80002a28 addi    t0, a6, -1872          #; a6  = 0x8000aa20, (wrb) t0  <-- 0x8000a2d0
+  403000      400        M 0x80002a2c sub     a5, t0, a7             #; t0  = 0x8000a2d0, a7  = 0x8000a2c8, (wrb) a5  <-- 8
+  404000      401        M 0x80002a30 beqz    a5, pc + 84            #; a5  = 8, not taken
+  405000      402        M 0x80002a34 beqz    a2, pc + 80            #; a2  = 2, not taken
+  406000      403        M 0x80002a38 li      a5, 0                  #; (wrb) a5  <-- 0
+  407000      404        M 0x80002a3c auipc   t1, 0x8                #; (wrb) t1  <-- 0x8000aa3c
+  414000      411        M 0x80002a40 li      a6, 1032               #; (wrb) a6  <-- 1032
+  415000      412        M 0x80002a44 add     t0, t0, a4             #; t0  = 0x8000a2d0, a4  = 0x8000a2c8, (wrb) t0  <-- 0x00014598
+  416000      413        M 0x80002a48 addi    t1, t1, -1908          #; t1  = 0x8000aa3c, (wrb) t1  <-- 0x8000a2c8
+  417000      414        M 0x80002a4c sub     a4, a4, t1             #; a4  = 0x8000a2c8, t1  = 0x8000a2c8, (wrb) a4  <-- 0
+  418000      415        M 0x80002a50 add     a7, t1, a7             #; t1  = 0x8000a2c8, a7  = 0x8000a2c8, (wrb) a7  <-- 0x00014590
+  419000      416        M 0x80002a54 add     a4, a3, a4             #; a3  = 0x1001fbd8, a4  = 0, (wrb) a4  <-- 0x1001fbd8
+  420000      417        M 0x80002a58 sub     a7, t0, a7             #; t0  = 0x00014598, a7  = 0x00014590, (wrb) a7  <-- 8
+  421000      418        M 0x80002a5c mul     t0, a5, a6             #; a5  = 0, a6  = 1032
+  424000      421        M                                           #; (acc) t0  <-- 0
+  428000      425        M 0x80002a60 add     t0, t0, a7             #; t0  = 0, a7  = 8, (wrb) t0  <-- 8
+  429000      426        M 0x80002a64 add     t0, a3, t0             #; a3  = 0x1001fbd8, t0  = 8, (wrb) t0  <-- 0x1001fbe0
+  430000      427        M 0x80002a68 mv      t1, a4                 #; a4  = 0x1001fbd8, (wrb) t1  <-- 0x1001fbd8
+  431000      428        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001fbd8, 0 ~~> Byte[0x1001fbd8]
+  432000      429        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001fbd8, (wrb) t1  <-- 0x1001fbd9
+  433000      430        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001fbd9, t0  = 0x1001fbe0, taken, goto 0x80002a6c
+  434000      431        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001fbd9, 0 ~~> Byte[0x1001fbd9]
+  435000      432        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001fbd9, (wrb) t1  <-- 0x1001fbda
+  436000      433        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001fbda, t0  = 0x1001fbe0, taken, goto 0x80002a6c
+  437000      434        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001fbda, 0 ~~> Byte[0x1001fbda]
+  438000      435        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001fbda, (wrb) t1  <-- 0x1001fbdb
+  439000      436        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001fbdb, t0  = 0x1001fbe0, taken, goto 0x80002a6c
+  440000      437        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001fbdb, 0 ~~> Byte[0x1001fbdb]
+  441000      438        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001fbdb, (wrb) t1  <-- 0x1001fbdc
+  442000      439        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001fbdc, t0  = 0x1001fbe0, taken, goto 0x80002a6c
+  443000      440        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001fbdc, 0 ~~> Byte[0x1001fbdc]
+  444000      441        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001fbdc, (wrb) t1  <-- 0x1001fbdd
+  445000      442        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001fbdd, t0  = 0x1001fbe0, taken, goto 0x80002a6c
+  446000      443        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001fbdd, 0 ~~> Byte[0x1001fbdd]
+  447000      444        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001fbdd, (wrb) t1  <-- 0x1001fbde
+  448000      445        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001fbde, t0  = 0x1001fbe0, taken, goto 0x80002a6c
+  449000      446        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001fbde, 0 ~~> Byte[0x1001fbde]
+  450000      447        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001fbde, (wrb) t1  <-- 0x1001fbdf
+  451000      448        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001fbdf, t0  = 0x1001fbe0, taken, goto 0x80002a6c
+  452000      449        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001fbdf, 0 ~~> Byte[0x1001fbdf]
+  453000      450        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001fbdf, (wrb) t1  <-- 0x1001fbe0
+  454000      451        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001fbe0, t0  = 0x1001fbe0, not taken
+  455000      452        M 0x80002a78 addi    a5, a5, 1              #; a5  = 0, (wrb) a5  <-- 1
+  456000      453        M 0x80002a7c addi    a4, a4, 1032           #; a4  = 0x1001fbd8, (wrb) a4  <-- 0x1001ffe0
+  458000      455        M 0x80002a80 bne     a5, a2, pc - 36        #; a5  = 1, a2  = 2, taken, goto 0x80002a5c
+  459000      456        M 0x80002a5c mul     t0, a5, a6             #; a5  = 1, a6  = 1032
+  462000      459        M                                           #; (acc) t0  <-- 1032
+  463000      460        M 0x80002a60 add     t0, t0, a7             #; t0  = 1032, a7  = 8, (wrb) t0  <-- 1040
+  464000      461        M 0x80002a64 add     t0, a3, t0             #; a3  = 0x1001fbd8, t0  = 1040, (wrb) t0  <-- 0x1001ffe8
+  465000      462        M 0x80002a68 mv      t1, a4                 #; a4  = 0x1001ffe0, (wrb) t1  <-- 0x1001ffe0
+  466000      463        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001ffe0, 0 ~~> Byte[0x1001ffe0]
+  467000      464        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001ffe0, (wrb) t1  <-- 0x1001ffe1
+  468000      465        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001ffe1, t0  = 0x1001ffe8, taken, goto 0x80002a6c
+  469000      466        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001ffe1, 0 ~~> Byte[0x1001ffe1]
+  470000      467        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001ffe1, (wrb) t1  <-- 0x1001ffe2
+  471000      468        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001ffe2, t0  = 0x1001ffe8, taken, goto 0x80002a6c
+  472000      469        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001ffe2, 0 ~~> Byte[0x1001ffe2]
+  473000      470        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001ffe2, (wrb) t1  <-- 0x1001ffe3
+  474000      471        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001ffe3, t0  = 0x1001ffe8, taken, goto 0x80002a6c
+  475000      472        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001ffe3, 0 ~~> Byte[0x1001ffe3]
+  476000      473        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001ffe3, (wrb) t1  <-- 0x1001ffe4
+  477000      474        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001ffe4, t0  = 0x1001ffe8, taken, goto 0x80002a6c
+  478000      475        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001ffe4, 0 ~~> Byte[0x1001ffe4]
+  479000      476        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001ffe4, (wrb) t1  <-- 0x1001ffe5
+  480000      477        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001ffe5, t0  = 0x1001ffe8, taken, goto 0x80002a6c
+  481000      478        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001ffe5, 0 ~~> Byte[0x1001ffe5]
+  482000      479        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001ffe5, (wrb) t1  <-- 0x1001ffe6
+  483000      480        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001ffe6, t0  = 0x1001ffe8, taken, goto 0x80002a6c
+  484000      481        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001ffe6, 0 ~~> Byte[0x1001ffe6]
+  485000      482        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001ffe6, (wrb) t1  <-- 0x1001ffe7
+  486000      483        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001ffe7, t0  = 0x1001ffe8, taken, goto 0x80002a6c
+  487000      484        M 0x80002a6c sb      zero, 0(t1)            #; t1  = 0x1001ffe7, 0 ~~> Byte[0x1001ffe7]
+  488000      485        M 0x80002a70 addi    t1, t1, 1              #; t1  = 0x1001ffe7, (wrb) t1  <-- 0x1001ffe8
+  489000      486        M 0x80002a74 bne     t1, t0, pc - 8         #; t1  = 0x1001ffe8, t0  = 0x1001ffe8, not taken
+  490000      487        M 0x80002a78 addi    a5, a5, 1              #; a5  = 1, (wrb) a5  <-- 2
+  491000      488        M 0x80002a7c addi    a4, a4, 1032           #; a4  = 0x1001ffe0, (wrb) a4  <-- 0x100203e8
+  492000      489        M 0x80002a80 bne     a5, a2, pc - 36        #; a5  = 2, a2  = 2, not taken
+  493000      490        M 0x80002a84 csrs    unknown_7c2, zero      #; csr@7c2 = 0
+  495000      492        M 0x80002a88 csrr    a2, unknown_bc1        #; csr@bc1 = 0x10000000, (wrb) a2  <-- 0x10000000
+  496000      493        M 0x80002a8c srli    a3, a2, 22             #; a2  = 0x10000000, (wrb) a3  <-- 64
+  497000      494        M 0x80002a90 li      a4, 64                 #; (wrb) a4  <-- 64
+  498000      495        M 0x80002a94 bne     a3, a4, pc + 48        #; a3  = 64, a4  = 64, not taken
+  499000      496        M 0x80002a98 auipc   a3, 0xa                #; (wrb) a3  <-- 0x8000ca98
+  500000      497        M 0x80002a9c auipc   a5, 0xa                #; (wrb) a5  <-- 0x8000ca9c
+  501000      498        M 0x80002aa0 addi    a4, a3, 1392           #; a3  = 0x8000ca98, (wrb) a4  <-- 0x8000d008
+  502000      499        M 0x80002aa4 addi    a3, a5, 1364           #; a5  = 0x8000ca9c, (wrb) a3  <-- 0x8000cff0
+  503000      500        M 0x80002aa8 bgeu    a3, a4, pc + 28        #; a3  = 0x8000cff0, a4  = 0x8000d008, not taken
+  504000      501        M 0x80002aac bltu    a0, a1, pc + 24        #; a0  = 1, a1  = 1, not taken
+  505000      502        M 0x80002ab0 sub     a4, a4, a3             #; a4  = 0x8000d008, a3  = 0x8000cff0, (wrb) a4  <-- 24
+  506000      503        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cff0, 0 ~~> Byte[0x8000cff0]
+  507000      504        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 24, (wrb) a4  <-- 23
+  508000      505        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cff0, (wrb) a3  <-- 0x8000cff1
+  515000      512        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 23, taken, goto 0x80002ab4
+  516000      513        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cff1, 0 ~~> Byte[0x8000cff1]
+  517000      514        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 23, (wrb) a4  <-- 22
+  518000      515        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cff1, (wrb) a3  <-- 0x8000cff2
+  519000      516        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 22, taken, goto 0x80002ab4
+  520000      517        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cff2, 0 ~~> Byte[0x8000cff2]
+  521000      518        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 22, (wrb) a4  <-- 21
+  522000      519        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cff2, (wrb) a3  <-- 0x8000cff3
+  523000      520        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 21, taken, goto 0x80002ab4
+  524000      521        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cff3, 0 ~~> Byte[0x8000cff3]
+  525000      522        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 21, (wrb) a4  <-- 20
+  526000      523        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cff3, (wrb) a3  <-- 0x8000cff4
+  527000      524        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 20, taken, goto 0x80002ab4
+  528000      525        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cff4, 0 ~~> Byte[0x8000cff4]
+  529000      526        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 20, (wrb) a4  <-- 19
+  530000      527        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cff4, (wrb) a3  <-- 0x8000cff5
+  531000      528        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 19, taken, goto 0x80002ab4
+  532000      529        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cff5, 0 ~~> Byte[0x8000cff5]
+  533000      530        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 19, (wrb) a4  <-- 18
+  534000      531        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cff5, (wrb) a3  <-- 0x8000cff6
+  535000      532        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 18, taken, goto 0x80002ab4
+  536000      533        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cff6, 0 ~~> Byte[0x8000cff6]
+  537000      534        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 18, (wrb) a4  <-- 17
+  538000      535        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cff6, (wrb) a3  <-- 0x8000cff7
+  539000      536        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 17, taken, goto 0x80002ab4
+  544000      541        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cff7, 0 ~~> Byte[0x8000cff7]
+  545000      542        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 17, (wrb) a4  <-- 16
+  546000      543        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cff7, (wrb) a3  <-- 0x8000cff8
+  547000      544        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 16, taken, goto 0x80002ab4
+  548000      545        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cff8, 0 ~~> Byte[0x8000cff8]
+  549000      546        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 16, (wrb) a4  <-- 15
+  550000      547        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cff8, (wrb) a3  <-- 0x8000cff9
+  551000      548        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 15, taken, goto 0x80002ab4
+  557000      554        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cff9, 0 ~~> Byte[0x8000cff9]
+  558000      555        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 15, (wrb) a4  <-- 14
+  559000      556        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cff9, (wrb) a3  <-- 0x8000cffa
+  560000      557        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 14, taken, goto 0x80002ab4
+  561000      558        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cffa, 0 ~~> Byte[0x8000cffa]
+  562000      559        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 14, (wrb) a4  <-- 13
+  563000      560        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cffa, (wrb) a3  <-- 0x8000cffb
+  564000      561        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 13, taken, goto 0x80002ab4
+  570000      567        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cffb, 0 ~~> Byte[0x8000cffb]
+  571000      568        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 13, (wrb) a4  <-- 12
+  572000      569        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cffb, (wrb) a3  <-- 0x8000cffc
+  573000      570        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 12, taken, goto 0x80002ab4
+  574000      571        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cffc, 0 ~~> Byte[0x8000cffc]
+  575000      572        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 12, (wrb) a4  <-- 11
+  576000      573        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cffc, (wrb) a3  <-- 0x8000cffd
+  577000      574        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 11, taken, goto 0x80002ab4
+  583000      580        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cffd, 0 ~~> Byte[0x8000cffd]
+  584000      581        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 11, (wrb) a4  <-- 10
+  585000      582        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cffd, (wrb) a3  <-- 0x8000cffe
+  586000      583        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 10, taken, goto 0x80002ab4
+  587000      584        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cffe, 0 ~~> Byte[0x8000cffe]
+  588000      585        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 10, (wrb) a4  <-- 9
+  589000      586        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cffe, (wrb) a3  <-- 0x8000cfff
+  590000      587        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 9, taken, goto 0x80002ab4
+  596000      593        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000cfff, 0 ~~> Byte[0x8000cfff]
+  597000      594        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 9, (wrb) a4  <-- 8
+  598000      595        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000cfff, (wrb) a3  <-- 0x8000d000
+  599000      596        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 8, taken, goto 0x80002ab4
+  600000      597        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000d000, 0 ~~> Byte[0x8000d000]
+  601000      598        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 8, (wrb) a4  <-- 7
+  602000      599        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000d000, (wrb) a3  <-- 0x8000d001
+  603000      600        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 7, taken, goto 0x80002ab4
+  609000      606        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000d001, 0 ~~> Byte[0x8000d001]
+  610000      607        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 7, (wrb) a4  <-- 6
+  611000      608        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000d001, (wrb) a3  <-- 0x8000d002
+  612000      609        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 6, taken, goto 0x80002ab4
+  613000      610        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000d002, 0 ~~> Byte[0x8000d002]
+  614000      611        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 6, (wrb) a4  <-- 5
+  615000      612        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000d002, (wrb) a3  <-- 0x8000d003
+  616000      613        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 5, taken, goto 0x80002ab4
+  622000      619        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000d003, 0 ~~> Byte[0x8000d003]
+  623000      620        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 5, (wrb) a4  <-- 4
+  624000      621        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000d003, (wrb) a3  <-- 0x8000d004
+  625000      622        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 4, taken, goto 0x80002ab4
+  626000      623        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000d004, 0 ~~> Byte[0x8000d004]
+  627000      624        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 4, (wrb) a4  <-- 3
+  628000      625        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000d004, (wrb) a3  <-- 0x8000d005
+  629000      626        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 3, taken, goto 0x80002ab4
+  635000      632        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000d005, 0 ~~> Byte[0x8000d005]
+  636000      633        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 3, (wrb) a4  <-- 2
+  637000      634        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000d005, (wrb) a3  <-- 0x8000d006
+  638000      635        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 2, taken, goto 0x80002ab4
+  639000      636        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000d006, 0 ~~> Byte[0x8000d006]
+  640000      637        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 2, (wrb) a4  <-- 1
+  641000      638        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000d006, (wrb) a3  <-- 0x8000d007
+  642000      639        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 1, taken, goto 0x80002ab4
+  648000      645        M 0x80002ab4 sb      zero, 0(a3)            #; a3  = 0x8000d007, 0 ~~> Byte[0x8000d007]
+  649000      646        M 0x80002ab8 addi    a4, a4, -1             #; a4  = 1, (wrb) a4  <-- 0
+  650000      647        M 0x80002abc addi    a3, a3, 1              #; a3  = 0x8000d007, (wrb) a3  <-- 0x8000d008
+  651000      648        M 0x80002ac0 bnez    a4, pc - 12            #; a4  = 0, not taken
+  652000      649        M 0x80002ac4 auipc   a3, 0x8                #; (wrb) a3  <-- 0x8000aac4
+  653000      650        M 0x80002ac8 auipc   a4, 0x8                #; (wrb) a4  <-- 0x8000aac8
+  654000      651        M 0x80002acc auipc   a6, 0x8                #; (wrb) a6  <-- 0x8000aacc
+  655000      652        M 0x80002ad0 auipc   a7, 0x8                #; (wrb) a7  <-- 0x8000aad0
+  656000      653        M 0x80002ad4 lui     t0, 0x20               #; (wrb) t0  <-- 0x00020000
+  657000      654        M 0x80002ad8 addi    a3, a3, -2036          #; a3  = 0x8000aac4, (wrb) a3  <-- 0x8000a2d0
+  658000      655        M 0x80002adc addi    a5, a4, -2024          #; a4  = 0x8000aac8, (wrb) a5  <-- 0x8000a2e0
+  659000      656        M 0x80002ae0 addi    a6, a6, -2044          #; a6  = 0x8000aacc, (wrb) a6  <-- 0x8000a2d0
+  660000      657        M 0x80002ae4 addi    a4, a7, -2048          #; a7  = 0x8000aad0, (wrb) a4  <-- 0x8000a2d0
+  661000      658        M 0x80002ae8 add     a2, a2, t0             #; a2  = 0x10000000, t0  = 0x00020000, (wrb) a2  <-- 0x10020000
+  662000      659        M 0x80002aec sub     a7, a5, a3             #; a5  = 0x8000a2e0, a3  = 0x8000a2d0, (wrb) a7  <-- 16
+  663000      660        M 0x80002af0 sub     t1, a4, a6             #; a4  = 0x8000a2d0, a6  = 0x8000a2d0, (wrb) t1  <-- 0
+  664000      661        M 0x80002af4 add     t0, t1, a7             #; t1  = 0, a7  = 16, (wrb) t0  <-- 16
+  665000      662        M 0x80002af8 sub     a2, a2, t0             #; a2  = 0x10020000, t0  = 16, (wrb) a2  <-- 0x1001fff0
+  666000      663        M 0x80002afc auipc   t3, 0xa                #; (wrb) t3  <-- 0x8000cafc
+  667000      664        M 0x80002b00 sw      a2, 0(tp)              #; tp  = 0x1001fbd8, 0x1001fff0 ~~> Word[0x1001fbd8]
+  668000      665        M 0x80002b04 addi    s0, t3, 1256           #; t3  = 0x8000cafc, (wrb) s0  <-- 0x8000cfe4
+  669000      666        M 0x80002b08 bgeu    a0, a1, pc + 44        #; a0  = 1, a1  = 1, taken, goto 0x80002b34
+  683000      680        M 0x80002b34 beqz    t1, pc + 32            #; t1  = 0, taken, goto 0x80002b54
+  697000      694        M 0x80002b54 mv      a0, tp                 #; tp  = 0x1001fbd8, (wrb) a0  <-- 0x1001fbd8
+  698000      695        M 0x80002b58 beqz    a7, pc + 48            #; a7  = 16, not taken
+  699000      696        M 0x80002b5c auipc   a1, 0x7                #; (wrb) a1  <-- 0x80009b5c
+  711000      708        M 0x80002b60 add     a5, a5, a4             #; a5  = 0x8000a2e0, a4  = 0x8000a2d0, (wrb) a5  <-- 0x000145b0
+  712000      709        M 0x80002b64 addi    a1, a1, 1908           #; a1  = 0x80009b5c, (wrb) a1  <-- 0x8000a2d0
+  713000      710        M 0x80002b68 sub     a5, a5, a3             #; a5  = 0x000145b0, a3  = 0x8000a2d0, (wrb) a5  <-- 0x8000a2e0
+  714000      711        M 0x80002b6c sub     a4, a4, a1             #; a4  = 0x8000a2d0, a1  = 0x8000a2d0, (wrb) a4  <-- 0
+  715000      712        M 0x80002b70 sub     a5, a5, a1             #; a5  = 0x8000a2e0, a1  = 0x8000a2d0, (wrb) a5  <-- 16
+  716000      713        M 0x80002b74 add     a1, a2, a4             #; a2  = 0x1001fff0, a4  = 0, (wrb) a1  <-- 0x1001fff0
+  717000      714        M 0x80002b78 add     a2, a2, a5             #; a2  = 0x1001fff0, a5  = 16, (wrb) a2  <-- 0x10020000
+  718000      715        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fff0, 0 ~~> Byte[0x1001fff0]
+  725000      722        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fff0, (wrb) a1  <-- 0x1001fff1
+  726000      723        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fff1, a2  = 0x10020000, taken, goto 0x80002b7c
+  727000      724        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fff1, 0 ~~> Byte[0x1001fff1]
+  728000      725        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fff1, (wrb) a1  <-- 0x1001fff2
+  729000      726        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fff2, a2  = 0x10020000, taken, goto 0x80002b7c
+  730000      727        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fff2, 0 ~~> Byte[0x1001fff2]
+  731000      728        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fff2, (wrb) a1  <-- 0x1001fff3
+  732000      729        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fff3, a2  = 0x10020000, taken, goto 0x80002b7c
+  733000      730        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fff3, 0 ~~> Byte[0x1001fff3]
+  734000      731        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fff3, (wrb) a1  <-- 0x1001fff4
+  735000      732        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fff4, a2  = 0x10020000, taken, goto 0x80002b7c
+  736000      733        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fff4, 0 ~~> Byte[0x1001fff4]
+  737000      734        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fff4, (wrb) a1  <-- 0x1001fff5
+  738000      735        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fff5, a2  = 0x10020000, taken, goto 0x80002b7c
+  739000      736        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fff5, 0 ~~> Byte[0x1001fff5]
+  740000      737        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fff5, (wrb) a1  <-- 0x1001fff6
+  741000      738        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fff6, a2  = 0x10020000, taken, goto 0x80002b7c
+  742000      739        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fff6, 0 ~~> Byte[0x1001fff6]
+  743000      740        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fff6, (wrb) a1  <-- 0x1001fff7
+  744000      741        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fff7, a2  = 0x10020000, taken, goto 0x80002b7c
+  745000      742        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fff7, 0 ~~> Byte[0x1001fff7]
+  746000      743        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fff7, (wrb) a1  <-- 0x1001fff8
+  747000      744        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fff8, a2  = 0x10020000, taken, goto 0x80002b7c
+  748000      745        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fff8, 0 ~~> Byte[0x1001fff8]
+  749000      746        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fff8, (wrb) a1  <-- 0x1001fff9
+  750000      747        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fff9, a2  = 0x10020000, taken, goto 0x80002b7c
+  751000      748        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fff9, 0 ~~> Byte[0x1001fff9]
+  752000      749        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fff9, (wrb) a1  <-- 0x1001fffa
+  753000      750        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fffa, a2  = 0x10020000, taken, goto 0x80002b7c
+  754000      751        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fffa, 0 ~~> Byte[0x1001fffa]
+  755000      752        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fffa, (wrb) a1  <-- 0x1001fffb
+  756000      753        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fffb, a2  = 0x10020000, taken, goto 0x80002b7c
+  757000      754        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fffb, 0 ~~> Byte[0x1001fffb]
+  758000      755        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fffb, (wrb) a1  <-- 0x1001fffc
+  759000      756        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fffc, a2  = 0x10020000, taken, goto 0x80002b7c
+  760000      757        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fffc, 0 ~~> Byte[0x1001fffc]
+  761000      758        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fffc, (wrb) a1  <-- 0x1001fffd
+  762000      759        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fffd, a2  = 0x10020000, taken, goto 0x80002b7c
+  763000      760        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fffd, 0 ~~> Byte[0x1001fffd]
+  764000      761        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fffd, (wrb) a1  <-- 0x1001fffe
+  765000      762        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001fffe, a2  = 0x10020000, taken, goto 0x80002b7c
+  766000      763        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001fffe, 0 ~~> Byte[0x1001fffe]
+  767000      764        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001fffe, (wrb) a1  <-- 0x1001ffff
+  768000      765        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x1001ffff, a2  = 0x10020000, taken, goto 0x80002b7c
+  769000      766        M 0x80002b7c sb      zero, 0(a1)            #; a1  = 0x1001ffff, 0 ~~> Byte[0x1001ffff]
+  770000      767        M 0x80002b80 addi    a1, a1, 1              #; a1  = 0x1001ffff, (wrb) a1  <-- 0x10020000
+  771000      768        M 0x80002b84 bne     a1, a2, pc - 8         #; a1  = 0x10020000, a2  = 0x10020000, not taken
+  772000      769        M 0x80002b88 lw      a0, 0(a0)              #; a0  = 0x1001fbd8, a0  <~~ Word[0x1001fbd8]
+  773000      770        M 0x80002b8c lui     a1, 0x10000            #; (wrb) a1  <-- 0x10000000
+  774000      771        M 0x80002b90 lui     a2, 0x20               #; (wrb) a2  <-- 0x00020000
+  775000      772        M 0x80002b94 auipc   a3, 0xa                #; (wrb) a3  <-- 0x8000cb94
+  776000      773        M                                           #; (lsu) a0  <-- 0x1001fff0
+  777000      774        M 0x80002b98 sw      a1, 4(a0)              #; a0  = 0x1001fff0, 0x10000000 ~~> Word[0x1001fff4]
+  778000      775        M 0x80002b9c sw      a2, 8(a0)              #; a0  = 0x1001fff0, 0x00020000 ~~> Word[0x1001fff8]
+  786000      783        M 0x80002ba0 sw      a1, 12(a0)             #; a0  = 0x1001fff0, 0x10000000 ~~> Word[0x1001fffc]
+  787000      784        M 0x80002ba4 auipc   a0, 0xa                #; (wrb) a0  <-- 0x8000cba4
+  788000      785        M 0x80002ba8 addi    a1, a3, 1147           #; a3  = 0x8000cb94, (wrb) a1  <-- 0x8000d00f
+  789000      786        M 0x80002bac addi    a0, a0, 1108           #; a0  = 0x8000cba4, (wrb) a0  <-- 0x8000cff8
+  790000      787        M 0x80002bb0 andi    a1, a1, -8             #; a1  = 0x8000d00f, (wrb) a1  <-- 0x8000d008
+  791000      788        M 0x80002bb4 sw      a1, 0(a0)              #; a0  = 0x8000cff8, 0x8000d008 ~~> Word[0x8000cff8]
+  792000      789        M 0x80002bb8 sw      zero, 4(a0)            #; a0  = 0x8000cff8, 0 ~~> Word[0x8000cffc]
+  793000      790        M 0x80002bbc sw      a1, 8(a0)              #; a0  = 0x8000cff8, 0x8000d008 ~~> Word[0x8000d000]
+  800000      797        M 0x80002bc0 csrs    unknown_7c2, zero      #; csr@7c2 = 0
+  802000      799        M 0x80002bc4 jal     pc - 0x23f0            #; (wrb) ra  <-- 0x80002bc8, goto 0x800007d4
+  803000      800        M 0x800007d4 addi    sp, sp, -80            #; sp  = 0x1001fbc8, (wrb) sp  <-- 0x1001fb78
+  804000      801        M 0x800007d8 sw      ra, 76(sp)             #; sp  = 0x1001fb78, 0x80002bc8 ~~> Word[0x1001fbc4]
+  806000      803        M 0x800007dc sw      s0, 72(sp)             #; sp  = 0x1001fb78, 0x8000cfe4 ~~> Word[0x1001fbc0]
+  817000      814        M 0x800007e0 sw      s1, 68(sp)             #; sp  = 0x1001fb78, 0 ~~> Word[0x1001fbbc]
+  819000      816        M 0x800007e4 sw      s2, 64(sp)             #; sp  = 0x1001fb78, 0 ~~> Word[0x1001fbb8]
+  820000      817        M 0x800007e8 sw      s3, 60(sp)             #; sp  = 0x1001fb78, 0 ~~> Word[0x1001fbb4]
+  822000      819        M 0x800007ec sw      s4, 56(sp)             #; sp  = 0x1001fb78, 0 ~~> Word[0x1001fbb0]
+  823000      820        M 0x800007f0 csrr    a0, mcycle             #; mcycle = 819, (wrb) a0  <-- 819
+  824000      821        M 0x800007f4 csrs    unknown_7c2, zero      #; csr@7c2 = 0
+  826000      823        M 0x800007f8 mv      a0, sp                 #; sp  = 0x1001fb78, (wrb) a0  <-- 0x1001fb78
+  827000      824        M 0x800007fc jal     pc - 0x270             #; (wrb) ra  <-- 0x80000800, goto 0x8000058c
+  831000      828        M 0x8000058c addi    sp, sp, -64            #; sp  = 0x1001fb78, (wrb) sp  <-- 0x1001fb38
+  832000      829        M 0x80000590 sw      ra, 60(sp)             #; sp  = 0x1001fb38, 0x80000800 ~~> Word[0x1001fb74]
+  833000      830        M 0x80000594 sw      s0, 56(sp)             #; sp  = 0x1001fb38, 0x8000cfe4 ~~> Word[0x1001fb70]
+  834000      831        M 0x80000598 mv      s0, a0                 #; a0  = 0x1001fb78, (wrb) s0  <-- 0x1001fb78
+  835000      832        M 0x8000059c mv      a0, sp                 #; sp  = 0x1001fb38, (wrb) a0  <-- 0x1001fb38
+  845000      842        M 0x800005a0 jal     pc - 0x3c0             #; (wrb) ra  <-- 0x800005a4, goto 0x800001e0
+  859000      856        M 0x800001e0 addi    sp, sp, -32            #; sp  = 0x1001fb38, (wrb) sp  <-- 0x1001fb18
+  860000      857        M 0x800001e4 sw      ra, 28(sp)             #; sp  = 0x1001fb18, 0x800005a4 ~~> Word[0x1001fb34]
+  861000      858        M 0x800001e8 sw      s0, 24(sp)             #; sp  = 0x1001fb18, 0x1001fb78 ~~> Word[0x1001fb30]
+  862000      859        M 0x800001ec sw      s1, 20(sp)             #; sp  = 0x1001fb18, 0 ~~> Word[0x1001fb2c]
+  863000      860        M 0x800001f0 sw      s2, 16(sp)             #; sp  = 0x1001fb18, 0 ~~> Word[0x1001fb28]
+  864000      861        M 0x800001f4 sw      s3, 12(sp)             #; sp  = 0x1001fb18, 0 ~~> Word[0x1001fb24]
+  865000      862        M 0x800001f8 mv      s0, a0                 #; a0  = 0x1001fb38, (wrb) s0  <-- 0x1001fb38
+  866000      863        M 0x800001fc jal     pc + 0x5c8             #; (wrb) ra  <-- 0x80000200, goto 0x800007c4
+  867000      864        M 0x800007c4 csrr    a0, unknown_bc3        #; csr@bc3 = 0x00020001, (wrb) a0  <-- 0x00020001
+  868000      865        M 0x800007c8 slli    a0, a0, 16             #; a0  = 0x00020001, (wrb) a0  <-- 0x00010000
+  869000      866        M 0x800007cc srli    a0, a0, 16             #; a0  = 0x00010000, (wrb) a0  <-- 1
+  870000      867        M 0x800007d0 ret                            #; ra  = 0x80000200, goto 0x80000200
+  884000      881        M 0x80000200 li      a1, 1                  #; (wrb) a1  <-- 1
+  885000      882        M 0x80000204 mv      s1, a0                 #; a0  = 1, (wrb) s1  <-- 1
+  886000      883        M 0x80000208 bne     a0, a1, pc + 88        #; a0  = 1, a1  = 1, not taken
+  887000      884        M 0x8000020c auipc   a0, 0x7                #; (wrb) a0  <-- 0x8000720c
+  888000      885        M 0x80000210 lui     a1, 0x10002            #; (wrb) a1  <-- 0x10002000
+  889000      886        M 0x80000214 lui     a2, 0x3                #; (wrb) a2  <-- 12288
+  890000      887        M 0x80000218 addi    a0, a0, -12            #; a0  = 0x8000720c, (wrb) a0  <-- 0x80007200
+  891000      888        M 0x8000021c addi    a1, a1, -1920          #; a1  = 0x10002000, (wrb) a1  <-- 0x10001880
+  898000      895        M 0x80000220 addi    a2, a2, -768           #; a2  = 12288, (wrb) a2  <-- 11520
+  899000      896        M 0x80000224 jal     pc + 0x52c             #; (wrb) ra  <-- 0x80000228, goto 0x80000750
+  912000      909        M 0x80000750 beqz    a2, pc + 36            #; a2  = 11520, not taken
+  913000      910        M 0x80000754 mv      a4, a2                 #; a2  = 11520, (wrb) a4  <-- 11520
+  914000      911        M 0x80000758 csrr    a3, unknown_bc2        #; csr@bc2 = 0, (wrb) a3  <-- 0
+  915000      912        M 0x8000075c mv      a2, a0                 #; a0  = 0x80007200, (wrb) a2  <-- 0x80007200
+  926000      923        M 0x80000760 dmsrc   a2, a3                 #; a2  = 0x80007200, a3  = 0
+  927000      924        M 0x80000764 mv      a0, a1                 #; a1  = 0x10001880, (wrb) a0  <-- 0x10001880
+  928000      925        M 0x80000768 mv      a1, a3                 #; a3  = 0, (wrb) a1  <-- 0
+  929000      926        M 0x8000076c dmdst   a0, a1                 #; a0  = 0x10001880, a1  = 0
+  930000      927        M 0x80000770 dmcpyi  a0, a4, 0              #; a4  = 11520
+  931000      928        M 0x80000774 dmstati t0, 2                  #; 
+  933000      930        M                                           #; (acc) a0  <-- 0
+  934000      931        M                                           #; (acc) t0  <-- 1
+  935000      932        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  936000      933        M 0x80000774 dmstati t0, 2                  #; 
+  939000      936        M                                           #; (acc) t0  <-- 1
+  940000      937        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  941000      938        M 0x80000774 dmstati t0, 2                  #; 
+  944000      941        M                                           #; (acc) t0  <-- 1
+  945000      942        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  946000      943        M 0x80000774 dmstati t0, 2                  #; 
+  949000      946        M                                           #; (acc) t0  <-- 1
+  950000      947        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  951000      948        M 0x80000774 dmstati t0, 2                  #; 
+  954000      951        M                                           #; (acc) t0  <-- 1
+  955000      952        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  956000      953        M 0x80000774 dmstati t0, 2                  #; 
+  959000      956        M                                           #; (acc) t0  <-- 1
+  960000      957        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  961000      958        M 0x80000774 dmstati t0, 2                  #; 
+  964000      961        M                                           #; (acc) t0  <-- 1
+  965000      962        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  966000      963        M 0x80000774 dmstati t0, 2                  #; 
+  969000      966        M                                           #; (acc) t0  <-- 1
+  970000      967        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  971000      968        M 0x80000774 dmstati t0, 2                  #; 
+  974000      971        M                                           #; (acc) t0  <-- 1
+  975000      972        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  976000      973        M 0x80000774 dmstati t0, 2                  #; 
+  979000      976        M                                           #; (acc) t0  <-- 1
+  980000      977        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  981000      978        M 0x80000774 dmstati t0, 2                  #; 
+  984000      981        M                                           #; (acc) t0  <-- 1
+  985000      982        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  986000      983        M 0x80000774 dmstati t0, 2                  #; 
+  989000      986        M                                           #; (acc) t0  <-- 1
+  990000      987        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  991000      988        M 0x80000774 dmstati t0, 2                  #; 
+  994000      991        M                                           #; (acc) t0  <-- 1
+  995000      992        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+  996000      993        M 0x80000774 dmstati t0, 2                  #; 
+  999000      996        M                                           #; (acc) t0  <-- 1
+ 1000000      997        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1001000      998        M 0x80000774 dmstati t0, 2                  #; 
+ 1004000     1001        M                                           #; (acc) t0  <-- 1
+ 1005000     1002        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1006000     1003        M 0x80000774 dmstati t0, 2                  #; 
+ 1009000     1006        M                                           #; (acc) t0  <-- 1
+ 1010000     1007        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1011000     1008        M 0x80000774 dmstati t0, 2                  #; 
+ 1014000     1011        M                                           #; (acc) t0  <-- 1
+ 1015000     1012        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1016000     1013        M 0x80000774 dmstati t0, 2                  #; 
+ 1019000     1016        M                                           #; (acc) t0  <-- 1
+ 1020000     1017        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1021000     1018        M 0x80000774 dmstati t0, 2                  #; 
+ 1024000     1021        M                                           #; (acc) t0  <-- 1
+ 1025000     1022        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1026000     1023        M 0x80000774 dmstati t0, 2                  #; 
+ 1029000     1026        M                                           #; (acc) t0  <-- 1
+ 1030000     1027        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1031000     1028        M 0x80000774 dmstati t0, 2                  #; 
+ 1034000     1031        M                                           #; (acc) t0  <-- 1
+ 1035000     1032        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1036000     1033        M 0x80000774 dmstati t0, 2                  #; 
+ 1039000     1036        M                                           #; (acc) t0  <-- 1
+ 1040000     1037        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1041000     1038        M 0x80000774 dmstati t0, 2                  #; 
+ 1044000     1041        M                                           #; (acc) t0  <-- 1
+ 1045000     1042        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1046000     1043        M 0x80000774 dmstati t0, 2                  #; 
+ 1049000     1046        M                                           #; (acc) t0  <-- 1
+ 1050000     1047        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1051000     1048        M 0x80000774 dmstati t0, 2                  #; 
+ 1054000     1051        M                                           #; (acc) t0  <-- 1
+ 1055000     1052        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1056000     1053        M 0x80000774 dmstati t0, 2                  #; 
+ 1059000     1056        M                                           #; (acc) t0  <-- 1
+ 1060000     1057        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1061000     1058        M 0x80000774 dmstati t0, 2                  #; 
+ 1064000     1061        M                                           #; (acc) t0  <-- 1
+ 1065000     1062        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1066000     1063        M 0x80000774 dmstati t0, 2                  #; 
+ 1069000     1066        M                                           #; (acc) t0  <-- 1
+ 1070000     1067        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1071000     1068        M 0x80000774 dmstati t0, 2                  #; 
+ 1074000     1071        M                                           #; (acc) t0  <-- 1
+ 1075000     1072        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1076000     1073        M 0x80000774 dmstati t0, 2                  #; 
+ 1079000     1076        M                                           #; (acc) t0  <-- 1
+ 1080000     1077        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1081000     1078        M 0x80000774 dmstati t0, 2                  #; 
+ 1084000     1081        M                                           #; (acc) t0  <-- 1
+ 1085000     1082        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1086000     1083        M 0x80000774 dmstati t0, 2                  #; 
+ 1089000     1086        M                                           #; (acc) t0  <-- 1
+ 1090000     1087        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1091000     1088        M 0x80000774 dmstati t0, 2                  #; 
+ 1094000     1091        M                                           #; (acc) t0  <-- 1
+ 1095000     1092        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1096000     1093        M 0x80000774 dmstati t0, 2                  #; 
+ 1099000     1096        M                                           #; (acc) t0  <-- 1
+ 1100000     1097        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1101000     1098        M 0x80000774 dmstati t0, 2                  #; 
+ 1104000     1101        M                                           #; (acc) t0  <-- 1
+ 1105000     1102        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1106000     1103        M 0x80000774 dmstati t0, 2                  #; 
+ 1109000     1106        M                                           #; (acc) t0  <-- 1
+ 1110000     1107        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1111000     1108        M 0x80000774 dmstati t0, 2                  #; 
+ 1114000     1111        M                                           #; (acc) t0  <-- 1
+ 1115000     1112        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1116000     1113        M 0x80000774 dmstati t0, 2                  #; 
+ 1119000     1116        M                                           #; (acc) t0  <-- 1
+ 1120000     1117        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1121000     1118        M 0x80000774 dmstati t0, 2                  #; 
+ 1124000     1121        M                                           #; (acc) t0  <-- 1
+ 1125000     1122        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1126000     1123        M 0x80000774 dmstati t0, 2                  #; 
+ 1129000     1126        M                                           #; (acc) t0  <-- 1
+ 1130000     1127        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1131000     1128        M 0x80000774 dmstati t0, 2                  #; 
+ 1134000     1131        M                                           #; (acc) t0  <-- 0
+ 1135000     1132        M 0x80000778 bnez    t0, pc - 4             #; t0  = 0, not taken
+ 1136000     1133        M 0x8000077c ret                            #; ra  = 0x80000228, goto 0x80000228
+ 1137000     1134        M 0x80000228 auipc   a0, 0x6                #; (wrb) a0  <-- 0x80006228
+ 1138000     1135        M 0x8000022c lui     a1, 0x10001            #; (wrb) a1  <-- 0x10001000
+ 1139000     1136        M 0x80000230 lui     s2, 0x1                #; (wrb) s2  <-- 4096
+ 1140000     1137        M 0x80000234 addi    a0, a0, 24             #; a0  = 0x80006228, (wrb) a0  <-- 0x80006240
+ 1141000     1138        M 0x80000238 addi    a1, a1, -1856          #; a1  = 0x10001000, (wrb) a1  <-- 0x100008c0
+ 1142000     1139        M 0x8000023c addi    a2, s2, -64            #; s2  = 4096, (wrb) a2  <-- 4032
+ 1163000     1160        M 0x80000240 jal     pc + 0x510             #; (wrb) ra  <-- 0x80000244, goto 0x80000750
+ 1164000     1161        M 0x80000750 beqz    a2, pc + 36            #; a2  = 4032, not taken
+ 1165000     1162        M 0x80000754 mv      a4, a2                 #; a2  = 4032, (wrb) a4  <-- 4032
+ 1166000     1163        M 0x80000758 csrr    a3, unknown_bc2        #; csr@bc2 = 0, (wrb) a3  <-- 0
+ 1167000     1164        M 0x8000075c mv      a2, a0                 #; a0  = 0x80006240, (wrb) a2  <-- 0x80006240
+ 1168000     1165        M 0x80000760 dmsrc   a2, a3                 #; a2  = 0x80006240, a3  = 0
+ 1169000     1166        M 0x80000764 mv      a0, a1                 #; a1  = 0x100008c0, (wrb) a0  <-- 0x100008c0
+ 1170000     1167        M 0x80000768 mv      a1, a3                 #; a3  = 0, (wrb) a1  <-- 0
+ 1171000     1168        M 0x8000076c dmdst   a0, a1                 #; a0  = 0x100008c0, a1  = 0
+ 1172000     1169        M 0x80000770 dmcpyi  a0, a4, 0              #; a4  = 4032
+ 1173000     1170        M 0x80000774 dmstati t0, 2                  #; 
+ 1175000     1172        M                                           #; (acc) a0  <-- 1
+ 1176000     1173        M                                           #; (acc) t0  <-- 1
+ 1177000     1174        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1178000     1175        M 0x80000774 dmstati t0, 2                  #; 
+ 1181000     1178        M                                           #; (acc) t0  <-- 1
+ 1182000     1179        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1183000     1180        M 0x80000774 dmstati t0, 2                  #; 
+ 1186000     1183        M                                           #; (acc) t0  <-- 1
+ 1187000     1184        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1188000     1185        M 0x80000774 dmstati t0, 2                  #; 
+ 1191000     1188        M                                           #; (acc) t0  <-- 1
+ 1192000     1189        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1193000     1190        M 0x80000774 dmstati t0, 2                  #; 
+ 1196000     1193        M                                           #; (acc) t0  <-- 1
+ 1197000     1194        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1198000     1195        M 0x80000774 dmstati t0, 2                  #; 
+ 1201000     1198        M                                           #; (acc) t0  <-- 1
+ 1202000     1199        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1203000     1200        M 0x80000774 dmstati t0, 2                  #; 
+ 1206000     1203        M                                           #; (acc) t0  <-- 1
+ 1207000     1204        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1208000     1205        M 0x80000774 dmstati t0, 2                  #; 
+ 1211000     1208        M                                           #; (acc) t0  <-- 1
+ 1212000     1209        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1213000     1210        M 0x80000774 dmstati t0, 2                  #; 
+ 1216000     1213        M                                           #; (acc) t0  <-- 1
+ 1217000     1214        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1218000     1215        M 0x80000774 dmstati t0, 2                  #; 
+ 1221000     1218        M                                           #; (acc) t0  <-- 1
+ 1222000     1219        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1223000     1220        M 0x80000774 dmstati t0, 2                  #; 
+ 1226000     1223        M                                           #; (acc) t0  <-- 1
+ 1227000     1224        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1228000     1225        M 0x80000774 dmstati t0, 2                  #; 
+ 1231000     1228        M                                           #; (acc) t0  <-- 1
+ 1232000     1229        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1233000     1230        M 0x80000774 dmstati t0, 2                  #; 
+ 1236000     1233        M                                           #; (acc) t0  <-- 1
+ 1237000     1234        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1238000     1235        M 0x80000774 dmstati t0, 2                  #; 
+ 1241000     1238        M                                           #; (acc) t0  <-- 1
+ 1242000     1239        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1243000     1240        M 0x80000774 dmstati t0, 2                  #; 
+ 1246000     1243        M                                           #; (acc) t0  <-- 1
+ 1247000     1244        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1248000     1245        M 0x80000774 dmstati t0, 2                  #; 
+ 1251000     1248        M                                           #; (acc) t0  <-- 1
+ 1252000     1249        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1253000     1250        M 0x80000774 dmstati t0, 2                  #; 
+ 1256000     1253        M                                           #; (acc) t0  <-- 1
+ 1257000     1254        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1258000     1255        M 0x80000774 dmstati t0, 2                  #; 
+ 1261000     1258        M                                           #; (acc) t0  <-- 0
+ 1262000     1259        M 0x80000778 bnez    t0, pc - 4             #; t0  = 0, not taken
+ 1263000     1260        M 0x8000077c ret                            #; ra  = 0x80000244, goto 0x80000244
+ 1264000     1261        M 0x80000244 auipc   a0, 0x5                #; (wrb) a0  <-- 0x80005244
+ 1265000     1262        M 0x80000248 addi    a2, s2, -1856          #; s2  = 4096, (wrb) a2  <-- 2240
+ 1266000     1263        M 0x8000024c addi    a0, a0, 1852           #; a0  = 0x80005244, (wrb) a0  <-- 0x80005980
+ 1267000     1264        M 0x80000250 lui     a1, 0x10000            #; (wrb) a1  <-- 0x10000000
+ 1268000     1265        M 0x80000254 jal     pc + 0x4fc             #; (wrb) ra  <-- 0x80000258, goto 0x80000750
+ 1269000     1266        M 0x80000750 beqz    a2, pc + 36            #; a2  = 2240, not taken
+ 1270000     1267        M 0x80000754 mv      a4, a2                 #; a2  = 2240, (wrb) a4  <-- 2240
+ 1271000     1268        M 0x80000758 csrr    a3, unknown_bc2        #; csr@bc2 = 0, (wrb) a3  <-- 0
+ 1272000     1269        M 0x8000075c mv      a2, a0                 #; a0  = 0x80005980, (wrb) a2  <-- 0x80005980
+ 1273000     1270        M 0x80000760 dmsrc   a2, a3                 #; a2  = 0x80005980, a3  = 0
+ 1274000     1271        M 0x80000764 mv      a0, a1                 #; a1  = 0x10000000, (wrb) a0  <-- 0x10000000
+ 1275000     1272        M 0x80000768 mv      a1, a3                 #; a3  = 0, (wrb) a1  <-- 0
+ 1276000     1273        M 0x8000076c dmdst   a0, a1                 #; a0  = 0x10000000, a1  = 0
+ 1277000     1274        M 0x80000770 dmcpyi  a0, a4, 0              #; a4  = 2240
+ 1278000     1275        M 0x80000774 dmstati t0, 2                  #; 
+ 1280000     1277        M                                           #; (acc) a0  <-- 2
+ 1281000     1278        M                                           #; (acc) t0  <-- 1
+ 1282000     1279        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1283000     1280        M 0x80000774 dmstati t0, 2                  #; 
+ 1286000     1283        M                                           #; (acc) t0  <-- 1
+ 1287000     1284        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1288000     1285        M 0x80000774 dmstati t0, 2                  #; 
+ 1291000     1288        M                                           #; (acc) t0  <-- 1
+ 1292000     1289        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1293000     1290        M 0x80000774 dmstati t0, 2                  #; 
+ 1296000     1293        M                                           #; (acc) t0  <-- 1
+ 1297000     1294        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1298000     1295        M 0x80000774 dmstati t0, 2                  #; 
+ 1301000     1298        M                                           #; (acc) t0  <-- 1
+ 1302000     1299        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1303000     1300        M 0x80000774 dmstati t0, 2                  #; 
+ 1306000     1303        M                                           #; (acc) t0  <-- 1
+ 1307000     1304        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1308000     1305        M 0x80000774 dmstati t0, 2                  #; 
+ 1311000     1308        M                                           #; (acc) t0  <-- 1
+ 1312000     1309        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1313000     1310        M 0x80000774 dmstati t0, 2                  #; 
+ 1316000     1313        M                                           #; (acc) t0  <-- 1
+ 1317000     1314        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1318000     1315        M 0x80000774 dmstati t0, 2                  #; 
+ 1321000     1318        M                                           #; (acc) t0  <-- 1
+ 1322000     1319        M 0x80000778 bnez    t0, pc - 4             #; t0  = 1, taken, goto 0x80000774
+ 1323000     1320        M 0x80000774 dmstati t0, 2                  #; 

@@ -16,7 +16,7 @@ def parse_and_prepare_data(input_file):
     df = pd.read_csv(input_file)
 
     # Initialize new columns for 'fire', 'stall', and 'bank' for each port
-    for port in range(56):
+    for port in range(32):
         valid_col = f"io_data_tcdm_req_{port}_valid"
         ready_col = f"io_data_tcdm_req_{port}_ready"
         addr_col = f"io_data_tcdm_req_{port}_bits_addr"
@@ -35,11 +35,11 @@ def plot_stalls_and_fires_per_port(df, output_path):
     """
     Creates a bar plot of the number of stalls and fires per port.
     """
-    ports = np.arange(56)
-    number_of_stalls = np.zeros(56)
-    number_of_fires = np.zeros(56)
+    ports = np.arange(32)
+    number_of_stalls = np.zeros(32)
+    number_of_fires = np.zeros(32)
 
-    for port in range(56):
+    for port in range(32):
         stall_col = f"io_data_tcdm_req_{port}_stall"
         fire_col = f"io_data_tcdm_req_{port}_fire"
 
@@ -68,7 +68,7 @@ def plot_stalls_and_fires_per_port(df, output_path):
         (0, 7, "A"),  # Ports 0-7
         (8, 15, "B"),  # Ports 8-15
         (16, 23, "D8"),  # Ports 16-23
-        (24, 55, "C/D32"),  # Ports 24-55
+        (24, 31, "C/D32"),  # Ports 24-31
     ]
 
     # Add annotations
@@ -99,7 +99,7 @@ def plot_stalls_and_fires_per_bank(df, output_path):
     for bank_nb in range(32):
         nb_stalls = 0
         nb_fires = 0
-        for port in range(56):
+        for port in range(32):
             stall_col = f"io_data_tcdm_req_{port}_stall"
             fire_col = f"io_data_tcdm_req_{port}_fire"
             bank_col = f"io_data_tcdm_req_{port}_bank"
@@ -146,7 +146,7 @@ def plot_banking_conflicts(df, output_path):
     events = []
 
     # Map ports to operands
-    for port in range(56):
+    for port in range(32):
         if port < 8:
             operand = "A"
         elif port < 16:

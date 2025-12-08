@@ -13,7 +13,7 @@ from snaxc.accelerators.configurable_accelerator import ConfigurableAccelerator
 from snaxc.accelerators.dispatching import DispatchTemplate, SupportedKernel
 from snaxc.accelerators.snax import (
     SNAXAccelerator,
-    SNAXPollingBarrier4,
+    SNAXPollingBarrier3,
     SNAXStreamer,
 )
 from snaxc.accelerators.streamers import (
@@ -73,7 +73,7 @@ default_streamer = StreamerConfiguration(
 
 
 class SNAXGEMMXAccelerator(
-    SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAXPollingBarrier4, ConfigurableAccelerator
+    SNAXAccelerator, SNAXStreamer, DispatchTemplate, SNAXPollingBarrier3, ConfigurableAccelerator
 ):
     """
     Accelerator Interface class for SNAX GEMMX accelerator
@@ -210,7 +210,7 @@ class SNAXGEMMXAccelerator(
                 "bypassSIMD": addr_next + 7 + nb_shifts + nb_mults,
             },
             {**streamer_launch, "launch_gemmx": addr_next + 8 + nb_shifts + nb_mults},
-            addr_next + 8 + nb_shifts + nb_mults,
+            addr_next + 8 + nb_shifts + nb_mults + 1,
         )
         op.attributes["streamer_config"] = self.streamer_config
         return op

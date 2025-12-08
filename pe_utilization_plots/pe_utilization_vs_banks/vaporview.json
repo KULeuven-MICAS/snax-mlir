@@ -1,0 +1,214 @@
+{
+  "extensionVersion": "1.4.2",
+  "fileName": "/users/students/r0886198/thesis_2025_linux/snax-mlir/pe_utilization_plots/pe_utilization_vs_banks/sim_new_gemmx.vcd",
+  "markerTime": 3628,
+  "altMarkerTime": null,
+  "selectedSignal": {
+    "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_0.io_data_bits",
+    "numberFormat": "hexadecimal",
+    "msb": 511,
+    "lsb": 0
+  },
+  "zoomRatio": 256,
+  "scrollLeft": 781541,
+  "displayedSignals": [
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 78135,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_0.io_tcdmReq_0_bits_addr",
+      "numberFormat": "hexadecimal",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "multiBit",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 78158,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_0.io_tcdmRsp_0_bits_data",
+      "numberFormat": "hexadecimal",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "multiBit",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 78157,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_0.io_tcdmRsp_0_valid",
+      "numberFormat": "binary",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "binary",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 80079,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_0_bits_data",
+      "numberFormat": "hexadecimal",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "multiBit",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 80076,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_0_valid",
+      "numberFormat": "binary",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "binary",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 80078,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_0_bits_write",
+      "numberFormat": "binary",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "binary",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 80077,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_0_bits_addr",
+      "numberFormat": "hexadecimal",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "multiBit",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 83521,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_tcdmReq_0_bits_data",
+      "numberFormat": "hexadecimal",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "multiBit",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 83519,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_tcdmReq_0_valid",
+      "numberFormat": "binary",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "binary",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 80397,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_tcdmReq_0_valid",
+      "numberFormat": "binary",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "binary",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 80398,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_tcdmReq_0_bits_addr",
+      "numberFormat": "hexadecimal",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "multiBit",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 80493,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_tcdmRsp_0_bits_data",
+      "numberFormat": "hexadecimal",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "multiBit",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 80492,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_tcdmRsp_0_valid",
+      "numberFormat": "binary",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "binary",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 72666,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.stream2acc_0_data",
+      "numberFormat": "hexadecimal",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "multiBit",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 72667,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.stream2acc_0_valid",
+      "numberFormat": "binary",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "binary",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 72669,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.stream2acc_1_data",
+      "numberFormat": "hexadecimal",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "multiBit",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 72670,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.stream2acc_1_valid",
+      "numberFormat": "binary",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "binary",
+      "valueLinkCommand": ""
+    },
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 78175,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_0.io_data_bits",
+      "numberFormat": "hexadecimal",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "renderType": "multiBit",
+      "valueLinkCommand": ""
+    }
+  ]
+}

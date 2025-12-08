@@ -198,16 +198,16 @@ class SNAXStreamer(ABC):
                 # if we want to disable transpose, we need
                 # a 1 to the transpose field, as it is an
                 # extension bypass signal
-                c1 = arith.ConstantOp.from_int_and_width(1, i32)
+                c1 = arith.ConstantOp.from_int_and_width(0, i32)
                 result.append(([c1], c1.result))
 
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
             if any(isinstance(opt, HasBroadcast) for opt in streamer.opts):
                 if do_broadcast[operand]:
-                    c0 = arith.ConstantOp.from_int_and_width(0, i32)
+                    c0 = arith.ConstantOp.from_int_and_width(1, i32)
                     result.append(([c0], c0.result))
                 else:
-                    c1 = arith.ConstantOp.from_int_and_width(1, i32)
+                    c1 = arith.ConstantOp.from_int_and_width(0, i32)
                     result.append(([c1], c1.result))
 
         return result

@@ -1,0 +1,10 @@
+matmul_sysmat_archreg_bank8_traces.json	818
+matmul_sysmat_archcached_bank8_traces.json	406
+matmul_sysmat_archreg_bank16_traces.json	482
+matmul_sysmat_archcached_bank16_traces.json	346
+matmul_sysmat_archreg_bank32_traces.json	382
+matmul_sysmat_archcached_bank32_traces.json	330
+matmul_sysmat_archreg_bank64_traces.json	350
+matmul_sysmat_archcached_bank64_traces.json	330
+matmul_sysmat_archreg_bank128_traces.json	330
+matmul_sysmat_archcached_bank128_traces.json	330

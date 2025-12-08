@@ -77,8 +77,8 @@ rule trace_dasm:
     input:
         "{file}.dasm",
     output:
-        temp("{file}_perf.json"),
-        temp("{file}.txt"),
+        "{file}_perf.json",
+        "{file}.txt",
     shell:
         "{config[spike-dasm]} < {input} | {config[python]} {config[gen_trace.py]} --permissive -d {output[0]} > {output[1]}"
 
@@ -95,7 +95,7 @@ rule aggregate_json:
             num_harts=range(config["num_harts"]),
         ),
     output:
-        temp("{file}_traces.json"),
+        "{file}_traces.json",
     run:
         merge_json(input, output[0])
 

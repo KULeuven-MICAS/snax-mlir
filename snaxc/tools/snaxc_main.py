@@ -44,9 +44,11 @@ from snaxc.transforms.set_memory_space import SetMemorySpace
 from snaxc.transforms.snax_allocate import SnaxAllocatePass
 from snaxc.transforms.snax_bufferize import SnaxBufferize
 from snaxc.transforms.snax_copy_to_dma import SNAXCopyToDMA
+from snaxc.transforms.snax_lower_mcycle import SNAXLowerMCycle
 from snaxc.transforms.snax_to_func import SNAXToFunc
 from snaxc.transforms.test.debug_to_func import DebugToFuncPass
 from snaxc.transforms.test.insert_debugs import InsertDebugPass
+from snaxc.transforms.test.test_add_mcycle_around_launch import AddMcycleAroundLaunch
 
 
 class SNAXCMain(CommandLineTool):
@@ -164,6 +166,13 @@ class SNAXCMain(CommandLineTool):
             help="disable all backend passes",
         )
 
+        arg_parser.add_argument(
+            "--add-mcycle",
+            default=False,
+            action="store_true",
+            help="add mcycle around accfg.launch ops",
+        )
+
     def setup_pipeline(self):
         """
         Creates a pipeline that consists of all the passes specified.
@@ -224,10 +233,13 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(DartLayoutResolutionPass())
         pass_pipeline.append(ConvertDartToSnaxStream())
         pass_pipeline.append(ConvertLinalgToAccPass())
+        if self.args.add_mcycle:
+            pass_pipeline.append(AddMcycleAroundLaunch())
         pass_pipeline.append(ConvertAccfgToCsrPass())
         pass_pipeline.append(SNAXCopyToDMA())
         pass_pipeline.append(SNAXToFunc())
         pass_pipeline.append(ConvertMemrefToArithPass())
+        pass_pipeline.append(SNAXLowerMCycle())
         if self.args.debug:
             pass_pipeline.append(DebugToFuncPass())
         pass_pipeline.append(ClearMemorySpace())
