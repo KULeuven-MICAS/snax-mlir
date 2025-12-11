@@ -56,7 +56,7 @@ def get_from_shaped_hw_array(
         %cst_1 = arith.constant : 2 i2
         %return_out = hw.array_get %first_get[%cst_2]
 
-    The result value from return_out is given as the second argument
+    The result value from return_out is given as the second return value
     """
     assert len(index) > 0, "Expect index to have at least one value"
 
