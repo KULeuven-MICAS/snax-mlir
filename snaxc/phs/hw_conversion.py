@@ -6,6 +6,16 @@ from xdsl.ir import Attribute, BlockArgument, Operation, SSAValue
 from snaxc.dialects import phs
 
 
+def get_shaped_hw_array_shape(array_type: hw.ArrayType) -> tuple[list[int], builtin.AnySignlessIntegerType]:
+    el_type = array_type.get_element_type()
+    this_shape = array_type.size_attr.data
+    if not isinstance(el_type, hw.ArrayType):
+        return [this_shape], el_type
+    else:
+        sub_shape, el_type = get_shaped_hw_array_shape(el_type)
+        return [this_shape, *sub_shape], el_type
+
+
 def create_shaped_hw_array_type(
     el_type: builtin.AnySignlessIntegerType | hw.ArrayType, shape: tuple[int, ...]
 ) -> builtin.AnySignlessIntegerType | hw.ArrayType:
@@ -48,22 +58,32 @@ def get_from_shaped_hw_array(
 
     The result value from return_out is given as the second argument
     """
-    bitwidth = (input_val.type.size_attr.data - 1).bit_length()
-    if len(index) == 1:
-        ops: const_or_array_list = [
-            index_op := arith.ConstantOp.from_int_and_width(index[0], bitwidth),
-            output := hw.ArrayGetOp(input_val, index_op),
-        ]
-        return ops, output.result
-    else:
-        ops, prev_output = get_from_shaped_hw_array(input_val, index[1:])
-        ops.extend(
-            [
-                index_op := arith.ConstantOp.from_int_and_width(index[0], bitwidth),
-                new_output := hw.ArrayGetOp(prev_output, index_op),
-            ]
-        )
-        return ops, new_output.result
+    assert len(index) > 0, "Expect index to have at least one value"
+
+    # Perform static type check
+    shape, _ = get_shaped_hw_array_shape(input_val.type)
+    for i, size in zip(index, shape, strict=True):
+        if not i < size:
+            raise ValueError(f"Size {i} will be out of bounds for a size of {size}")
+
+    # If sizes are okay, continue
+    def get_from_shaped_hw_array_inner(
+        input_val: SSAValue[hw.ArrayType], index: tuple[int, ...]
+    ) -> tuple[const_or_array_list, SSAValue]:
+        bitwidth = (input_val.type.size_attr.data - 1).bit_length()
+        index_op = arith.ConstantOp.from_int_and_width(index[0], bitwidth)
+        array_get_op = hw.ArrayGetOp(input_val, index_op)
+        ops: const_or_array_list = [index_op, array_get_op]
+        if len(index) == 1:
+            return ops, array_get_op.result
+        else:
+            sub_ops, final_result = get_from_shaped_hw_array_inner(
+                SSAValue.get(array_get_op, type=hw.ArrayType), index[1:]
+            )
+            ops.extend(sub_ops)
+            return ops, final_result
+
+    return get_from_shaped_hw_array_inner(input_val, index)
 
 
 def create_shaped_hw_array(
@@ -81,23 +101,29 @@ def create_shaped_hw_array(
     length = len(values)
     expected = math.prod(shape)
     assert length == expected, f"Values list length {length} doesn't match {shape} (expected {expected})"
-    if len(shape) == 1:
-        op = hw.ArrayCreateOp(*values)
-        return [op], op.result
-    else:
-        ops: list[Operation] = []
-        new_vals: list[SSAValue] = []
-        sub_array_size = math.prod(shape[1:])
-        for i in range(shape[0]):
-            start_idx = i * sub_array_size
-            end_idx = start_idx + sub_array_size
-            sub_values = values[start_idx:end_idx]
-            new_op, new_result = create_shaped_hw_array(sub_values, shape[1:])
-            ops.extend(new_op)
-            new_vals.append(new_result)
-        op = hw.ArrayCreateOp(*new_vals)
-        ops.append(op)
-        return ops, op.result
+
+    def create_shaped_hw_array_inner(
+        values: list[SSAValue[Attribute]], shape: tuple[int, ...]
+    ) -> tuple[list[Operation], SSAValue]:
+        if len(shape) == 1:
+            op = hw.ArrayCreateOp(*values)
+            return [op], op.result
+        else:
+            ops: list[Operation] = []
+            new_vals: list[SSAValue] = []
+            sub_array_size = math.prod(shape[1:])
+            for i in range(shape[0]):
+                start_idx = i * sub_array_size
+                end_idx = start_idx + sub_array_size
+                sub_values = values[start_idx:end_idx]
+                new_op, new_result = create_shaped_hw_array_inner(sub_values, shape[1:])
+                ops.extend(new_op)
+                new_vals.append(new_result)
+            op = hw.ArrayCreateOp(*new_vals)
+            ops.append(op)
+            return ops, op.result
+
+    return create_shaped_hw_array_inner(values, shape)
 
 
 def get_choice_bitwidth(choice: phs.ChooseOp) -> int:
@@ -105,7 +131,9 @@ def get_choice_bitwidth(choice: phs.ChooseOp) -> int:
     Get the amount of bits necessary to represent the choices in a ChooseOp.
     i.e. ceil(log2(n)) bits for n choices.
     """
-    return (len(list(choice.operations())) - 1).bit_length()
+    choices = len(list(choice.operations()))
+    assert choices > 0, "Expect choose_op to have at least one choice"
+    return (choices - 1).bit_length()
 
 
 def get_switch_bw(arg: BlockArgument) -> int:

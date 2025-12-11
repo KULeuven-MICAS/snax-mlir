@@ -1,5 +1,4 @@
 import math
-from typing import cast
 
 from xdsl import printer
 from xdsl.dialects.builtin import i32
@@ -19,18 +18,18 @@ def test_create_shaped_hw_array_type():
 
 def test_get_from_shaped_hw_array():
     block = Block(arg_types=(create_shaped_hw_array_type(i32, (2, 1, 3)),))
-    operations, result = get_from_shaped_hw_array(cast(SSAValue[ArrayType], SSAValue.get(block.args[0])), (1, 1, 3))
+    operations, result = get_from_shaped_hw_array(SSAValue.get(block.args[0], type=ArrayType), (1, 0, 2))
     block.add_ops([*operations, TestOp([result])])
     stream = StringIO()
     printr = printer.Printer(stream=stream)
     printr.print_block(block)
     expected = """\
 \n^bb0(%0 : !hw.array<2x!hw.array<1x!hw.array<3xi32>>>):\
-\n  %1 = arith.constant -1 : i2\
-\n  %2 = hw.array_get %0[%1] : !hw.array<2x!hw.array<1x!hw.array<3xi32>>>, i2\
-\n  %3 = arith.constant 1 : i2\
-\n  %4 = hw.array_get %2[%3] : !hw.array<1x!hw.array<3xi32>>, i2\
-\n  %5 = arith.constant 1 : i2\
+\n  %1 = arith.constant true\
+\n  %2 = hw.array_get %0[%1] : !hw.array<2x!hw.array<1x!hw.array<3xi32>>>, i1\
+\n  %3 = arith.constant 0 : i0\
+\n  %4 = hw.array_get %2[%3] : !hw.array<1x!hw.array<3xi32>>, i0\
+\n  %5 = arith.constant -2 : i2\
 \n  %6 = hw.array_get %4[%5] : !hw.array<3xi32>, i2\
 \n  "test.op"(%6) : (i32) -> ()"""
     gotten = stream.getvalue()
