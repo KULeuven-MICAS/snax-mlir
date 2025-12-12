@@ -79,7 +79,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                 stride, bound = TCDM_BANK_WIDTH, (stride * bound) // TCDM_BANK_WIDTH
 
             # fill up all spatial strides
-            for spat_size in streamers[operand].spatial_dims:
+            for i, spat_size in enumerate(streamers[operand].spatial_dims):
                 assert stride is not None
                 assert bound is not None
                 spatial_strides.append(stride)
@@ -124,6 +124,7 @@ class ConvertStreamToSnaxStreamPattern(RewritePattern):
                 spatial_strides=spatial_strides,
             )
             snax_stride_patterns.append(snax_stride_pattern)
+
 
         new_inputs, new_outputs, new_stride_patterns, ops_to_add = accelerator_type.set_stride_patterns(
             op, snax_stride_patterns

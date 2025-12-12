@@ -76,10 +76,29 @@ class GemmxWrapper(AcceleratorWrapper):
     def accelerator(self) -> AcceleratorConfig:
         return self.gemmx
 
+@dataclass
+class VersaCoreMapping:
+    m: int
+    n: int
+    k: int
+
+@dataclass
+class VersaCoreConfig(AcceleratorConfig):
+    configs: list[VersaCoreMapping]
+    streamers: list[StreamerConfig]
+
+@dataclass
+class VersaCoreWrapper(AcceleratorWrapper):
+    versacore: VersaCoreConfig
+
+    @property
+    def accelerator(self) -> AcceleratorConfig:
+        return self.versacore
+
 
 @dataclass
 class CoreConfig:
-    accelerators: list[DataMoverWrapper | SnaxAluWrapper | GemmxWrapper | SnaxXdmaWrapper]
+    accelerators: list[DataMoverWrapper | SnaxAluWrapper | GemmxWrapper | SnaxXdmaWrapper | VersaCoreWrapper]
 
 
 @dataclass
