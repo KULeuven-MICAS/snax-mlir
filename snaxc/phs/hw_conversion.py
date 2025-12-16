@@ -2,14 +2,15 @@ import math
 
 from xdsl.dialects import arith, builtin, hw
 from xdsl.ir import Attribute, BlockArgument, Operation, SSAValue
+from xdsl.utils.hints import isa
 
 from snaxc.dialects import phs
 
 
-def get_shaped_hw_array_shape(array_type: hw.ArrayType) -> tuple[list[int], builtin.AnySignlessIntegerType]:
+def get_shaped_hw_array_shape(array_type: hw.ArrayType) -> tuple[list[int], Attribute]:
     el_type = array_type.get_element_type()
     this_shape = array_type.size_attr.data
-    if not isinstance(el_type, hw.ArrayType):
+    if not isa(el_type, hw.ArrayType):
         return [this_shape], el_type
     else:
         sub_shape, el_type = get_shaped_hw_array_shape(el_type)
