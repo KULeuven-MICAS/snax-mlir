@@ -137,7 +137,7 @@ def get_choice_bitwidth(choice: phs.ChooseOp) -> int:
     return (choices - 1).bit_length()
 
 
-def get_switch_bw(arg: BlockArgument) -> int:
+def get_switch_bitwidth(arg: BlockArgument) -> int:
     """
     Get the amount of bits necessary to represent the choices made by a certain switch:
     * returns 1 if the user is a phs.MuxOp
