@@ -1,5 +1,5 @@
-// RUN: snax-opt %s -p convert-phs-to-hw | firtool --format=mlir | filecheck %s --check-prefix=SV
-// RUN: snax-opt %s -p convert-phs-to-hw | filecheck %s
+// RUN: snax-opt %s -p convert-pe-to-hw,finalize-phs-to-hw | firtool --format=mlir | filecheck %s --check-prefix=SV
+// RUN: snax-opt %s -p convert-pe-to-hw,finalize-phs-to-hw | filecheck %s
 
 phs.pe @myfirstaccelerator with %0, %1, %2, %3, %4, %5 (%6 : i32, %7 : i32) {
   %8 = phs.choose @_0 with %0 (%6 : i32, %7 : i32) -> i32

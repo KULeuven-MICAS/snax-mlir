@@ -1,7 +1,8 @@
 import math
+from typing import cast
 
 from xdsl.dialects import arith, builtin, hw
-from xdsl.ir import Attribute, BlockArgument, Operation, SSAValue
+from xdsl.ir import Attribute, BlockArgument, Operation, SSAValue, TypeAttribute
 from xdsl.utils.hints import isa
 
 from snaxc.dialects import phs
@@ -152,3 +153,32 @@ def get_switch_bitwidth(arg: BlockArgument) -> int:
         return 1
     else:
         raise NotImplementedError(f"got {use}")
+
+
+def get_pe_port_decl(pe: phs.PEOp) -> builtin.ArrayAttr[hw.ModulePort]:
+    ports: list[hw.ModulePort] = []
+    for i, data_opnd in enumerate(pe.data_operands()):
+        ports.append(
+            hw.ModulePort(
+                builtin.StringAttr(f"data_{i}"),
+                cast(TypeAttribute, data_opnd.type),
+                hw.DirectionAttr(data=hw.Direction.INPUT),
+            )
+        )
+    for i, switch in enumerate(pe.get_switches()):
+        ports.append(
+            hw.ModulePort(
+                builtin.StringAttr(f"switch_{i}"),
+                builtin.IntegerType(get_switch_bitwidth(switch)),
+                hw.DirectionAttr(data=hw.Direction.INPUT),
+            )
+        )
+    for i, output in enumerate(pe.get_terminator().operands):
+        ports.append(
+            hw.ModulePort(
+                builtin.StringAttr(f"out_{i}"),
+                cast(TypeAttribute, output.type),
+                hw.DirectionAttr(data=hw.Direction.OUTPUT),
+            )
+        )
+    return builtin.ArrayAttr(ports)
