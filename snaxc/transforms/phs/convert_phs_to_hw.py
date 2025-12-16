@@ -2,13 +2,14 @@ from typing import cast
 
 from xdsl.context import Context
 from xdsl.dialects import builtin, comb, hw
-from xdsl.ir import Block, BlockArgument, SSAValue, TypeAttribute
+from xdsl.ir import Block, SSAValue, TypeAttribute
 from xdsl.parser import ArrayAttr
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
 from xdsl.transforms.mlir_opt import MLIROptPass
 
 from snaxc.dialects import phs
+from snaxc.phs.hw_conversion import get_choice_bitwidth, get_switch_bitwidth
 
 
 class ConvertMuxes(RewritePattern):
@@ -24,16 +25,6 @@ class ConvertMuxes(RewritePattern):
 class ConvertPeOps(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, pe: phs.PEOp, rewriter: PatternRewriter):
-        def get_switch_bw(arg: BlockArgument) -> int:
-            use = arg.get_unique_use()
-            assert use is not None, "Expect single user for switch"
-            if isinstance(use.operation, phs.ChooseOp):
-                return get_choice_bitwidth(use.operation)
-            elif isinstance(use.operation, phs.MuxOp):
-                return 1
-            else:
-                raise NotImplementedError(f"got {use}")
-
         ports: list[hw.ModulePort] = []
         for i, data_opnd in enumerate(pe.data_operands()):
             ports.append(
@@ -47,7 +38,7 @@ class ConvertPeOps(RewritePattern):
             ports.append(
                 hw.ModulePort(
                     builtin.StringAttr(f"switch_{i}"),
-                    builtin.IntegerType(get_switch_bw(switch)),
+                    builtin.IntegerType(get_switch_bitwidth(switch)),
                     hw.DirectionAttr(data=hw.Direction.INPUT),
                 )
             )
@@ -86,10 +77,6 @@ class ConvertChooseOps(RewritePattern):
         index_bw = get_choice_bitwidth(choose_op)
         rewriter.replace_value_with_new_type(choose_op.switch, builtin.IntegerType(index_bw))
         rewriter.replace_op(choose_op, hw.ArrayGetOp(create_array, choose_op.switch))
-
-
-def get_choice_bitwidth(choice: phs.ChooseOp):
-    return (len(list(choice.operations())) - 1).bit_length()
 
 
 class ConvertYieldOps(RewritePattern):
