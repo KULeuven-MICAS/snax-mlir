@@ -32,7 +32,7 @@ from xdsl.irdl import (
 )
 from xdsl.parser import Parser, SymbolRefAttr
 from xdsl.printer import Printer
-from xdsl.traits import HasAncestor, HasParent, IsolatedFromAbove, IsTerminator, Pure, SymbolOpInterface, SymbolTable
+from xdsl.traits import HasParent, IsolatedFromAbove, IsTerminator, Pure, SymbolOpInterface, SymbolTable
 from xdsl.utils.exceptions import VerifyException
 
 
@@ -47,7 +47,7 @@ class YieldOp(AbstractYieldOperation[Attribute]):
     traits = lazy_traits_def(
         lambda: (
             IsTerminator(),
-            HasAncestor(PEOp),
+            HasParent(PEOp, ChooseOp),
             Pure(),
         )
     )
@@ -328,7 +328,7 @@ class ChooseOp(IRDLOperation):
 
     res = var_result_def()
 
-    traits = traits_def(SymbolOpInterface(), HasParent(PEOp))
+    traits = traits_def(SymbolOpInterface())
 
     def __init__(
         self,
