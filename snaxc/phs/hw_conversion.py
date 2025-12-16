@@ -46,7 +46,7 @@ def get_from_shaped_hw_array(
     input_val: SSAValue[hw.ArrayType], index: tuple[int, ...]
 ) -> tuple[const_or_array_list, SSAValue]:
     """
-    Generate array_get ops with arith.const indexes to get a value out of a nested !hw.array e.g.:
+    Generate array_get ops with arith.constants indexes to get a value out of a nested !hw.array e.g.:
 
     input: An operation that outputs !hw.array<2x!hw.array<3xi32>>
     index: (1,2)
@@ -54,7 +54,7 @@ def get_from_shaped_hw_array(
     Outputs:
         %cst_1 = arith.constant : 1 i1
         %first_get = hw.array_get %input[%cst_1]
-        %cst_1 = arith.constant : 2 i2
+        %cst_2 = arith.constant : 2 i2
         %return_out = hw.array_get %first_get[%cst_2]
 
     The result value from return_out is given as the second return value

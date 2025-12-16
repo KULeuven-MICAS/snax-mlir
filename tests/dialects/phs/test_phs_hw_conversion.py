@@ -2,16 +2,20 @@ import math
 from typing import cast
 
 from xdsl import printer
-from xdsl.dialects.builtin import i32
+from xdsl.dialects.arith import AddfOp, DivfOp, MaximumfOp, MulfOp, SubfOp
+from xdsl.dialects.builtin import Float32Type, IndexType, i32
 from xdsl.dialects.hw import ArrayType
 from xdsl.dialects.test import TestOp
 from xdsl.ir import Attribute, Block, SSAValue, StringIO
 
+from snaxc.dialects import phs
 from snaxc.phs.hw_conversion import (
     create_shaped_hw_array,
     create_shaped_hw_array_type,
+    get_choice_bitwidth,
     get_from_shaped_hw_array,
     get_shaped_hw_array_shape,
+    get_switch_bitwidth,
 )
 
 
@@ -79,8 +83,40 @@ def test_get_shaped_hw_array_shape():
     assert input_type == output_type
 
 
+def test_get_bitwidth():
+    switch_types = [IndexType(), IndexType(), IndexType()]
+    # Based on operation
+    in_types = [Float32Type(), Float32Type()]
+    out_types = [Float32Type()]
+    # Construct a new block based on the input of the
+    block_inputs = [*in_types, *switch_types]
+    blockA = Block(arg_types=block_inputs)
+    lhs, rhs, switch, switch2, switch3 = blockA.args
+    addf_op = AddfOp(lhs, rhs)
+    subf_op = SubfOp(lhs, rhs)
+    divf_op = DivfOp(lhs, rhs)
+    mulf_op = MulfOp(lhs, rhs)
+    maxf_op = MaximumfOp(lhs, rhs)
+    blockA.add_ops(
+        [
+            result := phs.ChooseOp.from_operations(
+                "_0", [lhs, rhs], switch, [addf_op, subf_op, divf_op, mulf_op, maxf_op], out_types
+            ),
+            result2 := phs.ChooseOp.from_operations("_0", [lhs, rhs], switch2, [addf_op, subf_op, divf_op], out_types),
+            mux := phs.MuxOp(result, result2, switch3),
+            phs.YieldOp(mux),
+        ]
+    )
+    assert get_choice_bitwidth(result) == 3
+    assert get_choice_bitwidth(result2) == 2
+    assert get_switch_bitwidth(switch) == 3
+    assert get_switch_bitwidth(switch2) == 2
+    assert get_switch_bitwidth(switch3) == 1
+
+
 if __name__ == "__main__":
     test_create_shaped_hw_array_type()
     test_get_from_shaped_hw_array()
     test_create_shaped_hw_array()
     test_get_shaped_hw_array_shape()
+    test_get_bitwidth()
