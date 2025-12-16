@@ -30,4 +30,4 @@ rule export_verilog:
     output:
         "acc1_pe.sv",
     shell:
-        'snax-opt -p convert-phs-to-hw,phs-export-to-verilog{{output=\\"{output[0]}\\"}} {input}'
+        'snax-opt -p convert-pe-to-hw,finalize-phs-to-hw,phs-export-to-verilog{{output=\\"{output[0]}\\"}} {input}'
