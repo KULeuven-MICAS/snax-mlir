@@ -1,12 +1,18 @@
 import math
+from typing import cast
 
 from xdsl import printer
 from xdsl.dialects.builtin import i32
 from xdsl.dialects.hw import ArrayType
 from xdsl.dialects.test import TestOp
-from xdsl.ir import Block, SSAValue, StringIO
+from xdsl.ir import Attribute, Block, SSAValue, StringIO
 
-from snaxc.phs.hw_conversion import create_shaped_hw_array, create_shaped_hw_array_type, get_from_shaped_hw_array
+from snaxc.phs.hw_conversion import (
+    create_shaped_hw_array,
+    create_shaped_hw_array_type,
+    get_from_shaped_hw_array,
+    get_shaped_hw_array_shape,
+)
 
 
 def test_create_shaped_hw_array_type():
@@ -63,7 +69,18 @@ def test_create_shaped_hw_array():
     assert gotten == expected
 
 
+def test_get_shaped_hw_array_shape():
+    input_type = i32
+    input_shape = (1, 2, 3)
+    array_type = create_shaped_hw_array_type(input_type, input_shape)
+    array_type = cast(ArrayType[Attribute], array_type)
+    output_shape, output_type = get_shaped_hw_array_shape(array_type)
+    assert input_shape == tuple(output_shape)
+    assert input_type == output_type
+
+
 if __name__ == "__main__":
     test_create_shaped_hw_array_type()
     test_get_from_shaped_hw_array()
     test_create_shaped_hw_array()
+    test_get_shaped_hw_array_shape()
