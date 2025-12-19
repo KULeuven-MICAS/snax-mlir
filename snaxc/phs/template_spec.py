@@ -15,6 +15,8 @@ class TemplateSpec:
         self.input_maps = input_maps
         self.output_maps = output_maps
         self.template_bounds = template_bounds
+        assert len(self.input_maps) > 0, "Expect input_maps to be non-empty"
+        assert len(self.output_maps) > 0, "Expect output_maps to be non-empty"
         assert self._no_symbols(), "No symbols expected in any affine map of template_spec"
         assert self._same_dims(), "Expect all AffineMaps to have equal number of dims"
         assert len(template_bounds) == self.input_maps[0].num_dims, "Expect number of iterators and bounds to be equal"

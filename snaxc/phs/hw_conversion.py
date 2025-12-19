@@ -158,9 +158,9 @@ def get_switch_bitwidth(arg: BlockArgument) -> int:
 
 def get_pe_port_decl(pe: phs.PEOp, template_spec: TemplateSpec | None = None) -> builtin.ArrayAttr[hw.ModulePort]:
     """
-    Get a port declaration for a given peOP.
+    Get a port declaration for a given PEOp.
     If an optional template_spec is given, the inputs and outputs of the port declaration are shaped
-    to accomodate the bounds of the spec.
+    to accommodate the bounds of the spec.
     """
     if template_spec is None:
         input_sizes = [() for _ in range(len(pe.data_operands()))]
@@ -171,7 +171,7 @@ def get_pe_port_decl(pe: phs.PEOp, template_spec: TemplateSpec | None = None) ->
 
     ports: list[hw.ModulePort] = []
 
-    for i, (data_opnd, input_size) in enumerate(zip(pe.data_operands(), input_sizes + output_sizes)):
+    for i, (data_opnd, input_size) in enumerate(zip(pe.data_operands(), input_sizes + output_sizes, strict=True)):
         assert isa(data_opnd.type, builtin.AnySignlessIntegerType)
         ports.append(
             hw.ModulePort(
@@ -188,7 +188,7 @@ def get_pe_port_decl(pe: phs.PEOp, template_spec: TemplateSpec | None = None) ->
                 hw.DirectionAttr(data=hw.Direction.INPUT),
             )
         )
-    for i, (output, output_size) in enumerate(zip(pe.get_terminator().operands, output_sizes)):
+    for i, (output, output_size) in enumerate(zip(pe.get_terminator().operands, output_sizes, strict=True)):
         assert isa(output.type, builtin.AnySignlessIntegerType)
         ports.append(
             hw.ModulePort(
@@ -200,7 +200,10 @@ def get_pe_port_decl(pe: phs.PEOp, template_spec: TemplateSpec | None = None) ->
     return builtin.ArrayAttr(ports)
 
 
-def create_instance_to_pe(pe: phs.PEOp, template_spec: TemplateSpec) -> hw.HWModuleOp:
+def create_pe_array(pe: phs.PEOp, template_spec: TemplateSpec) -> hw.HWModuleOp:
+    """
+    Given a PE and a template_spec, create a PE array according to the template_spec
+    """
     pe_mod_type = hw.ModuleType(get_pe_port_decl(pe, template_spec))
 
     arg_types: list[Attribute] = []
@@ -212,9 +215,12 @@ def create_instance_to_pe(pe: phs.PEOp, template_spec: TemplateSpec) -> hw.HWMod
     block = Block(arg_types=arg_types)
 
     # FIXME: Only support single output
+    assert len(template_spec.get_output_sizes()) == 1, "Currently only support single output for array generation"
     pe_outputs: list[SSAValue] = []
 
     # Add PEs
+    all_maps = template_spec.input_maps + template_spec.output_maps
+
     for indexes in template_spec.get_iterations():
         # Prepare port list and names
 
@@ -225,9 +231,7 @@ def create_instance_to_pe(pe: phs.PEOp, template_spec: TemplateSpec) -> hw.HWMod
             if port.dir.data == hw.Direction.INPUT:
                 if "data" in port.port_name.data:
                     # Each PE gets a different input from somewhere
-
-                    input_indexes = (template_spec.input_maps + template_spec.output_maps)[i].eval(indexes, ())
-
+                    input_indexes = all_maps[i].eval(indexes, ())
                     block_val = SSAValue.get(block.args[i], type=hw.ArrayType)
                     indexing_ops, val = get_from_shaped_hw_array(block_val, input_indexes)
                     block.add_ops(indexing_ops)
