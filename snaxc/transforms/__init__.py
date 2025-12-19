@@ -162,11 +162,6 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return PhsEncodePass
 
-    def get_phs_export_to_verilog():
-        from snaxc.transforms.phs.export_to_verilog import PhsExportToVerilogPass
-
-        return PhsExportToVerilogPass
-
     def get_phs_export_phs():
         from snaxc.transforms.phs.export_phs import PhsExportPhsPass
 
@@ -307,7 +302,6 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "memref-to-snax": get_memref_to_snax,
         "phs-encode": get_phs_encode,
         "phs-export-phs": get_phs_export_phs,
-        "phs-export-to-verilog": get_phs_export_to_verilog,
         "pipeline-canonicalize-for": get_pipeline_canonicalize_for,
         "pipeline-duplicate-buffers": get_pipeline_duplicate_buffers,
         "postprocess": get_postprocess_mlir,
