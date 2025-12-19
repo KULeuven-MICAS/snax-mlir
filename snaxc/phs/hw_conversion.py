@@ -2,10 +2,11 @@ import math
 from typing import cast
 
 from xdsl.dialects import arith, builtin, hw
-from xdsl.ir import Attribute, BlockArgument, Operation, SSAValue, TypeAttribute
+from xdsl.ir import Attribute, Block, BlockArgument, Operation, Region, SSAValue, TypeAttribute
 from xdsl.utils.hints import isa
 
 from snaxc.dialects import phs
+from snaxc.phs.template_spec import TemplateSpec
 
 
 def get_shaped_hw_array_shape(array_type: hw.ArrayType) -> tuple[list[int], Attribute]:
@@ -155,13 +156,27 @@ def get_switch_bitwidth(arg: BlockArgument) -> int:
         raise NotImplementedError(f"got {use}")
 
 
-def get_pe_port_decl(pe: phs.PEOp) -> builtin.ArrayAttr[hw.ModulePort]:
+def get_pe_port_decl(pe: phs.PEOp, template_spec: TemplateSpec | None = None) -> builtin.ArrayAttr[hw.ModulePort]:
+    """
+    Get a port declaration for a given peOP.
+    If an optional template_spec is given, the inputs and outputs of the port declaration are shaped
+    to accomodate the bounds of the spec.
+    """
+    if template_spec is None:
+        input_sizes = [() for _ in range(len(pe.data_operands()))]
+        output_sizes = [() for _ in range(len(pe.get_terminator().operands))]
+    else:
+        input_sizes = template_spec.get_input_sizes()
+        output_sizes = template_spec.get_output_sizes()
+
     ports: list[hw.ModulePort] = []
-    for i, data_opnd in enumerate(pe.data_operands()):
+
+    for i, (data_opnd, input_size) in enumerate(zip(pe.data_operands(), input_sizes + output_sizes)):
+        assert isa(data_opnd.type, builtin.AnySignlessIntegerType)
         ports.append(
             hw.ModulePort(
                 builtin.StringAttr(f"data_{i}"),
-                cast(TypeAttribute, data_opnd.type),
+                cast(TypeAttribute, create_shaped_hw_array_type(data_opnd.type, input_size)),
                 hw.DirectionAttr(data=hw.Direction.INPUT),
             )
         )
@@ -173,12 +188,73 @@ def get_pe_port_decl(pe: phs.PEOp) -> builtin.ArrayAttr[hw.ModulePort]:
                 hw.DirectionAttr(data=hw.Direction.INPUT),
             )
         )
-    for i, output in enumerate(pe.get_terminator().operands):
+    for i, (output, output_size) in enumerate(zip(pe.get_terminator().operands, output_sizes)):
+        assert isa(output.type, builtin.AnySignlessIntegerType)
         ports.append(
             hw.ModulePort(
                 builtin.StringAttr(f"out_{i}"),
-                cast(TypeAttribute, output.type),
+                cast(TypeAttribute, create_shaped_hw_array_type(output.type, output_size)),
                 hw.DirectionAttr(data=hw.Direction.OUTPUT),
             )
         )
     return builtin.ArrayAttr(ports)
+
+
+def create_instance_to_pe(pe: phs.PEOp, template_spec: TemplateSpec) -> hw.HWModuleOp:
+    pe_mod_type = hw.ModuleType(get_pe_port_decl(pe, template_spec))
+
+    arg_types: list[Attribute] = []
+
+    for port in pe_mod_type.ports:
+        if port.dir.data == hw.Direction.INPUT:
+            arg_types.append(port.type)
+
+    block = Block(arg_types=arg_types)
+
+    # FIXME: Only support single output
+    pe_outputs: list[SSAValue] = []
+
+    # Add PEs
+    for indexes in template_spec.get_iterations():
+        # Prepare port list and names
+
+        in_port_list: list[tuple[str, SSAValue]] = []
+        out_port_list: list[tuple[str, TypeAttribute]] = []
+
+        for i, port in enumerate(pe_mod_type.ports):
+            if port.dir.data == hw.Direction.INPUT:
+                if "data" in port.port_name.data:
+                    # Each PE gets a different input from somewhere
+
+                    input_indexes = (template_spec.input_maps + template_spec.output_maps)[i].eval(indexes, ())
+
+                    block_val = SSAValue.get(block.args[i], type=hw.ArrayType)
+                    indexing_ops, val = get_from_shaped_hw_array(block_val, input_indexes)
+                    block.add_ops(indexing_ops)
+                    in_port_list.append((port.port_name.data, SSAValue.get(val)))
+                else:
+                    # Switches are routed similar globally
+                    in_port_list.append((port.port_name.data, SSAValue.get(block.args[i])))
+            elif port.dir.data == hw.Direction.OUTPUT:
+                assert isa(port.type, hw.ArrayType)
+                _, el_typ = get_shaped_hw_array_shape(port.type)
+                out_port_list.append((port.port_name.data, cast(TypeAttribute, el_typ)))
+            else:  # INOUT
+                raise NotImplementedError("Don't support INOUT ports")
+        instance = hw.InstanceOp(
+            instance_name=f"{pe.name_prop.data}_pe_{'_'.join(str(index) for index in indexes)}",
+            module_name=builtin.SymbolRefAttr(pe.name_prop.data),
+            inputs=in_port_list,
+            outputs=out_port_list,
+        )
+        block.add_op(instance)
+
+        assert len(instance.outputs) == 1
+        pe_outputs.append(instance.outputs[0])
+
+    ops, out_array_val = create_shaped_hw_array(pe_outputs, template_spec.get_output_sizes()[0])
+    block.add_ops([*ops, hw.OutputOp([out_array_val])])
+    hw_module = hw.HWModuleOp(
+        sym_name=builtin.StringAttr(f"{pe.name_prop.data}_array"), module_type=pe_mod_type, body=Region(block)
+    )
+    return hw_module

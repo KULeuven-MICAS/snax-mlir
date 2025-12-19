@@ -55,6 +55,6 @@ class FinalizePhsToHWPass(ModulePass):
             generic=True,
             arguments=("--reconcile-unrealized-casts", "--allow-unregistered-dialect"),
         ).apply(ctx, op)
-        MLIROptPass(
-            executable="circt-opt", generic=True, arguments=("--map-arith-to-comb", "--allow-unregistered-dialect")
-        ).apply(ctx, op)
+        # MLIROptPass(
+        #    executable="circt-opt", generic=True, arguments=("--map-arith-to-comb", "--allow-unregistered-dialect")
+        # ).apply(ctx, op)
