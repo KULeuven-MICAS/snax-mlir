@@ -1,5 +1,5 @@
-// RUN: snax-opt %s -p finalize-phs-to-hw | firtool --format=mlir | filecheck %s --check-prefix=SV
-// RUN: snax-opt %s -p finalize-phs-to-hw | filecheck %s
+// RUN: snax-opt %s -p finalize-phs-to-hw | circt-opt --map-arith-to-comb | firtool --format=mlir | filecheck %s --check-prefix=SV
+// RUN: snax-opt %s -p finalize-phs-to-hw | circt-opt --map-arith-to-comb | filecheck %s
 
 builtin.module {
   hw.module private @myfirstaccelerator(in %0 data_0: i32, in %1 data_1: i32, in %2 switch_0: i2, in %3 switch_1: i1, in %4 switch_2: i1, in %5 switch_3: i1, in %6 switch_4: i1, in %7 switch_5: i1, out out_0: i32) {
@@ -68,15 +68,15 @@ builtin.module {
 // SV-NEXT:    switch_4 ? _GEN_1[switch_3] : switch_2 ? _GEN_0[switch_1] : _GEN[switch_0];
 // SV-NEXT:endmodule
 
-// CHECK: builtin.module {
-// CHECK-NEXT: hw.module private @myfirstaccelerator(in %data data_0: i32, in %data_1: i32, in %switch switch_0: i2, in %switch_1: i1, in %switch_2: i1, in %switch_3: i1, in %switch_4: i1, in %switch_5: i1, out out_0: i32
-// CHECK-NEXT:     %0 = comb.mul %data, %data_1 : i32
-// CHECK-NEXT:     %1 = comb.add %data, %data_1 : i32
-// CHECK-NEXT:     %2 = comb.sub %data, %data_1 : i32
+// CHECK: module {
+// CHECK-NEXT: hw.module private @myfirstaccelerator(in %data_0 : i32, in %data_1 : i32, in %switch_0 : i2, in %switch_1 : i1, in %switch_2 : i1, in %switch_3 : i1, in %switch_4 : i1, in %switch_5 : i1, out out_0 : i32) {
+// CHECK-NEXT:     %0 = comb.mul %data_0, %data_1 : i32
+// CHECK-NEXT:     %1 = comb.add %data_0, %data_1 : i32
+// CHECK-NEXT:     %2 = comb.sub %data_0, %data_1 : i32
 // CHECK-NEXT:     %3 = hw.array_create %0, %1, %2 : i32
-// CHECK-NEXT:     %4 = hw.array_get %3[%switch] : !hw.array<3xi32>, i2
-// CHECK-NEXT:     %5 = comb.mul %data, %4 : i32
-// CHECK-NEXT:     %6 = comb.add %data, %4 : i32
+// CHECK-NEXT:     %4 = hw.array_get %3[%switch_0] : !hw.array<3xi32>, i2
+// CHECK-NEXT:     %5 = comb.mul %data_0, %4 : i32
+// CHECK-NEXT:     %6 = comb.add %data_0, %4 : i32
 // CHECK-NEXT:     %7 = hw.array_create %5, %6 : i32
 // CHECK-NEXT:     %8 = hw.array_get %7[%switch_1] : !hw.array<2xi32>, i1
 // CHECK-NEXT:     %9 = comb.mux %switch_2, %8, %4 : i32
