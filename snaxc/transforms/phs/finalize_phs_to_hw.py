@@ -3,7 +3,7 @@ from xdsl.dialects import builtin, comb, hw
 from xdsl.ir import Block, SSAValue
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
-from xdsl.transforms.mlir_opt import MLIROptPass
+from xdsl.transforms.reconcile_unrealized_casts import reconcile_unrealized_casts
 
 from snaxc.dialects import phs
 from snaxc.phs.hw_conversion import get_choice_bitwidth
@@ -50,11 +50,4 @@ class FinalizePhsToHWPass(ModulePass):
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         PatternRewriteWalker(ConvertMuxes(), apply_recursively=False).rewrite_module(op)
         PatternRewriteWalker(ConvertChooseOps(), apply_recursively=False).rewrite_module(op)
-        MLIROptPass(
-            executable="circt-opt",
-            generic=True,
-            arguments=("--reconcile-unrealized-casts", "--allow-unregistered-dialect"),
-        ).apply(ctx, op)
-        # MLIROptPass(
-        #    executable="circt-opt", generic=True, arguments=("--map-arith-to-comb", "--allow-unregistered-dialect")
-        # ).apply(ctx, op)
+        reconcile_unrealized_casts(op)
