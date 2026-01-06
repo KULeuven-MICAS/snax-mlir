@@ -171,7 +171,7 @@ def get_pe_port_decl(pe: phs.PEOp, template_spec: TemplateSpec | None = None) ->
 
     ports: list[hw.ModulePort] = []
 
-    for i, (data_opnd, input_size) in enumerate(zip(pe.data_operands(), input_sizes + output_sizes, strict=True)):
+    for i, (data_opnd, input_size) in enumerate(zip(pe.data_operands(), input_sizes, strict=True)):
         assert isa(data_opnd.type, builtin.AnySignlessIntegerType)
         ports.append(
             hw.ModulePort(

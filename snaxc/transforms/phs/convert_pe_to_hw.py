@@ -8,7 +8,7 @@ from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, Rewrite
 from xdsl.rewriter import InsertPoint
 
 from snaxc.dialects import phs
-from snaxc.phs.hw_conversion import create_instance_to_pe, get_pe_port_decl, get_switch_bitwidth
+from snaxc.phs.hw_conversion import create_pe_array, get_pe_port_decl, get_switch_bitwidth
 from snaxc.phs.template_spec import TemplateSpec
 
 
@@ -25,7 +25,7 @@ class ConvertPeOps(RewritePattern):
         if self.template_spec is None:
             rewriter.replace_op(pe, new_ops)
         else:
-            hw_array = create_instance_to_pe(pe, self.template_spec)
+            hw_array = create_pe_array(pe, self.template_spec)
             new_ops.append(hw_array)
             rewriter.replace_op(pe, new_ops)
 
@@ -64,7 +64,11 @@ class ConvertPEToHWPass(ModulePass):
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         # Fixme: At some point this template_spec should not be fixed!
         if self.bounds is not None:
-            fixed_input_maps = (AffineMap.from_callable(lambda y: (y,)), AffineMap.from_callable(lambda y: (y,)))
+            fixed_input_maps = (
+                AffineMap.from_callable(lambda y: (y,)),
+                AffineMap.from_callable(lambda y: (y,)),
+                AffineMap.from_callable(lambda y: (y,)),
+            )
             fixed_output_maps = (AffineMap.from_callable(lambda y: (y,)),)
             template_spec = TemplateSpec(
                 input_maps=fixed_input_maps, output_maps=fixed_output_maps, template_bounds=self.bounds
