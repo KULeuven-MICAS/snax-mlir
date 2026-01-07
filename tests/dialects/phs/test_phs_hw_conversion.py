@@ -63,10 +63,10 @@ def test_create_shaped_hw_array():
 \n  %3 = "test.op"() : () -> i32\
 \n  %4 = "test.op"() : () -> i32\
 \n  %5 = "test.op"() : () -> i32\
-\n  %6 = hw.array_create %0, %1 : i32\
-\n  %7 = hw.array_create %2, %3 : i32\
-\n  %8 = hw.array_create %4, %5 : i32\
-\n  %9 = hw.array_create %6, %7, %8 : !hw.array<2xi32>\
+\n  %6 = hw.array_create %1, %0 : i32\
+\n  %7 = hw.array_create %3, %2 : i32\
+\n  %8 = hw.array_create %5, %4 : i32\
+\n  %9 = hw.array_create %8, %7, %6 : !hw.array<2xi32>\
 \n  "test.op"(%9) : (!hw.array<3x!hw.array<2xi32>>) -> ()\
 """
     gotten = stream.getvalue()
