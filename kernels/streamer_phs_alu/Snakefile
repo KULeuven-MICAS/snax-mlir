@@ -10,7 +10,7 @@ rule apply_transform:
         "addition.mlir",
         "transform_schedule.mlir",
     output:
-        temp("addition_transformed.mlir"),
+        "addition_transformed.mlir",
     shell:
         "mlir-opt --linalg-generalize-named-ops --transform-preload-library=transform-library-paths={input[1]} --transform-interpreter {input[0]} -o {output[0]}"
 
@@ -19,19 +19,37 @@ rule compile_mlir:
     input:
         "addition_transformed.mlir",
     output:
-        temp("addition_phs.mlir"),
-        temp("acc1_pe.mlir"),
+        "addition_phs.mlir",
+        "acc1_pe.mlir",
     shell:
         'snax-opt -p phs-encode,phs-export-phs{{output=\\"{output[1]}\\"}} {input} -o {output[0]}'
 
 
-rule export_verilog_array:
+rule create_mlir_array:
     input:
         "acc1_pe.mlir",
     output:
+        "acc1_array.mlir",
+    shell:
+        "snax-opt -p convert-pe-to-hw{{bounds=4}} {input}  -o {output[0]}"
+
+
+rule lower_mlir_array:
+    input:
+        "acc1_array.mlir",
+    output:
+        "acc1_array_hw.mlir",
+    shell:
+        "snax-opt -p finalize-phs-to-hw {input} | circt-opt --map-arith-to-comb --hw-flatten-modules -o {output[0]}"
+
+
+rule export_verilog_array:
+    input:
+        "acc1_array_hw.mlir",
+    output:
         "acc1_array.sv",
     shell:
-        "snax-opt -p convert-pe-to-hw{{bounds=4}},finalize-phs-to-hw {input} | circt-opt --map-arith-to-comb --hw-flatten-modules | firtool --format=mlir --strip-debug-info -o {output[0]}"
+        "firtool {input} --format=mlir --strip-debug-info -o {output[0]}"
 
 
 rule export_verilog_pe:

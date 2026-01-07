@@ -109,7 +109,8 @@ def create_shaped_hw_array(
         values: list[SSAValue[Attribute]], shape: tuple[int, ...]
     ) -> tuple[list[Operation], SSAValue]:
         if len(shape) == 1:
-            op = hw.ArrayCreateOp(*values)
+            # SystemVerilog needs reversed operand ordering for array indexing
+            op = hw.ArrayCreateOp(*reversed(values))
             return [op], op.result
         else:
             ops: list[Operation] = []
@@ -122,7 +123,8 @@ def create_shaped_hw_array(
                 new_op, new_result = create_shaped_hw_array_inner(sub_values, shape[1:])
                 ops.extend(new_op)
                 new_vals.append(new_result)
-            op = hw.ArrayCreateOp(*new_vals)
+            # SystemVerilog needs reversed operand ordering for array indexing
+            op = hw.ArrayCreateOp(*reversed(new_vals))
             ops.append(op)
             return ops, op.result
 
