@@ -37,7 +37,9 @@ class ConvertChooseOps(RewritePattern):
                     for operand in op.operands:
                         assert not isinstance(operand, Block)
                         yield_results.append(operand)
-        rewriter.insert_op(create_array := hw.ArrayCreateOp(*yield_results))
+
+        # SystemVerilog needs reversed operand ordering for array indexing
+        rewriter.insert_op(create_array := hw.ArrayCreateOp(*reversed(yield_results)))
         index_bw = get_choice_bitwidth(choose_op)
         cast_op, res = builtin.UnrealizedConversionCastOp.cast_one(choose_op.switch, builtin.IntegerType(index_bw))
         rewriter.insert_op(cast_op)
