@@ -26,6 +26,7 @@ nn = ["tensorflow-cpu==2.19.0"]
 [project.scripts]
 snax-opt = "snaxc.tools.snax_opt_main:main"
 snaxc = "snaxc.tools.snaxc_main:main"
+phsc = "snaxc.tools.phsc_main:main"
 
 [tool.ruff]
 target-version = "py310"

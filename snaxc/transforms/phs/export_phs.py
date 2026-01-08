@@ -5,9 +5,52 @@ from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
 from xdsl.printer import Printer
+from xdsl.rewriter import Rewriter
 from xdsl.utils.exceptions import DiagnosticException
 
 from snaxc.dialects import phs
+
+
+def erase_phs(mod: builtin.ModuleOp, rewriter: Rewriter):
+    """
+    Erase all phs.PEOps
+    """
+    for operation in mod.ops:
+        if isinstance(operation, phs.PEOp):
+            rewriter.erase_op(operation)
+
+
+def keep_phs(mod: builtin.ModuleOp, rewriter: Rewriter):
+    """
+    Keep only phs.PEOps
+    """
+    for operation in mod.ops:
+        if not isinstance(operation, phs.PEOp):
+            rewriter.erase_op(operation)
+
+
+class PhsKeepPhsPass(ModulePass):
+    """
+    Pass that removes all operations which are not phs.PE ops
+    """
+
+    name = "phs-keep-phs"
+
+    def apply(self, ctx: Context, module: builtin.ModuleOp) -> None:
+        rewriter = Rewriter()
+        keep_phs(module, rewriter)
+
+
+class PhsRemovePhsPass(ModulePass):
+    """
+    Pass that removes all phs.PE operations
+    """
+
+    name = "phs-remove-phs"
+
+    def apply(self, ctx: Context, module: builtin.ModuleOp) -> None:
+        rewriter = Rewriter()
+        erase_phs(module, rewriter)
 
 
 @dataclass(frozen=True)
@@ -22,18 +65,15 @@ class PhsExportPhsPass(ModulePass):
 
     output: str
 
-    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, module: builtin.ModuleOp) -> None:
         stream = StringIO()
         printer = Printer(print_generic_format=True, stream=stream)
-
-        ops_to_add: list[phs.PEOp] = []
-
-        for operation in op.ops:
-            if isinstance(operation, phs.PEOp):
-                operation.detach()
-                ops_to_add.append(operation)
-
-        new_module = builtin.ModuleOp(ops_to_add)
+        new_module = module.clone()
+        rewriter = Rewriter()
+        # From the clone, keep only PE ops
+        keep_phs(new_module, rewriter)
+        # From the original, remove all PE ops
+        erase_phs(module, rewriter)
         printer.print_op(new_module)
         try:
             with open(self.output, "w") as f:
