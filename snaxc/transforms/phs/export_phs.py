@@ -36,9 +36,9 @@ class PhsKeepPhsPass(ModulePass):
 
     name = "phs-keep-phs"
 
-    def apply(self, ctx: Context, module: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         rewriter = Rewriter()
-        keep_phs(module, rewriter)
+        keep_phs(op, rewriter)
 
 
 class PhsRemovePhsPass(ModulePass):
@@ -48,9 +48,9 @@ class PhsRemovePhsPass(ModulePass):
 
     name = "phs-remove-phs"
 
-    def apply(self, ctx: Context, module: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         rewriter = Rewriter()
-        erase_phs(module, rewriter)
+        erase_phs(op, rewriter)
 
 
 @dataclass(frozen=True)
@@ -65,15 +65,15 @@ class PhsExportPhsPass(ModulePass):
 
     output: str
 
-    def apply(self, ctx: Context, module: builtin.ModuleOp) -> None:
+    def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         stream = StringIO()
         printer = Printer(print_generic_format=True, stream=stream)
-        new_module = module.clone()
+        new_module = op.clone()
         rewriter = Rewriter()
         # From the clone, keep only PE ops
         keep_phs(new_module, rewriter)
         # From the original, remove all PE ops
-        erase_phs(module, rewriter)
+        erase_phs(op, rewriter)
         printer.print_op(new_module)
         try:
             with open(self.output, "w") as f:
