@@ -86,13 +86,23 @@ class PHSCMain(CommandLineTool):
                 stderr=subprocess.PIPE,
                 text=True,
             )
-            assert p1.stdout is not None
-            p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits.
-            p1.communicate(input=hardware_ir_string)
 
-            stdout_final, stderr_final = p2.communicate(input=hardware_ir_string)
+            assert p1.stdout is not None
+            p1.stdout.close()
+            _, p1_stderr = p1.communicate(input=hardware_ir_string)
+            if p1.returncode != 0:
+                print(
+                    f"Error during hardware conversion (circt-opt):\n{p1_stderr}",
+                    file=sys.stderr,
+                )
+                raise SystemExit(p1.returncode or 1)
+            stdout_final, stderr_final = p2.communicate()
             if p2.returncode != 0:
-                print(f"Error during hardware conversion: {stderr_final}")
+                print(
+                    f"Error during hardware conversion (firtool):\n{stderr_final}",
+                    file=sys.stderr,
+                )
+                raise SystemExit(p2.returncode or 1)
             else:
                 with open(self.args.output_hardware, "w") as outfile:
                     outfile.write(stdout_final)
@@ -140,7 +150,9 @@ class PHSCMain(CommandLineTool):
             help="Print operations with the generic format",
         )
 
-        arg_parser.add_argument("--no-sv-conversion", type=str, help="Don't convert output hardware to systemverilog")
+        arg_parser.add_argument(
+            "--no-sv-conversion", action="store_true", help="Don't convert output hardware to systemverilog"
+        )
 
     def setup_pipelines(self):
         """
