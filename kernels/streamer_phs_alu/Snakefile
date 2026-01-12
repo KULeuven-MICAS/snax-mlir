@@ -1,16 +1,146 @@
-# Rules
+from util.snake.configs import get_snax_alu_config
+from util.tracing.merge_json import merge_json
+
+snax_cluster = "/home/josse/snax_cluster"
+generated_folder = f"{snax_cluster}/target/snitch_cluster/generated"
+
+# config = get_snax_alu_config()
+config["vltsim"] = f"{snax_cluster}/target/snitch_cluster/bin/snitch_cluster.vlt"
+
+mako_wrappers = [
+    f"{generated_folder}/snax_alu_phs/snax_alu_phs_csrman_wrapper.sv",
+    f"{generated_folder}/snax_alu_phs/snax_alu_phs_streamer_wrapper.sv",
+    f"{generated_folder}/snax_alu_phs/snax_alu_phs_wrapper.sv",
+    f"{generated_folder}/sparse_interconnect_wrapper.sv",
+]
+
+chisel_generated = [
+    f"{generated_folder}/snax_alu_phs/snax_alu_phs_reqrspman_ReqRspManager.sv",
+    f"{generated_folder}/snax_alu_phs/snax_alu_phs_Streamer.sv",
+    f"{generated_folder}/SparseInterconnect.sv",
+]
+
+snaxgen = [*mako_wrappers, *chisel_generated]
+
+
+module snax_rules:
+    snakefile:
+        "../../util/snake/snax.smk"
+    config:
+        config
+
+
+use rule aggregate_json from snax_rules
+
+
+use rule compile_c from snax_rules
+
+
+use rule compile_llvm_module from snax_rules
+
+
+use rule trace_dasm from snax_rules
+
+
+use rule translate_mlir from snax_rules
+
+
+files = ["addition"]
+
+
 rule all:
     input:
-        "addition_out.mlir",
-        "acc1_array.sv",
+        expand("{file}_traces.json", file=files),
 
 
-rule apply_transform:
+rule run_phs:
     input:
         "addition.mlir",
         "transform_schedule.mlir",
     output:
-        "addition_out.mlir",
+        "addition.ll.mlir",
         "acc1_array.sv",
     shell:
-        "phsc {input[0]} {input[1]} -o {output[0]} --output-hardware {output[1]}"
+        "phsc {input[0]} {input[1]} -o {output[0]} --output-hardware {output[1]} -c {config[snaxc-config]}"
+
+
+rule create_wrappers:
+    input:
+        f"{snax_cluster}/target/snitch_cluster/cfg/snax_alu_phs_cluster.hjson",
+    output:
+        snaxgen,
+    shell:
+        "pixi run --manifest-path={snax_cluster}/pixi.toml make -C {snax_cluster}/target/snitch_cluster/ CFG_OVERRIDE={input[0]} rtl-gen"
+
+
+rule copy_array:
+    input:
+        "acc1_array.sv",
+    output:
+        f"{generated_folder}/acc1_array.sv",
+    shell:
+        "cp {input} {output}"
+
+
+# rule create_simulation_binary:
+#    input:
+#        f"{snax_cluster}/target/snitch_cluster/cfg/snax_alu_phs_cluster.hjson",
+#        snaxgen,
+#        f"{generated_folder}/acc1_array.sv"
+#    output:
+#        config["vltsim"]
+#    threads:
+#        workflow.cores
+#    shell:
+#        "pixi run --manifest-path={snax_cluster}/pixi.toml make -C {snax_cluster}/target/snitch_cluster/ CFG_OVERRIDE={input[0]} bin/snitch_cluster.vlt -j{threads}"
+
+
+from gendata import create_data_files
+
+
+rule generate_data:
+    output:
+        "data.c",
+        "data.h",
+    run:
+        create_data_files()
+
+
+rule compile_simple_main:
+    input:
+        "../streamer_alu/main.c",
+        "data.o",
+    output:
+        temp("main.o"),
+    shell:
+        "{config[cc]} {config[cflags]} -c {input} -o {output}"
+
+
+rule link_snax_binary:
+    input:
+        "addition.o",
+        "data.o",
+        "main.o",
+    output:
+        "addition.x",
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
+
+
+rule simulate:
+    input:
+        config["vltsim"],
+        "addition.x",
+    output:
+        temp(
+            expand(
+                "addition_trace_chip_{num_chips:02d}_hart_{num_harts:05d}.dasm",
+                file=["addition"],
+                num_chips=range(config["num_chips"]),
+                num_harts=range(config["num_harts"]),
+            ),
+        ),
+    log:
+        "addition.vltlog",
+    shell:
+        "{config[vltsim]} --prefix-trace=addition_ addition.x  2>&1 | tee {log}"
