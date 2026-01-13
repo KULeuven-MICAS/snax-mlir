@@ -164,6 +164,13 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return PipelineCanonicalizeFor
 
+    def get_pipeline_hoist_copies():
+        from snaxc.transforms.pipeline.pipeline_hoist_copies import (
+            PipelineHoistCopies,
+        )
+
+        return PipelineHoistCopies
+
     def get_pipeline_duplicate_buffers():
         from snaxc.transforms.pipeline.pipeline_duplicate_buffers import (
             PipelineDuplicateBuffersPass,
@@ -292,6 +299,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "phs-encode": get_phs_encode,
         "pipeline-canonicalize-for": get_pipeline_canonicalize_for,
         "pipeline-duplicate-buffers": get_pipeline_duplicate_buffers,
+        "pipeline-hoist-copies": get_pipeline_hoist_copies,
         "postprocess": get_postprocess_mlir,
         "preprocess": get_preprocess_mlir,
         "realize-memref-casts": get_realize_memref_casts,

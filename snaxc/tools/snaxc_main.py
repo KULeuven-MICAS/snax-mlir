@@ -40,6 +40,7 @@ from snaxc.transforms.memref_to_snax import MemrefToSNAX
 from snaxc.transforms.pipeline.construct_pipeline import ConstructPipelinePass
 from snaxc.transforms.pipeline.pipeline_canonicalize_for import PipelineCanonicalizeFor
 from snaxc.transforms.pipeline.pipeline_duplicate_buffers import PipelineDuplicateBuffersPass
+from snaxc.transforms.pipeline.pipeline_hoist_copies import PipelineHoistCopies
 from snaxc.transforms.pipeline.unroll_pipeline import UnrollPipelinePass
 from snaxc.transforms.realize_memref_casts import RealizeMemrefCastsPass
 from snaxc.transforms.reuse_memref_allocs import ReuseMemrefAllocs
@@ -224,6 +225,7 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(ReuseMemrefAllocs())
         pass_pipeline.append(InsertSyncBarrier())
         pass_pipeline.append(PipelineCanonicalizeFor())
+        pass_pipeline.append(PipelineHoistCopies())
         pass_pipeline.append(ConstructPipelinePass())
         pass_pipeline.append(PipelineDuplicateBuffersPass())
         pass_pipeline.append(UnrollPipelinePass())
