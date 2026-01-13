@@ -1,0 +1,34 @@
+name: PHS - Build and run kernels
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  build-and-run-kernels:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        kernel: [streamer_alu_phs]
+    steps:
+      - name: Checkout snax-mlir
+        uses: actions/checkout@v4
+      - name: Checkout snax_cluster
+        uses: actions/checkout@v4
+        with:
+          repository: KULeuven-MICAS/snax_cluster
+          path: snax_cluster
+          submodules: recursive
+      - name: Setup Pixi (snax-mlir)
+        uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+      - name: Setup Pixi (snax_cluster)
+        uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          manifest-path: snax_cluster/pixi.toml
+          cache: true
+      - name: Build and run kernels
+        run: pixi run snakemake -k -p -j $(nproc) all
+        working-directory: kernels/${{ matrix.kernel }}
