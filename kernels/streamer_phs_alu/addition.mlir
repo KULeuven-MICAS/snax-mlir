@@ -9,7 +9,6 @@ module{
       %2 = arith.xori %in, %in_0 : i64
       linalg.yield %2 : i64
     } -> tensor<?xi64>
-    //return %xori : tensor<?xi64>
-    return %added: tensor<?xi64>
+    return %xori : tensor<?xi64>
   }
 }
