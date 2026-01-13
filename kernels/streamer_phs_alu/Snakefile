@@ -78,7 +78,7 @@ rule copy_array:
     input:
         "acc1_array.sv",
     output:
-        f"{generated_folder}/acc1_array.sv",
+        f"{generated_folder}/snax_alu_phs/acc1_array.sv",
     shell:
         "cp {input} {output}"
 
@@ -87,7 +87,7 @@ rule create_simulation_binary:
     input:
         f"{snax_cluster}/target/snitch_cluster/cfg/snax_alu_phs_cluster.hjson",
         snaxgen,
-        f"{generated_folder}/acc1_array.sv",
+        f"{generated_folder}/snax_alu_phs/acc1_array.sv",
     output:
         config["vltsim"],
     threads: workflow.cores
