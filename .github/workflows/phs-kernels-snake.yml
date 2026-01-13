@@ -9,22 +9,20 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        kernel: [streamer_alu_phs]
+        kernel: [streamer_phs_alu]
     steps:
       - name: Checkout snax-mlir
         uses: actions/checkout@v4
-        with:
-          path: snax-mlir
       - name: Checkout snax_cluster
         uses: actions/checkout@v4
         with:
+          ref: Josse/add-phs-wrappers
           repository: KULeuven-MICAS/snax_cluster
           path: snax_cluster
           submodules: recursive
       - name: Setup Pixi (snax-mlir)
         uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          manifest-path: snax-mlir/pyproject.toml
           cache: true
           cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
       - name: Setup Pixi (snax_cluster)
@@ -35,4 +33,4 @@ jobs:
           post-cleanup: false
       - name: Build and run kernels
         run: pixi run snakemake -k -p -j $(nproc) all
-        working-directory: snax-mlir/kernels/${{ matrix.kernel }}
+        working-directory: kernels/${{ matrix.kernel }}
