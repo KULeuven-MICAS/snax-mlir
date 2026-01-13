@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout snax-mlir
         uses: actions/checkout@v4
+        with:
+          path: snax-mlir
       - name: Checkout snax_cluster
         uses: actions/checkout@v4
         with:
@@ -29,6 +31,7 @@ jobs:
         with:
           manifest-path: snax_cluster/pixi.toml
           cache: true
+          post-cleanup: false
       - name: Build and run kernels
         run: pixi run snakemake -k -p -j $(nproc) all
-        working-directory: kernels/${{ matrix.kernel }}
+        working-directory: snax-mlir/kernels/${{ matrix.kernel }}
