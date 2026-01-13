@@ -49,6 +49,12 @@ class PHSCMain(SNAXCMain):
         self.hardware_pipeline.apply(self.ctx, hardware_module)
         hardware_module.verify()
 
+        # If an optional explicit software file is requested, overwrite the previous module
+        if self.args.software_file:
+            f = open(self.args.software_file)
+            module = Parser(self.ctx, f.read(), self.args.software_file).parse_module()
+            f.close()
+
         self.software_pipeline.apply(self.ctx, module)
         module.verify()
 
@@ -121,9 +127,14 @@ class PHSCMain(SNAXCMain):
         super().register_all_arguments(arg_parser)
 
         arg_parser.add_argument("schedule_file", type=str, nargs="?", help="path to schedule file")
-
+        arg_parser.add_argument(
+            "--software-file",
+            type=str,
+            nargs="?",
+            help="path to separate other software stream,"
+            " by default the same input stream is used for hard- and software",
+        )
         arg_parser.add_argument("--output-hardware", type=str, required=True, help="path to output hardware")
-
         arg_parser.add_argument(
             "--no-sv-conversion", action="store_true", help="Don't convert output hardware to systemverilog"
         )
@@ -199,7 +210,7 @@ class PHSCMain(SNAXCMain):
         def callback(previous_pass: ModulePass, module: ModuleOp, next_pass: ModulePass) -> None:
             module.verify()
             if self.args.print_between_passes:
-                print(f"IR after {previous_pass.name}:")
+                print(f"// IR after {previous_pass.name}:")
                 printer = Printer(stream=sys.stdout)
                 printer.print_op(module)
                 print("\n\n\n")
