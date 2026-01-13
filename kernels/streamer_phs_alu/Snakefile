@@ -1,10 +1,10 @@
 from util.snake.configs import get_snax_alu_config
 from util.tracing.merge_json import merge_json
 
-snax_cluster = "/home/josse/snax_cluster"
+snax_cluster = "../../../snax_cluster"
 generated_folder = f"{snax_cluster}/target/snitch_cluster/generated"
 
-# config = get_snax_alu_config()
+config = get_snax_alu_config()
 config["vltsim"] = f"{snax_cluster}/target/snitch_cluster/bin/snitch_cluster.vlt"
 
 mako_wrappers = [
@@ -30,19 +30,19 @@ module snax_rules:
         config
 
 
-use rule aggregate_json from snax_rules
+use rule aggregate_json from snax_rules as snax_*
 
 
-use rule compile_c from snax_rules
+use rule compile_c from snax_rules as snax_*
 
 
-use rule compile_llvm_module from snax_rules
+use rule compile_llvm_module from snax_rules as snax_*
 
 
-use rule trace_dasm from snax_rules
+use rule trace_dasm from snax_rules as snax_*
 
 
-use rule translate_mlir from snax_rules
+use rule translate_mlir from snax_rules as snax_*
 
 
 files = ["addition"]
@@ -57,11 +57,12 @@ rule run_phs:
     input:
         "addition.mlir",
         "transform_schedule.mlir",
+        "../streamer_alu/streamer_add.mlir",
     output:
         "addition.ll.mlir",
         "acc1_array.sv",
     shell:
-        "phsc {input[0]} {input[1]} -o {output[0]} --output-hardware {output[1]} -c {config[snaxc-config]}"
+        "phsc {input[0]} {input[1]} --software-file {input[2]} -o {output[0]} --output-hardware {output[1]} -c {config[snaxc-config]}"
 
 
 rule create_wrappers:
@@ -82,17 +83,16 @@ rule copy_array:
         "cp {input} {output}"
 
 
-# rule create_simulation_binary:
-#    input:
-#        f"{snax_cluster}/target/snitch_cluster/cfg/snax_alu_phs_cluster.hjson",
-#        snaxgen,
-#        f"{generated_folder}/acc1_array.sv"
-#    output:
-#        config["vltsim"]
-#    threads:
-#        workflow.cores
-#    shell:
-#        "pixi run --manifest-path={snax_cluster}/pixi.toml make -C {snax_cluster}/target/snitch_cluster/ CFG_OVERRIDE={input[0]} bin/snitch_cluster.vlt -j{threads}"
+rule create_simulation_binary:
+    input:
+        f"{snax_cluster}/target/snitch_cluster/cfg/snax_alu_phs_cluster.hjson",
+        snaxgen,
+        f"{generated_folder}/acc1_array.sv",
+    output:
+        config["vltsim"],
+    threads: workflow.cores
+    shell:
+        "pixi run --manifest-path={snax_cluster}/pixi.toml make -C {snax_cluster}/target/snitch_cluster/ CFG_OVERRIDE={input[0]} bin/snitch_cluster.vlt -j{threads}"
 
 
 from gendata import create_data_files
