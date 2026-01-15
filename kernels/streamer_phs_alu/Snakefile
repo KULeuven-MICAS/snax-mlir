@@ -108,7 +108,7 @@ rule generate_data:
 
 rule compile_simple_main:
     input:
-        "../streamer_alu/main.c",
+        "main.c",
         "data.o",
     output:
         temp("main.o"),
