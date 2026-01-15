@@ -187,7 +187,7 @@ class SNAXCMain(CommandLineTool):
         def callback(previous_pass: ModulePass, module: ModuleOp, next_pass: ModulePass) -> None:
             module.verify()
             if self.args.print_between_passes:
-                print(f"IR after {previous_pass.name}:")
+                print(f"// IR after {previous_pass.name}:")
                 printer = Printer(stream=sys.stdout)
                 printer.print_op(module)
                 print("\n\n\n")

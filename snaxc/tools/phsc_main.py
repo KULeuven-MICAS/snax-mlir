@@ -4,23 +4,21 @@ import sys
 from collections.abc import Sequence
 from io import StringIO
 
-from xdsl.dialects import get_all_dialects
 from xdsl.dialects.builtin import ModuleOp
 from xdsl.parser import Parser
 from xdsl.passes import ModulePass, PassPipeline
 from xdsl.printer import Printer
-from xdsl.tools.command_line_tool import CommandLineTool
 from xdsl.transforms.mlir_opt import MLIROptPass
 
 from snaxc.accelerators.acc_context import AccContext
-from snaxc.dialects import get_all_snax_dialects
+from snaxc.tools.snaxc_main import SNAXCMain
 from snaxc.transforms.phs.convert_pe_to_hw import ConvertPEToHWPass
 from snaxc.transforms.phs.encode import PhsEncodePass
 from snaxc.transforms.phs.export_phs import PhsKeepPhsPass, PhsRemovePhsPass
 from snaxc.transforms.phs.finalize_phs_to_hw import FinalizePhsToHWPass
 
 
-class PHSCMain(CommandLineTool):
+class PHSCMain(SNAXCMain):
     def __init__(
         self,
         description: str = "Programmable Hardware Synthesis Compiler",
@@ -30,19 +28,10 @@ class PHSCMain(CommandLineTool):
         arg_parser = argparse.ArgumentParser(description=description)
         self.register_all_arguments(arg_parser)
         self.args = arg_parser.parse_args(args=args)
-        self.ctx = AccContext(allow_unregistered=True)
+        self.load_config()
 
         self.register_all_dialects()
         self.setup_pipelines()
-
-    def register_all_dialects(self):
-        all_dialects = get_all_dialects()
-        # FIXME: override upstream accfg and stream dialect.
-        all_dialects.pop("accfg", None)
-        all_dialects.pop("stream", None)
-        all_dialects.update(get_all_snax_dialects())
-        for dialect_name, dialect_factory in all_dialects.items():
-            self.ctx.register_dialect(dialect_name, dialect_factory)
 
     def run(self):
         # read file
@@ -58,6 +47,12 @@ class PHSCMain(CommandLineTool):
 
         self.hardware_pipeline.apply(self.ctx, hardware_module)
         hardware_module.verify()
+
+        # If an optional explicit software file is requested, overwrite the previous module
+        if self.args.software_file:
+            f = open(self.args.software_file)
+            module = Parser(self.ctx, f.read(), self.args.software_file).parse_module()
+            f.close()
 
         self.software_pipeline.apply(self.ctx, module)
         module.verify()
@@ -128,28 +123,17 @@ class PHSCMain(CommandLineTool):
         Add other/additional arguments by overloading this function.
         """
 
-        arg_parser.add_argument("input_file", type=str, nargs="?", help="path to input file")
+        super().register_all_arguments(arg_parser)
 
         arg_parser.add_argument("schedule_file", type=str, nargs="?", help="path to schedule file")
-
-        arg_parser.add_argument("-o", "--output-file", type=str, required=True, help="path to output file")
-
+        arg_parser.add_argument(
+            "--software-file",
+            type=str,
+            nargs="?",
+            help="path to separate other software stream,"
+            " by default the same input stream is used for hard- and software",
+        )
         arg_parser.add_argument("--output-hardware", type=str, required=True, help="path to output hardware")
-
-        arg_parser.add_argument(
-            "--print-between-passes",
-            default=False,
-            action="store_true",
-            help="Print the IR between each pass",
-        )
-
-        arg_parser.add_argument(
-            "--print-op-generic",
-            default=False,
-            action="store_true",
-            help="Print operations with the generic format",
-        )
-
         arg_parser.add_argument(
             "--no-sv-conversion", action="store_true", help="Don't convert output hardware to systemverilog"
         )
@@ -210,15 +194,21 @@ class PHSCMain(CommandLineTool):
             hardware_pass_pipeline.append(FinalizePhsToHWPass())
             return hardware_pass_pipeline
 
+        snaxc_pipeline_setup = super().setup_pipeline
+
         def set_software_pipeline():
             software_pass_pipeline: list[ModulePass] = []
             software_pass_pipeline.append(PhsRemovePhsPass())
+
+            # Get the normal pipeline from SNAXC
+            snaxc_pipeline_setup()
+            software_pass_pipeline.extend(self.pipeline.passes)
             return software_pass_pipeline
 
         def callback(previous_pass: ModulePass, module: ModuleOp, next_pass: ModulePass) -> None:
             module.verify()
             if self.args.print_between_passes:
-                print(f"IR after {previous_pass.name}:")
+                print(f"// IR after {previous_pass.name}:")
                 printer = Printer(stream=sys.stdout)
                 printer.print_op(module)
                 print("\n\n\n")
