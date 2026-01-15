@@ -29,7 +29,6 @@ class PHSCMain(SNAXCMain):
         self.register_all_arguments(arg_parser)
         self.args = arg_parser.parse_args(args=args)
         self.load_config()
-        # self.ctx = AccContext(allow_unregistered=True)
 
         self.register_all_dialects()
         self.setup_pipelines()
@@ -204,7 +203,6 @@ class PHSCMain(SNAXCMain):
             # Get the normal pipeline from SNAXC
             snaxc_pipeline_setup()
             software_pass_pipeline.extend(self.pipeline.passes)
-            delattr(self, "pipeline")
             return software_pass_pipeline
 
         def callback(previous_pass: ModulePass, module: ModuleOp, next_pass: ModulePass) -> None:
