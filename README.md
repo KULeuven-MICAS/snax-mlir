@@ -42,17 +42,16 @@ These simulation models allow you to run snax binaries on your own machine, and 
 * More specific performance tracing information for hardware/software optimization from hardware performance counters.
 * Console output (`printf`) which can be useful for debugging hardware and software.
 
-We provide pre-built models so you can get started quickly, for installation, see (#getting-started)
+We provide pre-built models so you can get started quickly; for installation, see [Getting started](#getting-started).
 Hardware designers who want to create their own hardware or simulation models should look at
-The output binary can be run on a SNAX Cluster RTL simulator through .
-These simulator builds are developed and maintained over at [KULeuven-MICAS/snax_cluster](https://github.com/KULeuven-MICAS/snax_cluster), and some prebuilt systems are shipped with the docker container.
+the documentation and example configurations in the [KULeuven-MICAS/snax_cluster](https://github.com/KULeuven-MICAS/snax_cluster) repository.
 
 ## Getting started
 
-This repository uses [pixi](pixi.prefix.dev) for package management.
+This repository uses [pixi](https://pixi.prefix.dev) for package management.
 
 1) Clone this repository: `git clone https://github.com/KULeuven-MICAS/snax-mlir`
-2) [Install pixi](pixi.prefix.dev/latest/installation)
+2) [Install pixi](https://pixi.prefix.dev/latest/installation)
 3) Open a pixi shell in the repository: `cd snax-mlir && pixi shell`
 (the first invocation of pixi shell might take a while, as it needs to download all packages).
 
@@ -97,9 +96,9 @@ This is an overview of the most important files and folders of this repository
 ├── tests               # Unit tests: pytest and LLVM filecheck-style tests
 │   ├── dialects            # Python tests for snax-specific dialects
 │   └── filecheck           # LLVM filecheck style tests for dialects and passes
-└── util                # Various utilties
+└── util                # Various utilities
     ├── snake               # Snakefile utilities
-    ├── tracing             # Utilities for workin on traces
+    ├── tracing             # Utilities for working on traces
     └── visualization       # Utilities for visualizing traces
 ```
 
@@ -115,7 +114,7 @@ Filecheck tests are run with `lit` : `lit -vv tests/filecheck`
 
 We welcome contributions of any kind.
 
-To make sure new contributions don't get hold up by any checks of our continous integration pipeline, it is highly recommended to install `pre-commit`.
+To make sure new contributions don't get hold up by any checks of our continuous integration pipeline, it is highly recommended to install `pre-commit`.
 
 ## Publications using SNAX-MLIR
 
