@@ -157,6 +157,11 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return MemrefToSNAX
 
+    def get_phs_dead_input_removal():
+        from snaxc.transforms.phs.dead_input_removal import PhsDeadInputRemovalPass
+
+        return PhsDeadInputRemovalPass
+
     def get_phs_encode():
         from snaxc.transforms.phs.encode import PhsEncodePass
 
@@ -300,6 +305,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "insert-accfg-op": get_insert_accfg_op,
         "insert-sync-barrier": get_insert_sync_barrier,
         "memref-to-snax": get_memref_to_snax,
+        "phs-dead-input-removal": get_phs_dead_input_removal,
         "phs-encode": get_phs_encode,
         "phs-export-phs": get_phs_export_phs,
         "pipeline-canonicalize-for": get_pipeline_canonicalize_for,
