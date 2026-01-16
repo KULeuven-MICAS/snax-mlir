@@ -67,7 +67,6 @@ class ConvertPEToHWPass(ModulePass):
             fixed_input_maps = (
                 AffineMap.from_callable(lambda y: (y,)),
                 AffineMap.from_callable(lambda y: (y,)),
-                AffineMap.from_callable(lambda y: (y,)),
             )
             fixed_output_maps = (AffineMap.from_callable(lambda y: (y,)),)
             template_spec = TemplateSpec(
