@@ -13,6 +13,7 @@ from xdsl.transforms.mlir_opt import MLIROptPass
 from snaxc.accelerators.acc_context import AccContext
 from snaxc.tools.snaxc_main import SNAXCMain
 from snaxc.transforms.phs.convert_pe_to_hw import ConvertPEToHWPass
+from snaxc.transforms.phs.dead_input_removal import PhsDeadInputRemovalPass
 from snaxc.transforms.phs.encode import PhsEncodePass
 from snaxc.transforms.phs.export_phs import PhsKeepPhsPass, PhsRemovePhsPass
 from snaxc.transforms.phs.finalize_phs_to_hw import FinalizePhsToHWPass
@@ -185,6 +186,7 @@ class PHSCMain(SNAXCMain):
                 )
             )
             input_pass_pipeline.append(PhsEncodePass())
+            input_pass_pipeline.append(PhsDeadInputRemovalPass())
             return input_pass_pipeline
 
         def set_hardware_pipeline():
