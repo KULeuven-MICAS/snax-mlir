@@ -57,7 +57,7 @@ rule run_phs:
     input:
         "addition.mlir",
         "transform_schedule.mlir",
-        "../streamer_alu/streamer_add.mlir",
+        "../streamer_alu/streamer_add_stream.mlir",
     output:
         "addition.ll.mlir",
         "acc1_array.sv",
