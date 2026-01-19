@@ -5,18 +5,22 @@ from collections.abc import Sequence
 from io import StringIO
 
 from xdsl.dialects.builtin import ModuleOp
+from xdsl.ir.affine import AffineMap
 from xdsl.parser import Parser
 from xdsl.passes import ModulePass, PassPipeline
 from xdsl.printer import Printer
 from xdsl.transforms.mlir_opt import MLIROptPass
 
 from snaxc.accelerators.acc_context import AccContext
+from snaxc.accelerators.snax_alu import SNAXAluAccelerator
+from snaxc.phs.template_spec import TemplateSpec
 from snaxc.tools.snaxc_main import SNAXCMain
 from snaxc.transforms.phs.convert_pe_to_hw import ConvertPEToHWPass
 from snaxc.transforms.phs.dead_input_removal import PhsDeadInputRemovalPass
 from snaxc.transforms.phs.encode import PhsEncodePass
 from snaxc.transforms.phs.export_phs import PhsKeepPhsPass, PhsRemovePhsPass
 from snaxc.transforms.phs.finalize_phs_to_hw import FinalizePhsToHWPass
+from snaxc.util.snax_memory import L1, L3
 
 
 class PHSCMain(SNAXCMain):
@@ -29,9 +33,20 @@ class PHSCMain(SNAXCMain):
         arg_parser = argparse.ArgumentParser(description=description)
         self.register_all_arguments(arg_parser)
         self.args = arg_parser.parse_args(args=args)
-        self.load_config()
 
+        self.ctx = AccContext(allow_unregistered=True)
         self.register_all_dialects()
+
+        # FIXED TEMPLATE FOR NOW
+        self.template_spec = TemplateSpec(
+            input_maps=(AffineMap.from_callable(lambda y: (y,)), AffineMap.from_callable(lambda y: (y,))),
+            output_maps=(AffineMap.from_callable(lambda y: (y,)),),
+            template_bounds=(4,),
+        )
+        streamer_config = self.template_spec.get_streamer_config()
+        self.ctx.register_memory(L1)
+        self.ctx.register_memory(L3)
+        self.ctx.register_accelerator("snax_alu", lambda: SNAXAluAccelerator(streamer_config))
         self.setup_pipelines()
 
     def run(self):
@@ -192,7 +207,7 @@ class PHSCMain(SNAXCMain):
         def set_hardware_pipeline():
             hardware_pass_pipeline: list[ModulePass] = []
             hardware_pass_pipeline.append(PhsKeepPhsPass())
-            hardware_pass_pipeline.append(ConvertPEToHWPass((4,)))
+            hardware_pass_pipeline.append(ConvertPEToHWPass(self.template_spec))
             hardware_pass_pipeline.append(FinalizePhsToHWPass())
             return hardware_pass_pipeline
 
