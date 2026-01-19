@@ -12,7 +12,7 @@ from xdsl.printer import Printer
 from xdsl.transforms.mlir_opt import MLIROptPass
 
 from snaxc.accelerators.acc_context import AccContext
-from snaxc.accelerators.snax_alu import SNAXAluAccelerator
+from snaxc.accelerators.snax_phs import SNAXPHSAccelerator
 from snaxc.phs.template_spec import TemplateSpec
 from snaxc.tools.snaxc_main import SNAXCMain
 from snaxc.transforms.phs.convert_pe_to_hw import ConvertPEToHWPass
@@ -43,10 +43,9 @@ class PHSCMain(SNAXCMain):
             output_maps=(AffineMap.from_callable(lambda y: (y,)),),
             template_bounds=(4,),
         )
-        streamer_config = self.template_spec.get_streamer_config()
         self.ctx.register_memory(L1)
         self.ctx.register_memory(L3)
-        self.ctx.register_accelerator("snax_alu", lambda: SNAXAluAccelerator(streamer_config))
+        self.ctx.register_accelerator("snax_alu", lambda: SNAXPHSAccelerator(self.template_spec))
         self.setup_pipelines()
 
     def run(self):

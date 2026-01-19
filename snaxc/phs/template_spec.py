@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from xdsl.ir.affine import AffineMap
 
 from snaxc.accelerators.streamers.streamers import Streamer, StreamerConfiguration, StreamerFlag, StreamerType
+from snaxc.ir.dart.access_pattern import Template, TemplatePattern
 
 
 class TemplateSpec:
@@ -75,3 +76,8 @@ class TemplateSpec:
                 )
             )
         return StreamerConfiguration([*reader_streamers, *writer_streamers])
+
+    def get_dart_template(self) -> Template:
+        template = [*self.input_maps, *self.output_maps]
+        template_bounds = self.template_bounds
+        return Template(TemplatePattern(template_bounds, tp) for tp in template)
