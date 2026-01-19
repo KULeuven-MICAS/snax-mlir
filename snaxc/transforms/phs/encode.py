@@ -15,11 +15,6 @@ MAGIC_ATTR_NAME = "phs_acc"
 
 
 class EncodeLinalgGeneric(RewritePattern):
-    def __init__(self):
-        super().__init__()
-        # This variable should be new for each instance of this rewritepattern
-        self._count: dict[str, int] = {}
-
     @op_type_rewrite_pattern
     def match_and_rewrite(self, linalg_op: linalg.GenericOp, rewriter: PatternRewriter):
         # Bail if this accelerator does not have an acc symbol
@@ -56,6 +51,30 @@ class EncodeLinalgGeneric(RewritePattern):
         Perform conversion from linalg body -> phs body
         """
 
+        count: dict[str, int] = {}
+
+        def get_id(op: Operation, count: dict[str, int]):
+            """
+            Use input and output types to group together operations in similar encoding spaces such that e.g.:
+            e.g. the second encountered op with in0 : i32 in1 : i32 and out0 : f32 is be assigned to id
+            "i_i32_i32_o_f32"
+            """
+            key = "i_"
+            for opnd in op.operands:
+                key += f"{opnd.type}_"
+
+            key += "o_"
+            for res in op.results:
+                key += f"{res.type}_"
+
+            if key in count:
+                current_count = count[key] + 1
+                count[key] = current_count
+                return key + str(current_count)
+            else:
+                count[key] = 0
+                return key + "0"
+
         # Get a copy for conversion of the linalg block
         body_copy = linalg_op.body.clone()
         linalg_yield = body_copy.block.ops.last
@@ -72,43 +91,13 @@ class EncodeLinalgGeneric(RewritePattern):
                 yield_op = phs.YieldOp(op.operands[0])
                 rewriter.replace_op(op, yield_op)
             else:
-                id = self._get_id(op)
+                id = get_id(op, count)
                 choose_op = phs.ChooseOp.from_operations(
                     id, op.operands, pe.add_switch(), [op], result_types=op.result_types
                 )
                 rewriter.replace_op(op, choose_op)
 
-        # Reset ids for next encountered linalg
-        self._reset_ids()
         return pe
-
-    def _get_id(self, op: Operation):
-        """
-        Use input and output types to group together operations in similar encoding spaces such that e.g.:
-        e.g. the second encountered op with in0 : i32 in1 : i32 and out0 : f32 is be assigned to id
-        "i_i32_i32_o_f32"
-        """
-        key = "i_"
-        for opnd in op.operands:
-            key += f"{opnd.type}_"
-
-        key += "o_"
-        for res in op.results:
-            key += f"{res.type}_"
-
-        if key in self._count:
-            current_count = self._count[key] + 1
-            self._count[key] = current_count
-            return key + str(current_count)
-        else:
-            self._count[key] = 0
-            return key + "0"
-
-    def _reset_ids(self):
-        """
-        Reset all counts for arity assignment
-        """
-        self._count.clear()
 
 
 class PhsEncodePass(ModulePass):
