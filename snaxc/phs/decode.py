@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import cast
 
 from xdsl.dialects import arith
 from xdsl.dialects.builtin import IndexType
@@ -6,6 +7,14 @@ from xdsl.ir import BlockArgument, Operation
 from xdsl.irdl import Operand
 
 from snaxc.dialects import phs
+
+
+class MappingNotFoundError(Exception):
+    """
+    An exception for when a valid mapping can not be found
+    """
+
+    pass
 
 
 def valid_mapping(graph: phs.PEOp, abstract_graph: phs.PEOp, mapping: dict[phs.MuxOp, int]) -> bool:
@@ -105,7 +114,7 @@ def search_mapping(
     return
 
 
-def decode_abstract_graph(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence[Operation]:
+def decode_abstract_graph(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence[int]:
     """
     Convert an abstract PEOp into a call op based on a concrete PEOp
 
@@ -132,25 +141,25 @@ def decode_abstract_graph(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence
     graph_name = graph.name_prop.data
     assert abstract_graph_name == graph_name, acc_msg.format(abstract_graph_name, graph_name)
 
-    call_switches: list[arith.ConstantOp | phs.MuxOp] = []  # for final values
+    call_switches: list[int | phs.MuxOp] = []  # for final values
     mux_switches: list[phs.MuxOp] = []  # keep track of muxes
 
     for switch in abstract_graph.get_switches():
         switchee = switch.get_user_of_unique_use()
-        assert switchee is not None, "Switch drives more than one choice in the PE"
+        assert switchee is not None, f"Switch does not drive one choice in the PE (got {switch.uses.get_length()} uses)"
 
         # Local mapping of choose_ops
         if isinstance(switchee, phs.ChooseOp):
             equivalent_choice = graph.get_choose_op(switchee.name_prop.data)
             if equivalent_choice is None:
                 # The current choose_op is not needed in the graph -> Map to default = zero
-                call_switches.append(arith.ConstantOp.from_int_and_width(0, IndexType()))
+                call_switches.append(0)
                 continue
             target_operation = list(equivalent_choice.operations())[0]
             assert isinstance(target_operation, Operation)
             for i, operation in enumerate(switchee.operations()):
                 if type(target_operation) is type(operation):
-                    call_switches.append(arith.ConstantOp.from_int_and_width(i, IndexType()))
+                    call_switches.append(i)
                     break
             # If no match happened, raise an error.
             else:
@@ -167,15 +176,21 @@ def decode_abstract_graph(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence
     # Search for the mapping of the switches
     mapping = search_mapping(graph, abstract_graph, mux_switches)
     if mapping is None:
-        raise RuntimeError("Could not find valid mapping")
+        raise MappingNotFoundError("Could not find valid mapping")
 
     # Swap MuxOp switches for their actual values
     for i, switch in enumerate(call_switches):
         if isinstance(switch, phs.MuxOp):
-            call_switches[i] = arith.ConstantOp.from_int_and_width(mapping[switch], IndexType())
+            call_switches[i] = mapping[switch]
 
+    return cast(Sequence[int], call_switches)
+
+
+def decode_to_call_op(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence[Operation]:
+    call_switches = decode_abstract_graph(abstract_graph, graph)
+    switch_ops = [arith.ConstantOp.from_int_and_width(switch, IndexType()) for switch in call_switches]
     # Create a new CallOp
     name = abstract_graph.name_prop.data
     data_ops = abstract_graph.data_operands()
-    call = phs.CallOp(name, data_ops, call_switches, result_types=abstract_graph.get_terminator().operand_types)
-    return [*call_switches, call]
+    call = phs.CallOp(name, data_ops, switch_ops, result_types=abstract_graph.get_terminator().operand_types)
+    return [*switch_ops, call]
