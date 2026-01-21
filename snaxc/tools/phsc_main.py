@@ -225,7 +225,7 @@ class PHSCMain(SNAXCMain):
         software_pass_pipeline.append(PhsRemovePhsPass())
 
         # Get the normal pipeline from SNAXC
-        super().setup_pipeline()
+        super().setup_pipeline(phs=True)
         software_pass_pipeline.extend(self.pipeline.passes)
         self.software_pipeline = PassPipeline(tuple(software_pass_pipeline), self.pipeline_callback)
 

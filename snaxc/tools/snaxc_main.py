@@ -175,7 +175,7 @@ class SNAXCMain(CommandLineTool):
             help="disable all dynamic layout transformations, expect wrong results",
         )
 
-    def setup_pipeline(self):
+    def setup_pipeline(self, phs: bool = False):
         """
         Creates a pipeline that consists of all the passes specified.
 
@@ -206,8 +206,9 @@ class SNAXCMain(CommandLineTool):
             pass_pipeline.append(InsertAccOp(accelerator))
 
         # Standard lowering pipeline:
-        pass_pipeline.append(ConvertLinalgToKernel())
-        pass_pipeline.append(DispatchKernels())
+        if not phs:
+            pass_pipeline.append(ConvertLinalgToKernel())
+            pass_pipeline.append(DispatchKernels())
         pass_pipeline.append(ConvertLinalgToDart())
         pass_pipeline.append(DartFuseOperationsPass())
         if not self.args.no_frontend:
