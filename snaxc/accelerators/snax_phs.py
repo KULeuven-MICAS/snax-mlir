@@ -1,12 +1,10 @@
 from collections.abc import Sequence
 
 from xdsl.dialects import arith, builtin, linalg
-from xdsl.dialects.builtin import StringAttr, i64
+from xdsl.dialects.builtin import StringAttr
 from xdsl.ir import Operation, SSAValue
 from xdsl.pattern_rewriter import PatternRewriter
 
-import snaxc.dialects.kernel as kernel
-from snaxc.accelerators.dispatching import DispatchTemplate, SupportedKernel
 from snaxc.accelerators.snax import (
     SNAXAccelerator,
     SNAXPollingBarrier3,
@@ -19,15 +17,10 @@ from snaxc.phs.encode import convert_generic_body_to_phs
 from snaxc.phs.template_spec import TemplateSpec
 
 
-class SNAXPHSAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer, DispatchTemplate):
+class SNAXPHSAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer):
     """
     Accelerator interface class for the SNAX PHS accelerator.
     """
-
-    supported_kernels = (
-        SupportedKernel(kernel.AddOp, [i64, i64, i64]),
-        SupportedKernel(kernel.MulOp, [i64, i64, i64]),
-    )
 
     def __init__(self, pe: phs.PEOp, template_spec: TemplateSpec) -> None:
         self.pe = pe
