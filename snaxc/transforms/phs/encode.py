@@ -9,7 +9,7 @@ from xdsl.traits import SymbolTable
 
 from snaxc.dialects import phs
 from snaxc.phs.combine import append_to_abstract_graph
-from snaxc.phs.encode import convert_linalg_body_to_phs
+from snaxc.phs.encode import convert_generic_body_to_phs
 
 MAGIC_ATTR_NAME = "phs_acc"
 
@@ -27,7 +27,7 @@ class EncodeLinalgGeneric(RewritePattern):
             return
 
         # Convert the linalg body to a phs body in a pe operation
-        pe = convert_linalg_body_to_phs(linalg_op, acc_symbol_ref.string_value(), rewriter)
+        pe = convert_generic_body_to_phs(linalg_op, acc_symbol_ref.string_value(), rewriter)
 
         # Get enclosing module_op
         toplevel = linalg_op.get_toplevel_object()
