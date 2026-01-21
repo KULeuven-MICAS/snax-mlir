@@ -163,7 +163,7 @@ def decode_abstract_graph(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence
                     break
             # If no match happened, raise an error.
             else:
-                raise RuntimeError(f"Failed to map {type(target_operation)} to switch of {switchee}")
+                raise MappingNotFoundError(f"Failed to map {type(target_operation)} to switch of {switchee}")
 
         # Collecting mux_switches for later global routing
         elif isinstance(switchee, phs.MuxOp):
