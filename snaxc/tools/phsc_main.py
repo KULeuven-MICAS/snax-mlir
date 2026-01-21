@@ -1,7 +1,7 @@
 import argparse
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from io import StringIO
 
 from xdsl.dialects.builtin import ModuleOp
@@ -59,12 +59,16 @@ class PHSCMain(SNAXCMain):
         module.verify()
         hardware_module = module.clone()
 
+        # Avoid late binding trap in lambda
+        def phs_register(accelerator: SNAXPHSAccelerator) -> Callable[[], SNAXPHSAccelerator]:
+            return lambda: accelerator
+
         for hw_op in hardware_module.ops:
             if isinstance(hw_op, phs.PEOp):
                 # Use a clone to prevent downstream changes messing up accelerator registration
                 accelerator = SNAXPHSAccelerator(hw_op.clone(), self.template_spec)
                 assert isinstance(self.ctx, AccContext)
-                self.ctx.register_accelerator(accelerator.name, lambda: accelerator)
+                self.ctx.register_accelerator(accelerator.name, phs_register(accelerator))
 
         # Remaining pipelines can only be setup after accelerators have been registered
         self.setup_hardware_pipeline()
