@@ -6,7 +6,7 @@ from xdsl.ir import Block, Operation, Region
 from xdsl.printer import Printer
 
 from snaxc.phs.combine import append_to_abstract_graph
-from snaxc.phs.decode import decode_abstract_graph
+from snaxc.phs.decode import decode_to_call_op
 
 
 def test_decode() -> None:
@@ -46,23 +46,23 @@ def test_decode() -> None:
         print(pe_b)
         print("CONCRETE")
         print(pe_a)
-        wrap_region(decode_abstract_graph(pe_b, pe_a))
+        wrap_region(decode_to_call_op(pe_b, pe_a))
 
     print("ABSTRACT")
     print(pe_b)
     print("CONCRETE")
     print(pe_c)
-    wrap_region(decode_abstract_graph(pe_b, pe_c))
+    wrap_region(decode_to_call_op(pe_b, pe_c))
     print("ABSTRACT")
     print(pe_b)
     print("CONCRETE")
     print(pe_d)
-    wrap_region(decode_abstract_graph(pe_b, pe_d))
+    wrap_region(decode_to_call_op(pe_b, pe_d))
     print("ABSTRACT")
     print(pe_b)
     print("CONCRETE")
     print(pe_e)
-    wrap_region(decode_abstract_graph(pe_b, pe_e))
+    wrap_region(decode_to_call_op(pe_b, pe_e))
 
     return
 

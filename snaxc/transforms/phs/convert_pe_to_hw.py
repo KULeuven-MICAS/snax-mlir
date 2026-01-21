@@ -59,19 +59,22 @@ class ConvertPeOps(RewritePattern):
 class ConvertPEToHWPass(ModulePass):
     name = "convert-pe-to-hw"
 
-    bounds: tuple[int, ...] | None = None
+    template_spec: TemplateSpec | tuple[int, ...] | None = None
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         # Fixme: At some point this template_spec should not be fixed!
-        if self.bounds is not None:
-            fixed_input_maps = (
-                AffineMap.from_callable(lambda y: (y,)),
-                AffineMap.from_callable(lambda y: (y,)),
-            )
-            fixed_output_maps = (AffineMap.from_callable(lambda y: (y,)),)
-            template_spec = TemplateSpec(
-                input_maps=fixed_input_maps, output_maps=fixed_output_maps, template_bounds=self.bounds
-            )
+        if self.template_spec is not None:
+            if not isinstance(self.template_spec, TemplateSpec):
+                fixed_input_maps = (
+                    AffineMap.from_callable(lambda y: (y,)),
+                    AffineMap.from_callable(lambda y: (y,)),
+                )
+                fixed_output_maps = (AffineMap.from_callable(lambda y: (y,)),)
+                template_spec = TemplateSpec(
+                    input_maps=fixed_input_maps, output_maps=fixed_output_maps, template_bounds=self.template_spec
+                )
+            else:
+                template_spec = self.template_spec
         else:
             template_spec = None
         PatternRewriteWalker(ConvertPeOps(template_spec=template_spec), apply_recursively=False).rewrite_module(op)

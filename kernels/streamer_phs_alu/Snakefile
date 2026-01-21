@@ -57,12 +57,12 @@ rule run_phs:
     input:
         "addition.mlir",
         "transform_schedule.mlir",
-        "../streamer_alu/streamer_add.mlir",
+        "test_pre_dispatched.mlir",
     output:
         "addition.ll.mlir",
         "acc1_array.sv",
     shell:
-        "phsc {input[0]} {input[1]} --software-file {input[2]} -o {output[0]} --output-hardware {output[1]} -c {config[snaxc-config]}"
+        "phsc {input[0]} {input[1]} --software-file {input[2]} -o {output[0]} --output-hardware {output[1]} --debug"
 
 
 rule create_wrappers:
