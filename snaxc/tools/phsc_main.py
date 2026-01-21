@@ -13,6 +13,7 @@ from xdsl.transforms.mlir_opt import MLIROptPass
 
 from snaxc.accelerators.acc_context import AccContext
 from snaxc.accelerators.snax_phs import SNAXPHSAccelerator
+from snaxc.dialects import phs
 from snaxc.phs.template_spec import TemplateSpec
 from snaxc.tools.snaxc_main import SNAXCMain
 from snaxc.transforms.phs.convert_pe_to_hw import ConvertPEToHWPass
@@ -44,8 +45,7 @@ class PHSCMain(SNAXCMain):
         )
         self.ctx.register_memory(L1)
         self.ctx.register_memory(L3)
-        self.ctx.register_accelerator("snax_alu", lambda: SNAXPHSAccelerator(self.template_spec))
-        self.setup_pipelines()
+        self.setup_input_pipeline()
 
     def run(self):
         # read file
@@ -58,6 +58,17 @@ class PHSCMain(SNAXCMain):
         self.input_pipeline.apply(self.ctx, module)
         module.verify()
         hardware_module = module.clone()
+
+        for hw_op in hardware_module.ops:
+            if isinstance(hw_op, phs.PEOp):
+                # Use a clone to prevent downstream changes messing up accelerator registration
+                accelerator = SNAXPHSAccelerator(hw_op.clone(), self.template_spec)
+                assert isinstance(self.ctx, AccContext)
+                self.ctx.register_accelerator(accelerator.name, lambda: accelerator)
+
+        # Remaining pipelines can only be setup after accelerators have been registered
+        self.setup_hardware_pipeline()
+        self.setup_software_pipeline()
 
         self.hardware_pipeline.apply(self.ctx, hardware_module)
         hardware_module.verify()
@@ -152,85 +163,79 @@ class PHSCMain(SNAXCMain):
             "--no-sv-conversion", action="store_true", help="Don't convert output hardware to systemverilog"
         )
 
-    def setup_pipelines(self):
+    """
+    The pipelines of this compiler are as follows
+
+    ```
+    no software file provided:                  | software file provided:
+    input file is input for both sw and hw flow | input file is for hardware, software_file for sw flow
+                                                |
+    input_file,                                 | input_file
+    schedule_file,                              | schedule_file                 software_file
+      V                                         | V                             V
+      | <- input pipeline                       | | <- input pipeline           |
+      |    Register accelerators                | | <- Register accelerators -> | <- software pipeline
+      *                                         | |                             |
+      |\\                                       | |                             x input_file_preprocessed.mlir
+      | \\                                      | |
+      | | <- hardware pipeline                  | | <- hardware pipeline
+      | |                                       | |
+      | x acc_array.mlir                        | x acc_array.mlir
+      | |                                       | |
+      | | <- hardware postprocessing pipeline   | | <- hardware postprocessing pipeline
+      | |                                       | |
+      | x acc_array.sv                          | x acc_array.sv
+      |                                         |
+      | <- software pipeline                    |
+      |                                         |
+      x input_file_preprocessed.mlir            |
+    ```
+
+    Fails, if not all passes are registered.
+    """
+
+    def setup_input_pipeline(self):
         """
-        Creates multiple pipelines that consists of all the passes specified:
-
-        ```
-        input_file,
-        schedule_file,
-          V
-          | <- input pipeline
-          *
-          |\\
-          | \\
-          | | <- hardware pipeline
-          | |
-          | x acc_array.mlir
-          | |
-          | | <- hardware postprocessing pipeline
-          | |
-          | x acc_array.sv
-          |
-          | <- software pipeline
-          |
-          x input_file_preprocessed.mlir
-        ```
-
-        Fails, if not all passes are registered.
+        Create input pipeline.
+        The input pipeline annotates and encodes relevant linalg ops into PHS
         """
+        input_pass_pipeline: list[ModulePass] = []
 
-        assert isinstance(self.ctx, AccContext), "Context must be an AccContext instance"
-
-        def set_input_pipeline():
-            """
-            Create input pipeline.
-            The input pipeline annotates and encodes relevant linalg ops into PHS
-            """
-            input_pass_pipeline: list[ModulePass] = []
-
-            input_pass_pipeline.append(
-                MLIROptPass(
-                    arguments=(
-                        "--linalg-generalize-named-ops",
-                        f"--transform-preload-library=transform-library-paths={self.args.schedule_file}",
-                        "--transform-interpreter",
-                    )
+        input_pass_pipeline.append(
+            MLIROptPass(
+                arguments=(
+                    "--linalg-generalize-named-ops",
+                    f"--transform-preload-library=transform-library-paths={self.args.schedule_file}",
+                    "--transform-interpreter",
                 )
             )
-            input_pass_pipeline.append(PhsEncodePass())
-            return input_pass_pipeline
+        )
+        input_pass_pipeline.append(PhsEncodePass())
+        self.input_pipeline = PassPipeline(tuple(input_pass_pipeline), self.pipeline_callback)
 
-        def set_hardware_pipeline():
-            hardware_pass_pipeline: list[ModulePass] = []
-            hardware_pass_pipeline.append(PhsKeepPhsPass())
-            hardware_pass_pipeline.append(ConvertPEToHWPass(self.template_spec))
-            hardware_pass_pipeline.append(FinalizePhsToHWPass())
-            return hardware_pass_pipeline
+    def setup_hardware_pipeline(self):
+        hardware_pass_pipeline: list[ModulePass] = []
+        hardware_pass_pipeline.append(PhsKeepPhsPass())
+        hardware_pass_pipeline.append(ConvertPEToHWPass(self.template_spec))
+        hardware_pass_pipeline.append(FinalizePhsToHWPass())
+        self.hardware_pipeline = PassPipeline(tuple(hardware_pass_pipeline), self.pipeline_callback)
 
-        snaxc_pipeline_setup = super().setup_pipeline
+    def setup_software_pipeline(self):
+        software_pass_pipeline: list[ModulePass] = []
+        software_pass_pipeline.append(PhsRemovePhsPass())
 
-        def set_software_pipeline():
-            software_pass_pipeline: list[ModulePass] = []
-            software_pass_pipeline.append(PhsRemovePhsPass())
+        # Get the normal pipeline from SNAXC
+        super().setup_pipeline()
+        software_pass_pipeline.extend(self.pipeline.passes)
+        self.software_pipeline = PassPipeline(tuple(software_pass_pipeline), self.pipeline_callback)
 
-            # Get the normal pipeline from SNAXC
-            snaxc_pipeline_setup()
-            software_pass_pipeline.extend(self.pipeline.passes)
-            return software_pass_pipeline
-
-        def callback(previous_pass: ModulePass, module: ModuleOp, next_pass: ModulePass) -> None:
-            module.verify()
-            if self.args.print_between_passes:
-                print(f"// IR after {previous_pass.name}:")
-                printer = Printer(stream=sys.stdout)
-                printer.print_op(module)
-                print("\n\n\n")
-
-        # Initialize pipelines
-        self.input_pipeline = PassPipeline(tuple(set_input_pipeline()), callback)
-        self.hardware_pipeline = PassPipeline(tuple(set_hardware_pipeline()), callback)
-        self.software_pipeline = PassPipeline(tuple(set_software_pipeline()), callback)
+    def pipeline_callback(self, previous_pass: ModulePass, module: ModuleOp, next_pass: ModulePass) -> None:
+        module.verify()
+        if self.args.print_between_passes:
+            print(f"// IR after {previous_pass.name}:")
+            printer = Printer(stream=sys.stdout)
+            printer.print_op(module)
+            print("\n\n\n")
 
 
 def main():
