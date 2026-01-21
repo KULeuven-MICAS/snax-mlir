@@ -213,7 +213,8 @@ class SNAXCMain(CommandLineTool):
         else:
             pass_pipeline.append(DispatchLinalgPHS())
         pass_pipeline.append(ConvertLinalgToDart())
-        pass_pipeline.append(DartFuseOperationsPass())
+        if not phs:
+            pass_pipeline.append(DartFuseOperationsPass())
         if not self.args.no_frontend:
             pass_pipeline.append(SnaxBufferize())
         if self.args.debug:
