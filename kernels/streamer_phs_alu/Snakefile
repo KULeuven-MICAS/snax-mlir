@@ -57,7 +57,7 @@ rule run_phs:
     input:
         "addition.mlir",
         "transform_schedule.mlir",
-        "test_pre_dispatched.mlir",
+        "test_software.mlir",
     output:
         "addition.ll.mlir",
         "acc1_array.sv",

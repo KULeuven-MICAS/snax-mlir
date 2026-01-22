@@ -135,12 +135,6 @@ def decode_abstract_graph(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence
     abstract_graph_len = len(list(abstract_graph.data_operands()))
     assert graph_len == abstract_graph_len, len_msg.format(graph_len, abstract_graph_len)
 
-    # Both PE's should be part of the same accelerator
-    acc_msg = "Expect abstract graph and graph to be tied to same accelerator:\n got abstract: {} and concrete: {}"
-    abstract_graph_name = abstract_graph.name_prop.data
-    graph_name = graph.name_prop.data
-    assert abstract_graph_name == graph_name, acc_msg.format(abstract_graph_name, graph_name)
-
     call_switches: list[int | phs.MuxOp] = []  # for final values
     mux_switches: list[phs.MuxOp] = []  # keep track of muxes
 

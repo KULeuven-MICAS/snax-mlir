@@ -37,6 +37,7 @@ from snaxc.transforms.frontend.preprocess_mlir import PreprocessPass
 from snaxc.transforms.insert_accfg_op import InsertAccOp
 from snaxc.transforms.insert_sync_barrier import InsertSyncBarrier
 from snaxc.transforms.memref_to_snax import MemrefToSNAX
+from snaxc.transforms.phs.dispatch_linalg_phs import DispatchLinalgPHS
 from snaxc.transforms.pipeline.construct_pipeline import ConstructPipelinePass
 from snaxc.transforms.pipeline.pipeline_canonicalize_for import PipelineCanonicalizeFor
 from snaxc.transforms.pipeline.pipeline_duplicate_buffers import PipelineDuplicateBuffersPass
@@ -209,8 +210,11 @@ class SNAXCMain(CommandLineTool):
         if not phs:
             pass_pipeline.append(ConvertLinalgToKernel())
             pass_pipeline.append(DispatchKernels())
+        else:
+            pass_pipeline.append(DispatchLinalgPHS())
         pass_pipeline.append(ConvertLinalgToDart())
-        pass_pipeline.append(DartFuseOperationsPass())
+        if not phs:
+            pass_pipeline.append(DartFuseOperationsPass())
         if not self.args.no_frontend:
             pass_pipeline.append(SnaxBufferize())
         if self.args.debug:
