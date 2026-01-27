@@ -118,8 +118,8 @@ class SNAXPHSAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer):
                 **phs_switches,
                 "loop_bound_alu": addr_next + 0,
             },
-            {**streamer_launch, "launch_alu": addr_next + 2},
-            addr_next + 3,
+            {**streamer_launch, "launch_alu": addr_next + 1},
+            addr_next + 2,
         )
 
         # add snax streamer interface
