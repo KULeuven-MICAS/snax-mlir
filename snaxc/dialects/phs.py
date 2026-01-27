@@ -273,7 +273,8 @@ class PEOp(IRDLOperation):
     def print(self, printer: Printer):
         printer.print_string(" @")
         printer.print_string(self.name_prop.data)
-        printer.print_string(" with ")
+        if self.switch_no.value.data != 0:
+            printer.print_string(" with ")
         first_switch = True
         # First print switches
         for block_arg in self.get_switches():
@@ -303,16 +304,17 @@ class PEOp(IRDLOperation):
     @classmethod
     def parse(cls: type[PEOp], parser: Parser) -> PEOp:
         name_prop = parser.parse_symbol_name()
-        parser.parse_keyword("with")
+        with_keyword = parser.parse_optional_keyword("with")
 
         switches: list[Parser.Argument] = []
-        while True:
-            arg = parser.parse_optional_argument(expect_type=False)
-            if arg is None:
-                break
-            arg = arg.resolve(IndexType())
-            parser.parse_optional_punctuation(",")
-            switches.append(arg)
+        if with_keyword:
+            while True:
+                arg = parser.parse_optional_argument(expect_type=False)
+                if arg is None:
+                    break
+                arg = arg.resolve(IndexType())
+                parser.parse_optional_punctuation(",")
+                switches.append(arg)
 
         data_operands: list[Parser.Argument] = []
         parser.parse_punctuation("(")

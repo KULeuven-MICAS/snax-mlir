@@ -12,7 +12,7 @@ builtin.module {
 }
 
 // CHECK: builtin.module {
-// CHECK-NEXT:  phs.pe @acc1 with (%in : i64, %in_1 : i64, %out : i64) {
+// CHECK-NEXT:  phs.pe @acc1 (%in : i64, %in_1 : i64, %out : i64) {
 // CHECK-NEXT:    %0 = arith.addi %in, %in_1 : i64
 // CHECK-NEXT:    phs.yield %0 : i64
 // CHECK-NEXT:  }
