@@ -20,6 +20,7 @@ from snaxc.transforms.phs.convert_pe_to_hw import ConvertPEToHWPass
 from snaxc.transforms.phs.encode import PhsEncodePass
 from snaxc.transforms.phs.export_phs import PhsKeepPhsPass, PhsRemovePhsPass
 from snaxc.transforms.phs.finalize_phs_to_hw import FinalizePhsToHWPass
+from snaxc.transforms.phs.remove_one_option_switches import PhsRemoveOneOptionSwitchesPass
 from snaxc.util.snax_memory import L1, L3
 
 
@@ -220,6 +221,7 @@ class PHSCMain(SNAXCMain):
     def setup_hardware_pipeline(self):
         hardware_pass_pipeline: list[ModulePass] = []
         hardware_pass_pipeline.append(PhsKeepPhsPass())
+        hardware_pass_pipeline.append(PhsRemoveOneOptionSwitchesPass())
         hardware_pass_pipeline.append(ConvertPEToHWPass(self.template_spec))
         hardware_pass_pipeline.append(FinalizePhsToHWPass())
         self.hardware_pipeline = PassPipeline(tuple(hardware_pass_pipeline), self.pipeline_callback)

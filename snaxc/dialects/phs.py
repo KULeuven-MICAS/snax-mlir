@@ -185,7 +185,7 @@ class PEOp(IRDLOperation):
         """
         Add an extra switch to the PE operation
         """
-        block = self.regions[0].blocks.first
+        block = self.body.blocks.first
         assert block is not None
         # Add new switch at the end
         self.switch_no = IntegerAttr.from_int_and_width(self.switch_no.value.data + 1, 64)
@@ -194,8 +194,16 @@ class PEOp(IRDLOperation):
         )
         return block.insert_arg(IndexType(), len(block.args))
 
+    def remove_switch(self, switch: BlockArgument) -> None:
+        assert self.switch_no.value.data != 0, "No switches to remove!"
+        self.body.block.erase_arg(switch)
+        self.switch_no = IntegerAttr.from_int_and_width(self.switch_no.value.data - 1, 64)
+        self.function_type = FunctionType.from_lists(
+            list(self.function_type.inputs)[:-1], list(self.function_type.outputs)
+        )
+
     def _get_block_args(self) -> list[BlockArgument[Attribute]]:
-        block = self.regions[0].blocks.first
+        block = self.body.blocks.first
         assert block is not None
         return list(block.args)
 
@@ -203,14 +211,38 @@ class PEOp(IRDLOperation):
         """
         Get BlockArguments that relate to switch input in PE operation
         """
+        num_switches = self.switch_no.value.data
+        if num_switches == 0:
+            return []
         # The last switch_no arguments are the switches
-        return self._get_block_args()[-self.switch_no.value.data :]
+        return self._get_block_args()[-num_switches:]
+
+    def get_true_switches(self) -> int:
+        """
+        Get amount of switches that actually get called in PE operation
+        """
+        count: int = 0
+        for switch in self.get_switches():
+            switchee = switch.get_user_of_unique_use()
+            assert switchee is not None, (
+                f"Switch does not drive one choice in the PE (got {switch.uses.get_length()} uses)"
+            )
+            if isinstance(switchee, ChooseOp):
+                if len(list(switchee.operations())) > 1:
+                    count += 1
+            elif isinstance(switchee, MuxOp):
+                count += 1
+        return count
 
     def data_operands(self) -> list[BlockArgument[Attribute]]:
         """
         Get BlockArguments that relate to data input in PE operation
         """
-        return self._get_block_args()[: -self.switch_no.value.data]
+        num_switches = self.switch_no.value.data
+        args = self._get_block_args()
+        if num_switches == 0:
+            return args
+        return args[:-num_switches]
 
     def is_concrete(self) -> bool:
         """

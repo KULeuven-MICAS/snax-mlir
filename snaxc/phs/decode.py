@@ -144,6 +144,10 @@ def decode_abstract_graph(abstract_graph: phs.PEOp, graph: phs.PEOp) -> Sequence
 
         # Local mapping of choose_ops
         if isinstance(switchee, phs.ChooseOp):
+            # Do not emit values for one choice switches, as they will get optimized away in hardware
+            if len(list(switchee.operations())) == 1:
+                continue
+            # Otherwise, look for the equivalent choice in the graph
             equivalent_choice = graph.get_choose_op(switchee.name_prop.data)
             if equivalent_choice is None:
                 # The current choose_op is not needed in the graph -> Map to default = zero
