@@ -31,8 +31,28 @@ class SNAXPHSAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer):
 
         self.template_spec = template_spec
         super().__init__(template_spec.get_streamer_config())
-        self.fields = (*self.streamer_setup_fields, "alu_mode", "loop_bound_alu")
+
+        self.phs_switch_fields: list[str] = []
+        for i in range(self.pe.get_true_switches()):
+            self.phs_switch_fields.append(f"phs_switch_{i}")
+
+        self.fields = (*self.streamer_setup_fields, *self.phs_switch_fields, "loop_bound_alu")
         self.launch_fields = (*self.streamer_launch_fields, "launch_alu")
+
+    def get_phs_switch_setup_dict(self, base_addr: int) -> tuple[int, dict[str, int]]:
+        """
+        Generate CSR Addresses for the setup of the phs switches
+
+        Parameters:
+        base_addr (int): the base CSR address
+
+        Returns:
+        int: The next usable CSR address
+        dict[str, int]: The dictionary mapping setup field to csr address
+        """
+        phs_switches = {key: base_addr + i for i, key in enumerate(self.phs_switch_fields)}
+        base_addr += len(self.phs_switch_fields)
+        return base_addr, phs_switches
 
     def convert_to_acc_ops(self, op: Operation) -> Sequence[Operation]:
         """
@@ -88,13 +108,15 @@ class SNAXPHSAccelerator(SNAXAccelerator, SNAXPollingBarrier3, SNAXStreamer):
         addr_next, streamer_setup = self.get_streamer_setup_dict(base_addr)
         # streamer launch addresses
         addr_next, streamer_launch = self.get_streamer_launch_dict(addr_next)
+        # phs addresses
+        addr_next, phs_switches = self.get_phs_switch_setup_dict(addr_next)
 
         op = accfg.AcceleratorOp(
             self.name,
             {
                 **streamer_setup,
-                "alu_mode": addr_next + 0,
-                "loop_bound_alu": addr_next + 1,
+                **phs_switches,
+                "loop_bound_alu": addr_next + 0,
             },
             {**streamer_launch, "launch_alu": addr_next + 2},
             addr_next + 3,
