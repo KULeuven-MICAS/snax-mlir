@@ -117,11 +117,10 @@ class PEOp(IRDLOperation):
         if len(self.body.blocks) == 0:
             return
 
-        entry_block = self.body.blocks.first
-        assert entry_block is not None
-        block_arg_types = entry_block.arg_types
+        block = self.body.block
+        block_arg_types = block.arg_types
         if self.function_type.inputs.data != tuple(block_arg_types):
-            raise VerifyException("Expected entry block arguments to have the same types as the function input types")
+            raise VerifyException("Expected block arguments to have the same types as the function input types")
 
     @staticmethod
     def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[Operation]) -> PEOp:
@@ -185,8 +184,7 @@ class PEOp(IRDLOperation):
         """
         Add an extra switch to the PE operation
         """
-        block = self.body.blocks.first
-        assert block is not None
+        block = self.body.block
         # Add new switch at the end
         self.switch_no = IntegerAttr.from_int_and_width(self.switch_no.value.data + 1, 64)
         self.function_type = FunctionType.from_lists(
@@ -203,8 +201,7 @@ class PEOp(IRDLOperation):
         )
 
     def _get_block_args(self) -> list[BlockArgument[Attribute]]:
-        block = self.body.blocks.first
-        assert block is not None
+        block = self.body.block
         return list(block.args)
 
     def get_switches(self) -> list[BlockArgument[Attribute]]:
