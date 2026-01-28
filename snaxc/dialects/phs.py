@@ -196,9 +196,9 @@ class PEOp(IRDLOperation):
         assert self.switch_no.value.data != 0, "No switches to remove!"
         self.body.block.erase_arg(switch)
         self.switch_no = IntegerAttr.from_int_and_width(self.switch_no.value.data - 1, 64)
-        self.function_type = FunctionType.from_lists(
-            list(self.function_type.inputs)[:-1], list(self.function_type.outputs)
-        )
+        input_types = list(self.function_type.inputs)
+        input_types.pop(switch.index)
+        self.function_type = FunctionType.from_lists(input_types, list(self.function_type.outputs))
 
     def _get_block_args(self) -> list[BlockArgument[Attribute]]:
         block = self.body.block
