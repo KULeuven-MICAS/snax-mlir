@@ -20,6 +20,7 @@ from snaxc.transforms.phs.convert_pe_to_hw import ConvertPEToHWPass
 from snaxc.transforms.phs.encode import PhsEncodePass
 from snaxc.transforms.phs.export_phs import PhsKeepPhsPass, PhsRemovePhsPass
 from snaxc.transforms.phs.finalize_phs_to_hw import FinalizePhsToHWPass
+from snaxc.transforms.phs.remove_one_option_switches import PhsRemoveOneOptionSwitchesPass
 from snaxc.util.snax_memory import L1, L3
 
 
@@ -77,15 +78,6 @@ class PHSCMain(SNAXCMain):
         self.hardware_pipeline.apply(self.ctx, hardware_module)
         hardware_module.verify()
 
-        # If an optional explicit software file is requested, overwrite the previous module
-        if self.args.software_file:
-            f = open(self.args.software_file)
-            module = Parser(self.ctx, f.read(), self.args.software_file).parse_module()
-            f.close()
-
-        self.software_pipeline.apply(self.ctx, module)
-        module.verify()
-
         # write to output
         output_hardware_stream = StringIO()
         Printer(output_hardware_stream).print_op(hardware_module)
@@ -134,6 +126,15 @@ class PHSCMain(SNAXCMain):
         else:
             with open(self.args.output_hardware, "w") as outfile:
                 outfile.write(hardware_ir_string)
+
+        # If an optional explicit software file is requested, overwrite the previous module
+        if self.args.software_file:
+            f = open(self.args.software_file)
+            module = Parser(self.ctx, f.read(), self.args.software_file).parse_module()
+            f.close()
+
+        self.software_pipeline.apply(self.ctx, module)
+        module.verify()
 
         output_software_stream = open(self.args.output_file, "w")
         Printer(output_software_stream).print_op(module)
@@ -220,6 +221,7 @@ class PHSCMain(SNAXCMain):
     def setup_hardware_pipeline(self):
         hardware_pass_pipeline: list[ModulePass] = []
         hardware_pass_pipeline.append(PhsKeepPhsPass())
+        hardware_pass_pipeline.append(PhsRemoveOneOptionSwitchesPass())
         hardware_pass_pipeline.append(ConvertPEToHWPass(self.template_spec))
         hardware_pass_pipeline.append(FinalizePhsToHWPass())
         self.hardware_pipeline = PassPipeline(tuple(hardware_pass_pipeline), self.pipeline_callback)

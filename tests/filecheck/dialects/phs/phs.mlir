@@ -39,6 +39,11 @@ phs.pe @myfirstaccelerator with %0, %1, %2, %3, %4, %5 (%6 : f32, %7 : f32) {
   phs.yield %20 : f32
 }
 
+phs.pe @myfirstswitchslessaccelerator (%0 : f32, %1 : f32) {
+  %2 = arith.mulf %0, %1 : f32
+  phs.yield %2 : f32
+}
+
 
 // CHECK: builtin.module {
 // CHECK-NEXT:   phs.pe @myfirstaccelerator with %0, %1, %2, %3, %4, %5 (%6 : f32, %7 : f32) {
@@ -77,5 +82,9 @@ phs.pe @myfirstaccelerator with %0, %1, %2, %3, %4, %5 (%6 : f32, %7 : f32) {
 // CHECK-NEXT:       }
 // CHECK-NEXT:     %20 = phs.mux with %4 (%15 : f32, %17 : f32) -> f32
 // CHECK-NEXT:     phs.yield %20 : f32
+// CHECK-NEXT:   }
+// CHECK-NEXT:   phs.pe @myfirstswitchslessaccelerator (%0 : f32, %1 : f32) {
+// CHECK-NEXT:     %2 = arith.mulf %0, %1 : f32
+// CHECK-NEXT:     phs.yield %2 : f32
 // CHECK-NEXT:   }
 // CHECK-NEXT: }

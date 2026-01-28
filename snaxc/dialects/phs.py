@@ -117,11 +117,10 @@ class PEOp(IRDLOperation):
         if len(self.body.blocks) == 0:
             return
 
-        entry_block = self.body.blocks.first
-        assert entry_block is not None
-        block_arg_types = entry_block.arg_types
+        block = self.body.block
+        block_arg_types = block.arg_types
         if self.function_type.inputs.data != tuple(block_arg_types):
-            raise VerifyException("Expected entry block arguments to have the same types as the function input types")
+            raise VerifyException("Expected block arguments to have the same types as the function input types")
 
     @staticmethod
     def from_operations(acc_ref: SymbolRefAttr, operations: Sequence[Operation]) -> PEOp:
@@ -185,8 +184,7 @@ class PEOp(IRDLOperation):
         """
         Add an extra switch to the PE operation
         """
-        block = self.regions[0].blocks.first
-        assert block is not None
+        block = self.body.block
         # Add new switch at the end
         self.switch_no = IntegerAttr.from_int_and_width(self.switch_no.value.data + 1, 64)
         self.function_type = FunctionType.from_lists(
@@ -194,23 +192,54 @@ class PEOp(IRDLOperation):
         )
         return block.insert_arg(IndexType(), len(block.args))
 
+    def remove_switch(self, switch: BlockArgument) -> None:
+        assert self.switch_no.value.data != 0, "No switches to remove!"
+        self.body.block.erase_arg(switch)
+        self.switch_no = IntegerAttr.from_int_and_width(self.switch_no.value.data - 1, 64)
+        input_types = list(self.function_type.inputs)
+        input_types.pop(switch.index)
+        self.function_type = FunctionType.from_lists(input_types, list(self.function_type.outputs))
+
     def _get_block_args(self) -> list[BlockArgument[Attribute]]:
-        block = self.regions[0].blocks.first
-        assert block is not None
+        block = self.body.block
         return list(block.args)
 
     def get_switches(self) -> list[BlockArgument[Attribute]]:
         """
         Get BlockArguments that relate to switch input in PE operation
         """
+        num_switches = self.switch_no.value.data
+        if num_switches == 0:
+            return []
         # The last switch_no arguments are the switches
-        return self._get_block_args()[-self.switch_no.value.data :]
+        return self._get_block_args()[-num_switches:]
+
+    def get_true_switches(self) -> int:
+        """
+        Get amount of switches that actually get called in PE operation
+        """
+        count: int = 0
+        for switch in self.get_switches():
+            switchee = switch.get_user_of_unique_use()
+            assert switchee is not None, (
+                f"Switch does not drive one choice in the PE (got {switch.uses.get_length()} uses)"
+            )
+            if isinstance(switchee, ChooseOp):
+                if len(list(switchee.operations())) > 1:
+                    count += 1
+            elif isinstance(switchee, MuxOp):
+                count += 1
+        return count
 
     def data_operands(self) -> list[BlockArgument[Attribute]]:
         """
         Get BlockArguments that relate to data input in PE operation
         """
-        return self._get_block_args()[: -self.switch_no.value.data]
+        num_switches = self.switch_no.value.data
+        args = self._get_block_args()
+        if num_switches == 0:
+            return args
+        return args[:-num_switches]
 
     def is_concrete(self) -> bool:
         """
@@ -241,7 +270,8 @@ class PEOp(IRDLOperation):
     def print(self, printer: Printer):
         printer.print_string(" @")
         printer.print_string(self.name_prop.data)
-        printer.print_string(" with ")
+        if self.switch_no.value.data != 0:
+            printer.print_string(" with ")
         first_switch = True
         # First print switches
         for block_arg in self.get_switches():
@@ -271,16 +301,17 @@ class PEOp(IRDLOperation):
     @classmethod
     def parse(cls: type[PEOp], parser: Parser) -> PEOp:
         name_prop = parser.parse_symbol_name()
-        parser.parse_keyword("with")
+        with_keyword = parser.parse_optional_keyword("with")
 
         switches: list[Parser.Argument] = []
-        while True:
-            arg = parser.parse_optional_argument(expect_type=False)
-            if arg is None:
-                break
-            arg = arg.resolve(IndexType())
-            parser.parse_optional_punctuation(",")
-            switches.append(arg)
+        if with_keyword:
+            while True:
+                arg = parser.parse_optional_argument(expect_type=False)
+                if arg is None:
+                    break
+                arg = arg.resolve(IndexType())
+                parser.parse_optional_punctuation(",")
+                switches.append(arg)
 
         data_operands: list[Parser.Argument] = []
         parser.parse_punctuation("(")
