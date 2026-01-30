@@ -72,4 +72,4 @@ class DispatchLinalgPHS(ModulePass):
                     accelerators.append(accelerator_type)
 
         # dispatch
-        PatternRewriteWalker(DispatchLinalgPhsPattern(accelerators)).rewrite_module(op)
+        PatternRewriteWalker(DispatchLinalgPhsPattern(accelerators), apply_recursively=False).rewrite_module(op)
