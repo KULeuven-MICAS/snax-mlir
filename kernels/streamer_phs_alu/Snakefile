@@ -51,6 +51,7 @@ files = ["addition"]
 rule all:
     input:
         expand("{file}_traces.json", file=files),
+        "acc2_array.sv",
 
 
 rule run_phs:
@@ -63,6 +64,27 @@ rule run_phs:
         "acc1_array.sv",
     shell:
         "phsc {input[0]} {input[1]} --software-file {input[2]} -o {output[0]} --output-hardware {output[1]} --debug"
+
+
+rule fuse_addition:
+    input:
+        "addition.mlir",
+    output:
+        "addition_fused.mlir",
+    shell:
+        "mlir-opt --cse --linalg-generalize-named-ops --linalg-fuse-elementwise-ops {input[0]} -o {output[0]}"
+
+
+rule run_phs_fused:
+    input:
+        "addition_fused.mlir",
+        "transform_schedule.mlir",
+        "test_software.mlir",
+    output:
+        "addition_fused.ll.mlir",
+        "acc2_array.sv",
+    shell:
+        "phsc {input[0]} {input[1]} --software-file {input[2]} -o {output[0]} --output-hardware {output[1]}"
 
 
 rule create_wrappers:
