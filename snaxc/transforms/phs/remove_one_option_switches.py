@@ -2,6 +2,7 @@ from xdsl.context import Context
 from xdsl.dialects import builtin
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
+from xdsl.rewriter import InsertPoint
 
 from snaxc.dialects import phs
 
@@ -22,15 +23,23 @@ class PhsRemoveOneOptionSwitches(RewritePattern):
                 continue
             assert isinstance(switchee, phs.ChooseOp), "Only expect MuxOp or ChooseOp to be switched inside PEOp"
             choose_op = switchee
-            choices = list(choose_op.operations())
+
+            choices = choose_op.regions
             if len(choices) != 1:
                 continue
+            single_choice = choices[0].block
+            yieldop = single_choice.ops.last
+            assert isinstance(yieldop, phs.YieldOp), "Expect last op in choose_op to be a yield op"
+            for yieldarg, chooseres in zip(yieldop.operands, choose_op.results):
+                chooseres.replace_by(yieldarg)
 
-            # Get the content of the choice out
-            operation = choices[0]
-            operation.operands = choose_op.data_operands
-            operation.detach()
-            rewriter.replace_op(choose_op, operation)
+            rewriter.erase_op(yieldop)
+            rewriter.inline_block(
+                single_choice,
+                InsertPoint.before(choose_op),
+                choose_op.data_operands,
+            )
+            rewriter.erase_op(choose_op)
             op.remove_switch(switch)
 
 
