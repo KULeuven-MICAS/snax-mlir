@@ -95,6 +95,21 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return FinalizePhsToHWPass
 
+    def get_phs_keep_phs():
+        from snaxc.transforms.phs.export_phs import PhsKeepPhsPass
+
+        return PhsKeepPhsPass
+
+    def get_phs_remove_phs():
+        from snaxc.transforms.phs.export_phs import PhsRemovePhsPass
+
+        return PhsRemovePhsPass
+
+    def get_phs_convert_float_to_int():
+        from snaxc.transforms.phs.convert_float_to_int import PhsConvertFloatToInt
+
+        return PhsConvertFloatToInt
+
     def get_convert_tosa_to_kernel():
         from snaxc.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 
@@ -292,6 +307,9 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "convert-accfg-to-csr": get_convert_accfg_to_csr,
         "convert-pe-to-hw": get_convert_pe_to_hw,
         "finalize-phs-to-hw": get_finalize_phs_to_hw,
+        "phs-keep-phs": get_phs_keep_phs,
+        "phs-remove-phs": get_phs_remove_phs,
+        "phs-convert-float-to-int": get_phs_convert_float_to_int,
         "convert-dart-to-snax-stream": get_convert_dart_to_snax_stream,
         "convert-kernel-to-linalg": get_convert_kernel_to_linalg,
         "convert-linalg-to-accfg": get_convert_linalg_to_accfg,
