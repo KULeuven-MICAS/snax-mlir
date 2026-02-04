@@ -477,8 +477,11 @@ class ChooseOp(IRDLOperation):
                 printer.print_string(", ")
         with printer.indented():
             for i, region in enumerate(self.regions):
-                printer.print_string(f"\n{i}) ")
-                printer.print_region(region)
+                printer.print_string(f"\n{i}) (")
+                printer.print_list(region.block.args, printer.print_ssa_value)
+                printer.print_string(") {")
+                printer.print_block(region.block, print_block_args=False)
+                printer.print_string("\n}")
 
     @classmethod
     def parse(cls: type[ChooseOp], parser: Parser) -> ChooseOp:
@@ -494,15 +497,24 @@ class ChooseOp(IRDLOperation):
 
         args: list[tuple[SSAValue, Attribute]] = parser.parse_comma_separated_list(Parser.Delimiter.PAREN, parse_itm)
 
-        parser.parse_comma_separated_list
         parser.parse_punctuation("->")
         res_typ = parser.parse_type()
+
+        def parse_block_arg() -> Parser.UnresolvedArgument:
+            val = parser.parse_argument(expect_type=False)
+            return val
 
         def get_choice() -> Region | None:
             if parser.parse_optional_integer() is None:
                 return None
             parser.parse_punctuation(")")
-            return parser.parse_region()
+            block_args: list[Parser.Argument] = [
+                arg.resolve(typ)
+                for arg, (_, typ) in zip(
+                    parser.parse_comma_separated_list(Parser.Delimiter.PAREN, parse_block_arg), args, strict=True
+                )
+            ]
+            return parser.parse_region(block_args)
 
         parsed_regions: list[Region] = []
         while True:
