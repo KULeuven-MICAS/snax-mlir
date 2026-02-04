@@ -29,6 +29,7 @@ class ConvertChooseOps(RewritePattern):
                 # Move all non-yield operations outside the choice block
                 if not isinstance(op, phs.YieldOp):
                     op.detach()
+                    op.operands = choose_op.data_operands
                     rewriter.insert_op(op)
                 # put all yielded results in one big array
                 else:
