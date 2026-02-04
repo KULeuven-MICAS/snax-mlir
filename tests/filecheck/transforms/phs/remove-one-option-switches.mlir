@@ -3,9 +3,9 @@
 builtin.module {
   phs.pe @acc1 with %0 (%in : i64, %in_1 : i64) {
     %1 = phs.choose @i_i64_i64_o_i64_0 with %0 (%in : i64, %in_1 : i64) -> i64
-      0) {
-        %2 = arith.addi %in, %in_1 : i64
-        phs.yield %2 : i64
+      0) (%1, %2){
+        %3 = arith.addi %1, %2 : i64
+        phs.yield %3 : i64
       }
     phs.yield %1 : i64
   }
@@ -17,16 +17,16 @@ builtin.module {
 
   phs.pe @acc2 with %0, %1 (%in : i64, %in_1 : i64) {
     %2 = phs.choose @i_i64_i64_o_i64_0 with %0 (%in : i64, %in_1 : i64) -> i64
-      0) {
-        %3 = arith.addi %in, %in_1 : i64
-        phs.yield %3 : i64
+      0) (%3, %4){
+        %5 = arith.addi %3, %4 : i64
+        phs.yield %5 : i64
       }
-    %5 = phs.choose @i_i64_i64_o_i64_1 with %1 (%in : i64, %2 : i64) -> i64
-      0) {
-        %4 = arith.subi %in, %2 : i64
-        phs.yield %4 : i64
+    %6 = phs.choose @i_i64_i64_o_i64_1 with %1 (%in : i64, %2 : i64) -> i64
+      0) (%7, %8){
+        %9 = arith.subi %7, %8 : i64
+        phs.yield %9 : i64
       }
-    phs.yield %5 : i64
+    phs.yield %6 : i64
   }
 }
 
