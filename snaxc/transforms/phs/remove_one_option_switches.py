@@ -27,8 +27,10 @@ class PhsRemoveOneOptionSwitches(RewritePattern):
                 continue
 
             # Get the content of the choice out
-            choices[0].detach()
-            rewriter.replace_op(choose_op, choices[0])
+            operation = choices[0]
+            operation.operands = choose_op.data_operands
+            operation.detach()
+            rewriter.replace_op(choose_op, operation)
             op.remove_switch(switch)
 
 
