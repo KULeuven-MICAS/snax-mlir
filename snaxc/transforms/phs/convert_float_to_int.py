@@ -1,5 +1,6 @@
 from xdsl.context import Context
 from xdsl.dialects import builtin
+from xdsl.ir import Attribute
 from xdsl.parser import AnyFloat
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
@@ -16,9 +17,15 @@ class CastDataOperands(RewritePattern):
             typ = data_opnd.type
             if isa(typ, AnyFloat):
                 data_opnd = rewriter.replace_value_with_new_type(data_opnd, builtin.IntegerType(typ.bitwidth))
+        output_types: list[Attribute] = []
+        for t in pe.function_type.outputs:
+            if isa(t, AnyFloat):
+                output_types.append(builtin.IntegerType(t.bitwidth))
+            else:
+                output_types.append(t)
         pe.function_type = builtin.FunctionType.from_lists(
             [*(op.type for op in pe.data_operands()), *(builtin.IndexType() for _ in range(pe.switch_no.value.data))],
-            [builtin.IntegerType(t.bitwidth) for t in pe.function_type.outputs],
+            output_types,
         )
 
 
