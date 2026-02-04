@@ -359,7 +359,7 @@ class ChooseOp(IRDLOperation):
 
     res = var_result_def()
 
-    traits = traits_def(SymbolOpInterface())
+    traits = traits_def(SymbolOpInterface(), IsolatedFromAbove())
 
     def __init__(
         self,
@@ -382,6 +382,18 @@ class ChooseOp(IRDLOperation):
         )
 
     @staticmethod
+    def _check_operand_types(
+        data_operands: Sequence[Operation | SSAValue], operations: Sequence[Operation]
+    ) -> Sequence[Attribute]:
+        data_operand_types = [SSAValue.get(data_operand).type for data_operand in data_operands]
+        for operation in operations:
+            for opnd_type, data_opnd_type in zip(operation.operand_types, data_operand_types, strict=True):
+                assert type(opnd_type) is type(data_opnd_type), (
+                    f"Operation {operation.name} and phs.choose_op type mismatch ({opnd_type} vs. {data_opnd_type})"
+                )
+        return data_operand_types
+
+    @staticmethod
     def from_operations(
         name: str,
         data_operands: Sequence[Operation | SSAValue],
@@ -392,20 +404,27 @@ class ChooseOp(IRDLOperation):
         """
         Utility constructor to construct a ChooseOp from a set of given operations
         """
+        # Make sure that all operand types are equal for all operations
+        data_operand_types = ChooseOp._check_operand_types(data_operands, operations)
         # Default operation
+        default_block = Block(arg_types=data_operand_types)
         value_mapper = {
-            SSAValue.get(arg): SSAValue.get(val) for arg, val in zip(operations[0].operands, data_operands, strict=True)
+            SSAValue.get(arg): SSAValue.get(val)
+            for arg, val in zip(operations[0].operands, default_block.args, strict=True)
         }
-        default_region = Region(Block([result := operations[0].clone(value_mapper), YieldOp(result)]))
+        default_block.add_ops([result := operations[0].clone(value_mapper), YieldOp(result)])
+        default_region = Region(default_block)
         # Non-default
         case_regions: list[Region] = []
         if len(operations) > 1:
             for operation in operations[1:]:
+                case_block = Block(arg_types=data_operand_types)
                 value_mapper = {
                     SSAValue.get(arg): SSAValue.get(val)
-                    for arg, val in zip(operation.operands, data_operands, strict=True)
+                    for arg, val in zip(operation.operands, case_block.args, strict=True)
                 }
-                case_regions.append(Region(Block([result := operation.clone(value_mapper), YieldOp(result)])))
+                case_block.add_ops([result := operation.clone(value_mapper), YieldOp(result)])
+                case_regions.append(Region(case_block))
         return ChooseOp(
             name=name,
             data_operands=data_operands,
@@ -420,9 +439,12 @@ class ChooseOp(IRDLOperation):
         Add an operation to the list of choices if it is not present yet
         """
         # FIXME, what if operation order is swapped? i.e. rhs on lhs side and vice versa?
+        data_operand_types = ChooseOp._check_operand_types(self.data_operands, operations)
         for operation in operations:
             if operation.name not in [op.name for op in self.operations()]:
-                self.add_region(Region(Block([op := type(operation)(*self.data_operands), YieldOp(op)])))
+                block = Block(arg_types=data_operand_types)
+                block.add_ops([op := type(operation)(*block.args), YieldOp(op)])
+                self.add_region(Region(block))
 
     def operations(self) -> Iterator[Operation]:
         """
