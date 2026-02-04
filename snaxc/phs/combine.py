@@ -59,7 +59,7 @@ def are_equivalent(operand: Operand, abstract_operand: Operand) -> bool:
 def uncollide_inputs(op: phs.YieldOp | phs.ChooseOp, abst_op: phs.YieldOp | phs.ChooseOp):
     """
     Check if operations are routed similarly, if they are routed differently,
-    add extra inputs with choose_input operations
+    add extra inputs with mux_op operations
     """
     # Make sure all connections are equivalent, otherwise add extra connections
     abstract_graph = abst_op.parent_op()
@@ -76,7 +76,7 @@ def uncollide_inputs(op: phs.YieldOp | phs.ChooseOp, abst_op: phs.YieldOp | phs.
                 switch=abstract_graph.add_switch(),  # extra switch to control input
             )
             abstract_graph.body.block.insert_op_before(mux, abst_op)
-            # Reroute the new mux outcome to the abstract terminator
+            # Reroute the new mux outcome to the abstract terminator/choose_op input
             abst_op.operands[i] = mux.results[0]
 
 
