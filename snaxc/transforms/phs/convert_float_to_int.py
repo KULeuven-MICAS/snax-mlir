@@ -3,7 +3,13 @@ from xdsl.dialects import builtin
 from xdsl.ir import Attribute
 from xdsl.parser import AnyFloat
 from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern, op_type_rewrite_pattern
+from xdsl.pattern_rewriter import (
+    GreedyRewritePatternApplier,
+    PatternRewriter,
+    PatternRewriteWalker,
+    RewritePattern,
+    op_type_rewrite_pattern,
+)
 from xdsl.rewriter import InsertPoint
 from xdsl.utils.hints import isa
 
@@ -63,6 +69,12 @@ class PhsConvertFloatToInt(ModulePass):
     name = "phs-convert-float-to-int"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(CastDataOperands(), apply_recursively=False).rewrite_module(op)
-        PatternRewriteWalker(CastChooseOps(), apply_recursively=False).rewrite_module(op)
-        PatternRewriteWalker(CastYieldOps(), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(
+            GreedyRewritePatternApplier(
+                [
+                    CastDataOperands(),
+                    CastChooseOps(),
+                    CastYieldOps(),
+                ]
+            ),
+        ).rewrite_module(op)
