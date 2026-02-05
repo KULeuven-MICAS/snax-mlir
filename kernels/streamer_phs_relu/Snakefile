@@ -1,0 +1,17 @@
+hw_pipeline = ",".join(
+    ["phs-encode", "phs-keep-phs", "phs-remove-one-option-switches", "convert-pe-to-hw"]
+)
+
+
+rule all:
+    input:
+        "addf.pe.mlir",
+
+
+rule create_pe:
+    input:
+        "addf.mlir",
+    output:
+        "addf.pe.mlir",
+    shell:
+        "snax-opt -p {hw_pipeline} {input[0]} -o {output[0]}"
