@@ -1,5 +1,12 @@
 hw_pipeline = ",".join(
-    ["phs-encode", "phs-keep-phs", "phs-remove-one-option-switches", "convert-pe-to-hw"]
+    [
+        "phs-encode",
+        "phs-keep-phs",
+        "phs-convert-float-to-int",
+        "phs-convert-float-to-hardfloat",
+        "phs-remove-one-option-switches",
+        "convert-pe-to-hw",
+    ]
 )
 
 
