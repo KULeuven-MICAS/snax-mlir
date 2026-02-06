@@ -129,7 +129,7 @@ class ConvertFloatToHardFloat(RewritePattern):
         )
 
 
-class CancelRecodeUnrecode(RewritePattern):
+class CancelUnrecodeRecode(RewritePattern):
     """
     Cancel pairs of unrecode->recode ops in the code.
 
@@ -174,7 +174,7 @@ class PhsConvertFloatToHardfloatPass(ModulePass):
                     pattern := ConvertFloatToHardFloat(),
                     # we need to remove ucc as they interfer with the cancellation pass
                     ReconcileUnrealizedCastsPattern(),
-                    CancelRecodeUnrecode(),
+                    CancelUnrecodeRecode(),
                 ]
             )
         ).rewrite_module(op)
