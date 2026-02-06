@@ -172,6 +172,7 @@ class PhsConvertFloatToHardfloatPass(ModulePass):
             GreedyRewritePatternApplier(
                 [
                     pattern := ConvertFloatToHardFloat(),
+                    # we need to remove ucc as they interfer with the cancellation pass
                     ReconcileUnrealizedCastsPattern(),
                     CancelRecodeUnrecode(),
                 ]
