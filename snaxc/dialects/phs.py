@@ -84,7 +84,12 @@ class PEOp(IRDLOperation):
     arg_attrs = opt_prop_def(ArrayAttr[DictionaryAttr])
     res_attrs = opt_prop_def(ArrayAttr[DictionaryAttr])
 
-    traits = traits_def(IsolatedFromAbove(), SymbolOpInterface(), FuncOpCallableInterface(), SymbolTable())
+    traits = traits_def(
+        IsolatedFromAbove(),
+        SymbolOpInterface(),
+        FuncOpCallableInterface(),
+        SymbolTable(transparent=True),
+    )
 
     def __init__(
         self,
