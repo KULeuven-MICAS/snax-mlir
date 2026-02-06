@@ -1,6 +1,5 @@
 from collections.abc import Sequence
 from dataclasses import field
-from typing import Type
 
 from xdsl.context import Context
 from xdsl.dialects import arith, builtin, hw
@@ -8,8 +7,14 @@ from xdsl.ir import Operation, SSAValue, TypeAttribute, dataclass
 from xdsl.irdl import isa
 from xdsl.parser import AnyFloat, StringAttr, SymbolRefAttr
 from xdsl.passes import ModulePass
-from xdsl.pattern_rewriter import PatternRewriter, PatternRewriteWalker, RewritePattern
-from xdsl.rewriter import InsertPoint
+from xdsl.pattern_rewriter import (
+    GreedyRewritePatternApplier,
+    PatternRewriter,
+    PatternRewriteWalker,
+    RewritePattern,
+    op_type_rewrite_pattern,
+)
+from xdsl.transforms.reconcile_unrealized_casts import ReconcileUnrealizedCastsPattern
 
 
 @dataclass(frozen=True)
@@ -62,18 +67,6 @@ _recode = HWBLockSpec("RecFNFromFN", ("io_in",), (i32,), ("io_out",), (i33,))
 _unrecode = HWBLockSpec("fNFromRecFN", ("io_in",), (i33,), ("io_out",), (i32,))
 
 
-def _build_input(arg: SSAValue) -> tuple[Sequence[Operation], SSAValue]:
-    assert isa(arg.type, AnyFloat)
-    int_t = builtin.IntegerType(arg.type.bitwidth)
-    return (
-        [
-            ucc := builtin.UnrealizedConversionCastOp.get([arg], [int_t]),
-            recode := _recode.instance("recoderrr", ucc.results),
-        ],
-        recode.results[0],
-    )
-
-
 @dataclass
 class ConvertFloatToHardFloat(RewritePattern):
     seen: set[HWBLockSpec] = field(default_factory=set)
@@ -89,8 +82,12 @@ class ConvertFloatToHardFloat(RewritePattern):
         self.seen.add(_recode)
         self.seen.add(_unrecode)
 
-        enc_a, a = _build_input(op.lhs)
-        enc_b, b = _build_input(op.rhs)
+        enc_a, a = ConvertFloatToHardFloat._build_input(op.lhs, "lhs")
+        if op.lhs is op.rhs:
+            enc_b: Sequence[Operation] = []
+            b = a
+        else:
+            enc_b, b = ConvertFloatToHardFloat._build_input(op.rhs, "rhs")
 
         rewriter.replace_op(
             op,
@@ -104,12 +101,56 @@ class ConvertFloatToHardFloat(RewritePattern):
             ucc.results,
         )
 
+    @classmethod
+    def _build_input(cls, arg: SSAValue, name: str) -> tuple[Sequence[Operation], SSAValue]:
+        assert isa(arg.type, AnyFloat)
+        int_t = builtin.IntegerType(arg.type.bitwidth)
+        return (
+            [
+                ucc := builtin.UnrealizedConversionCastOp.get([arg], [int_t]),
+                recode := _recode.instance(f"recoder_{name}", ucc.results),
+            ],
+            recode.results[0],
+        )
+
+
+class CancelRecodeUnrecode(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: hw.InstanceOp, rewriter: PatternRewriter, /):
+        # only apply to recode operations:
+        if op.module_name.string_value() != _recode.symbol_name:
+            return
+        op_owner = op.operands[0].owner
+        # and if the op_owner is an Instance of the unrecode op
+        if not isinstance(op_owner, hw.InstanceOp) or op_owner.module_name.string_value() != _unrecode.symbol_name:
+            return
+
+        # replace our results by the inputs of the unrecode op
+        # inputs to the unrecode are already the recoded format
+        # so we can skip the unrecode->recode loop entirely
+        for res, inp in zip(op.results, op_owner.operands):
+            res.replace_by(inp)
+        # erase the recode op:
+        rewriter.erase_op(op)
+
+        # erase the unreocde op if no longer used
+        if all(res.uses.get_length() == 0 for res in op_owner.results):
+            rewriter.erase_op(op_owner)
+
 
 class PhsConvertFloatToHardfloatPass(ModulePass):
     name = "phs-convert-float-to-hardfloat"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
-        PatternRewriteWalker(pattern := ConvertFloatToHardFloat(), apply_recursively=False).rewrite_module(op)
+        PatternRewriteWalker(
+            GreedyRewritePatternApplier(
+                [
+                    pattern := ConvertFloatToHardFloat(),
+                    ReconcileUnrealizedCastsPattern(),
+                    CancelRecodeUnrecode(),
+                ]
+            )
+        ).rewrite_module(op)
 
         body = op.body.block
         assert body is not None
