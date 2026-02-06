@@ -19,6 +19,15 @@ from xdsl.transforms.reconcile_unrealized_casts import ReconcileUnrealizedCastsP
 
 @dataclass(frozen=True)
 class HWBLockSpec:
+    """
+    Represents an external HW module that can be called
+
+    Makes it easier to wrangle CIRCTs hw dialect.
+
+    This helper allows one to easily define a certain piece of hardware declaratively, and then create
+    both hw.instance ops and hw.module.external ops.
+    """
+
     symbol_name: str
     in_ports: tuple[str, ...]
     in_types: tuple[TypeAttribute, ...]
@@ -59,8 +68,8 @@ i33 = builtin.IntegerType(33)
 i32 = builtin.i32
 
 _HW_BLOCKS = {
-    "arith.addf": HWBLockSpec("AddRecFN", ("io_a", "io_b"), (i33, i33), ("io_out",), (i33,)),
-    "arith.mulf": HWBLockSpec("MulRecFN", ("io_a", "io_b"), (i33, i33), ("io_out",), (i33,)),
+    arith.AddfOp: HWBLockSpec("AddRecFN", ("io_a", "io_b"), (i33, i33), ("io_out",), (i33,)),
+    arith.MulfOp: HWBLockSpec("MulRecFN", ("io_a", "io_b"), (i33, i33), ("io_out",), (i33,)),
 }
 
 _recode = HWBLockSpec("RecFNFromFN", ("io_in",), (i32,), ("io_out",), (i33,))
@@ -69,15 +78,21 @@ _unrecode = HWBLockSpec("fNFromRecFN", ("io_in",), (i33,), ("io_out",), (i32,))
 
 @dataclass
 class ConvertFloatToHardFloat(RewritePattern):
+    """
+    Generic pattern to rewrite any arith op present in _HW_BLOCKS to its berkeley
+    hardfloat module invocation.
+
+    It keeps trak of all inserted modules in the internal `seen` set that can be
+    used to insert the final set of external modules.
+    """
+
     seen: set[HWBLockSpec] = field(default_factory=set)
 
     def match_and_rewrite(self, op: Operation, rewriter: PatternRewriter, /):
-        if not isinstance(op, (arith.AddfOp, arith.MulfOp)):
+        if not isinstance(op, tuple(_HW_BLOCKS)):
             return
 
-        assert op.name in _HW_BLOCKS
-
-        spec = _HW_BLOCKS[op.name]
+        spec = _HW_BLOCKS[type(op)]
         self.seen.add(spec)
         self.seen.add(_recode)
         self.seen.add(_unrecode)
@@ -115,6 +130,13 @@ class ConvertFloatToHardFloat(RewritePattern):
 
 
 class CancelRecodeUnrecode(RewritePattern):
+    """
+    Cancel pairs of unrecode->recode ops in the code.
+
+    This will perform DCE on the "dead" instances as they are
+    not generally pure and hence not caught by dce pass.
+    """
+
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: hw.InstanceOp, rewriter: PatternRewriter, /):
         # only apply to recode operations:
@@ -139,6 +161,10 @@ class CancelRecodeUnrecode(RewritePattern):
 
 
 class PhsConvertFloatToHardfloatPass(ModulePass):
+    """
+    Convert arith ops to barkeley hardfloat modules.
+    """
+
     name = "phs-convert-float-to-hardfloat"
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
