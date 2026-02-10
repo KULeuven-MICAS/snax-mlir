@@ -1,6 +1,6 @@
+import struct
 from collections.abc import Sequence
 from dataclasses import field
-import struct
 from typing import cast
 
 from xdsl.context import Context
