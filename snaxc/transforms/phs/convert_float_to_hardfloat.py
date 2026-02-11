@@ -101,7 +101,7 @@ class ConvertFloatToHardFloat(RewritePattern):
     used to insert the final set of external modules.
     """
 
-    seen: set[HWBLockSpec] = field(default_factory=set)
+    seen: set[HWBLockSpec] = field(default_factory=set[HWBLockSpec])
     counter = 0
 
     def match_and_rewrite(self, op: Operation, rewriter: PatternRewriter, /):
@@ -195,7 +195,7 @@ class ConvertSiToFPOp(RewritePattern):
     Convert an arith.sitofp op with a call to RecFNtoIN
     """
 
-    seen: set[HWBLockSpec] = field(default_factory=set)
+    seen: set[HWBLockSpec] = field(default_factory=set[HWBLockSpec])
     counter: int = 0
 
     @op_type_rewrite_pattern
@@ -228,6 +228,7 @@ class EncodeFloatConstantsPattern(RewritePattern):
         # this only works on 32-bit floats right now, can't be arsed
         if op.value.type != builtin.f32:
             return
+        assert isinstance(op.value, builtin.FloatAttr)
         float_val = float(cast(int | float, op.value.value.data))
         int_val = cast(int, struct.unpack("i", struct.pack("f", float_val))[0])
 
