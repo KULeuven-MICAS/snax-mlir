@@ -16,13 +16,26 @@ from xdsl.utils.hints import isa
 from snaxc.dialects import phs
 
 
-class CastDataOperands(RewritePattern):
+class CastPeOps(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, pe: phs.PEOp, rewriter: PatternRewriter):
+        ip = InsertPoint.at_start(pe.body.block)
         for data_opnd in pe.data_operands():
-            typ = data_opnd.type
-            if isa(typ, AnyFloat):
-                data_opnd = rewriter.replace_value_with_new_type(data_opnd, builtin.IntegerType(typ.bitwidth))
+            old_type = data_opnd.type
+            if not isa(old_type, AnyFloat):
+                continue
+            for use in data_opnd.uses:
+                # Operations not contained in choose_ops might not be converted otherwise
+                if isinstance(use.operation, phs.ChooseOp | phs.YieldOp):
+                    continue
+                print(use.operation)
+            new_type = builtin.IntegerType(old_type.bitwidth)
+            data_opnd = rewriter.replace_value_with_new_type(data_opnd, new_type)
+            cast, new_val = builtin.UnrealizedConversionCastOp.cast_one(data_opnd, old_type)
+            rewriter.insert_op(cast, ip)
+            data_opnd.replace_by_if(new_val, lambda u: u.operation is not cast)
+        breakpoint()
+
         output_types: list[Attribute] = []
         for t in pe.function_type.outputs:
             if isa(t, AnyFloat):
@@ -72,9 +85,9 @@ class PhsConvertFloatToInt(ModulePass):
         PatternRewriteWalker(
             GreedyRewritePatternApplier(
                 [
-                    CastDataOperands(),
                     CastChooseOps(),
                     CastYieldOps(),
+                    CastPeOps(),
                 ]
             ),
         ).rewrite_module(op)
