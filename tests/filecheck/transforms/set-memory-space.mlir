@@ -1,9 +1,11 @@
 // RUN: snax-opt --split-input-file %s -p set-memory-space | filecheck %s
 
 %0 = memref.get_global @constant : memref<640xi32>
+"test.op"(%0) : (memref<640xi32>) -> ()
 
 // CHECK:       builtin.module {
 // CHECK-NEXT:    %0 = memref.get_global @constant : memref<640xi32, "L3">
+// CHECK-NEXT:    "test.op"(%0) : (memref<640xi32, "L3">) -> ()
 // CHECK-NEXT:  }
 
 // -----
@@ -141,30 +143,28 @@ func.func public @simple_mult(%arg0 : memref<?xi32>, %arg1 : memref<?xi32>, %arg
 // -----
 
 func.func @gemm(%arg0 : memref<16x16xi8>, %arg1 : memref<16x16xi8>, %arg2 : memref<16x16xi32>) -> memref<16x16xi32> {
-  %0 = arith.constant 0 : i32
-  %1 = memref.get_global @_static_const_0 : memref<16x16xi32>
-  "dart.operation"(%arg0, %arg1, %arg2, %1) <{"operandSegmentSizes" = array<i32: 3, 1>, "patterns" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>]}> ({
+  %0 = memref.get_global @_static_const_0 : memref<16x16xi32>
+  "dart.operation"(%arg0, %arg1, %arg2, %0) <{"operandSegmentSizes" = array<i32: 3, 1>, "patterns" = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>]}> ({
   ^bb0(%arg3 : !dart.stream<i8>, %arg4 : !dart.stream<i8>, %arg5 : !dart.stream<i32>, %arg6 : !dart.stream<i32>):
-    %4 = "test.op"(%arg3, %arg4, %arg5) : (!dart.stream<i8>, !dart.stream<i8>, !dart.stream<i32>) -> !dart.stream<i32>
-    dart.yield %4 : !dart.stream<i32>
+    %1 = "test.op"(%arg3, %arg4, %arg5) : (!dart.stream<i8>, !dart.stream<i8>, !dart.stream<i32>) -> !dart.stream<i32>
+    dart.yield %1 : !dart.stream<i32>
   }) : (memref<16x16xi8>, memref<16x16xi8>, memref<16x16xi32>, memref<16x16xi32>) -> ()
-  func.return %1 : memref<16x16xi32>
+  func.return %0 : memref<16x16xi32>
 }
 
 // CHECK:  builtin.module {
 // CHECK-NEXT:    func.func @gemm(%arg0 : memref<16x16xi8, "L3">, %arg1 : memref<16x16xi8, "L3">, %arg2 : memref<16x16xi32, "L3">) -> memref<16x16xi32, "L3"> {
-// CHECK-NEXT:      %0 = arith.constant 0 : i32
-// CHECK-NEXT:      %1 = memref.get_global @_static_const_0 : memref<16x16xi32, "L3">
-// CHECK-NEXT:      %2 = "memref.memory_space_cast"(%arg0) : (memref<16x16xi8, "L3">) -> memref<16x16xi8, "L1">
-// CHECK-NEXT:      %3 = "memref.memory_space_cast"(%arg1) : (memref<16x16xi8, "L3">) -> memref<16x16xi8, "L1">
-// CHECK-NEXT:      %4 = "memref.memory_space_cast"(%arg2) : (memref<16x16xi32, "L3">) -> memref<16x16xi32, "L1">
-// CHECK-NEXT:      %5 = "memref.memory_space_cast"(%1) : (memref<16x16xi32, "L3">) -> memref<16x16xi32, "L1">
-// CHECK-NEXT:      "dart.operation"(%2, %3, %4, %5) <{operandSegmentSizes = array<i32: 3, 1>, patterns = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>]}> ({
+// CHECK-NEXT:      %0 = memref.get_global @_static_const_0 : memref<16x16xi32, "L3">
+// CHECK-NEXT:      %1 = "memref.memory_space_cast"(%arg0) : (memref<16x16xi8, "L3">) -> memref<16x16xi8, "L1">
+// CHECK-NEXT:      %2 = "memref.memory_space_cast"(%arg1) : (memref<16x16xi8, "L3">) -> memref<16x16xi8, "L1">
+// CHECK-NEXT:      %3 = "memref.memory_space_cast"(%arg2) : (memref<16x16xi32, "L3">) -> memref<16x16xi32, "L1">
+// CHECK-NEXT:      %4 = "memref.memory_space_cast"(%0) : (memref<16x16xi32, "L3">) -> memref<16x16xi32, "L1">
+// CHECK-NEXT:      "dart.operation"(%1, %2, %3, %4) <{operandSegmentSizes = array<i32: 3, 1>, patterns = [affine_map<(d0, d1, d2) -> (d0, d2)>, affine_map<(d0, d1, d2) -> (d2, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>, affine_map<(d0, d1, d2) -> (d0, d1)>]}> ({
 // CHECK-NEXT:      ^bb0(%arg3 : !dart.stream<i8>, %arg4 : !dart.stream<i8>, %arg5 : !dart.stream<i32>, %arg6 : !dart.stream<i32>):
-// CHECK-NEXT:        %6 = "test.op"(%arg3, %arg4, %arg5) : (!dart.stream<i8>, !dart.stream<i8>, !dart.stream<i32>) -> !dart.stream<i32>
-// CHECK-NEXT:        dart.yield %6 : !dart.stream<i32>
+// CHECK-NEXT:        %5 = "test.op"(%arg3, %arg4, %arg5) : (!dart.stream<i8>, !dart.stream<i8>, !dart.stream<i32>) -> !dart.stream<i32>
+// CHECK-NEXT:        dart.yield %5 : !dart.stream<i32>
 // CHECK-NEXT:      }) : (memref<16x16xi8, "L1">, memref<16x16xi8, "L1">, memref<16x16xi32, "L1">, memref<16x16xi32, "L1">) -> ()
-// CHECK-NEXT:      func.return %1 : memref<16x16xi32, "L3">
+// CHECK-NEXT:      func.return %0 : memref<16x16xi32, "L3">
 // CHECK-NEXT:    }
 // CHECK-NEXT:  }
 
@@ -172,8 +172,10 @@ func.func @gemm(%arg0 : memref<16x16xi8>, %arg1 : memref<16x16xi8>, %arg2 : memr
 
 %0 = memref.alloc() {alignment = 64 : i64} : memref<640xi32>
 %1 = memref.subview %0[0] [16] [2] : memref<640xi32> to memref<16xi32, strided<[2], offset: 0>>
+"test.op"(%1) : (memref<16xi32, strided<[2], offset: 0>>) -> ()
 
 // CHECK:      builtin.module {
 // CHECK-NEXT:   %0 = memref.alloc() {alignment = 64 : i64} : memref<640xi32, "L1">
 // CHECK-NEXT:   %1 = memref.subview %0[0] [16] [2] : memref<640xi32, "L1"> to memref<16xi32, strided<[2]>, "L1">
+// CHECK-NEXT:   "test.op"(%1) : (memref<16xi32, strided<[2]>, "L1">) -> ()
 // CHECK-NEXT: }
