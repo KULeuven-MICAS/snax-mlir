@@ -121,7 +121,7 @@ class MergeForLoops(RewritePattern):
         # create a new op for the div value to make sure it is defined early enough
         div_val = ConstantOp.from_int_and_width(ub, IndexType())
         new_parent_iter = DivUIOp(new_parent.body.block.args[0], div_val)
-        new_parent.body.block.args[0].replace_by_if(
+        new_parent.body.block.args[0].replace_uses_with_if(
             new_parent_iter.result, lambda use: use.operation is not new_parent_iter
         )
 

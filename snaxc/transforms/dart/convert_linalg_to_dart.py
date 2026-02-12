@@ -164,7 +164,7 @@ class StreamifyGenericOpPattern(RewritePattern):
                     accelerator=streaming_region_op.accelerator,
                 )
                 rewriter.insert_op([empty, add_op], InsertPoint.after(streaming_region_op))
-                streaming_region_op.results[output_idx].replace_by_if(
+                streaming_region_op.results[output_idx].replace_uses_with_if(
                     add_op.results[0], lambda use: use.operation is not add_op
                 )
             elif (
@@ -189,7 +189,7 @@ class StreamifyGenericOpPattern(RewritePattern):
                 )
                 rewriter.insert_op(add_op, InsertPoint.after(streaming_region_op))
                 rewriter.erase_op(generic)
-                streaming_region_op.results[output_idx].replace_by_if(
+                streaming_region_op.results[output_idx].replace_uses_with_if(
                     add_op.results[0], lambda use: use.operation is not add_op
                 )
             else:
