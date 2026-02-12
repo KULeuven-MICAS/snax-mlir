@@ -167,7 +167,7 @@ class ScopedSetupWithInputs:
         """
         Erase the setup op, keeping the inputs in place (they can be erased by cse)
         """
-        self.setup.out_state.replace_by(replacement_state)
+        self.setup.out_state.replace_all_uses_with(replacement_state)
         rewriter.erase_op(self.setup)
 
     def lazy_move_up(self, scope: Block, pt: InsertPoint, rewriter: PatternRewriter):

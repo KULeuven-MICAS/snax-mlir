@@ -49,8 +49,8 @@ class LLVMMemrefDescriptor:
                     LLVMPointerType(),
                     LLVMPointerType(),
                     integer_type,
-                    LLVMArrayType.from_size_and_type(rank, integer_type),
-                    LLVMArrayType.from_size_and_type(rank, integer_type),
+                    LLVMArrayType(rank, integer_type),
+                    LLVMArrayType(rank, integer_type),
                 ]
             )
         )

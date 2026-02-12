@@ -18,14 +18,16 @@ scf.for %i = %lb to %ub step %step {
   }
 }
 
-// CHECK:      %lb = arith.constant 0 : index
-// CHECK-NEXT: %ub = arith.constant 10 : index
+//             dead code eliminiation
+//              vvvvvvvvvvvvvvvvvv
+//             %lb = arith.constant 0 : index
+// CHECK:      %ub = arith.constant 10 : index
 // CHECK-NEXT: %step = arith.constant 1 : index
 // CHECK-NEXT: %0 = arith.constant 0 : index
 // CHECK-NEXT: "test.op"(%0) {hello} : (index) -> ()
 // CHECK-NEXT: "snax.cluster_sync_op"() : () -> ()
-// CHECK-NEXT: %lb_1 = arith.constant 1 : index
-// CHECK-NEXT: scf.for %i = %lb_1 to %ub step %step {
+// CHECK-NEXT: %lb = arith.constant 1 : index
+// CHECK-NEXT: scf.for %i = %lb to %ub step %step {
 // CHECK-NEXT:   %1 = arith.constant 1 : index
 // CHECK-NEXT:   %2 = arith.subi %i, %1 : index
 // CHECK-NEXT:   "test.op"(%i) {hello} : (index) -> ()
@@ -60,33 +62,35 @@ scf.for %i = %lb to %ub step %step {
   }
 }
 
-// CHECK:      %lb = arith.constant 0 : index
-// CHECK-NEXT  %ub = arith.constant 10 : index
-// CHECK-NEXT  %step = arith.constant 1 : index
-// CHECK-NEXT  %0 = arith.constant 0 : index
-// CHECK-NEXT  "test.op"(%0) {yer} : (index) -> ()
-// CHECK-NEXT  "snax.cluster_sync_op"() : () -> ()
-// CHECK-NEXT  %1 = arith.constant 1 : index
-// CHECK-NEXT  "test.op"(%1) {yer} : (index) -> ()
-// CHECK-NEXT  "test.op"(%0) {a} : (index) -> ()
-// CHECK-NEXT  "snax.cluster_sync_op"() : () -> ()
-// CHECK-NEXT  %lb_1 = arith.constant 2 : index
-// CHECK-NEXT  scf.for %i = %lb_1 to %ub step %step {
-// CHECK-NEXT    %2 = arith.constant 2 : index
-// CHECK-NEXT    %3 = arith.subi %i, %2 : index
-// CHECK-NEXT    %4 = arith.constant 1 : index
-// CHECK-NEXT    %5 = arith.subi %i, %4 : index
-// CHECK-NEXT    "test.op"(%i) {yer} : (index) -> ()
-// CHECK-NEXT    "test.op"(%5) {a} : (index) -> ()
-// CHECK-NEXT    "test.op"(%3) {wizard} : (index) -> ()
-// CHECK-NEXT    "snax.cluster_sync_op"() : () -> ()
-// CHECK-NEXT  }
-// CHECK-NEXT  %6 = arith.constant 1 : index
-// CHECK-NEXT  %7 = arith.subi %ub, %6 : index
-// CHECK-NEXT  %8 = arith.constant 2 : index
-// CHECK-NEXT  %9 = arith.subi %ub, %8 : index
-// CHECK-NEXT  "test.op"(%7) {a} : (index) -> ()
-// CHECK-NEXT  "test.op"(%9) {wizard} : (index) -> ()
-// CHECK-NEXT  "snax.cluster_sync_op"() : () -> ()
-// CHECK-NEXT  "test.op"(%7) {wizard} : (index) -> ()
-// CHECK-NEXT  "snax.cluster_sync_op"() : () -> ()
+//              dead code eliminiation
+//               vvvvvvvvvvvvvvvvvv
+//              %lb = arith.constant 0 : index
+// CHECK:       %ub = arith.constant 10 : index
+// CHECK-NEXT:  %step = arith.constant 1 : index
+// CHECK-NEXT:  %0 = arith.constant 0 : index
+// CHECK-NEXT:  "test.op"(%0) {yer} : (index) -> ()
+// CHECK-NEXT:  "snax.cluster_sync_op"() : () -> ()
+// CHECK-NEXT:  %1 = arith.constant 1 : index
+// CHECK-NEXT:  "test.op"(%1) {yer} : (index) -> ()
+// CHECK-NEXT:  "test.op"(%0) {a} : (index) -> ()
+// CHECK-NEXT:  "snax.cluster_sync_op"() : () -> ()
+// CHECK-NEXT:  %lb = arith.constant 2 : index
+// CHECK-NEXT:  scf.for %i = %lb to %ub step %step {
+// CHECK-NEXT:    %2 = arith.constant 2 : index
+// CHECK-NEXT:    %3 = arith.subi %i, %2 : index
+// CHECK-NEXT:    %4 = arith.constant 1 : index
+// CHECK-NEXT:    %5 = arith.subi %i, %4 : index
+// CHECK-NEXT:    "test.op"(%i) {yer} : (index) -> ()
+// CHECK-NEXT:    "test.op"(%5) {a} : (index) -> ()
+// CHECK-NEXT:    "test.op"(%3) {wizard} : (index) -> ()
+// CHECK-NEXT:    "snax.cluster_sync_op"() : () -> ()
+// CHECK-NEXT:  }
+// CHECK-NEXT:  %6 = arith.constant 1 : index
+// CHECK-NEXT:  %7 = arith.subi %ub, %6 : index
+// CHECK-NEXT:  %8 = arith.constant 2 : index
+// CHECK-NEXT:  %9 = arith.subi %ub, %8 : index
+// CHECK-NEXT:  "test.op"(%7) {a} : (index) -> ()
+// CHECK-NEXT:  "test.op"(%9) {wizard} : (index) -> ()
+// CHECK-NEXT:  "snax.cluster_sync_op"() : () -> ()
+// CHECK-NEXT:  "test.op"(%7) {wizard} : (index) -> ()
+// CHECK-NEXT:  "snax.cluster_sync_op"() : () -> ()

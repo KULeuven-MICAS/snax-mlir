@@ -43,7 +43,7 @@ class PipelineDuplicateBuffers(RewritePattern):
         # buffers defined by index op can be removed from the stage args
         if isinstance(buffer, OpResult) and buffer.op is index_op:
             # remove from the block
-            op.body.block.args[0].replace_by(buffer)
+            op.body.block.args[0].replace_all_uses_with(buffer)
             op.body.block.erase_arg(op.body.block.args[0])
             # remove from the args
             new_stage = StageOp(

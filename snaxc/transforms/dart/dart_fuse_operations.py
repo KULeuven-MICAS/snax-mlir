@@ -128,7 +128,7 @@ class FuseElementwisePattern(RewritePattern):
                     InsertPoint.at_end(streaming_region_op.body.block),
                 )
                 for old_result, new_result in zip(o.results, producer_generic.results):
-                    old_result.replace_by(new_result)
+                    old_result.replace_all_uses_with(new_result)
             # do not use yield op from producer region
             elif isinstance(o, dart.YieldOp):
                 continue

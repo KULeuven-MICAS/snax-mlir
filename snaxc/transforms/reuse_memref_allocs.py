@@ -283,10 +283,10 @@ class MoveMemrefDims(RewritePattern):
             new_dim_op = get_new_dim_op(dim_op)
             if isinstance(new_dim_op, affine.MinOp):
                 temp_dim_op = get_constant_value_from_affine_min(new_dim_op)
-                new_dim_op.results[0].replace_by(temp_dim_op.results[0])
+                new_dim_op.results[0].replace_all_uses_with(temp_dim_op.results[0])
                 new_dim_op = temp_dim_op
             if new_dim_op is not dim_op:
-                dim_op.results[0].replace_by(new_dim_op.results[0])
+                dim_op.results[0].replace_all_uses_with(new_dim_op.results[0])
             for_op = find_parent_for_loop(dim_op)
 
             if is_in_loop(new_dim_op):

@@ -309,7 +309,7 @@ class ApplyLayoutCastArithConstant(RewritePattern):
         rewriter.replace_op(const_source, new_constant_op)
 
         # layout cast becomes unnecessary
-        op.dest.replace_by(op.source)
+        op.dest.replace_all_uses_with(op.source)
         rewriter.erase_op(op)
 
 
@@ -348,7 +348,7 @@ class ApplyLayoutCastMemrefAlloc(RewritePattern):
         rewriter.replace_op(alloc_op, new_alloc_op)
 
         # layout cast becomes unnecessary
-        op.dest.replace_by(op.source)
+        op.dest.replace_all_uses_with(op.source)
         rewriter.erase_op(op)
 
 
@@ -438,7 +438,7 @@ class ApplyLayoutCastMemrefGlobal(RewritePattern):
         rewriter.replace_op(const_source, new_global_get_op)
 
         # layout cast becomes unnecessary
-        op.dest.replace_by(op.source)
+        op.dest.replace_all_uses_with(op.source)
         rewriter.erase_op(op)
 
 
@@ -481,7 +481,7 @@ class RealizeMemrefCasts(RewritePattern):
 
         if source_type == dest_type:
             # canonicalize away unnecessary cast
-            op.dest.replace_by(op.source)
+            op.dest.replace_all_uses_with(op.source)
             rewriter.erase_op(op)
             return
 

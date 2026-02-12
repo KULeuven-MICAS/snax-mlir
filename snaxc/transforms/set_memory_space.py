@@ -58,7 +58,7 @@ class InitFuncMemorySpace(RewritePattern):
         assert block is not None
         for arg in block.args:
             new_arg = block.insert_arg(change_to_memory_space(arg.type), arg.index)
-            arg.replace_by(new_arg)
+            arg.replace_all_uses_with(new_arg)
             block.erase_arg(arg)
 
         # Define new function op with new type and copy region contents

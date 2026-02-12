@@ -6,7 +6,7 @@ requires-python = "== 3.12.*"
 
 
 dependencies = [
-  "xdsl @ git+https://github.com/xdslproject/xdsl.git@e168811a6452b9fe406b7e6a92a477e0f377cee1",
+  "xdsl @ git+https://github.com/xdslproject/xdsl.git@0641c723e23b581b4b415829157b35a90cdcc1fc",
   "minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2",
   "numpy",
   "dacite>=1.9.2,<2",

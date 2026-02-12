@@ -12,8 +12,8 @@ def test_llvmmemrefdescriptor_init():
             LLVMPointerType(),
             LLVMPointerType(),
             i32,
-            LLVMArrayType.from_size_and_type(2, i32),
-            LLVMArrayType.from_size_and_type(2, i32),
+            LLVMArrayType(2, i32),
+            LLVMArrayType(2, i32),
         ]
     )
     memref_descriptor = LLVMMemrefDescriptor(descriptor)
@@ -60,8 +60,8 @@ def test_llvmmemrefdescriptor_verify_valid_descriptor():
             LLVMPointerType(),
             LLVMPointerType(),
             i32,
-            LLVMArrayType.from_size_and_type(2, i32),
-            LLVMArrayType.from_size_and_type(2, i32),
+            LLVMArrayType(2, i32),
+            LLVMArrayType(2, i32),
         ]
     )
 
@@ -75,7 +75,7 @@ def test_llvmmemrefdescriptor_verify_invalid_descriptor():
             LLVMPointerType(),
             LLVMPointerType(),
             i32,
-            LLVMArrayType.from_size_and_type(2, i32),
+            LLVMArrayType(2, i32),
             i32,  # Invalid type
         ]
     )
@@ -90,8 +90,8 @@ def test_llvmmemrefdescriptor_verify_invalid_shape_and_strides():
             LLVMPointerType(),
             LLVMPointerType(),
             i32,
-            LLVMArrayType.from_size_and_type(2, i32),
-            LLVMArrayType.from_size_and_type(3, i32),  # Invalid dimension
+            LLVMArrayType(2, i32),
+            LLVMArrayType(3, i32),  # Invalid dimension
         ]
     )
     memref_descriptor = LLVMMemrefDescriptor(descriptor)
@@ -105,8 +105,8 @@ def test_llvmmemrefdescriptor_verify_invalid_shape_and_strides_type():
             LLVMPointerType(),
             LLVMPointerType(),
             i32,
-            LLVMArrayType.from_size_and_type(2, i32),
-            LLVMArrayType.from_size_and_type(2, LLVMPointerType()),  # Invalid type
+            LLVMArrayType(2, i32),
+            LLVMArrayType(2, LLVMPointerType()),  # Invalid type
         ]
     )
     memref_descriptor = LLVMMemrefDescriptor(descriptor)

@@ -31,7 +31,7 @@ class PhsRemoveOneOptionSwitches(RewritePattern):
             yieldop = single_choice.ops.last
             assert isinstance(yieldop, phs.YieldOp), "Expect last op in choose_op to be a yield op"
             for yieldarg, chooseres in zip(yieldop.operands, choose_op.results):
-                chooseres.replace_by(yieldarg)
+                chooseres.replace_all_uses_with(yieldarg)
 
             rewriter.erase_op(yieldop)
             rewriter.inline_block(

@@ -71,7 +71,9 @@ class ChangeForStep(RewritePattern):
 
         # compute new iteration variable
         new_iter_var = MuliOp(op.step, new_for.body.block.args[0])
-        new_for.body.block.args[0].replace_by_if(new_iter_var.result, lambda use: use.operation is not new_iter_var)
+        new_for.body.block.args[0].replace_uses_with_if(
+            new_iter_var.result, lambda use: use.operation is not new_iter_var
+        )
 
         # insert the ops
         rewriter.insert_op(new_iter_var, InsertPoint.at_start(new_for.body.block))
@@ -119,7 +121,7 @@ class MergeForLoops(RewritePattern):
         # create a new op for the div value to make sure it is defined early enough
         div_val = ConstantOp.from_int_and_width(ub, IndexType())
         new_parent_iter = DivUIOp(new_parent.body.block.args[0], div_val)
-        new_parent.body.block.args[0].replace_by_if(
+        new_parent.body.block.args[0].replace_uses_with_if(
             new_parent_iter.result, lambda use: use.operation is not new_parent_iter
         )
 
@@ -129,7 +131,7 @@ class MergeForLoops(RewritePattern):
 
         # the matched for loop is merged into the parent one, with an iter value of iter // ub
         new_iter = RemUIOp(new_parent.body.block.args[0], div_val)
-        op.body.block.args[0].replace_by(new_iter.result)
+        op.body.block.args[0].replace_all_uses_with(new_iter.result)
 
         rewriter.insert_op(new_iter, InsertPoint.before(op))
 
