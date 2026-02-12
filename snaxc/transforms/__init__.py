@@ -110,6 +110,11 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return PhsConvertFloatToInt
 
+    def get_phs_convert_float_to_hardfloat():
+        from snaxc.transforms.phs.convert_float_to_hardfloat import PhsConvertFloatToHardfloatPass
+
+        return PhsConvertFloatToHardfloatPass
+
     def get_convert_tosa_to_kernel():
         from snaxc.transforms.convert_tosa_to_kernel import ConvertTosaToKernelPass
 
@@ -310,6 +315,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "phs-keep-phs": get_phs_keep_phs,
         "phs-remove-phs": get_phs_remove_phs,
         "phs-convert-float-to-int": get_phs_convert_float_to_int,
+        "phs-convert-float-to-hardfloat": get_phs_convert_float_to_hardfloat,
         "convert-dart-to-snax-stream": get_convert_dart_to_snax_stream,
         "convert-kernel-to-linalg": get_convert_kernel_to_linalg,
         "convert-linalg-to-accfg": get_convert_linalg_to_accfg,

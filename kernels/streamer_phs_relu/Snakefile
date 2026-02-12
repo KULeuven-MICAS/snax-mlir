@@ -1,0 +1,57 @@
+hw_pipeline = ",".join(
+    [
+        "phs-encode",
+        "phs-keep-phs",
+        "phs-convert-float-to-int",
+        "phs-convert-float-to-hardfloat",
+        "phs-remove-one-option-switches",
+        "convert-pe-to-hw",
+    ]
+)
+
+circt_pipeline = " ".join(
+    [
+        "--reconcile-unrealized-casts",
+        "--map-arith-to-comb",
+        "--hw-flatten-modules",
+    ]
+)
+
+firtool_pipeline = " ".join(
+    [
+        "--format=mlir",
+        "--strip-debug-info",
+    ]
+)
+
+
+rule all:
+    input:
+        "addf.sv",
+
+
+rule create_pe:
+    input:
+        "addf.mlir",
+    output:
+        "addf.phs.mlir",
+    shell:
+        "snax-opt -p {hw_pipeline} {input[0]} -o {output[0]}"
+
+
+rule lower_pe:
+    input:
+        "addf.phs.mlir",
+    output:
+        "addf.sv.mlir",
+    shell:
+        "circt-opt {circt_pipeline} {input[0]} -o {output[0]}"
+
+
+rule create_verilog:
+    input:
+        "addf.sv.mlir",
+    output:
+        "addf.sv",
+    shell:
+        "firtool {firtool_pipeline} {input[0]} -o {output[0]}"
