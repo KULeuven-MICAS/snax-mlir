@@ -62,7 +62,7 @@ class RemoveTransposeConstants(RewritePattern):
         rewriter.insert_op(new_const_op, InsertPoint.before(const_op))
 
         # replace uses of transform with new const op
-        op.results[0].replace_by(new_const_op.results[0])
+        op.results[0].replace_all_uses_with(new_const_op.results[0])
 
         # delete const op and linalg op
         rewriter.erase_op(op)

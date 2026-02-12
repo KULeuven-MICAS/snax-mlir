@@ -88,7 +88,7 @@ class ElideEmptySetupOps(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: accfg.SetupOp, rewriter: PatternRewriter, /):
         if len(op.values) == 0 and op.in_state is not None:
-            op.out_state.replace_by(op.in_state)
+            op.out_state.replace_all_uses_with(op.in_state)
             rewriter.erase_op(op)
 
 
@@ -231,7 +231,7 @@ class HoistSetupCallsIntoConditionals(RewritePattern):
 
         # erase the op, replacing all uses of its out state by
         # its in_state.
-        op.out_state.replace_by(op.in_state)
+        op.out_state.replace_all_uses_with(op.in_state)
         rewriter.erase_op(op)
 
 

@@ -129,7 +129,7 @@ class MergeForLoops(RewritePattern):
 
         # the matched for loop is merged into the parent one, with an iter value of iter // ub
         new_iter = RemUIOp(new_parent.body.block.args[0], div_val)
-        op.body.block.args[0].replace_by(new_iter.result)
+        op.body.block.args[0].replace_all_uses_with(new_iter.result)
 
         rewriter.insert_op(new_iter, InsertPoint.before(op))
 

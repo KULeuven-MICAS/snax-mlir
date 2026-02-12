@@ -109,12 +109,12 @@ class DestructIndex(RewritePattern):
             return
 
         # replace block arg by index op input
-        op.body.block.args[0].replace_by(op.input)
+        op.body.block.args[0].replace_all_uses_with(op.input)
 
         # replace op results by yield values
         assert isinstance(yield_op := op.body.block.last_op, YieldOp)
         for result, yield_value in zip(op.results, yield_op.arguments):
-            result.replace_by(yield_value)
+            result.replace_all_uses_with(yield_value)
 
         # remove yield op and inline index ops
         rewriter.erase_op(yield_op)
