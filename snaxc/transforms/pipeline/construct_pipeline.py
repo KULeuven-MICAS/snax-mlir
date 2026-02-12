@@ -127,7 +127,7 @@ class ConstructPipeline(RewritePattern):
             body=Region(Block([*index_ops, index_yield], arg_types=[IndexType()])),
         )
         # replace uses of index with the index block arg
-        index_op.input.replace_by_if(index_op.body.block.args[0], lambda use: use.operation in index_ops)
+        index_op.input.replace_uses_with_if(index_op.body.block.args[0], lambda use: use.operation in index_ops)
 
         # insert index op
         rewriter.insert_op(index_op, InsertPoint.at_end(pipeline_op.body.block))

@@ -43,7 +43,7 @@ class UnrollPipeline(RewritePattern):
                 stage = pipeline.stages[j].clone()
                 rewriter.insert_op(stage, InsertPoint.before(for_op))
                 for operand_0, operand_j in zip(index_op.results, index_ops[i - j].results):
-                    operand_0.replace_by_if(operand_j, lambda use: use.operation.parent_op() is stage)
+                    operand_0.replace_uses_with_if(operand_j, lambda use: use.operation.parent_op() is stage)
             rewriter.insert_op(snax.ClusterSyncOp(), InsertPoint.before(for_op))
 
         # 1: Insert postamble (back to front)
@@ -62,7 +62,7 @@ class UnrollPipeline(RewritePattern):
             for j in reversed(range(i + 1)):
                 stage = pipeline.stages[-j - 1].clone()
                 for operand_0, operand_j in zip(index_op.results, index_ops[i - j].results):
-                    operand_0.replace_by_if(operand_j, lambda use: use.operation.parent_op() is stage)
+                    operand_0.replace_uses_with_if(operand_j, lambda use: use.operation.parent_op() is stage)
                 ops_to_add.append(stage)
             ops_to_add.append(snax.ClusterSyncOp())
             rewriter.insert_op(ops_to_add, InsertPoint.after(for_op))
@@ -70,7 +70,7 @@ class UnrollPipeline(RewritePattern):
 
         # 2: Increment for op lower bound by (nb_stages - 1)
         cst = arith.ConstantOp.from_int_and_width(pipeline.nb_stages - 1, builtin.IndexType())
-        for_op.lb.replace_by_if(cst.result, lambda use: use.operation is for_op)
+        for_op.lb.replace_uses_with_if(cst.result, lambda use: use.operation is for_op)
         rewriter.insert_op(cst, InsertPoint.before(for_op))
 
         # 3: Create copies of the index op with other index values
@@ -90,7 +90,7 @@ class UnrollPipeline(RewritePattern):
                     assert isinstance(stage := use.operation.parent_op(), StageOp)
                     return stage.index.value.data == i
 
-                operand_0.replace_by_if(operand_i, belongs_to_stage_i)
+                operand_0.replace_uses_with_if(operand_i, belongs_to_stage_i)
             index_ops.append(clone)
 
         # 4: Add synchronization at end of pipeline

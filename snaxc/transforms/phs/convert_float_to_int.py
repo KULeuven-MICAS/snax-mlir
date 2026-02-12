@@ -42,7 +42,7 @@ class CastChooseOps(RewritePattern):
                 block_arg = rewriter.replace_value_with_new_type(block_arg, new_type)
                 cast, new_val = builtin.UnrealizedConversionCastOp.cast_one(block_arg, old_type)
                 rewriter.insert_op(cast, ip)
-                block_arg.replace_by_if(new_val, lambda u: u.operation is not cast)
+                block_arg.replace_uses_with_if(new_val, lambda u: u.operation is not cast)
         for res in op.results:
             if isa(res.type, AnyFloat):
                 rewriter.replace_value_with_new_type(res, builtin.IntegerType(res.type.bitwidth))
@@ -56,7 +56,7 @@ class CastYieldOps(RewritePattern):
                 continue
             cast, newr = builtin.UnrealizedConversionCastOp.cast_one(op, builtin.IntegerType(op.type.bitwidth))
             rewriter.insert_op(cast)
-            op.replace_by_if(newr, lambda u: u.operation is yieldop)
+            op.replace_uses_with_if(newr, lambda u: u.operation is yieldop)
 
 
 class PhsConvertFloatToInt(ModulePass):

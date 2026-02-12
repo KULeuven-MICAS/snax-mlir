@@ -71,7 +71,9 @@ class ChangeForStep(RewritePattern):
 
         # compute new iteration variable
         new_iter_var = MuliOp(op.step, new_for.body.block.args[0])
-        new_for.body.block.args[0].replace_by_if(new_iter_var.result, lambda use: use.operation is not new_iter_var)
+        new_for.body.block.args[0].replace_uses_with_if(
+            new_iter_var.result, lambda use: use.operation is not new_iter_var
+        )
 
         # insert the ops
         rewriter.insert_op(new_iter_var, InsertPoint.at_start(new_for.body.block))
