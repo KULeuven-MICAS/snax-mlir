@@ -114,6 +114,40 @@ def is_pure_output_stationary(template: Template, schedule: Schedule):
     return first_reduction_idx > last_parallel_idx
 
 
+def is_pure_weight_stationary(template: Template, schedule: Schedule):
+    """
+    Checks whether a schedule, outside of the template, is fully weight
+    stationary. This is determined by making sure all parallel dimensions
+    precede the reduction dimensions in the weight operand (second operand).
+    """
+    # Check for zero bounds to avoid accepting invalid schedules
+    if any(b == 0 for b in schedule[0].bounds):
+        return False
+
+    # fetch the pattern of the weight operand (assumed to be the second operand)
+    if len(schedule) < 2:
+        return True
+    
+    weight_schedule = schedule[1].pattern.A
+    # do not consider template dims
+    weight_schedule = weight_schedule[:, : -template.num_dims]
+
+    # check whether there are any non-zero elements in every column
+    # create iteration_types list with False for reduction, True for parallel
+    iteration_types: list[bool] = list(map(lambda x: bool(x), np.any(weight_schedule != 0, axis=0).tolist()))
+    # the first zero should come after the last 1 for weight stationary
+
+    # if only reduction, or only parallel, pure weight stationary is guaranteed
+    if not (True in iteration_types and False in iteration_types):
+        return True
+
+    first_reduction_idx = iteration_types.index(False)
+    last_parallel_idx = len(iteration_types) - 1 - iteration_types[::-1].index(True)
+
+    # last parallel index should come before first reduction idx for pure weight stationarity
+    return first_reduction_idx > last_parallel_idx
+
+
 def is_output_channel_stationary(template: Template, schedule: Schedule, channel_dim: int) -> bool:
     """
     Checks whether a schedule is output-channel stationary.
@@ -163,6 +197,7 @@ def is_memory_flexible_enough(template: Template, schedule: Schedule, element_si
         if (False, True) not in zip(temporal, spatial):
             return False
     return True
+
 
 
 def scheduler(

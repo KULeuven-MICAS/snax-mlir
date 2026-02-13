@@ -269,21 +269,39 @@ class SNAXGEMMXAccelerator(
             else:
                 i8_out = False
                 last_pattern = op.stride_patterns.data[-1]
-            # compute knm: fix n = 1
-            n = 1
-            # count the number of non-reducing bounds (output stride != 0)
-            m = (
-                prod(
+            # compute knm:
+            # Check if innermost loop is reduction (stride 0 for output)
+            is_output_stationary = last_pattern.temporal_strides.data[0].data == 0
+
+            if is_output_stationary:
+                # Identify bounds for output dimensions (stride != 0)
+                output_bounds = [
                     bound.data
                     for bound, stride in zip(
-                        last_pattern.upper_bounds,
-                        last_pattern.temporal_strides,
+                        last_pattern.upper_bounds.data,
+                        last_pattern.temporal_strides.data,
                     )
                     if stride.data != 0
-                )
-                // n
-            )
-            k = prod(x.data for x in op.stride_patterns.data[0].upper_bounds) // m
+                ]
+                
+                # separation logic for m and n to prevent 8-bit overflow
+                if len(output_bounds) >= 2:
+                    n = output_bounds[-1] # Outer loop
+                    m = prod(output_bounds[:-1]) # Inner loops
+                elif len(output_bounds) == 1:
+                    n = 1
+                    m = output_bounds[-1]
+                else:
+                    n = 1
+                    m = 1
+
+                k = prod(x.data for x in op.stride_patterns.data[0].upper_bounds.data) // (m * n)
+            else:
+                # Weight Stationary or other interleaved mapping
+                # Configure accelerator to assume 1 input per output (stream partial sums)
+                k = 1
+                n = 1
+                m = prod(x.data for x in op.stride_patterns.data[0].upper_bounds.data)
 
             # gemm
             # bypass simd and set all related values to 0
@@ -626,12 +644,24 @@ class SNAXGEMMXAccelerator(
                     ),
                 )
 
-                # point C to 0
-                ops_to_add.append(
-                    # zero pointer will generate 0 values
-                    ptr := arith.ConstantOp.from_int_and_width(0, builtin.IndexType())
+                # Check if accumulation is needed
+                first_body_op = op.body.block.first_op
+                has_accum = (
+                    isinstance(first_body_op, dart.GenericOp)
+                    and first_body_op.accumulates is not None
                 )
-                new_inputs.append(ptr.result)
+                if has_accum:
+                    # C reader points to same address as D writer
+                    # (accumulation data pre-loaded by DMA)
+                    new_inputs.append(op.outputs[0])
+                else:
+                    # point C to 0 — zero pointer will generate 0 values
+                    ops_to_add.append(
+                        ptr := arith.ConstantOp.from_int_and_width(
+                            0, builtin.IndexType()
+                        )
+                    )
+                    new_inputs.append(ptr.result)
 
             elif op.body.block.arg_types[-1] == dart.StreamType(builtin.IntegerType(8)):
                 new_inputs.append(new_outputs.pop())

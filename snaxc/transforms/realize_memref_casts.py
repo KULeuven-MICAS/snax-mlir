@@ -529,6 +529,14 @@ class RealizeMemrefCasts(RewritePattern):
                 is_input = op.results[0] in use_op.inputs
             elif isinstance(use_op, dart.StreamingRegionOpBase):
                 is_input = op.results[0] in use_op.inputs
+                # Accumulation: output memref also needs L3→L1 pre-copy
+                if not is_input and op.results[0] in use_op.outputs:
+                    first_body_op = use_op.body.block.first_op
+                    if (
+                        isinstance(first_body_op, dart.GenericOp)
+                        and first_body_op.accumulates is not None
+                    ):
+                        is_input = True
             else:
                 is_input = True
             if is_input:

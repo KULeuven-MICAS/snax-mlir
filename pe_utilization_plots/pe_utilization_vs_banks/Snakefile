@@ -77,6 +77,7 @@ rule generate_matmul:
         sys="|".join(systems),
     shell:
         "python matmul.py --m 40 --n 72 --k 56 --output {output}"
+        # "python matmul.py --m 16 --n 8 --k 16 --output {output}"
 
 
 rule compile_snax:
@@ -87,7 +88,7 @@ rule compile_snax:
     params:
         snaxconfig=config_matmul["snaxc-config"],
     shell:
-        "{config[snaxc]} -c {params.snaxconfig} --add-mcycle -o {output} {input}"
+        "{config[snaxc]} -c {params.snaxconfig} --add-mcycle  -o {output} {input}"
 
 
 def get_linked_files(wildcards):

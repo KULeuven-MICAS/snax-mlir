@@ -10,6 +10,7 @@ from xdsl.dialects.builtin import (
     IntegerAttr,
     ShapedType,
     StringAttr,
+    UnitAttr,
 )
 from xdsl.dialects.utils import AbstractYieldOperation
 from xdsl.ir import (
@@ -264,6 +265,7 @@ class GenericOp(IRDLOperation):
     # Trait attributes
     doc = opt_prop_def(StringAttr)
     library_call = opt_prop_def(StringAttr)
+    accumulates = opt_prop_def(UnitAttr)
 
     def __init__(
         self,

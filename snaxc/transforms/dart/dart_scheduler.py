@@ -23,6 +23,7 @@ from snaxc.dialects import dart
 from snaxc.ir.dart.access_pattern import Schedule, SchedulePattern
 from snaxc.ir.dart.scheduler import (
     is_memory_flexible_enough,
+    is_pure_weight_stationary,
     is_pure_output_stationary,
     scheduler,
 )
@@ -61,7 +62,7 @@ class AutoflowScheduler(RewritePattern):
             template,
             schedule,
             extra_checks=[
-                is_pure_output_stationary,
+                is_pure_weight_stationary,
                 lambda t, s: is_memory_flexible_enough(t, s, element_sizes),
             ],
         )

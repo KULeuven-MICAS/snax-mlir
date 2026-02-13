@@ -30,6 +30,7 @@ from snaxc.transforms.dispatch_kernels import DispatchKernels
 from snaxc.transforms.dispatch_regions import DispatchRegions
 from snaxc.transforms.frontend.frontend_transform import FrontendTransformPass
 from snaxc.transforms.frontend.preprocess_mlir import PreprocessPass
+from snaxc.transforms.fuse_accumulation_memrefs import FuseAccumulationMemrefsPass
 from snaxc.transforms.insert_accfg_op import InsertAccOp
 from snaxc.transforms.insert_sync_barrier import InsertSyncBarrier
 from snaxc.transforms.memref_to_snax import MemrefToSNAX
@@ -212,6 +213,7 @@ class SNAXCMain(CommandLineTool):
             pass_pipeline.append(SnaxBufferize())
         if self.args.debug:
             pass_pipeline.append(InsertDebugPass())
+        pass_pipeline.append(FuseAccumulationMemrefsPass())
         pass_pipeline.append(AllocToGlobalPass())
         pass_pipeline.append(SetMemorySpace())
         pass_pipeline.append(DartSchedulerPass())

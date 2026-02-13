@@ -121,7 +121,12 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         from snaxc.transforms.dispatch_regions import DispatchRegions
 
         return DispatchRegions
+    def get_fuse_accumulation_memrefs():
+        from snaxc.transforms.fuse_accumulation_memrefs import (
+            FuseAccumulationMemrefsPass,
+        )
 
+        return FuseAccumulationMemrefsPass
     def get_frontend_static_inline():
         from snaxc.transforms.frontend.frontend_static_inline import StaticInlinePass
 
@@ -275,6 +280,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "dispatch-regions": get_dispatch_regions,
         "frontend-static-inline": get_frontend_static_inline,
         "frontend-transform": get_frontend_transform,
+        "fuse-accumulation-memrefs": get_fuse_accumulation_memrefs,
         "insert-accfg-op": get_insert_accfg_op,
         "insert-sync-barrier": get_insert_sync_barrier,
         "memref-to-snax": get_memref_to_snax,

@@ -130,7 +130,7 @@ class SNAXStreamer(ABC):
             is_zero_pattern = False
             if isinstance(opresult := op.operands[operand], OpResult):
                 is_zero_pattern = isinstance(opresult.op, arith.ConstantOp) and opresult.op.value == c0_attr
-
+                
             # base pointers (low, high)
             if is_zero_pattern:
                 czero = arith.ConstantOp.from_int_and_width(self.zero_address, i32)
