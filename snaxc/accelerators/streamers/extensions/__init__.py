@@ -3,6 +3,7 @@ from snaxc.accelerators.streamers.streamers import (
     HasBroadcast,
     HasByteMask,
     HasChannelMask,
+    HasFixedCache,
 )
 
 from .add_extension import AddExtension
@@ -26,6 +27,7 @@ STREAMER_OPT_MAP = {
     HasByteMask().name: HasByteMask,
     HasChannelMask().name: HasChannelMask,
     HasAddressRemap().name: HasAddressRemap,
+    HasFixedCache().name: HasFixedCache,    
     MaxPoolExtension().name: MaxPoolExtension,
     MemSetExtension().name: MemSetExtension,
     TransposeExtension().name: TransposeExtension,

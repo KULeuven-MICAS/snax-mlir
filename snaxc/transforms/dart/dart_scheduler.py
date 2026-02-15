@@ -62,6 +62,7 @@ class AutoflowScheduler(RewritePattern):
         schedule = scheduler(
             template,
             schedule,
+            streamers=accelerator_type.get_streamers(op),
             extra_checks=[
                 is_pure_weight_stationary,
                 lambda t, s: is_memory_flexible_enough(t, s, element_sizes),

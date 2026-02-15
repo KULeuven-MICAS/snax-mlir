@@ -20,6 +20,7 @@ from snaxc.accelerators.streamers import (
     HasAddressRemap,
     HasBroadcast,
     HasChannelMask,
+    HasFixedCache,
 )
 from snaxc.accelerators.streamers.extensions import TransposeExtension
 from snaxc.accelerators.streamers.streamers import (
@@ -38,19 +39,22 @@ default_streamer = StreamerConfiguration(
             StreamerType.Reader,
             temporal_dims=("n", "n", "n", "n", "n", "n", "n"),
             spatial_dims=(8,),
-            opts=(TransposeExtension(), HasAddressRemap()),
+            opts=(TransposeExtension(), HasAddressRemap(), HasFixedCache()),
+            fixed_cache_depth=50,
         ),
         Streamer(  # B
             StreamerType.Reader,
             temporal_dims=("n", "n", "n", "n", "n", "n", "n"),
             spatial_dims=(8,),
-            opts=(TransposeExtension(), HasAddressRemap()),
+            opts=(TransposeExtension(), HasAddressRemap(), HasFixedCache()),
+            fixed_cache_depth=50,
         ),
         Streamer(  # D8
             StreamerType.Writer,
             temporal_dims=("r", "n", "n", "n", "n", "n", "n"),
             spatial_dims=(8,),
-            opts=(HasAddressRemap(),),
+            opts=(HasAddressRemap(), HasFixedCache()),
+            fixed_cache_depth=50,
         ),
         Streamer(  # C
             StreamerType.Reader,
@@ -61,13 +65,16 @@ default_streamer = StreamerConfiguration(
                 HasAddressRemap(),
                 HasBroadcast(),
             ),
+            fixed_cache_depth=50,
         ),
         Streamer(  # D32
             StreamerType.Writer,
             temporal_dims=("r", "n", "n", "n", "n", "n", "n"),
             spatial_dims=(8, 4),
-            opts=(HasAddressRemap(),),
+            opts=(HasAddressRemap(), HasFixedCache()),
+            fixed_cache_depth=50,
         ),
+
     ],
 )
 
@@ -145,19 +152,22 @@ class SNAXGEMMXAccelerator(
                     StreamerType.Reader,
                     temporal_dims=("n",) * config.streamers[0].temporal_dims,
                     spatial_dims=config.streamers[0].spatial_dims,
-                    opts=(TransposeExtension(), HasAddressRemap()),
+                    opts=(TransposeExtension(), HasAddressRemap(), HasFixedCache()),
+                    fixed_cache_depth=config.streamers[0].fixed_cache_depth,
                 ),
                 Streamer(  # B
                     StreamerType.Reader,
                     temporal_dims=("n",) * config.streamers[1].temporal_dims,
                     spatial_dims=config.streamers[1].spatial_dims,
-                    opts=(TransposeExtension(), HasAddressRemap()),
+                    opts=(TransposeExtension(), HasAddressRemap(), HasFixedCache()),
+                    fixed_cache_depth=config.streamers[1].fixed_cache_depth,
                 ),
                 Streamer(  # D8
                     StreamerType.Writer,
                     temporal_dims=("r",) + ("n",) * (config.streamers[2].temporal_dims - 1),
                     spatial_dims=config.streamers[2].spatial_dims,
-                    opts=(HasAddressRemap(),),
+                    opts=(HasAddressRemap(), HasFixedCache()),
+                    fixed_cache_depth=config.streamers[2].fixed_cache_depth,
                 ),
                 Streamer(  # C
                     StreamerType.Reader,
@@ -167,13 +177,16 @@ class SNAXGEMMXAccelerator(
                         HasChannelMask(),
                         HasAddressRemap(),
                         HasBroadcast(),
+                        HasFixedCache(),
                     ),
+                    fixed_cache_depth=config.streamers[3].fixed_cache_depth,
                 ),
                 Streamer(  # D32
                     StreamerType.Writer,
                     temporal_dims=("r",) + ("n",) * (config.streamers[4].temporal_dims - 1),
                     spatial_dims=config.streamers[4].spatial_dims,
-                    opts=(HasAddressRemap(),),
+                    opts=(HasAddressRemap(), HasFixedCache()),
+                    fixed_cache_depth=config.streamers[4].fixed_cache_depth,
                 ),
             ],
         )

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 class StreamerConfig:
     temporal_dims: int
     spatial_dims: list[int]
+    fixed_cache_depth: int | None = None
 
 
 @dataclass

@@ -65,6 +65,13 @@ class HasBroadcast(StreamerOpts):
 
     name = "b"
 
+class HasFixedCache(StreamerOpts):
+    """
+    Indicates that the streamer has a fixed cache size.
+    """
+
+    name = "fc"
+
 
 class StreamerFlag(StrEnum):
     """
@@ -105,6 +112,7 @@ class Streamer:
     type: StreamerType
     temporal_dims: tuple[StreamerFlag, ...]
     spatial_dims: tuple[int, ...]
+    fixed_cache_depth: int = 0
 
     opts: list[StreamerOpts]
 
@@ -114,11 +122,15 @@ class Streamer:
         temporal_dims: Sequence[StreamerFlag | Literal["n", "i", "r"]],
         spatial_dims: Sequence[int],
         opts: Iterable[StreamerOpts] = [],
+        fixed_cache_depth: int = 0,
     ) -> None:
         self.type = type
         temporal_dims = [f if isinstance(f, StreamerFlag) else StreamerFlag(f) for f in temporal_dims]
         self.temporal_dims = tuple(temporal_dims)
         self.spatial_dims = tuple(spatial_dims)
+        if any(isinstance(opt, HasFixedCache) for opt in opts):
+            assert fixed_cache_depth is not None, "Fixed cache depth must be provided when HasFixedCache option is set"
+        self.fixed_cache_depth = fixed_cache_depth
         self.opts = list(opts)
 
     @property

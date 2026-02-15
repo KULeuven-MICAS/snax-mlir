@@ -6,6 +6,7 @@ from itertools import permutations
 
 import numpy as np
 
+from snaxc.accelerators.streamers.streamers import HasFixedCache, Streamer
 from snaxc.ir.dart.access_pattern import Schedule, Template, SchedulePattern
 from snaxc.ir.dart.affine_transform import AffineTransform
 
@@ -275,7 +276,7 @@ def search_critical_levels(cache_depths, matrix_sizes, loop_order, current_idx):
     next_idx = current_idx + 1
     if next_idx < len(loop_order):
         constraint_dim = loop_order[next_idx]
-        limit = cache_depths.get(constraint_dim, 50)
+        limit = cache_depths.get(constraint_dim, float("inf"))
     else:
         # Outermost critical loop. Not constrained.
         limit = float("inf")
@@ -307,7 +308,7 @@ def search_critical_levels(cache_depths, matrix_sizes, loop_order, current_idx):
             
             # Correct Logic:
             for d in next_cache_depths:
-                if d != dim:
+                if d != dim and next_cache_depths[d] != float("inf"):
                     next_cache_depths[d] //= size
 
             result_lists = search_critical_levels(next_cache_depths, next_matrix_sizes, loop_order, next_idx)
@@ -348,7 +349,7 @@ def search_critical_levels_wrapper(cache_depths, matrix_sizes, loop_order, curre
 
 # ... Fixed search_cached_level below ...
 
-def find_optimal_tiling(template: Template, schedule: Schedule) -> Schedule:
+def find_optimal_tiling(template: Template, schedule: Schedule, streamers: Sequence[Streamer]) -> Schedule:
     # 1. Identify Temporal Dims and their Prime Factors
     temporal_dims_count = schedule.num_dims - template.num_dims
     
@@ -408,16 +409,58 @@ def find_optimal_tiling(template: Template, schedule: Schedule) -> Schedule:
     # We collect ALL Loop Dimensions that are "invariant" for AT LEAST ONE operand to be the set of "Critical Loop Level Loops".
     # And we permute THIS set.
     
+    # We also need to map Critical Loops to Streamer Cache Depths.
+    # A Streamer S with Fixed Cache F is typically associated with ONE Critical Dimension (the one it's invariant to).
+    # If S is invariant to multiple critical loops?
+    # Usually F is the "L1" cache size.
+    # If S is output stationary, it is invariant to the reduction loop (Crit Dim K).
+    # If we are inside Crit Loop K, S uses 0 BW.
+    # Inner loops (Cached Level) must fit in S's cache.
+    # So `cache_constraint[K]` is determined by S's fixed cache depth.
+    
+    # Map: Logical Dim -> Min Cache Depth (if this dim is chosen as critical loop)
+    # Actually, the constraint is:
+    # If we are tiling for Critical Loop L (meaning L is the stationary loop for some operands):
+    # Then the Innermost Cached Level must fit in the caches of those stationary operands.
+    # So `cache_depths[l_id]` should be the Minimum Fixed Cache of all operands invariant to `l_id`.
+    
+    cache_depths = {}
     critical_dims_pool = set()
+    
     for l_id in range(num_logical):
-        # If any operand is invariant to this dim, it's a candidate for critical level
-        if any(logical_inv_map[l_id]):
+        sig = logical_inv_map[l_id]
+        
+        # Operands invariant to this dim
+        invariant_operands_indices = [i for i, is_inv in enumerate(sig) if is_inv]
+        
+        if invariant_operands_indices:
             critical_dims_pool.add(l_id)
             
-    # Solve Optimal Tiling
-    # Start Cache Depths
-    cache_depths = {l_id: 4 for l_id in range(num_logical)} # TODO: get these from accelerator context
-    
+            # Find associated streamers and their cache depths
+            depths = []
+            for op_idx in invariant_operands_indices:
+                streamer = streamers[op_idx]
+                if streamer.fixed_cache_depth > 0:
+                     depths.append(streamer.fixed_cache_depth)
+            
+            # The constraint is the MINIMUM of all applicable caches.
+            # If multiple operands are stationary under this loop, ALL must fit their respective working sets.
+            # Working set size for Operand O (stationary) inside Cached Level (loops T_i):
+            # Size = Product(TileSize(T_j)) for all T_j that O varies with.
+            # Here we assume Cached Level tiles ALL other dims.
+            # So basically, we just limit the product of other dims.
+            
+            if depths:
+                cache_depths[l_id] = min(depths)
+            else:
+                # No fixed cache constraint found for this critical loop?
+                # Default to something or infinite?
+                # If a loop is critical but has no fixed cache, maybe default to 50/infinity?
+                cache_depths[l_id] = float("inf") # Default fallback
+        else:
+             # Not a critical dimension candidate (no operand is invariant)
+             pass
+            
     best_tiling = []
     min_cost = float("inf")
     
@@ -786,6 +829,7 @@ def is_memory_flexible_enough(template: Template, schedule: Schedule, element_si
 def scheduler(
     template: Template,
     schedule: Schedule,
+    streamers: Sequence[Streamer],
     extra_checks: Sequence[Callable[[Template, Schedule], bool]] = [
         # defaulting to pure output stationary schedules for now
         is_pure_output_stationary,
@@ -805,11 +849,11 @@ def scheduler(
         except StopIteration:
             raise ValueError(f"No schedule found at index {schedule_idx}")
         
-        if optimal_tiling:
-            return find_optimal_tiling(template, candidate_schedule)
+        if optimal_tiling and any(any(isinstance(opt, HasFixedCache) for opt in streamer.opts) for streamer in streamers):
+            return find_optimal_tiling(template, candidate_schedule, streamers)
         return candidate_schedule
 
     result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
-    if optimal_tiling:
-        return find_optimal_tiling(template, result)
+    if optimal_tiling and any(any(isinstance(opt, HasFixedCache) for opt in streamer.opts) for streamer in streamers):
+        return find_optimal_tiling(template, result, streamers)
     return result

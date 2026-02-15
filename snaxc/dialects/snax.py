@@ -201,11 +201,22 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
 
                 # Determine the spatial dimensions
                 spatial_dims: Sequence[int] = []
-                while not parser.parse_optional_punctuation("]"):
+                while not (with_fc := parser.parse_optional_punctuation(",")) and not parser.parse_optional_punctuation("]"):
                     spatial_dims.append(parser.parse_integer(allow_boolean=False, allow_negative=False))
                     parser.parse_optional_punctuation("-")
 
-                streamers.append(Streamer(streamer_type, temporal_dims, spatial_dims, opts))
+                fixed_cache_depth = 0
+
+                if with_fc:
+                    parser.parse_keyword("fixed_cache")
+                    parser.parse_punctuation("=")
+
+                    #determine fixed cache depth
+                    while not parser.parse_optional_punctuation("]"):
+                        fixed_cache_depth = parser.parse_integer(allow_boolean=False, allow_negative=False)
+                        parser.parse_optional_punctuation("-")  
+
+                streamers.append(Streamer(streamer_type, temporal_dims, spatial_dims, opts, fixed_cache_depth))
 
                 if not parser.parse_optional_punctuation(","):
                     break
@@ -230,8 +241,9 @@ class StreamerConfigurationAttr(Data[StreamerConfiguration]):
             f"{streamer.type.value}["
             + (f"opts={'-'.join([opt.name for opt in streamer.opts])}, " if streamer.opts else "")
             + f"temp={'-'.join(streamer.temporal_dims)}, "
-            + f"spat={'-'.join(str(d) for d in streamer.spatial_dims)}]"
-            for streamer in self.data.streamers
+            + f"spat={'-'.join(str(d) for d in streamer.spatial_dims)}, "
+            + f"fixed_cache={streamer.fixed_cache_depth}]" if streamer.fixed_cache_depth > 0 else "]"
+            for streamer in self.data.streamers 
         ]
         printer.print_string(f"<{', '.join(streamer_strings)}>")
 
