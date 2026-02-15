@@ -39,6 +39,7 @@ class AutoflowScheduler(RewritePattern):
 
     ctx: AccContext
     schedule_idx: int | None = None
+    optimal_tiling: bool = False
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
@@ -65,6 +66,7 @@ class AutoflowScheduler(RewritePattern):
                 is_pure_weight_stationary,
                 lambda t, s: is_memory_flexible_enough(t, s, element_sizes),
             ],
+            optimal_tiling=self.optimal_tiling,
         )
 
         schedule_op = dart.ScheduleOp(
@@ -86,7 +88,8 @@ class DartSchedulerPass(ModulePass):
     name = "dart-scheduler"
 
     schedule_idx: int | None = None
+    optimal_tiling: bool = True
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         assert isinstance(ctx, AccContext)
-        PatternRewriteWalker(AutoflowScheduler(ctx, self.schedule_idx)).rewrite_module(op)
+        PatternRewriteWalker(AutoflowScheduler(ctx, self.schedule_idx, self.optimal_tiling)).rewrite_module(op)

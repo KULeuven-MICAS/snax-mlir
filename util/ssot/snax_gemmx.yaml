@@ -14,15 +14,15 @@ clusters:
               n: 8
               k: 8
               streamers:
-                - temporal_dims: 6
+                - temporal_dims: 7
                   spatial_dims: [8]
-                - temporal_dims: 3
+                - temporal_dims: 7
                   spatial_dims: [8]
-                - temporal_dims: 3
+                - temporal_dims: 7
                   spatial_dims: [8]
-                - temporal_dims: 3
+                - temporal_dims: 7
                   spatial_dims: [8, 4]
-                - temporal_dims: 3
+                - temporal_dims: 7
                   spatial_dims: [8, 4]
       - accelerators:
           - data_mover:

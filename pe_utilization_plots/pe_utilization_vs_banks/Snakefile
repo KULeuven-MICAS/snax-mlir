@@ -76,7 +76,8 @@ rule generate_matmul:
     wildcard_constraints:
         sys="|".join(systems),
     shell:
-        "python matmul.py --m 40 --n 72 --k 56 --output {output}"
+        "python matmul.py --m 64 --n 64 --k 64 --output {output}"
+        #"python matmul.py --m 40 --n 56 --k 72 --output {output}"
         # "python matmul.py --m 16 --n 8 --k 16 --output {output}"
 
 
