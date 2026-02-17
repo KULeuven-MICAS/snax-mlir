@@ -106,35 +106,35 @@ class BinaryHardfloatOp(HardfloatOperation, ABC):
 
 
 @irdl_op_definition
-class MulOp(BinaryHardfloatOp):
-    name = "hardfloat.mul"
+class MulRecFnOp(BinaryHardfloatOp):
+    name = "hardfloat.mul_rec_fn"
     traits = traits_def(RecodedInputs(), RecodedOutputs())
 
 
 @irdl_op_definition
-class AddOp(BinaryHardfloatOp):
-    name = "hardfloat.add"
+class AddRecFnOp(BinaryHardfloatOp):
+    name = "hardfloat.add_rec_fn"
     traits = traits_def(RecodedInputs(), RecodedOutputs())
 
 
 @irdl_op_definition
-class RecodeOp(UnaryHardfloatOp):
-    name = "hardfloat.recode"
+class RecFnToFnOp(UnaryHardfloatOp):
+    name = "hardfloat.fn_to_rec_fn"
     traits = traits_def(RecodedOutputs())
 
 
 @irdl_op_definition
-class UnrecodeOp(UnaryHardfloatOp):
-    name = "hardfloat.unrecode"
+class FnToRecFnOp(UnaryHardfloatOp):
+    name = "hardfloat.rec_fn_to_fn"
     traits = traits_def(RecodedInputs())
 
 
 Hardfloat = Dialect(
     "hardfloat",
     [
-        MulOp,
-        AddOp,
-        RecodeOp,
-        UnrecodeOp,
+        MulRecFnOp,
+        AddRecFnOp,
+        RecFnToFnOp,
+        FnToRecFnOp,
     ],
 )

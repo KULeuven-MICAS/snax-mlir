@@ -28,8 +28,8 @@ _type_mapping: dict[type[Attribute], tuple[int, int]] = {
 
 # Op conversion
 _arith_to_hardfloat: dict[type[Operation], type[hardfloat.HardfloatOperation]] = {
-    arith.AddfOp: hardfloat.AddOp,
-    arith.MulfOp: hardfloat.MulOp,
+    arith.AddfOp: hardfloat.AddRecFnOp,
+    arith.MulfOp: hardfloat.MulRecFnOp,
 }
 
 
@@ -51,16 +51,16 @@ class ConvertFloatBinaryOps(RewritePattern):
         new_ops = [
             cast_lhs := UnrealizedConversionCastOp.get([op.lhs], [IntegerType(bitwidth)]),
             cast_rhs := UnrealizedConversionCastOp.get([op.rhs], [IntegerType(bitwidth)]),
-            recode_lhs := hardfloat.RecodeOp(
+            recode_lhs := hardfloat.FnToRecFnOp(
                 [cast_lhs], [IntegerType(bitwidth + 1)], sig_width=sig_width, exp_width=exp_width
             ),
-            recode_rhs := hardfloat.RecodeOp(
+            recode_rhs := hardfloat.FnToRecFnOp(
                 [cast_rhs], [IntegerType(bitwidth + 1)], sig_width=sig_width, exp_width=exp_width
             ),
             core_op := CoreOp(
                 [recode_lhs, recode_rhs], [IntegerType(bitwidth + 1)], sig_width=sig_width, exp_width=exp_width
             ),
-            unrecode := hardfloat.UnrecodeOp(
+            unrecode := hardfloat.RecFnToFnOp(
                 [core_op],
                 [IntegerType(bitwidth)],
                 sig_width=sig_width,
