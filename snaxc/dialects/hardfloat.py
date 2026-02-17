@@ -118,13 +118,13 @@ class AddRecFnOp(BinaryHardfloatOp):
 
 
 @irdl_op_definition
-class RecFnToFnOp(UnaryHardfloatOp):
+class FnToRecFnOp(UnaryHardfloatOp):
     name = "hardfloat.fn_to_rec_fn"
     traits = traits_def(RecodedOutputs())
 
 
 @irdl_op_definition
-class FnToRecFnOp(UnaryHardfloatOp):
+class RecFnToFnOp(UnaryHardfloatOp):
     name = "hardfloat.rec_fn_to_fn"
     traits = traits_def(RecodedInputs())
 
