@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
 from xdsl.dialects.builtin import IntAttr, IntegerType
 from xdsl.ir import Attribute, Dialect, Operation, SSAValue
-from xdsl.irdl import IRDLOperation, irdl_op_definition, operand_def, prop_def, result_def, traits_def
+from xdsl.irdl import IRDLOperation, irdl_op_definition, operand_def, opt_prop_def, prop_def, result_def, traits_def
 from xdsl.parser import Parser
 from xdsl.printer import Printer
 from xdsl.traits import OpTrait, Pure
@@ -16,6 +16,8 @@ class HardfloatOperation(IRDLOperation, ABC):
     res = result_def(IntegerType)
     sig_width = prop_def(IntAttr)
     exp_width = prop_def(IntAttr)
+    int_width = opt_prop_def(IntAttr)
+
     traits = traits_def(Pure())
 
     def __init__(
@@ -24,17 +26,20 @@ class HardfloatOperation(IRDLOperation, ABC):
         result_types: Sequence[Attribute],
         sig_width: int,
         exp_width: int,
+        int_width: int | None = None,
         attr_dict: dict[str, Attribute] | None = None,
     ):
-        super().__init__(
-            operands=operands,
-            result_types=result_types,
-            attributes=attr_dict,
-            properties={"exp_width": IntAttr(exp_width), "sig_width": IntAttr(sig_width)},
-        )
+        props: dict[str, Attribute] = {}
+        props.update({"exp_width": IntAttr(exp_width), "sig_width": IntAttr(sig_width)})
+        if int_width is not None:
+            props["int_width"] = IntAttr(int_width)
+        super().__init__(operands=operands, result_types=result_types, attributes=attr_dict, properties=props)
 
     def print(self, printer: Printer):
-        printer.print_string(f"<{self.sig_width.data}, {self.exp_width.data}>")
+        if self.int_width is not None:
+            printer.print_string(f"<{self.sig_width.data}, {self.exp_width.data}, {self.int_width.data}>")
+        else:
+            printer.print_string(f"<{self.sig_width.data}, {self.exp_width.data}>")
         printer.print_operands(self.operands)
         printer.print_string(" : ")
         printer.print_function_type(input_types=self.operand_types, output_types=self.result_types)
@@ -45,6 +50,8 @@ class HardfloatOperation(IRDLOperation, ABC):
         sig_width = parser.parse_integer(allow_boolean=False, allow_negative=False)
         parser.parse_punctuation(",")
         exp_width = parser.parse_integer(allow_boolean=False, allow_negative=False)
+        parser.parse_optional_punctuation(",")
+        int_width = parser.parse_optional_integer(allow_boolean=False, allow_negative=False)
         parser.parse_punctuation(">")
         operands = parser.parse_comma_separated_list(
             delimiter=parser.Delimiter.PAREN, parse=parser.parse_unresolved_operand
@@ -56,17 +63,31 @@ class HardfloatOperation(IRDLOperation, ABC):
         res_operands: list[SSAValue[Attribute]] = []
         for opnd, typ in zip(operands, in_types, strict=True):
             res_operands.append(parser.resolve_operand(opnd, typ))
-        return cls(operands=res_operands, result_types=out_types, sig_width=sig_width, exp_width=exp_width)
+        return cls(
+            operands=res_operands, result_types=out_types, sig_width=sig_width, exp_width=exp_width, int_width=int_width
+        )
 
 
-class RecodedInputs(OpTrait):
+class HardfloatOpTrait(OpTrait, ABC):
+    """Base trait for all Hardfloat-specific verification logic."""
+
+    def verify(self, op: Operation) -> None:
+        if not isinstance(op, HardfloatOperation):
+            raise VerifyException(f"Trait {self.__class__.__name__} expects a HardfloatOperation.")
+        self.verify_hardfloat(op)
+
+    @abstractmethod
+    def verify_hardfloat(self, op: HardfloatOperation) -> None:
+        """Override this instead of verify()"""
+        pass
+
+
+class RecodedInputs(HardfloatOpTrait):
     """
     Provides verification to HardfloatOperation's to have proper bitwidths for their recoded inputs
     """
 
-    def verify(self, op: Operation) -> None:
-        if not isinstance(op, HardfloatOperation):
-            raise VerifyException("Expect op to subclass HardfloatOperation")
+    def verify_hardfloat(self, op: HardfloatOperation) -> None:
         sig_width = op.sig_width.data
         exp_width = op.exp_width.data
         for typ in op.operand_types:
@@ -74,26 +95,52 @@ class RecodedInputs(OpTrait):
                 raise VerifyException("Expect input type to be of IntegerType")
             if typ.bitwidth != sig_width + exp_width + 1:
                 raise VerifyException(
-                    f"Expect input type to be of sig_width ({sig_width}) + exp_width ({exp_width}) + 1 = {typ.bitwidth}"
+                    f"Expect input type to be of sig_width ({sig_width})",
+                    f" + exp_width ({exp_width}) + 1 = {typ.bitwidth}",
                 )
 
 
-class RecodedOutputs(OpTrait):
+class RecodedOutputs(HardfloatOpTrait):
     """
     Provides verification to HardfloatOperation's to have proper bitwidths for their recoded outputs
     """
 
-    def verify(self, op: Operation) -> None:
-        if not isinstance(op, HardfloatOperation):
-            raise VerifyException("Expect op to subclass HardfloatOperation")
+    def verify_hardfloat(self, op: HardfloatOperation) -> None:
         sig_width = op.sig_width.data
         exp_width = op.exp_width.data
         for typ in op.result_types:
             if not isinstance(typ, IntegerType):
-                raise VerifyException("Expect input type to be of IntegerType")
+                raise VerifyException("Expect output type to be of IntegerType")
             if typ.bitwidth != sig_width + exp_width + 1:
                 raise VerifyException(
-                    f"Expect input type to be of sig_width ({sig_width}) + exp_width ({exp_width}) + 1 = {typ.bitwidth}"
+                    f"Expect output type to be of sig_width ({sig_width})",
+                    f" + exp_width ({exp_width}) + 1 = {typ.bitwidth}",
+                )
+
+
+class IntegerOutputs(HardfloatOpTrait):
+    def verify_hardfloat(self, op: HardfloatOperation) -> None:
+        if op.int_width is None:
+            raise VerifyException("Expect op to have int_width property")
+        for typ in op.result_types:
+            if not isinstance(typ, IntegerType):
+                raise VerifyException("Expect output type to be of IntegerType")
+            if typ.bitwidth != op.int_width.data:
+                raise VerifyException(
+                    f"Expect output type ({typ}) to have bitwidth given by int_width property ({op.int_width.data})"
+                )
+
+
+class IntegerInputs(HardfloatOpTrait):
+    def verify_hardfloat(self, op: HardfloatOperation) -> None:
+        if op.int_width is None:
+            raise VerifyException("Expect op to have int_width property")
+        for typ in op.operand_types:
+            if not isinstance(typ, IntegerType):
+                raise VerifyException("Expect input type to be of IntegerType")
+            if typ.bitwidth != op.int_width.data:
+                raise VerifyException(
+                    f"Expect input type ({typ}) to have bitwidth given by int_width property ({op.int_width.data})"
                 )
 
 
@@ -130,6 +177,18 @@ class RecFnToFnOp(UnaryHardfloatOp):
     traits = traits_def(RecodedInputs())
 
 
+@irdl_op_definition
+class InToRecFnOp(UnaryHardfloatOp):
+    name = "hardfloat.in_to_rec_fn"
+    traits = traits_def(IntegerInputs(), RecodedOutputs())
+
+
+@irdl_op_definition
+class RecFnToInOp(UnaryHardfloatOp):
+    name = "hardfloat.rec_fn_to_in"
+    traits = traits_def(RecodedInputs(), IntegerOutputs())
+
+
 Hardfloat = Dialect(
     "hardfloat",
     [
@@ -137,5 +196,7 @@ Hardfloat = Dialect(
         AddRecFnOp,
         RecFnToFnOp,
         FnToRecFnOp,
+        InToRecFnOp,
+        RecFnToInOp,
     ],
 )
