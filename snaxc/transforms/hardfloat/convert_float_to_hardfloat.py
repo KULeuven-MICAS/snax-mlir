@@ -71,8 +71,8 @@ class ConvertFloatBinaryOps(RewritePattern):
         rewriter.replace_op(op, new_ops=new_ops, new_results=[cast_res.results[0]])
 
 
-class PhsConvertFloatToHardfloatPass(ModulePass):
-    name = "phs-convert-float-to-hardfloat"
+class ConvertFloatToHardfloatPass(ModulePass):
+    name = "convert-float-to-hardfloat"
 
     def apply(self, ctx: Context, op: ModuleOp) -> None:
         PatternRewriteWalker(ConvertFloatBinaryOps(), apply_recursively=False).rewrite_module(op)
