@@ -8,7 +8,7 @@ from xdsl.ir import Attribute, Dialect, Operation, SSAValue
 from xdsl.irdl import IRDLOperation, irdl_op_definition, operand_def, prop_def, result_def, traits_def
 from xdsl.parser import Parser
 from xdsl.printer import Printer
-from xdsl.traits import OpTrait
+from xdsl.traits import OpTrait, Pure
 from xdsl.utils.exceptions import VerifyException
 
 
@@ -16,6 +16,7 @@ class HardfloatOperation(IRDLOperation, ABC):
     res = result_def(IntegerType)
     sig_width = prop_def(IntAttr)
     exp_width = prop_def(IntAttr)
+    traits = traits_def(Pure())
 
     def __init__(
         self,
