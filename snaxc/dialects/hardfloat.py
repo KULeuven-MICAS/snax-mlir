@@ -5,9 +5,11 @@ from collections.abc import Sequence
 
 from xdsl.dialects.builtin import IntAttr, IntegerType
 from xdsl.ir import Attribute, Dialect, Operation, SSAValue
-from xdsl.irdl import IRDLOperation, irdl_op_definition, operand_def, prop_def, result_def
+from xdsl.irdl import IRDLOperation, irdl_op_definition, operand_def, prop_def, result_def, traits_def
 from xdsl.parser import Parser
 from xdsl.printer import Printer
+from xdsl.traits import OpTrait
+from xdsl.utils.exceptions import VerifyException
 
 
 class HardfloatOperation(IRDLOperation, ABC):
@@ -27,7 +29,7 @@ class HardfloatOperation(IRDLOperation, ABC):
             operands=operands,
             result_types=result_types,
             attributes=attr_dict,
-            properties={"exp_width": IntAttr(sig_width), "sig_width": IntAttr(exp_width)},
+            properties={"exp_width": IntAttr(exp_width), "sig_width": IntAttr(sig_width)},
         )
 
     def print(self, printer: Printer):
@@ -56,6 +58,44 @@ class HardfloatOperation(IRDLOperation, ABC):
         return cls(operands=res_operands, result_types=out_types, sig_width=sig_width, exp_width=exp_width)
 
 
+class RecodedInputs(OpTrait):
+    """
+    Provides verification to HardfloatOperation's to have proper bitwidths for their recoded inputs
+    """
+
+    def verify(self, op: Operation) -> None:
+        if not isinstance(op, HardfloatOperation):
+            raise VerifyException("Expect op to subclass HardfloatOperation")
+        sig_width = op.sig_width.data
+        exp_width = op.exp_width.data
+        for typ in op.operand_types:
+            if not isinstance(typ, IntegerType):
+                raise VerifyException("Expect input type to be of IntegerType")
+            if typ.bitwidth != sig_width + exp_width + 1:
+                raise VerifyException(
+                    f"Expect input type to be of sig_width ({sig_width}) + exp_width ({exp_width}) + 1 = {typ.bitwidth}"
+                )
+
+
+class RecodedOutputs(OpTrait):
+    """
+    Provides verification to HardfloatOperation's to have proper bitwidths for their recoded outputs
+    """
+
+    def verify(self, op: Operation) -> None:
+        if not isinstance(op, HardfloatOperation):
+            raise VerifyException("Expect op to subclass HardfloatOperation")
+        sig_width = op.sig_width.data
+        exp_width = op.exp_width.data
+        for typ in op.result_types:
+            if not isinstance(typ, IntegerType):
+                raise VerifyException("Expect input type to be of IntegerType")
+            if typ.bitwidth != sig_width + exp_width + 1:
+                raise VerifyException(
+                    f"Expect input type to be of sig_width ({sig_width}) + exp_width ({exp_width}) + 1 = {typ.bitwidth}"
+                )
+
+
 class UnaryHardfloatOp(HardfloatOperation, ABC):
     input = operand_def(IntegerType)
 
@@ -68,21 +108,25 @@ class BinaryHardfloatOp(HardfloatOperation, ABC):
 @irdl_op_definition
 class MulOp(BinaryHardfloatOp):
     name = "hardfloat.mul"
+    traits = traits_def(RecodedInputs(), RecodedOutputs())
 
 
 @irdl_op_definition
 class AddOp(BinaryHardfloatOp):
     name = "hardfloat.add"
+    traits = traits_def(RecodedInputs(), RecodedOutputs())
 
 
 @irdl_op_definition
 class RecodeOp(UnaryHardfloatOp):
     name = "hardfloat.recode"
+    traits = traits_def(RecodedOutputs())
 
 
 @irdl_op_definition
 class UnrecodeOp(UnaryHardfloatOp):
     name = "hardfloat.unrecode"
+    traits = traits_def(RecodedInputs())
 
 
 Hardfloat = Dialect(
