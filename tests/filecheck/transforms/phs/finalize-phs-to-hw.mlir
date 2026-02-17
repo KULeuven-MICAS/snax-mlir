@@ -45,6 +45,27 @@ builtin.module {
     %19 = phs.mux with %12 (%16 : i32, %18 : i32) -> i32
     hw.output %19 : i32
   }
+
+  hw.module private @mysecondaccelerator(in %0 data_0: i32, in %1 data_1: i32, in %2 switch_0: i2, out out_0: i32) {
+    %8 = builtin.unrealized_conversion_cast %2 : i2 to index
+    %14 = phs.choose @_0 with %8 (%0 : i32, %1 : i32) -> i32
+      0) (%15, %16) {
+        %17 = arith.muli %15, %16 : i32
+        // More complex accelerators should also be able to lower,
+        // even though this would not come out of --phs-encode naturally
+        %in_between = arith.muli %17, %16 : i32
+        phs.yield %in_between : i32
+      }
+      1) (%18, %19) {
+        %20 = arith.addi %18, %19 : i32
+        phs.yield %20 : i32
+      }
+      2) (%21, %22) {
+        %23 = arith.subi %21, %22 : i32
+        phs.yield %23 : i32
+      }
+    hw.output %14 : i32
+  }
 }
 
 // SV: module myfirstaccelerator(
@@ -65,6 +86,18 @@ builtin.module {
 // SV-NEXT:   wire [1:0][31:0] _GEN_2 = {{[{][{]}}_GEN[switch_0] / _GEN_1}, {_GEN[switch_0] * _GEN_1{{[}][}]}};
 // SV-NEXT:   assign out_0 =
 // SV-NEXT:     switch_4 ? _GEN_2[switch_3] : switch_2 ? _GEN_0[switch_1] : _GEN[switch_0];
+// SV-NEXT: endmodule
+//
+// SV: module mysecondaccelerator(
+// SV-NEXT:   input  [31:0] data_0,
+// SV-NEXT:                 data_1,
+// SV-NEXT:   input  [1:0]  switch_0,
+// SV-NEXT:   output [31:0] out_0
+// SV-NEXT: );
+//
+// SV:   wire [2:0][31:0] _GEN =
+// SV-NEXT:     {{[{][{]}}data_0 - data_1}, {data_0 + data_1}, {data_0 * data_1 * data_1{{[}][}]}};
+// SV-NEXT:   assign out_0 = _GEN[switch_0];
 // SV-NEXT: endmodule
 
 
@@ -87,5 +120,14 @@ builtin.module {
 // CHECK-NEXT:     %14 = hw.array_get %13[%switch_3] : !hw.array<2xi32>, i1
 // CHECK-NEXT:     %15 = comb.mux %switch_4, %14, %9 : i32
 // CHECK-NEXT:     hw.output %15 : i32
+// CHECK-NEXT:   }
+// CHECK-NEXT:   hw.module private @mysecondaccelerator(in %data_0 : i32, in %data_1 : i32, in %switch_0 : i2, out out_0 : i32) {
+// CHECK-NEXT:     %0 = comb.mul %data_0, %data_1 : i32
+// CHECK-NEXT:     %1 = comb.mul %0, %data_1 : i32
+// CHECK-NEXT:     %2 = comb.add %data_0, %data_1 : i32
+// CHECK-NEXT:     %3 = comb.sub %data_0, %data_1 : i32
+// CHECK-NEXT:     %4 = hw.array_create %3, %2, %1 : i32
+// CHECK-NEXT:     %5 = hw.array_get %4[%switch_0] : !hw.array<3xi32>, i2
+// CHECK-NEXT:     hw.output %5 : i32
 // CHECK-NEXT:   }
 // CHECK-NEXT: }
