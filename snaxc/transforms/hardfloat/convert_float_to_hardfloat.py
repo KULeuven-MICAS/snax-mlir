@@ -12,10 +12,12 @@ from xdsl.dialects.builtin import (
     Float64Type,
     IntegerType,
     ModuleOp,
+    SignednessAttr,
     UnrealizedConversionCastOp,
 )
 from xdsl.ir import Attribute, Operation
 from xdsl.irdl import isa
+from xdsl.parser import Signedness
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     GreedyRewritePatternApplier,
@@ -71,10 +73,19 @@ class ConvertFloatBinaryOps(RewritePattern):
 class ConvertIToFPOp(RewritePattern):
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: arith.IntegerToFloatingPointBaseOp, rewriter: PatternRewriter):
+        match op.name:
+            case arith.SIToFPOp.name:
+                props = {"signedness": cast(Attribute, SignednessAttr.get(Signedness.SIGNED))}
+            case arith.UIToFPOp.name:
+                props = {"signedness": cast(Attribute, SignednessAttr.get(Signedness.UNSIGNED))}
+            case _:
+                raise NotImplementedError()
         exp_width, sig_width = _type_mapping[type(op.result.type)]
         bitwidth = cast(IntegerType, op.input.type).bitwidth
         new_ops = [
-            rec_fn := hardfloat.InToRecFnOp([op.input], [IntegerType(bitwidth + 1)], sig_width, exp_width, bitwidth),
+            rec_fn := hardfloat.InToRecFnOp(
+                [op.input], [IntegerType(bitwidth + 1)], sig_width, exp_width, bitwidth, prop_dict=props
+            ),
             unrecode := hardfloat.RecFnToFnOp([rec_fn], [IntegerType(bitwidth)], sig_width, exp_width),
             cast_res := UnrealizedConversionCastOp.get([unrecode], [op.result.type]),
         ]
@@ -86,5 +97,5 @@ class ConvertFloatToHardfloatPass(ModulePass):
 
     def apply(self, ctx: Context, op: ModuleOp) -> None:
         PatternRewriteWalker(
-            GreedyRewritePatternApplier([ConvertFloatBinaryOps()]), apply_recursively=False
+            GreedyRewritePatternApplier([ConvertFloatBinaryOps(), ConvertIToFPOp()]), apply_recursively=False
         ).rewrite_module(op)

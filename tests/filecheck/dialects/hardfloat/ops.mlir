@@ -5,8 +5,8 @@ func.func @test_mul(%a : i33, %b : i33, %c : i32) -> (i33, i33, i32, i33) {
   %add = hardfloat.add_rec_fn<24, 8>(%a, %b) : (i33, i33) -> i33
   %recoded = hardfloat.fn_to_rec_fn<24, 8>(%c) : (i32) -> i33
   %unrecoded = hardfloat.rec_fn_to_fn<24, 8>(%recoded) : (i33) -> i32
-  %to_int = hardfloat.rec_fn_to_in<24,8,32>(%recoded) : (i33) -> i32
-  %int_to_rec = hardfloat.in_to_rec_fn<24,8,32>(%to_int) : (i32) -> i33
+  %to_int = hardfloat.rec_fn_to_in<24,8,32>(%recoded) <{signedness=#builtin.signedness<unsigned>}>: (i33) -> i32
+  %int_to_rec = hardfloat.in_to_rec_fn<24,8,32>(%to_int) <{signedness=#builtin.signedness<unsigned>}>: (i32) -> i33
   func.return %mul, %add, %unrecoded, %int_to_rec: i33, i33, i32, i33
 }
 
