@@ -92,10 +92,33 @@ class ConvertIToFPOp(RewritePattern):
         rewriter.replace_op(op, new_ops=new_ops, new_results=[cast_res.results[0]])
 
 
+class ConvertFPToIOp(RewritePattern):
+    @op_type_rewrite_pattern
+    def match_and_rewrite(self, op: arith.FloatingPointToIntegerBaseOp, rewriter: PatternRewriter):
+        match op.name:
+            case arith.FPToSIOp.name:
+                props = {"signedness": cast(Attribute, SignednessAttr.get(Signedness.SIGNED))}
+            case arith.FPToUIOp.name:
+                props = {"signedness": cast(Attribute, SignednessAttr.get(Signedness.UNSIGNED))}
+            case _:
+                raise NotImplementedError()
+        exp_width, sig_width = _type_mapping[type(op.input.type)]
+        bitwidth = cast(IntegerType, op.input.type).bitwidth
+        new_ops = [
+            cast_res := UnrealizedConversionCastOp.get([op.input], [op.result.type]),
+            recode := hardfloat.FnToRecFnOp([cast_res], [IntegerType(bitwidth + 1)], sig_width, exp_width),
+            rec_fn := hardfloat.RecFnToInOp(
+                [recode], [IntegerType(bitwidth)], sig_width, exp_width, bitwidth, prop_dict=props
+            ),
+        ]
+        rewriter.replace_op(op, new_ops=new_ops, new_results=[rec_fn.results[0]])
+
+
 class ConvertFloatToHardfloatPass(ModulePass):
     name = "convert-float-to-hardfloat"
 
     def apply(self, ctx: Context, op: ModuleOp) -> None:
         PatternRewriteWalker(
-            GreedyRewritePatternApplier([ConvertFloatBinaryOps(), ConvertIToFPOp()]), apply_recursively=False
+            GreedyRewritePatternApplier([ConvertFloatBinaryOps(), ConvertIToFPOp(), ConvertFPToIOp()]),
+            apply_recursively=False,
         ).rewrite_module(op)
