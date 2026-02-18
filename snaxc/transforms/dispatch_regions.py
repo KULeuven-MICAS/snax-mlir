@@ -76,9 +76,7 @@ class DispatchRegionsRewriter(RewritePattern):
         func_call = func.CallOp("snax_cluster_core_idx", [], [builtin.i32])
 
         # Add pin to constants attribute for function-constant-pinning pass
-        constants_to_pin = builtin.ArrayAttr(
-            [builtin.IntegerAttr.from_int_and_width(i, 32) for i in range(self.nb_cores)]
-        )
+        constants_to_pin = builtin.ArrayAttr([builtin.IntegerAttr(i, 32) for i in range(self.nb_cores)])
         func_call.attributes.update({"pin_to_constants": constants_to_pin})
 
         call_and_condition_dm = [
