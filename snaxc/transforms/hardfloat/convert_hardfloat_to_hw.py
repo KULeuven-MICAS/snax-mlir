@@ -21,7 +21,10 @@ from snaxc.dialects import hardfloat
 
 
 def get_suffix(op: hardfloat.HardfloatOperation) -> str:
-    return f"_s{op.sig_width.data}_e{op.exp_width.data}"
+    if op.int_width is None:
+        return f"_s{op.sig_width.data}_e{op.exp_width.data}"
+    else:
+        return f"_s{op.sig_width.data}_e{op.exp_width.data}_i{op.int_width.data}"
 
 
 @dataclass(frozen=True)
@@ -36,10 +39,10 @@ class HWBlockSpec:
     """
 
     symbol_name: str
-    in_ports: tuple[str, ...]
-    in_types: tuple[Attribute, ...]
-    out_ports: tuple[str, ...]
-    out_types: tuple[Attribute, ...]
+    in_ports: Sequence[str]
+    in_types: Sequence[Attribute]
+    out_ports: Sequence[str]
+    out_types: Sequence[Attribute]
 
     @property
     def symbol_attr(self) -> SymbolRefAttr:
@@ -76,18 +79,30 @@ class HWBlockSpec:
 
 
 @dataclass
-class ConvertAdd(RewritePattern):
+class ConvertSimpleOps(RewritePattern):
     seen: set[HWBlockSpec] = field(default_factory=set[HWBlockSpec])
     counter = 0
 
     @op_type_rewrite_pattern
-    def match_and_rewrite(self, op: hardfloat.AddRecFnOp, rewriter: PatternRewriter):
-        instance_name = f"AddRecFN{get_suffix(op)}"
-        add_block = HWBlockSpec(
-            instance_name, ("io_a", "io_b"), (op.lhs.type, op.rhs.type), ("io_out",), (op.res.type,)
-        )
+    def match_and_rewrite(
+        self,
+        op: hardfloat.AddRecFnOp | hardfloat.MulRecFnOp | hardfloat.RecFnToFnOp | hardfloat.FnToRecFnOp,
+        rewriter: PatternRewriter,
+    ):
+        suffix = get_suffix(op)
+        match op:
+            case hardfloat.AddRecFnOp():
+                instance_name = f"AddRecFN{suffix}"
+            case hardfloat.MulRecFnOp():
+                instance_name = f"MulRecFN{suffix}"
+            case hardfloat.RecFnToFnOp():
+                instance_name = f"RecFnToFnOp{suffix}"
+            case _:  # isinstance(op, hardfloat.FnToRecFnOp):
+                instance_name = f"FnToRecFnOp{suffix}"
+        add_block = HWBlockSpec(instance_name, ("io_a",), op.operand_types, ("io_out",), op.result_types)
         self.seen.add(add_block)
-        instance_op = add_block.instance(f"{instance_name}_{self.counter}", [op.lhs, op.rhs])
+        instance_op = add_block.instance(f"{instance_name}_{self.counter}", [*op.operands])
+        self.counter += 1
         rewriter.replace_op(op, instance_op, new_results=instance_op.results)
 
 
@@ -97,11 +112,7 @@ class ConvertHardfloatToHw(ModulePass):
     def apply(self, ctx: Context, op: ModuleOp) -> None:
         seen: set[HWBlockSpec] = set()
         PatternRewriteWalker(
-            GreedyRewritePatternApplier(
-                [
-                    ConvertAdd(seen),
-                ]
-            ),
+            GreedyRewritePatternApplier([ConvertSimpleOps(seen)]),
             apply_recursively=False,
         ).rewrite_module(op)
         body = op.body.block
