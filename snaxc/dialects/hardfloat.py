@@ -50,6 +50,7 @@ class HardfloatOperation(IRDLOperation, ABC):
             name: attr for name, attr in self.properties.items() if name not in ["sig_width", "exp_width", "int_width"]
         }
         if len(opt_properties) > 0:
+            printer.print_string(" ")
             with printer.in_angle_brackets():
                 printer.print_attr_dict(opt_properties)
         printer.print_string(" : ")

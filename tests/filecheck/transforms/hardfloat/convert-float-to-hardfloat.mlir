@@ -23,10 +23,10 @@ func.func @test_hardfloat(%a : f32, %b : f32, %c: i32) -> (f32, f32, f32, f32) {
 // CHECK-NEXT:   %mul_4 = hardfloat.mul_rec_fn<24, 8>(%mul_2, %mul_3) : (i33, i33) -> i33
 // CHECK-NEXT:   %mul_5 = hardfloat.rec_fn_to_fn<24, 8>(%mul_4) : (i33) -> i32
 // CHECK-NEXT:   %mul_6 = builtin.unrealized_conversion_cast %mul_5 : i32 to f32
-// CHECK-NEXT:   %sfp = hardfloat.in_to_rec_fn<24, 8, 32>(%c)<{signedness = #builtin.signedness<signed>}> : (i32) -> i33
+// CHECK-NEXT:   %sfp = hardfloat.in_to_rec_fn<24, 8, 32>(%c) <{signedness = #builtin.signedness<signed>}> : (i32) -> i33
 // CHECK-NEXT:   %sfp_1 = hardfloat.rec_fn_to_fn<24, 8>(%sfp) : (i33) -> i32
 // CHECK-NEXT:   %sfp_2 = builtin.unrealized_conversion_cast %sfp_1 : i32 to f32
-// CHECK-NEXT:   %ufp = hardfloat.in_to_rec_fn<24, 8, 32>(%c)<{signedness = #builtin.signedness<unsigned>}> : (i32) -> i33
+// CHECK-NEXT:   %ufp = hardfloat.in_to_rec_fn<24, 8, 32>(%c) <{signedness = #builtin.signedness<unsigned>}> : (i32) -> i33
 // CHECK-NEXT:   %ufp_1 = hardfloat.rec_fn_to_fn<24, 8>(%ufp) : (i33) -> i32
 // CHECK-NEXT:   %ufp_2 = builtin.unrealized_conversion_cast %ufp_1 : i32 to f32
 // CHECK-NEXT:   func.return %add_6, %mul_6, %sfp_2, %ufp_2 : f32, f32, f32, f32
