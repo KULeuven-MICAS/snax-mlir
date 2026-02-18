@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
+from typing import cast
 
 from xdsl.dialects.builtin import IntAttr, IntegerType, Signedness, SignednessAttr
 from xdsl.ir import Attribute, Dialect, Operation, SSAValue
@@ -111,8 +112,7 @@ class RecodedInputs(HardfloatOpTrait):
                 raise VerifyException("Expect input type to be of IntegerType")
             if typ.bitwidth != sig_width + exp_width + 1:
                 raise VerifyException(
-                    f"Expect input type to be of sig_width ({sig_width})",
-                    f" + exp_width ({exp_width}) + 1 = {typ.bitwidth}",
+                    f"Expect input type to be of sig_width ({sig_width}) + exp_width ({exp_width}) + 1 = {typ.bitwidth}"
                 )
 
 
@@ -125,12 +125,11 @@ class RecodedOutputs(HardfloatOpTrait):
         sig_width = op.sig_width.data
         exp_width = op.exp_width.data
         for typ in op.result_types:
-            if not isinstance(typ, IntegerType):
-                raise VerifyException("Expect output type to be of IntegerType")
+            typ = cast(IntegerType, typ)  # verified by IRDL
             if typ.bitwidth != sig_width + exp_width + 1:
                 raise VerifyException(
-                    f"Expect output type to be of sig_width ({sig_width})",
-                    f" + exp_width ({exp_width}) + 1 = {typ.bitwidth}",
+                    f"Expect output type to be of sig_width ({sig_width})"
+                    f" + exp_width ({exp_width}) + 1 = {typ.bitwidth}"
                 )
 
 
@@ -139,8 +138,7 @@ class IntegerOutputs(HardfloatOpTrait):
         if op.int_width is None:
             raise VerifyException("Expect op to have int_width property")
         for typ in op.result_types:
-            if not isinstance(typ, IntegerType):
-                raise VerifyException("Expect output type to be of IntegerType")
+            typ = cast(IntegerType, typ)  # verified by IRDL
             if typ.bitwidth != op.int_width.data:
                 raise VerifyException(
                     f"Expect output type ({typ}) to have bitwidth given by int_width property ({op.int_width.data})"
@@ -152,8 +150,7 @@ class IntegerInputs(HardfloatOpTrait):
         if op.int_width is None:
             raise VerifyException("Expect op to have int_width property")
         for typ in op.operand_types:
-            if not isinstance(typ, IntegerType):
-                raise VerifyException("Expect input type to be of IntegerType")
+            typ = cast(IntegerType, typ)  # verified by IRDL
             if typ.bitwidth != op.int_width.data:
                 raise VerifyException(
                     f"Expect input type ({typ}) to have bitwidth given by int_width property ({op.int_width.data})"
