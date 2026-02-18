@@ -208,14 +208,14 @@ class RecFnToFnOp(UnaryHardfloatOp):
 class InToRecFnOp(UnaryHardfloatOp):
     name = "hardfloat.in_to_rec_fn"
     signedness = prop_def(SignednessAttr)
-    traits = traits_def(IntegerInputs(), RecodedOutputs())
+    traits = traits_def(IntegerInputs(), RecodedOutputs(), IntegerConversion())
 
 
 @irdl_op_definition
 class RecFnToInOp(UnaryHardfloatOp):
     name = "hardfloat.rec_fn_to_in"
     signedness = prop_def(SignednessAttr)
-    traits = traits_def(RecodedInputs(), IntegerOutputs())
+    traits = traits_def(RecodedInputs(), IntegerOutputs(), IntegerConversion())
 
 
 Hardfloat = Dialect(
