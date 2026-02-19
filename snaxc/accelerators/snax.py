@@ -391,7 +391,7 @@ class SNAXPollingBarrier(Accelerator, ABC):
                 [],
                 [
                     barrier := arith.ConstantOp(acc_op.barrier),
-                    zero := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(0, 32)),
+                    zero := arith.ConstantOp(builtin.IntegerAttr(0, 32)),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate
@@ -411,7 +411,7 @@ class SNAXPollingBarrier(Accelerator, ABC):
                 ],
             ),
             addr_val := arith.ConstantOp(builtin.IntegerAttr(965, 12)),  # 0x3c5 = 965
-            zero := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(0, 5)),
+            zero := arith.ConstantOp(builtin.IntegerAttr(0, 5)),
             llvm.InlineAsmOp(
                 "csrw $0, $1",
                 "I, K",
@@ -450,7 +450,7 @@ class SNAXPollingBarrier2(Accelerator, ABC):
                 [],
                 [
                     barrier := arith.ConstantOp(acc_op.barrier),
-                    one := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(1, 32)),
+                    one := arith.ConstantOp(builtin.IntegerAttr(1, 32)),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate
@@ -491,7 +491,7 @@ class SNAXPollingBarrier3(Accelerator, ABC):
                 [],
                 [
                     barrier := arith.ConstantOp(acc_op.barrier),
-                    zero := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(0, 32)),
+                    zero := arith.ConstantOp(builtin.IntegerAttr(0, 32)),
                     status := llvm.InlineAsmOp(
                         "csrr $0, $1",
                         # I = any 12 bit immediate

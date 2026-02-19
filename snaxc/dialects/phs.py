@@ -105,7 +105,7 @@ class PEOp(IRDLOperation):
             properties={
                 "sym_name": StringAttr(name),
                 "function_type": function_type,
-                "switch_no": IntegerAttr.from_int_and_width(switch_no, 64),
+                "switch_no": IntegerAttr(switch_no, 64),
                 "arg_attrs": arg_attrs,
                 "res_attrs": res_attrs,
             },
@@ -186,7 +186,7 @@ class PEOp(IRDLOperation):
         """
         block = self.body.block
         # Add new switch at the end
-        self.switch_no = IntegerAttr.from_int_and_width(self.switch_no.value.data + 1, 64)
+        self.switch_no = IntegerAttr(self.switch_no.value.data + 1, 64)
         self.function_type = FunctionType.from_lists(
             list(self.function_type.inputs) + [IndexType()], list(self.function_type.outputs)
         )
@@ -195,7 +195,7 @@ class PEOp(IRDLOperation):
     def remove_switch(self, switch: BlockArgument) -> None:
         assert self.switch_no.value.data != 0, "No switches to remove!"
         self.body.block.erase_arg(switch)
-        self.switch_no = IntegerAttr.from_int_and_width(self.switch_no.value.data - 1, 64)
+        self.switch_no = IntegerAttr(self.switch_no.value.data - 1, 64)
         input_types = list(self.function_type.inputs)
         input_types.pop(switch.index)
         self.function_type = FunctionType.from_lists(input_types, list(self.function_type.outputs))

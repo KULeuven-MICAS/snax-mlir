@@ -229,7 +229,7 @@ class SNAXGEMMXAccelerator(
             result = [
                 *ops_to_insert,
                 setup := accfg.SetupOp([val for _, val in args], self.fields, self.name),
-                launch_val := arith.ConstantOp(builtin.IntegerAttr.from_int_and_width(1, 5)),
+                launch_val := arith.ConstantOp(builtin.IntegerAttr(1, 5)),
                 token := accfg.LaunchOp([launch_val, launch_val], self.launch_fields, setup),
                 accfg.AwaitOp(token),
             ]
@@ -491,7 +491,7 @@ class SNAXGEMMXAccelerator(
         assert isa(mult_vals, DenseArrayBase[IntegerType])
         shift_vals = launch_op.attributes["shift_vals"]
         assert isa(shift_vals, DenseArrayBase[IntegerType])
-        new_m = builtin.IntegerAttr.from_int_and_width(m.value.data // (len(mult_vals) // self.n), m.type.width.data)
+        new_m = builtin.IntegerAttr(m.value.data // (len(mult_vals) // self.n), m.type.width.data)
 
         ops.append(new_m_val := arith.ConstantOp(new_m))
         ops.append(m_addr := arith.ConstantOp(field_to_csr["M"]))

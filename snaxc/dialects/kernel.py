@@ -4,7 +4,7 @@ from typing import cast
 
 from xdsl.builder import Builder
 from xdsl.dialects import arith, linalg
-from xdsl.dialects.builtin import I32, BoolAttr, DenseArrayBase, IntegerType, Signedness
+from xdsl.dialects.builtin import I32, BoolAttr, DenseArrayBase, IntegerType, Signedness, i32
 from xdsl.ir import Attribute, BlockArgument, Dialect, Operation, Region, SSAValue
 from xdsl.irdl import attr_def, irdl_op_definition, operand_def, result_def
 from xdsl.parser import IntegerAttr, IRDLOperation
@@ -189,9 +189,9 @@ class RescaleOp(KernelOp):
     ):
         input = SSAValue.get(input)
         if isinstance(input_zp, int):
-            input_zp = IntegerAttr.from_int_and_width(input_zp, 32)
+            input_zp = IntegerAttr(input_zp, i32)
         if isinstance(output_zp, int):
-            output_zp = IntegerAttr.from_int_and_width(output_zp, 32)
+            output_zp = IntegerAttr(output_zp, i32)
         if not isinstance(multiplier, DenseArrayBase):
             multiplier = DenseArrayBase.from_list(
                 IntegerType(32), [x if isinstance(x, int) else x.value.data for x in multiplier]
@@ -201,11 +201,11 @@ class RescaleOp(KernelOp):
                 IntegerType(32), [x if isinstance(x, int) else x.value.data for x in shift]
             )
         if isinstance(max_int, int):
-            max_int = IntegerAttr.from_int_and_width(max_int, 32)
+            max_int = IntegerAttr(max_int, i32)
         if isinstance(min_int, int):
-            min_int = IntegerAttr.from_int_and_width(min_int, 32)
+            min_int = IntegerAttr(min_int, i32)
         if isinstance(double_round, bool):
-            double_round = IntegerAttr.from_int_and_width(1 if double_round else 0, 1)
+            double_round = IntegerAttr(1 if double_round else 0, 1)
         super().__init__(
             operands=[input],
             result_types=[result_type],
