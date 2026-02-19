@@ -27,6 +27,17 @@ def get_suffix(op: hardfloat.HardfloatOperation) -> str:
         return f"_s{op.sig_width.data}_e{op.exp_width.data}_i{op.int_width.data}"
 
 
+def get_count(counts: dict[HWBlockSpec, int], hw_block: HWBlockSpec) -> int:
+    if hw_block in counts:
+        count = counts[hw_block]
+    else:
+        counts[hw_block] = 0
+        count = 0
+    # increment for next invocation
+    counts[hw_block] = counts[hw_block] + 1
+    return count
+
+
 @dataclass(frozen=True)
 class HWBlockSpec:
     """
@@ -80,29 +91,36 @@ class HWBlockSpec:
 
 @dataclass
 class ConvertSimpleOps(RewritePattern):
-    seen: set[HWBlockSpec] = field(default_factory=set[HWBlockSpec])
-    counter = 0
+    counts: dict[HWBlockSpec, int] = field(default_factory=dict[HWBlockSpec, int])
 
     @op_type_rewrite_pattern
     def match_and_rewrite(
         self,
-        op: hardfloat.AddRecFnOp | hardfloat.MulRecFnOp | hardfloat.RecFnToFnOp | hardfloat.FnToRecFnOp,
+        op: hardfloat.AddRecFnOp
+        | hardfloat.MulRecFnOp
+        | hardfloat.RecFnToFnOp
+        | hardfloat.FnToRecFnOp
+        | hardfloat.RecFnToInOp
+        | hardfloat.InToRecFnOp,
         rewriter: PatternRewriter,
     ):
         suffix = get_suffix(op)
         match op:
             case hardfloat.AddRecFnOp():
-                instance_name = f"AddRecFN{suffix}"
+                symbol_name = f"AddRecFN{suffix}"
             case hardfloat.MulRecFnOp():
-                instance_name = f"MulRecFN{suffix}"
+                symbol_name = f"MulRecFN{suffix}"
             case hardfloat.RecFnToFnOp():
-                instance_name = f"RecFnToFnOp{suffix}"
-            case _:  # isinstance(op, hardfloat.FnToRecFnOp):
-                instance_name = f"FnToRecFnOp{suffix}"
-        add_block = HWBlockSpec(instance_name, ("io_a",), op.operand_types, ("io_out",), op.result_types)
-        self.seen.add(add_block)
-        instance_op = add_block.instance(f"{instance_name}_{self.counter}", [*op.operands])
-        self.counter += 1
+                symbol_name = f"RecFnToFnOp{suffix}"
+            case hardfloat.FnToRecFnOp():
+                symbol_name = f"FnToRecFnOp{suffix}"
+            case hardfloat.RecFnToInOp():
+                symbol_name = f"RecFnToInOp{suffix}"
+            case hardfloat.InToRecFnOp():
+                symbol_name = f"InToRecFnOp{suffix}"
+        hw_block = HWBlockSpec(symbol_name, ("io_a",), op.operand_types, ("io_out",), op.result_types)
+        count = get_count(self.counts, hw_block)
+        instance_op = hw_block.instance(f"{symbol_name}_{count}", [*op.operands])
         rewriter.replace_op(op, instance_op, new_results=instance_op.results)
 
 
@@ -110,12 +128,14 @@ class ConvertHardfloatToHw(ModulePass):
     name = "convert-hardfloat-to-hw"
 
     def apply(self, ctx: Context, op: ModuleOp) -> None:
-        seen: set[HWBlockSpec] = set()
+        counts: dict[HWBlockSpec, int] = {}
         PatternRewriteWalker(
-            GreedyRewritePatternApplier([ConvertSimpleOps(seen)]),
+            GreedyRewritePatternApplier([ConvertSimpleOps(counts)]),
             apply_recursively=False,
         ).rewrite_module(op)
         body = op.body.block
         assert body is not None
-        for spec in sorted(seen, key=lambda spec: spec.symbol_name):
+        for spec in sorted(counts.keys(), key=lambda spec: spec.symbol_name):
             body.add_op(spec.module())
+        # for i, (spec, count) in enumerate(counts.items()):
+        #    print(f"{i}) {spec.symbol_name:20} : {count}")
