@@ -185,7 +185,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/79/0c/c05523fa3181fdf0c9c52a6ba91a23fbf3246cc095f26f6516f9c60e6771/virtualenv-20.35.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/52/24/ab44c871b0f07f491e5d2ad12c9bd7358e527510618cb1b803a88e986db1/werkzeug-3.1.3-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/0b/2c/87f3254fd8ffd29e4c02732eee68a83a1d3c346ae39bc6822dcbcb697f2b/wheel-0.45.1-py3-none-any.whl
-      - pypi: git+https://github.com/xdslproject/xdsl.git?rev=0bc501bd9dd087d0c1c96f036e8274235ef9e49e#0bc501bd9dd087d0c1c96f036e8274235ef9e49e
+      - pypi: git+https://github.com/xdslproject/xdsl.git?rev=6db888d52eba73f2934917e9c1c9e5e5ed50ea3e#6db888d52eba73f2934917e9c1c9e5e5ed50ea3e
       - pypi: ./
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
@@ -2225,9 +2225,9 @@ packages:
 - pypi: ./
   name: snax-mlir
   version: 0.2.2
-  sha256: f4c820c0f309e14d700a6161e7c5e97522b5c8eaae5bf0cc07b3457544da6c43
+  sha256: 2f6a957e7d4852e08659da3fba9e4b6a0bf1b603e254e182d7e374d012c73af1
   requires_dist:
-  - xdsl @ git+https://github.com/xdslproject/xdsl.git@0bc501bd9dd087d0c1c96f036e8274235ef9e49e
+  - xdsl @ git+https://github.com/xdslproject/xdsl.git@6db888d52eba73f2934917e9c1c9e5e5ed50ea3e
   - minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2
   - numpy
   - dacite>=1.9.2,<2
@@ -2478,9 +2478,9 @@ packages:
   - pkg:pypi/wrapt?source=hash-mapping
   size: 64608
   timestamp: 1756851740646
-- pypi: git+https://github.com/xdslproject/xdsl.git?rev=0bc501bd9dd087d0c1c96f036e8274235ef9e49e#0bc501bd9dd087d0c1c96f036e8274235ef9e49e
+- pypi: git+https://github.com/xdslproject/xdsl.git?rev=6db888d52eba73f2934917e9c1c9e5e5ed50ea3e#6db888d52eba73f2934917e9c1c9e5e5ed50ea3e
   name: xdsl
-  version: 0.56.3.dev69+g0bc501bd9
+  version: 0.56.3.dev66+g6db888d52
   requires_dist:
   - immutabledict<4.2.3
   - typing-extensions>=4.7,<5
