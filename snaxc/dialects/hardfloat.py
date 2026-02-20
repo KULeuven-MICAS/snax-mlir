@@ -11,6 +11,7 @@ from xdsl.parser import Parser
 from xdsl.printer import Printer
 from xdsl.traits import Pure
 from xdsl.utils.exceptions import VerifyException
+from xdsl.utils.hints import isa
 
 
 class HardfloatOperation(IRDLOperation, ABC):
@@ -88,6 +89,20 @@ class HardfloatOperation(IRDLOperation, ABC):
         assert isinstance(chisel_name, str), f"{self.__class__.__name__} needs to set a CHISEL_NAME ClassVar"
         return chisel_name
 
+    def get_chisel_input_names(self) -> Sequence[str]:
+        chisel_input_names = getattr(self, "CHISEL_INPUT_NAMES")
+        assert isa(chisel_input_names, Sequence[str]), (
+            f"{self.__class__.__name__} needs to set a CHISEL_INPUT_NAMES ClassVar"
+        )
+        return chisel_input_names
+
+    def get_chisel_output_names(self) -> Sequence[str]:
+        chisel_output_names = getattr(self, "CHISEL_OUTPUT_NAMES")
+        assert isa(chisel_output_names, Sequence[str]), (
+            f"{self.__class__.__name__} needs to set a CHISEL_OUTPUT_NAMES ClassVar"
+        )
+        return chisel_output_names
+
 
 def verify_recoded(op: HardfloatOperation, typ: Attribute) -> None:
     sig_width, exp_width = (op.sig_width.data, op.exp_width.data)
@@ -117,6 +132,8 @@ def verify_int(op: HardfloatOperation, typ: Attribute):
 @irdl_op_definition
 class MulRecFnOp(HardfloatOperation):
     CHISEL_NAME: ClassVar[str] = "MulRecFN"
+    CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("a", "b", "roundingMode", "detectTininess")
+    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
     name = "hardfloat.mul_rec_fn"
     a = operand_def(IntegerType)
     b = operand_def(IntegerType)
@@ -133,6 +150,8 @@ class MulRecFnOp(HardfloatOperation):
 @irdl_op_definition
 class AddRecFnOp(HardfloatOperation):
     CHISEL_NAME: ClassVar[str] = "AddRecFN"
+    CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("subOp", "a", "b", "roundingMode", "detectTininess")
+    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
     name = "hardfloat.add_rec_fn"
     subOp = operand_def(IntegerType(1))
     a = operand_def(IntegerType)
@@ -150,50 +169,61 @@ class AddRecFnOp(HardfloatOperation):
 @irdl_op_definition
 class FnToRecFnOp(HardfloatOperation):
     CHISEL_NAME: ClassVar[str] = "RecFNFromFN"
+    CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("in",)
+    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
     name = "hardfloat.fn_to_rec_fn"
-    input = operand_def(IntegerType)
+    in_ = operand_def(IntegerType)  # "in" is reserved in python
     out = result_def(IntegerType)
 
     def verify_(self) -> None:
-        verify_float(self, self.input.type)
+        verify_float(self, self.in_.type)
         verify_recoded(self, self.out.type)
 
 
 @irdl_op_definition
 class RecFnToFnOp(HardfloatOperation):
     CHISEL_NAME: ClassVar[str] = "RecFNToFN"
+    CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("in",)
+    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
     name = "hardfloat.rec_fn_to_fn"
-    input = operand_def(IntegerType)
+    in_ = operand_def(IntegerType)  # "in" is reserved in python
     out = result_def(IntegerType)
 
     def verify_(self) -> None:
-        verify_recoded(self, self.input.type)
+        verify_recoded(self, self.in_.type)
         verify_float(self, self.out.type)
 
 
 @irdl_op_definition
 class InToRecFnOp(HardfloatOperation):
     CHISEL_NAME: ClassVar[str] = "INToRecFN"
+    CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("signedIn", "in", "roundingMode", "detectTininess")
+    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
     name = "hardfloat.in_to_rec_fn"
     signedIn = operand_def(IntegerType(1))
-    input = operand_def(IntegerType)
+    in_ = operand_def(IntegerType)  # "in" is reserved in python
+    roundingMode = operand_def(IntegerType(3))
+    detectTininess = operand_def(IntegerType(1))
     out = result_def(IntegerType)
 
     def verify_(self) -> None:
-        verify_int(self, self.input.type)
+        verify_int(self, self.in_.type)
         verify_recoded(self, self.out.type)
 
 
 @irdl_op_definition
 class RecFnToInOp(HardfloatOperation):
     CHISEL_NAME: ClassVar[str] = "RecFNToIN"
+    CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("in", "roundingMode", "signedOut")
+    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
     name = "hardfloat.rec_fn_to_in"
-    input = operand_def(IntegerType)
+    in_ = operand_def(IntegerType)  # "in" is reserved in python
+    roundingMode = operand_def(IntegerType(3))
     signedOut = operand_def(IntegerType(1))
     out = result_def(IntegerType)
 
     def verify_(self) -> None:
-        verify_recoded(self, self.input.type)
+        verify_recoded(self, self.in_.type)
         verify_int(self, self.out.type)
 
 

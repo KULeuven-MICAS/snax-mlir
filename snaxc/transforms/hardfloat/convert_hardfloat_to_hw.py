@@ -170,5 +170,3 @@ class ConvertHardfloatToHw(ModulePass):
         assert body is not None
         for spec in sorted(counts.keys(), key=lambda spec: spec.symbol_name):
             body.add_op(spec.module())
-        # for i, (spec, count) in enumerate(counts.items()):
-        #    print(f"{i}) {spec.symbol_name:20} : {count}")

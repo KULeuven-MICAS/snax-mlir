@@ -108,8 +108,14 @@ class ConvertIToFPOp(RewritePattern):
         bitwidth = cast(IntegerType, op.input.type).bitwidth
         new_ops = [
             signed_in,
+            rounding_mode := hw.ConstantOp(0, 3),
+            tininess := hw.ConstantOp(1, 1),
             rec_fn := InToRecFnOp(
-                [signed_in.result, op.input], [IntegerType(bitwidth + 1)], sig_width, exp_width, bitwidth
+                [signed_in.result, op.input, rounding_mode, tininess],
+                [IntegerType(bitwidth + 1)],
+                sig_width,
+                exp_width,
+                bitwidth,
             ),
             unrecode := RecFnToFnOp([rec_fn], [IntegerType(bitwidth)], sig_width, exp_width),
             cast_res := UnrealizedConversionCastOp.get([unrecode], [op.result.type]),
@@ -122,18 +128,21 @@ class ConvertFPToIOp(RewritePattern):
     def match_and_rewrite(self, op: arith.FloatingPointToIntegerBaseOp, rewriter: PatternRewriter):
         match op.name:
             case arith.FPToSIOp.name:
-                constant = hw.ConstantOp(1, 1)
+                signed_out = hw.ConstantOp(1, 1)
             case arith.FPToUIOp.name:
-                constant = hw.ConstantOp(0, 1)
+                signed_out = hw.ConstantOp(0, 1)
             case _:
                 raise NotImplementedError()
         exp_width, sig_width = _type_mapping[type(op.input.type)]
         bitwidth = cast(IntegerType, op.input.type).bitwidth
         new_ops = [
-            constant,
+            signed_out,
+            rounding_mode := hw.ConstantOp(0, 3),
             cast_res := UnrealizedConversionCastOp.get([op.input], [op.result.type]),
             recode := FnToRecFnOp([cast_res], [IntegerType(bitwidth + 1)], sig_width, exp_width),
-            rec_fn := RecFnToInOp([recode, constant], [IntegerType(bitwidth)], sig_width, exp_width, bitwidth),
+            rec_fn := RecFnToInOp(
+                [recode, rounding_mode, signed_out], [IntegerType(bitwidth)], sig_width, exp_width, bitwidth
+            ),
         ]
         rewriter.replace_op(op, new_ops=new_ops, new_results=[rec_fn.results[0]])
 
