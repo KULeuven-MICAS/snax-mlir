@@ -170,7 +170,7 @@ class AddRecFnOp(HardfloatOperation):
 
 @irdl_op_definition
 class FnToRecFnOp(HardfloatOperation):
-    CHISEL_NAME: ClassVar[str] = "RecFNFromFN"
+    CHISEL_NAME: ClassVar[str] = "recFNFromFN"
     CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("in",)
     CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
     name = "hardfloat.fn_to_rec_fn"
@@ -184,7 +184,7 @@ class FnToRecFnOp(HardfloatOperation):
 
 @irdl_op_definition
 class RecFnToFnOp(HardfloatOperation):
-    CHISEL_NAME: ClassVar[str] = "RecFNToFN"
+    CHISEL_NAME: ClassVar[str] = "fNFromRecFN"
     CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("in",)
     CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
     name = "hardfloat.rec_fn_to_fn"

@@ -92,6 +92,8 @@ default = { features = ["dev", "nn", "viz", "phs"] }
 
 [tool.pixi.feature.phs.dependencies]
 circt = { version = "==1.122.0", channel = "KEKE046" }
+openjdk = "==17.0.17"
+mill = "==0.11.8"
 
 [tool.pixi.dependencies]
 mlir = "==21.1.1"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import cast
@@ -8,6 +9,7 @@ from xdsl.context import Context
 from xdsl.dialects import builtin, hw
 from xdsl.dialects.builtin import ModuleOp, SymbolRefAttr
 from xdsl.ir import Attribute, SSAValue, TypeAttribute
+from xdsl.parser import ParseError, Parser
 from xdsl.passes import ModulePass
 from xdsl.pattern_rewriter import (
     GreedyRewritePatternApplier,
@@ -16,6 +18,7 @@ from xdsl.pattern_rewriter import (
     RewritePattern,
     op_type_rewrite_pattern,
 )
+from xdsl.utils.exceptions import DiagnosticException
 
 from snaxc.dialects.hardfloat import (
     HardfloatOperation,
@@ -100,7 +103,7 @@ class HWBlockSpec:
 
 
 @dataclass
-class ConvertSimpleOps(RewritePattern):
+class ConvertHardfloatOps(RewritePattern):
     counts: dict[HWBlockSpec, int] = field(default_factory=dict[HWBlockSpec, int])
 
     @op_type_rewrite_pattern
@@ -122,10 +125,53 @@ class ConvertHardfloatToHw(ModulePass):
     def apply(self, ctx: Context, op: ModuleOp) -> None:
         counts: dict[HWBlockSpec, int] = {}
         PatternRewriteWalker(
-            GreedyRewritePatternApplier([ConvertSimpleOps(counts)]),
+            GreedyRewritePatternApplier([ConvertHardfloatOps(counts)]),
             apply_recursively=False,
         ).rewrite_module(op)
-        body = op.body.block
-        assert body is not None
-        for spec in sorted(counts.keys(), key=lambda spec: spec.symbol_name):
-            body.add_op(spec.module())
+
+        external_modules = False
+        if external_modules:
+            body = op.body.block
+            assert body is not None
+            for spec in sorted(counts.keys(), key=lambda spec: spec.symbol_name):
+                body.add_op(spec.module())
+        else:
+            # Call EasyFloat to generate hw dialect for blocks and parse the output
+            ops = ",".join([spec.symbol_name for spec in counts.keys()])
+            mill_cmd = f"mill 'EasyFloat.run' --ops {ops} --format=hw"
+            try:
+                mill_process = subprocess.run(
+                    mill_cmd,
+                    cwd="/home/josse/kuleuven-easyfloat",
+                    capture_output=True,
+                    shell=True,
+                    text=True,
+                    check=True,
+                )
+                opt_process = subprocess.run(
+                    ["circt-opt", "--strip-om"], input=mill_process.stdout, capture_output=True, text=True, check=True
+                )
+            except subprocess.CalledProcessError as e:
+                if e.stdout:
+                    print("\n[STDOUT CAPTURE]")
+                    print(e.stdout)
+                if e.stderr:
+                    print("\n[STDERR CAPTURE]")
+                    print(e.stderr)
+                exit(0)
+            # Get the stdout output
+            stdout_output = opt_process.stdout
+            parser = Parser(ctx, stdout_output)
+            try:
+                new_module = parser.parse_module()
+            except ParseError as e:
+                raise DiagnosticException("Error parsing EasyFloat output") from e
+            body = op.body.block
+            assert body is not None
+            for easyfloat_op in new_module.ops:
+                if not isinstance(easyfloat_op, hw.HWModuleOp):
+                    continue
+                if easyfloat_op.sym_name.data == "EasyFloatTop":
+                    continue
+                easyfloat_op.detach()
+                body.add_op(easyfloat_op)
