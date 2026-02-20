@@ -59,11 +59,11 @@ class ConvertAddSubOp(RewritePattern):
             tininess := hw.ConstantOp(1, 1),
             add := AddRecFnOp(
                 [subOp, recode_lhs, recode_rhs, rounding_mode, tininess],
-                [IntegerType(bitwidth + 1)],
+                [IntegerType(bitwidth + 1), IntegerType(5)],
                 sig_width,
                 exp_width,
             ),
-            unrecode := RecFnToFnOp([add], [IntegerType(bitwidth)], sig_width, exp_width),
+            unrecode := RecFnToFnOp([add.results[0]], [IntegerType(bitwidth)], sig_width, exp_width),
             cast_res := UnrealizedConversionCastOp.get([unrecode], [in_type]),
         ]
         rewriter.replace_op(op, new_ops=new_ops, new_results=[cast_res.results[0]])
@@ -88,9 +88,12 @@ class ConvertMulOp(RewritePattern):
             rounding_mode := hw.ConstantOp(0, 3),
             tininess := hw.ConstantOp(1, 1),
             mul := MulRecFnOp(
-                [recode_lhs, recode_rhs, rounding_mode, tininess], [IntegerType(bitwidth + 1)], sig_width, exp_width
+                [recode_lhs, recode_rhs, rounding_mode, tininess],
+                [IntegerType(bitwidth + 1), IntegerType(5)],
+                sig_width,
+                exp_width,
             ),
-            unrecode := RecFnToFnOp([mul], [IntegerType(bitwidth)], sig_width, exp_width),
+            unrecode := RecFnToFnOp([mul.results[0]], [IntegerType(bitwidth)], sig_width, exp_width),
             cast_res := UnrealizedConversionCastOp.get([unrecode], [in_type]),
         ]
         rewriter.replace_op(op, new_ops=new_ops, new_results=[cast_res.results[0]])
@@ -110,14 +113,14 @@ class ConvertIToFPOp(RewritePattern):
             signed_in,
             rounding_mode := hw.ConstantOp(0, 3),
             tininess := hw.ConstantOp(1, 1),
-            rec_fn := InToRecFnOp(
+            conversion := InToRecFnOp(
                 [signed_in.result, op.input, rounding_mode, tininess],
-                [IntegerType(bitwidth + 1)],
+                [IntegerType(bitwidth + 1), IntegerType(5)],
                 sig_width,
                 exp_width,
                 bitwidth,
             ),
-            unrecode := RecFnToFnOp([rec_fn], [IntegerType(bitwidth)], sig_width, exp_width),
+            unrecode := RecFnToFnOp([conversion.results[0]], [IntegerType(bitwidth)], sig_width, exp_width),
             cast_res := UnrealizedConversionCastOp.get([unrecode], [op.result.type]),
         ]
         rewriter.replace_op(op, new_ops=new_ops, new_results=[cast_res.results[0]])
@@ -141,7 +144,11 @@ class ConvertFPToIOp(RewritePattern):
             cast_res := UnrealizedConversionCastOp.get([op.input], [op.result.type]),
             recode := FnToRecFnOp([cast_res], [IntegerType(bitwidth + 1)], sig_width, exp_width),
             rec_fn := RecFnToInOp(
-                [recode, rounding_mode, signed_out], [IntegerType(bitwidth)], sig_width, exp_width, bitwidth
+                [recode, rounding_mode, signed_out],
+                [IntegerType(bitwidth), IntegerType(3)],
+                sig_width,
+                exp_width,
+                bitwidth,
             ),
         ]
         rewriter.replace_op(op, new_ops=new_ops, new_results=[rec_fn.results[0]])

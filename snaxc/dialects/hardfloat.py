@@ -133,13 +133,14 @@ def verify_int(op: HardfloatOperation, typ: Attribute):
 class MulRecFnOp(HardfloatOperation):
     CHISEL_NAME: ClassVar[str] = "MulRecFN"
     CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("a", "b", "roundingMode", "detectTininess")
-    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
+    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out", "exceptionFlags")
     name = "hardfloat.mul_rec_fn"
     a = operand_def(IntegerType)
     b = operand_def(IntegerType)
     roundingMode = operand_def(IntegerType(3))
     detectTininess = operand_def(IntegerType(1))
     out = result_def(IntegerType)
+    exceptionFlags = result_def(IntegerType(5))
 
     def verify_(self) -> None:
         verify_recoded(self, self.a.type)
@@ -151,7 +152,7 @@ class MulRecFnOp(HardfloatOperation):
 class AddRecFnOp(HardfloatOperation):
     CHISEL_NAME: ClassVar[str] = "AddRecFN"
     CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("subOp", "a", "b", "roundingMode", "detectTininess")
-    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
+    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out", "exceptionFlags")
     name = "hardfloat.add_rec_fn"
     subOp = operand_def(IntegerType(1))
     a = operand_def(IntegerType)
@@ -159,6 +160,7 @@ class AddRecFnOp(HardfloatOperation):
     roundingMode = operand_def(IntegerType(3))
     detectTininess = operand_def(IntegerType(1))
     out = result_def(IntegerType)
+    exceptionFlags = result_def(IntegerType(5))
 
     def verify_(self) -> None:
         verify_recoded(self, self.a.type)
@@ -198,13 +200,14 @@ class RecFnToFnOp(HardfloatOperation):
 class InToRecFnOp(HardfloatOperation):
     CHISEL_NAME: ClassVar[str] = "INToRecFN"
     CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("signedIn", "in", "roundingMode", "detectTininess")
-    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
+    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out", "exceptionFlags")
     name = "hardfloat.in_to_rec_fn"
     signedIn = operand_def(IntegerType(1))
     in_ = operand_def(IntegerType)  # "in" is reserved in python
     roundingMode = operand_def(IntegerType(3))
     detectTininess = operand_def(IntegerType(1))
     out = result_def(IntegerType)
+    exceptionFlags = result_def(IntegerType(5))
 
     def verify_(self) -> None:
         verify_int(self, self.in_.type)
@@ -215,12 +218,14 @@ class InToRecFnOp(HardfloatOperation):
 class RecFnToInOp(HardfloatOperation):
     CHISEL_NAME: ClassVar[str] = "RecFNToIN"
     CHISEL_INPUT_NAMES: ClassVar[tuple[str, ...]] = ("in", "roundingMode", "signedOut")
-    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out",)
+    CHISEL_OUTPUT_NAMES: ClassVar[tuple[str, ...]] = ("out", "exceptionFlags")
     name = "hardfloat.rec_fn_to_in"
     in_ = operand_def(IntegerType)  # "in" is reserved in python
     roundingMode = operand_def(IntegerType(3))
     signedOut = operand_def(IntegerType(1))
     out = result_def(IntegerType)
+    # conversions to integer can never underflow or deliver an infinite result
+    exceptionFlags = result_def(IntegerType(3))  # So this is 3 bits instead of 5
 
     def verify_(self) -> None:
         verify_recoded(self, self.in_.type)
