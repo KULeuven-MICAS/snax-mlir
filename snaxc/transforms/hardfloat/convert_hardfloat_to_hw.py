@@ -119,8 +119,12 @@ class ConvertHardfloatOps(RewritePattern):
         rewriter.replace_op(op, instance_op, new_results=instance_op.results)
 
 
+@dataclass(frozen=True)
 class ConvertHardfloatToHw(ModulePass):
     name = "convert-hardfloat-to-hw"
+
+    easyfloat_path: str = ""
+    external_modules: bool = False
 
     def apply(self, ctx: Context, op: ModuleOp) -> None:
         counts: dict[HWBlockSpec, int] = {}
@@ -129,20 +133,28 @@ class ConvertHardfloatToHw(ModulePass):
             apply_recursively=False,
         ).rewrite_module(op)
 
-        external_modules = False
-        if external_modules:
+        # Don't proceed with adding modules if no operations were inserted
+        if len(counts) == 0:
+            return
+
+        # Reference new hw blocks as external modules
+        if self.external_modules:
             body = op.body.block
             assert body is not None
             for spec in sorted(counts.keys(), key=lambda spec: spec.symbol_name):
                 body.add_op(spec.module())
+
+        # Call EasyFloat to generate hw dialect for blocks,
+        # parse the output, and inline in the module
         else:
-            # Call EasyFloat to generate hw dialect for blocks and parse the output
+            if len(self.easyfloat_path) == 0:
+                raise RuntimeError("Must provide easyfloat path if not using external_modules=True")
             ops = ",".join([spec.symbol_name for spec in counts.keys()])
             mill_cmd = f"mill 'EasyFloat.run' --ops {ops} --format=hw"
             try:
                 mill_process = subprocess.run(
                     mill_cmd,
-                    cwd="/home/josse/kuleuven-easyfloat",
+                    cwd=self.easyfloat_path,
                     capture_output=True,
                     shell=True,
                     text=True,
@@ -153,12 +165,12 @@ class ConvertHardfloatToHw(ModulePass):
                 )
             except subprocess.CalledProcessError as e:
                 if e.stdout:
-                    print("\n[STDOUT CAPTURE]")
+                    print("\n[Error occured during Easyfloat module inlining: STDOUT CAPTURE]")
                     print(e.stdout)
                 if e.stderr:
-                    print("\n[STDERR CAPTURE]")
+                    print("\n[Error occured during Easyfloat module inlining: STDERR CAPTURE]")
                     print(e.stderr)
-                exit(0)
+                raise DiagnosticException("Error occured during Easyfloat module inlining")
             # Get the stdout output
             stdout_output = opt_process.stdout
             parser = Parser(ctx, stdout_output)

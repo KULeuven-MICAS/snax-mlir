@@ -1,4 +1,5 @@
-// snax-opt -p convert-hardfloat-to-hw
+// RUN: snax-opt -p convert-hardfloat-to-hw{'easyfloat_path="%p/../../../../../kuleuven-easyfloat"'} %s | filecheck %s
+
 
 func.func @test_hardfloat(%a : f32, %b : f32) -> f32 {
   %false = arith.constant false
