@@ -1,4 +1,5 @@
 // RUN: snax-opt -p convert-hardfloat-to-hw{'easyfloat_path="%p/../../../../../kuleuven-easyfloat"'} %s | filecheck %s
+// RUN: snax-opt -p convert-hardfloat-to-hw{external_modules=true} %s | filecheck %s --check-prefix=EXTERN
 
 
 func.func @test_hardfloat(%a : f32, %b : f32) -> f32 {
@@ -37,3 +38,8 @@ func.func @test_hardfloat(%a : f32, %b : f32) -> f32 {
 // CHECK: hw.module private @MulRawFN(in %io_a_isNaN: i1, in %io_a_isInf: i1, in %io_a_isZero: i1, in %io_a_sign: i1, in %io_a_sExp: i10, in %io_a_sig: i25, in %io_b_isNaN: i1, in %io_b_isInf: i1, in %io_b_isZero: i1, in %io_b_sign: i1, in %io_b_sExp: i10, in %io_b_sig: i25, out io_invalidExc: i1, out io_rawOut_isNaN: i1, out io_rawOut_isInf: i1, out io_rawOut_isZero: i1, out io_rawOut_sign: i1, out io_rawOut_sExp: i10, out io_rawOut_sig: i27) {
 // CHECK: hw.module private @MulRecFN_s24_e8(in %io_a: i33, in %io_b: i33, in %io_roundingMode: i3, in %io_detectTininess: i1, out io_out: i33, out io_exceptionFlags: i5) {
 // CHECK: hw.module private @fNFromRecFN_s24_e8(in %io_in: i33, out io_out: i32) {
+
+// EXTERN: hw.module.extern @AddRecFN_s24_e8(in %port0 io_subOp: i1, in %port1 io_a: i33, in %port2 io_b: i33, in %port3 io_roundingMode: i3, in %port4 io_detectTininess: i1, out io_out: i33, out io_exceptionFlags: i5)
+// EXTERN-NEXT: hw.module.extern @MulRecFN_s24_e8(in %port0 io_a: i33, in %port1 io_b: i33, in %port2 io_roundingMode: i3, in %port3 io_detectTininess: i1, out io_out: i33, out io_exceptionFlags: i5)
+// EXTERN-NEXT: hw.module.extern @fNFromRecFN_s24_e8(in %port0 io_in: i33, out io_out: i32)
+// EXTERN-NEXT: hw.module.extern @recFNFromFN_s24_e8(in %port0 io_in: i32, out io_out: i33)
