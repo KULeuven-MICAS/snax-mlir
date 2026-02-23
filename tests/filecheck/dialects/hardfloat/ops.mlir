@@ -1,50 +1,42 @@
 // RUN: XDSL_ROUNDTRIP
 
-
-func.func @test_hardfloat_ops(%a : i33, %b : i33, %float_in : i32) -> (i33, i33, i32, i33, i33) {
-  // Control signals required by the new operand definitions
-  %false = arith.constant 0 : i1
-  %true = arith.constant 1 : i1
+func.func @test_hardfloat_roundtrip(%a : i33, %b : i33, %val_i32 : i32) {
+  // Setup constants for control signals
+  %false = arith.constant false
+  %true = arith.constant true
   %rm = arith.constant 0 : i3
 
-  // %mul: (a, b, roundingMode, detectTininess)
-  %mul = hardfloat.mul_rec_fn<24, 8>(%a, %b, %rm, %false) : (i33, i33, i3, i1) -> i33
+  // 1. Multiply: (a, b, rm, tininess) -> (res, flags)
+  %mul, %m_flags = hardfloat.mul_rec_fn<24, 8>(%a, %b, %rm, %false) : (i33, i33, i3, i1) -> (i33, i5)
 
-  // %add: (subOp, a, b, roundingMode, detectTininess)
-  %add = hardfloat.add_rec_fn<24, 8>(%false, %a, %b, %rm, %false) : (i1, i33, i33, i3, i1) -> i33
+  // 2. Add: (subOp, a, b, rm, tininess) -> (res, flags)
+  %add, %a_flags = hardfloat.add_rec_fn<24, 8>(%false, %a, %b, %rm, %false) : (i1, i33, i33, i3, i1) -> (i33, i5)
 
-  // %recoded: (input)
-  %recoded = hardfloat.fn_to_rec_fn<24, 8>(%float_in) : (i32) -> i33
+  // 3. Float to Recoded: (in) -> (out)
+  %rec = hardfloat.fn_to_rec_fn<24, 8>(%val_i32) : (i32) -> i33
 
-  // %unrecoded: (input)
-  %unrecoded = hardfloat.rec_fn_to_fn<24, 8>(%recoded) : (i33) -> i32
+  // 4. Recoded to Float: (in) -> (out)
+  %f_out = hardfloat.rec_fn_to_fn<24, 8>(%rec) : (i33) -> i32
 
-  // %to_int: (input, signedOut)
-  %to_int = hardfloat.rec_fn_to_in<24, 8, 32>(%recoded, %false) : (i33, i1) -> i32
+  // 5. Integer to Recoded: (signedIn, in, rm, tininess) -> (out, flags)
+  %i2r, %i2r_flags = hardfloat.in_to_rec_fn<24, 8, 32>(%false, %val_i32, %rm, %false) : (i1, i32, i3, i1) -> (i33, i5)
 
-  // %int_to_rec: (signedIn, input)
-  %int_to_rec = hardfloat.in_to_rec_fn<24, 8, 32>(%false, %to_int) : (i1, i32) -> i33
+  // 6. Recoded to Integer: (in, rm, signedOut) -> (out, flags)
+  // Note: exceptionFlags is i3 for this op
+  %r2i, %r2i_flags = hardfloat.rec_fn_to_in<24, 8, 32>(%rec, %rm, %true) : (i33, i3, i1) -> (i32, i3)
 
-  // %to_sint: (input, signedOut)
-  %to_sint = hardfloat.rec_fn_to_in<24, 8, 32>(%recoded, %true) : (i33, i1) -> i32
-
-  // %sint_to_rec: (signedIn, input)
-  %sint_to_rec = hardfloat.in_to_rec_fn<24, 8, 32>(%true, %to_sint) : (i1, i32) -> i33
-
-  func.return %mul, %add, %unrecoded, %int_to_rec, %sint_to_rec : i33, i33, i32, i33, i33
+  func.return
 }
 
-// CHECK:       func.func @test_hardfloat_ops(%{{.*}} : i33, %{{.*}} : i33, %{{.*}} : i32) -> (i33, i33, i32, i33, i33) {
+// CHECK:       func.func @test_hardfloat_roundtrip(%{{.*}}: i33, %{{.*}}: i33, %{{.*}}: i32) {
 // CHECK-NEXT:    %false = arith.constant false
 // CHECK-NEXT:    %true = arith.constant true
 // CHECK-NEXT:    %rm = arith.constant 0 : i3
-// CHECK-NEXT:    %mul = hardfloat.mul_rec_fn<24, 8>(%a, %b, %rm, %false) : (i33, i33, i3, i1) -> i33
-// CHECK-NEXT:    %add = hardfloat.add_rec_fn<24, 8>(%false, %a, %b, %rm, %false) : (i1, i33, i33, i3, i1) -> i33
-// CHECK-NEXT:    %recoded = hardfloat.fn_to_rec_fn<24, 8>(%float_in) : (i32) -> i33
-// CHECK-NEXT:    %unrecoded = hardfloat.rec_fn_to_fn<24, 8>(%recoded) : (i33) -> i32
-// CHECK-NEXT:    %to_int = hardfloat.rec_fn_to_in<24, 8, 32>(%recoded, %false) : (i33, i1) -> i32
-// CHECK-NEXT:    %int_to_rec = hardfloat.in_to_rec_fn<24, 8, 32>(%false, %to_int) : (i1, i32) -> i33
-// CHECK-NEXT:    %to_sint = hardfloat.rec_fn_to_in<24, 8, 32>(%recoded, %true) : (i33, i1) -> i32
-// CHECK-NEXT:    %sint_to_rec = hardfloat.in_to_rec_fn<24, 8, 32>(%true, %to_sint) : (i1, i32) -> i33
-// CHECK-NEXT:    func.return %mul, %add, %unrecoded, %int_to_rec, %sint_to_rec : i33, i33, i32, i33, i33
+// CHECK-NEXT:    %mul, %m_flags = hardfloat.mul_rec_fn<24, 8>(%a, %b, %rm, %false) : (i33, i33, i3, i1) -> (i33, i5)
+// CHECK-NEXT:    %add, %a_flags = hardfloat.add_rec_fn<24, 8>(%false, %a, %b, %rm, %false) : (i1, i33, i33, i3, i1) -> (i33, i5)
+// CHECK-NEXT:    %rec = hardfloat.fn_to_rec_fn<24, 8>(%val_i32) : (i32) -> i33
+// CHECK-NEXT:    %f_out = hardfloat.rec_fn_to_fn<24, 8>(%rec) : (i33) -> i32
+// CHECK-NEXT:    %i2r, %i2r_flags = hardfloat.in_to_rec_fn<24, 8, 32>(%false, %val_i32, %rm, %false) : (i1, i32, i3, i1) -> (i33, i5)
+// CHECK-NEXT:    %r2i, %r2i_flags = hardfloat.rec_fn_to_in<24, 8, 32>(%rec, %rm, %true) : (i33, i3, i1) -> (i32, i3)
+// CHECK-NEXT:    return
 // CHECK-NEXT:  }

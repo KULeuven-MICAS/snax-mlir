@@ -124,9 +124,7 @@ def verify_int(op: HardfloatOperation, typ: Attribute):
     if op.int_width is None:
         raise VerifyException("Expect op to have int_width property")
     if cast(IntegerType, typ).bitwidth != op.int_width.data:
-        raise VerifyException(
-            f"Expect output type ({typ}) to have bitwidth given by int_width property ({op.int_width.data})"
-        )
+        raise VerifyException(f"Expect type ({typ}) to have bitwidth given by int_width property ({op.int_width.data})")
 
 
 @irdl_op_definition
