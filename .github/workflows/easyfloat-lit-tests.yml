@@ -1,0 +1,25 @@
+name: lit-tests (easyfloat)
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - 'tests/filecheck/transforms/hardfloat/convert-hardfloat-to-hw.mlir'
+  pull_request:
+    paths:
+      - 'tests/filecheck/transforms/hardfloat/convert-hardfloat-to-hw.mlir'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  python-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+      - name: Test with lit
+        shell: bash
+        run: |
+          pixi run lit -v tests/filecheck/transforms/hardfloat/convert-hardfloat-to-hw.mlir -Dforce-easyfloat=1
