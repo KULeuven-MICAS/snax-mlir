@@ -9,12 +9,18 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        kernel: [streamer_phs_alu]
+        kernel: [streamer_phs_alu, streamer_phs_aluf]
     steps:
       - name: Checkout snax-mlir
         uses: actions/checkout@v4
         with:
           path: snax-mlir
+      - name: Checkout kuleuven-easyfloat
+        uses: actions/checkout@v4
+        with:
+          repository: KULeuven-MICAS/kuleuven-easyfloat
+          path: kuleuven-easyfloat
+          ref: b755dcdce7a9df261feff2c654d62241034e6e4a
       - name: Checkout snax_cluster
         uses: actions/checkout@v4
         with:
