@@ -171,6 +171,10 @@ class ConvertHardfloatToHw(ModulePass):
                     print("\n[Error occured during Easyfloat module inlining: STDERR CAPTURE]")
                     print(e.stderr)
                 raise DiagnosticException("Error occured during Easyfloat module inlining")
+            except FileNotFoundError as e:
+                raise DiagnosticException(
+                    f"Error occured during Easyfloat module inlining\ncould not find {e.filename}"
+                )
             # Get the stdout output
             stdout_output = opt_process.stdout
             parser = Parser(ctx, stdout_output)
