@@ -1,0 +1,35 @@
+name: lit-tests (easyfloat)
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - 'tests/filecheck/transforms/hardfloat/convert-hardfloat-to-hw.mlir'
+  pull_request:
+    paths:
+      - 'tests/filecheck/transforms/hardfloat/convert-hardfloat-to-hw.mlir'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  python-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: snax-mlir
+      - name: Checkout kuleuven-easyfloat
+        uses: actions/checkout@v4
+        with:
+          ref: b755dcdce7a9df261feff2c654d62241034e6e4a
+          repository: KULeuven-MICAS/kuleuven-easyfloat
+          path: kuleuven-easyfloat
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          manifest-path: snax-mlir/pyproject.toml
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+      - name: Test with lit
+        shell: bash
+        working-directory: snax-mlir
+        run: |
+          pixi run lit -v tests/filecheck/transforms/hardfloat/convert-hardfloat-to-hw.mlir -Dforce-easyfloat=1
