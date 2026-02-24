@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
+        with:
+          path: snax-mlir
       - name: Checkout kuleuven-easyfloat
         uses: actions/checkout@v4
         with:
@@ -27,5 +29,6 @@ jobs:
           cache-write: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
       - name: Test with lit
         shell: bash
+        working-directory: snax-mlir
         run: |
           pixi run lit -v tests/filecheck/transforms/hardfloat/convert-hardfloat-to-hw.mlir -Dforce-easyfloat=1
