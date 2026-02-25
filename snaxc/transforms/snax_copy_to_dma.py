@@ -8,7 +8,6 @@ from xdsl.dialects.builtin import (
     FixedBitwidthType,
     IndexType,
     IntAttr,
-    IntegerType,
     MemRefType,
     NoneAttr,
     StridedLayoutAttr,
@@ -171,12 +170,11 @@ class TransformDMA(RewritePattern):
         ):
             return
 
-        # both operands should be of equal shape and integer element type
+        # both operands should be of equal shape
         if any(
             [
                 not op.destination.type.get_shape() == op.source.type.get_shape(),
                 not op.destination.type.get_element_type() == op.source.type.get_element_type(),
-                not isinstance(op.source.type.get_element_type(), IntegerType),
             ]
         ):
             return
