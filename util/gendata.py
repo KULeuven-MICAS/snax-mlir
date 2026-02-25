@@ -4,6 +4,17 @@ import numpy as np
 from numpy import typing as npt
 
 
+def get_c_type(dtype: np.dtype) -> str:
+    """Maps numpy dtypes to standard C types."""
+    # Handle floating point types
+    if dtype == np.float64:
+        return "double"
+    if dtype == np.float32:
+        return "float"
+    # Fallback for integers (e.g., int64 -> int64_t)
+    return f"{dtype}_t"
+
+
 def create_header(file_name: str, sizes: dict[str, int], variables: dict[str, npt.NDArray]) -> None:
     header_file = f"{file_name}.h"
     if os.path.dirname(header_file):
@@ -16,7 +27,7 @@ def create_header(file_name: str, sizes: dict[str, int], variables: dict[str, np
             variables_string.append(f"#define {i} {j}")
         variables_string.append("")
         for i, j in variables.items():
-            variables_string.append(f"extern const {j.dtype}_t {i}[{j.size}];")
+            variables_string.append(f"extern const {get_c_type(j.dtype)} {i}[{j.size}];")
         variables_string = "\n".join(variables_string)
         f.write(includes)
         f.write(variables_string)
@@ -36,7 +47,7 @@ def create_header_only(file_name: str, vars: dict[str, int | npt.NDArray[np.int_
         f.write("\n")
         for i, j in vars.items():
             if not isinstance(j, int):
-                f.write(f"\n\nconst {j.dtype}_t {i}" + f"[{j.size}] = " + "{")
+                f.write(f"\n\nconst {get_c_type(j.dtype)} {i}" + f"[{j.size}] = " + "{")
                 f.write(", ".join(str(j_val) for j_val in j))
                 f.write("};")
         f.write("\n")
@@ -52,7 +63,7 @@ def create_data(file_name: str, variables: dict[str, npt.NDArray]):
     with open(c_file, "w") as f:
         f.write(includes)
         for variable_name, variable_value in variables.items():
-            f.write(f"const {variable_value.dtype}_t {variable_name}" + f"[{variable_value.size}] = " + "{\n")
+            f.write(f"const {get_c_type(variable_value.dtype)} {variable_name}" + f"[{variable_value.size}] = " + "{\n")
             variable_str = ["\t" + str(i) for i in variable_value]
             f.write(",\n".join(variable_str))
             f.write("\n};\n\n")

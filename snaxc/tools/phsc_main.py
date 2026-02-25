@@ -1,4 +1,5 @@
 import argparse
+import os
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
@@ -16,6 +17,10 @@ from snaxc.accelerators.snax_phs import SNAXPHSAccelerator
 from snaxc.dialects import phs
 from snaxc.phs.template_spec import TemplateSpec
 from snaxc.tools.snaxc_main import SNAXCMain
+from snaxc.transforms.hardfloat.convert_float_to_hardfloat import ConvertFloatToHardfloatPass
+from snaxc.transforms.hardfloat.convert_hardfloat_to_hw import ConvertHardfloatToHw
+from snaxc.transforms.hardfloat.reconcile_recodes import ReconcileRecodesPass
+from snaxc.transforms.phs.convert_float_to_int import PhsConvertFloatToInt
 from snaxc.transforms.phs.convert_pe_to_hw import ConvertPEToHWPass
 from snaxc.transforms.phs.encode import PhsEncodePass
 from snaxc.transforms.phs.export_phs import PhsKeepPhsPass, PhsRemovePhsPass
@@ -167,6 +172,12 @@ class PHSCMain(SNAXCMain):
         arg_parser.add_argument(
             "--no-sv-conversion", action="store_true", help="Don't convert output hardware to systemverilog"
         )
+        arg_parser.add_argument(
+            "--easyfloat-path", type=str, nargs="?", help="Set custom path to kuleuven-easyfloat installation"
+        )
+        arg_parser.add_argument(
+            "--hardfloat-external-modules", action="store_true", help="Instantiate hardfloat modules as external"
+        )
 
     """
     The pipelines of this compiler are as follows
@@ -221,8 +232,20 @@ class PHSCMain(SNAXCMain):
     def setup_hardware_pipeline(self):
         hardware_pass_pipeline: list[ModulePass] = []
         hardware_pass_pipeline.append(PhsKeepPhsPass())
+        hardware_pass_pipeline.append(PhsConvertFloatToInt())
+        hardware_pass_pipeline.append(ConvertFloatToHardfloatPass())
         hardware_pass_pipeline.append(PhsRemoveOneOptionSwitchesPass())
         hardware_pass_pipeline.append(ConvertPEToHWPass(self.template_spec))
+        hardware_pass_pipeline.append(FinalizePhsToHWPass())
+        hardware_pass_pipeline.append(ReconcileRecodesPass())
+        if self.args.easyfloat_path is None:
+            tool_dir = os.path.dirname(__file__)
+            easyfloat_path = os.path.abspath(os.path.join(tool_dir, "..", "..", "..", "kuleuven-easyfloat"))
+        else:
+            easyfloat_path = self.args.easyfloat_path
+        hardware_pass_pipeline.append(
+            ConvertHardfloatToHw(easyfloat_path=easyfloat_path, external_modules=self.args.hardfloat_external_modules)
+        )
         hardware_pass_pipeline.append(FinalizePhsToHWPass())
         self.hardware_pipeline = PassPipeline(tuple(hardware_pass_pipeline), self.pipeline_callback)
 
