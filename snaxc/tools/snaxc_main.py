@@ -174,6 +174,13 @@ class SNAXCMain(CommandLineTool):
             help="add mcycle around accfg.launch ops",
         )
 
+        arg_parser.add_argument(
+            "--fixed-cache-schedule",
+            default=False,
+            action="store_true",
+            help="use the schedule optimized for fixed level cache.",
+        )
+
     def setup_pipeline(self):
         """
         Creates a pipeline that consists of all the passes specified.
@@ -216,7 +223,7 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(FuseAccumulationMemrefsPass())
         pass_pipeline.append(AllocToGlobalPass())
         pass_pipeline.append(SetMemorySpace())
-        pass_pipeline.append(DartSchedulerPass())
+        pass_pipeline.append(DartSchedulerPass(self.args.fixed_cache_schedule))
         pass_pipeline.append(SetMemoryLayout())
         if self.args.debug:
             pass_pipeline.append(InsertDebugPass())

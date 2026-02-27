@@ -17,9 +17,10 @@ use rule * from snax_rules exclude snax_opt_mlir, simulate as snax_*
 
 tests = ["matmul"]
 systems = ["mat"]
-archs = ["reg", "cached"]
+archs = ["full"]
 # banks = ['1', '2', '4', '8', '16', '32', '64', '128']
-banks = ['8','16', '32', '64', '128']
+# banks = ['8','16', '32', '64', '128']
+banks = ['32']
 
 
 # Rules
@@ -48,7 +49,7 @@ rule extract_cycles:
 
 rule simulate:
     input:
-        "{file}_sys{sys}.x",
+        "{file}_sys{sys}_arch{arch}.x",
     output:
 #        temp(
             expand(
@@ -66,41 +67,56 @@ rule simulate:
     params:
         vltsim=config_matmul["vltsim"],
     shell:
-        "vlt_interconnect_{wildcards.arch}_2_fifo/snitch_cluster_{wildcards.bank}_banks.vlt --prefix-trace={wildcards.file}_sys{wildcards.sys}_arch{wildcards.arch}_bank{wildcards.bank}_ {input}  2>&1 | tee {log}"
+        "vlt_fixed_cache_{wildcards.arch}/snitch_cluster_{wildcards.bank}_banks.vlt --prefix-trace={wildcards.file}_sys{wildcards.sys}_arch{wildcards.arch}_bank{wildcards.bank}_ {input}  2>&1 | tee {log}"
 
 
 # matmul of 560x360x192
 rule generate_matmul:
     output:
-        "matmul_sys{sys}.mlir",
+        "matmul_sys{sys}_arch{arch}.mlir",
     wildcard_constraints:
         sys="|".join(systems),
+        arch="|".join(archs),
     shell:
-        #"python matmul.py --m 64 --n 64 --k 64 --output {output}"
+        "python matmul.py --m 128 --n 128 --k 128 --output {output}"
+        #"python matmul.py --m 48 --n 72 --k 80 --output {output}"
         #"python matmul.py --m 40 --n 56 --k 72 --output {output}"
-        "python matmul.py --m 560 --n 360 --k 168 --output {output}"
+        #"python matmul.py --m 560 --n 360 --k 168 --output {output}"
         # "python matmul.py --m 16 --n 8 --k 16 --output {output}"
 
+def get_snax_config(wildcards):
+    if wildcards.arch == "full":
+        return "../../util/ssot/snax_gemmx.yaml"
+    else:
+        return "../../util/ssot/snax_gemmx_old.yaml"
+
+def get_extra_flags(wildcards):
+    if wildcards.arch == "full":
+        return "--fixed-cache-schedule"
+        #return ""
+    else:
+        return ""
 
 rule compile_snax:
     input:
-        "{file}_sys{sys}.mlir",
+        "{file}_sys{sys}_arch{arch}.mlir",
     output:
-        temp("{file}_sys{sys}.ll.mlir"),
+        temp("{file}_sys{sys}_arch{arch}.ll.mlir"),
     params:
-        snaxconfig=config_matmul["snaxc-config"],
+        snaxconfig=get_snax_config,
+        extra_flags=get_extra_flags,
     shell:
-        "{config[snaxc]} -c {params.snaxconfig} --add-mcycle  -o {output} {input}"
+        "{config[snaxc]} -c {params.snaxconfig} --add-mcycle {params.extra_flags} -o {output} {input}"
 
 
 def get_linked_files(wildcards):
-    return [f"{wildcards.file}.o", "main_2d_i8.o"]
+    return [f"{wildcards.file}_sys{wildcards.sys}_arch{wildcards.arch}.o", "main_2d_i8.o"]
 
 
 rule link_snax_binary:
     input:
         get_linked_files,
     output:
-        "{file}.x",
+        "{file}_sys{sys}_arch{arch}.x",
     shell:
         "{config[ld]} {config[ldflags]} {input} -o {output}"
