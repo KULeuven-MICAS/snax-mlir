@@ -512,7 +512,12 @@ def search_cached_level_fixed(cache_depths, matrix_sizes, loop_order, invariance
         
         tile_size_product = reduce(mul, (x[1] for x in cached_tiling), 1)
         next_cache = cache_depths.copy()
-        next_cache[critical_dim] //= tile_size_product
+        
+        # update cache depths for all dimensions that are not invariant to the current loop
+        for d_t, s_t, _ in cached_tiling:
+            for d in next_cache:
+                if d != d_t:
+                    next_cache[d] //= s_t
         
         suffix_options = search_critical_levels(next_cache, next_matrix_sizes, loop_order, 0)
         
