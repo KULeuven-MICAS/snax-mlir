@@ -90,6 +90,11 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
 
         return ConvertPEToHWPass
 
+    def get_hw_scalarize_public_modules():
+        from snaxc.transforms.phs.hw_scalarize_public_modules import HwScalarizePublicModulesPass
+
+        return HwScalarizePublicModulesPass
+
     def get_finalize_phs_to_hw():
         from snaxc.transforms.phs.finalize_phs_to_hw import FinalizePhsToHWPass
 
@@ -321,6 +326,7 @@ def get_all_snax_passes() -> dict[str, Callable[[], type[ModulePass]]]:
         "construct-pipeline": construct_pipeline,
         "convert-accfg-to-csr": get_convert_accfg_to_csr,
         "convert-pe-to-hw": get_convert_pe_to_hw,
+        "hw-scalarize-public-modules": get_hw_scalarize_public_modules,
         "finalize-phs-to-hw": get_finalize_phs_to_hw,
         "phs-keep-phs": get_phs_keep_phs,
         "phs-remove-phs": get_phs_remove_phs,
