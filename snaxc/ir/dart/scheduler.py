@@ -6,9 +6,18 @@ from itertools import permutations
 
 import numpy as np
 
-from snaxc.accelerators.streamers.streamers import HasFixedCache, Streamer
+from snaxc.accelerators.streamers.streamers import HasFixedCache, Streamer, StreamerType
 from snaxc.ir.dart.access_pattern import Schedule, Template, SchedulePattern
 from snaxc.ir.dart.affine_transform import AffineTransform
+from snaxc.ir.dart.cost_models import (
+    CostModel,
+    EnergyCostModel,
+    LatencyCostModel,
+    OperandDescriptor,
+    OperandKind,
+    energy_cost_of_tiling,
+    latency_cost_of_tiling,
+)
 
 
 def get_prime_factors(n: int) -> list[int]:
@@ -67,28 +76,58 @@ def cost_of_tiling(
     invariance_map: list[set[int]],
 ):
     """
-    Calculate the cost of a tiling as the total tile size (product of all tile sizes).
-    tiling: list of (dim_idx, size, is_critical) from inner to outer?
-            optimal_tiling.py logic implies tiling list is built [Inner ... Outer].
-            cost_of_tiling in optimal_tiling.py iterates reversed(tiling) -> Outer to Inner.
-            Here we assume input `tiling` is [Inner, ..., Outer].
+    Calculate the cost of a tiling as the total access count (energy proxy).
+    Kept for backward compatibility. Delegates to energy_cost_of_tiling.
+
+    tiling: list of (dim_idx, size, is_critical), ordered inner → outer.
     """
-    # Initialize costs for each operand
-    operand_costs = [1] * len(request_per_streamer)
+    return energy_cost_of_tiling(tiling, request_per_streamer, invariance_map)
 
-    # Iterate from Outer to Inner
-    for dim_idx, tile_size, is_critical in reversed(tiling):
-        for op_idx, cost in enumerate(operand_costs):
 
-            # If this dimension is critical for this operand, we stop accumulating cost
-            if is_critical and (dim_idx in invariance_map[op_idx]):
-                continue
+def _build_operand_descriptors(
+    streamers: Sequence[Streamer],
+    invariance_map: list[set[int]],
+    bank_bits: int = 64,
+) -> list[OperandDescriptor]:
+    """
+    Build OperandDescriptor instances from streamer metadata and the
+    invariance map produced by find_optimal_tiling.
+    """
+    descs: list[OperandDescriptor] = []
+    for op_idx, streamer in enumerate(streamers):
+        # Determine operand kind from streamer type
+        if streamer.type == StreamerType.Reader:
+            kind = OperandKind.READER
+        elif streamer.type == StreamerType.Writer:
+            kind = OperandKind.WRITER
+        else:
+            kind = OperandKind.READER_WRITER
 
-            # Otherwise, multiply cost
-            operand_costs[op_idx] *= tile_size
+        # Element bit-width: inferred from spatial dims and streamer config.
+        # The spatial_dims tuple contains the spatial unrolling factors.
+        # The element_bits is derived from the streamer's data width
+        # divided by the number of spatial elements.
+        # For streamers in this codebase, spatial_dims are integers
+        # representing the bound per spatial dimension.
+        # The total elements fetched = product of spatial_dims.
+        # The total bits fetched = total_elements * element_bits = spatial_banks * bank_bits.
+        # We infer element_bits from the streamer if available;
+        # default to 8 bits as the most common case.
+        element_bits = 8  # default for int8 workloads
 
-    total_cost = sum(c * r for c, r in zip(operand_costs, request_per_streamer))
-    return total_cost
+        # Number of consecutive banks accessed per burst:
+        # = (product of spatial dims that the operand *varies* with) * element_bits / bank_bits
+        # For invariant spatial dims, those are excluded from the product.
+        varying_spatial_product = reduce(mul, streamer.spatial_dims, 1)
+        spatial_banks = max(1, (varying_spatial_product * element_bits) // bank_bits)
+
+        descs.append(OperandDescriptor(
+            kind=kind,
+            element_bits=element_bits,
+            spatial_banks=spatial_banks,
+            invariant_dims=frozenset(invariance_map[op_idx]),
+        ))
+    return descs
 
 
 def solve_optimal_tiling(
@@ -328,175 +367,120 @@ def generate_temporal_tiling(matrix_sizes):
         size = reduce(mul, factors, 1)
         if size > 1:
             tiling.append((dim, size, False))
-    return [tiling] # List of 1 tiling
+    return [tiling]
 
-# Wrapper to clean up signature match
-def search_critical_levels_wrapper(cache_depths, matrix_sizes, loop_order, current_idx) -> list[tuple[int, int, bool]]:
-    # We need to return ONE best list, but `search_critical_levels` returns variants.
-    # To fix this, we need 'cost' awareness inside, or return all.
-    # Returning all is safer for optimality but expensive.
-    # Given matrix sizes are small (kernels), it should be fine.
-    
-    variants = search_critical_levels(cache_depths, matrix_sizes, loop_order, current_idx)
-    # But we don't have enough context to judge cost here (missing inner parts if we were called standalone).
-    # But we are called from search_cached_level which handles cost.
-    # Wait, `search_cached_level` called `search_critical_levels` and expected a SINGLE list?
-    # My code `suffix = search_critical_levels(...)` assigned a list-of-lists to suffix.
-    # `full_tiling = cached_tiling + suffix` -> Error.
-    
-    # Fix: Iterate variants in search_cached_level
-    return variants 
 
-# ... Fixed search_cached_level below ...
+def find_optimal_tiling(
+    template: Template,
+    schedule: Schedule,
+    streamers: Sequence[Streamer],
+    cost_model_name: str = "latency",
+) -> Schedule:
+    """
+    Find the optimal tiling for *schedule* on *template* by exploring
+    all valid cache-constrained tilings and ranking them with the
+    requested cost model.
 
-def find_optimal_tiling(template: Template, schedule: Schedule, streamers: Sequence[Streamer]) -> Schedule:
+    Parameters
+    ----------
+    template : the accelerator template.
+    schedule : the backtrack-produced schedule.
+    streamers : per-operand streamer descriptors.
+    cost_model_name : "latency" (default, minimises TCDM banking conflicts)
+        or "energy" (minimises total accesses).
+    """
     # 1. Identify Temporal Dims and their Prime Factors
     temporal_dims_count = schedule.num_dims - template.num_dims
-    
-    # Reconstruct logical dimensions from schedule pattern columns
-    # Group cols by signature check
-    logic_dims = {} # ID -> {'indices': [], 'size': int}
-    
-    # Helper to get column signature
-    def get_sig(col_idx):
-        return tuple(tuple(sp.pattern.A[:, col_idx]) for sp in schedule)
 
-    # Note: If cols have different strides but same sparsity pattern, they are same dimension?
-    # Yes. We care about "invariance".
-    # Invariance signature: for each operand, is it 0?
     def get_inv_sig(col_idx):
         return tuple(np.all(sp.pattern.A[:, col_idx] == 0) for sp in schedule)
 
-    # Access Schedule Patterns directly
-    # Also get bounds.
-    bounds = schedule[0].bounds # All sps have same bounds
-    
+    bounds = schedule[0].bounds
+
     # Group temporal dimensions by invariance signature
-    dim_groups = {} # sig -> list of (index, size)
+    dim_groups: dict[tuple[bool, ...], list[tuple[int, int]]] = {}
     for i in range(temporal_dims_count):
         sig = get_inv_sig(i)
-        if sig not in dim_groups: dim_groups[sig] = []
+        if sig not in dim_groups:
+            dim_groups[sig] = []
         dim_groups[sig].append((i, bounds[i]))
-        
+
     # Build Matrix Sizes and Invariance Map
-    matrix_sizes = {} # logical_id -> prime_factors
-    invariance_map = [] # logical_id -> set(operand_indices) (This is wrong, map is operand -> set(dims))
-    
-    # We assign logical IDs 0, 1, ...
-    logical_inv_map = {} # logical_id -> inv_sig
-    
+    matrix_sizes: dict[int, list[int]] = {}
+    logical_inv_map: dict[int, tuple[bool, ...]] = {}
+
     idx_counter = 0
     for sig, loop_list in dim_groups.items():
         total_size = reduce(mul, (x[1] for x in loop_list), 1)
         matrix_sizes[idx_counter] = get_prime_factors(total_size)
         logical_inv_map[idx_counter] = sig
         idx_counter += 1
-        
+
     num_logical = idx_counter
-    
+
     # Build Invariance Map for cost function: Operand -> Set of Logical Dims
     num_operands = len(schedule)
-    inv_map_for_cost = [set() for _ in range(num_operands)]
+    inv_map_for_cost: list[set[int]] = [set() for _ in range(num_operands)]
     for l_id in range(num_logical):
         sig = logical_inv_map[l_id]
         for op_idx, is_inv in enumerate(sig):
             if is_inv:
                 inv_map_for_cost[op_idx].add(l_id)
-                
-    # Identify Critical Dimensions for each Operand
-    # "The critical loop is the loop which the operand is invariable to"
-    # An operand might be invariant to multiple.
-    # We collect ALL Loop Dimensions that are "invariant" for AT LEAST ONE operand to be the set of "Critical Loop Level Loops".
-    # And we permute THIS set.
-    
-    # We also need to map Critical Loops to Streamer Cache Depths.
-    # A Streamer S with Fixed Cache F is typically associated with ONE Critical Dimension (the one it's invariant to).
-    # If S is invariant to multiple critical loops?
-    # Usually F is the "L1" cache size.
-    # If S is output stationary, it is invariant to the reduction loop (Crit Dim K).
-    # If we are inside Crit Loop K, S uses 0 BW.
-    # Inner loops (Cached Level) must fit in S's cache.
-    # So `cache_constraint[K]` is determined by S's fixed cache depth.
-    
-    # Map: Logical Dim -> Min Cache Depth (if this dim is chosen as critical loop)
-    # Actually, the constraint is:
-    # If we are tiling for Critical Loop L (meaning L is the stationary loop for some operands):
-    # Then the Innermost Cached Level must fit in the caches of those stationary operands.
-    # So `cache_depths[l_id]` should be the Minimum Fixed Cache of all operands invariant to `l_id`.
-    
-    cache_depths = {}
-    critical_dims_pool = set()
-    
+
+    # Build cache depth constraints from streamer fixed caches
+    cache_depths: dict[int, int | float] = {}
+    critical_dims_pool: set[int] = set()
+
     for l_id in range(num_logical):
         sig = logical_inv_map[l_id]
-        
-        # Operands invariant to this dim
         invariant_operands_indices = [i for i, is_inv in enumerate(sig) if is_inv]
-        
+
         if invariant_operands_indices:
             critical_dims_pool.add(l_id)
-            
-            # Find associated streamers and their cache depths
+
             depths = []
             for op_idx in invariant_operands_indices:
                 streamer = streamers[op_idx]
-                if streamer.fixed_cache_depth > 0:
-                     depths.append(streamer.fixed_cache_depth)
-            
-            # The constraint is the MINIMUM of all applicable caches.
-            # If multiple operands are stationary under this loop, ALL must fit their respective working sets.
-            # Working set size for Operand O (stationary) inside Cached Level (loops T_i):
-            # Size = Product(TileSize(T_j)) for all T_j that O varies with.
-            # Here we assume Cached Level tiles ALL other dims.
-            # So basically, we just limit the product of other dims.
-            
-            if depths:
-                cache_depths[l_id] = min(depths)
-            else:
-                # No fixed cache constraint found for this critical loop?
-                # Default to something or infinite?
-                # If a loop is critical but has no fixed cache, maybe default to 50/infinity?
-                cache_depths[l_id] = float("inf") # Default fallback
-        else:
-             # Not a critical dimension candidate (no operand is invariant)
-             pass
-            
-    best_tiling = []
-    min_cost = float("inf")
-    
-    request_per_streamer = [8] * num_operands # Placeholder
-    if num_operands > 0: request_per_streamer[-1] = 32
+                if any(isinstance(opt, HasFixedCache) for opt in streamer.opts):
+                    if streamer.fixed_cache_depth > 0:
+                        depths.append(streamer.fixed_cache_depth)
 
-    # Iterate permutations of critical dimensions
-    # If pool is empty (no invariant checks?), treat all as non-critical?
+            cache_depths[l_id] = min(depths) if depths else float("inf")
+
+    # Build operand descriptors for the latency cost model
+    operand_descs = _build_operand_descriptors(streamers, inv_map_for_cost)
+
+    # Request-per-streamer heuristic for energy model
+    request_per_streamer = [d.spatial_banks for d in operand_descs]
+
+    best_tiling: list[tuple[int, int, bool]] = []
+    min_cost = float("inf")
+
     crit_list = list(critical_dims_pool)
-    
-    # Optimization: if pool is large, permutations are many.
-    # Usually 3 dims max.
-    
+
     for perm in permutations(crit_list):
-        # We need to call the recursive search
-        # Note: logic inside needs fix for list-of-lists return
-        tiling = search_cached_level_fixed(cache_depths, matrix_sizes, perm, inv_map_for_cost, request_per_streamer)
-        if not tiling: continue
-        
-        c = cost_of_tiling(tiling, request_per_streamer, inv_map_for_cost)
+        tiling = search_cached_level_fixed(
+            cache_depths, matrix_sizes, perm, inv_map_for_cost, request_per_streamer
+        )
+        if not tiling:
+            continue
+
+        # Evaluate with the chosen cost model
+        if cost_model_name == "latency":
+            c = latency_cost_of_tiling(
+                tiling, operand_descs, inv_map_for_cost,
+            )
+        else:
+            c = energy_cost_of_tiling(tiling, request_per_streamer, inv_map_for_cost)
+
         if c < min_cost:
             min_cost = c
             best_tiling = tiling
 
-    # Apply Tiling to Schedule
-    # best_tiling is list of (logical_dim, size, is_crit) from Inner to Outer.
-    # We want to reconstruct the schedule: [Outer ..., Inner ...] + [Spatial]
-    # Reverse best_tiling to get Outer->Inner order for Temporal part.
-    
-    final_temporal_order = reversed(best_tiling)
-    
-    # Reconstruct proper Schedule object
     return rebuild_schedule(template, schedule, best_tiling, dim_groups)
 
+
 def search_cached_level_fixed(cache_depths, matrix_sizes, loop_order, invariance_map, request_per_streamer):
-    # Same as search_cached_level but handling the list-of-lists from critical search
     critical_dim = loop_order[0]
     limit = cache_depths.get(critical_dim, 50)
     other_dims = [d for d in matrix_sizes.keys() if d != critical_dim]
@@ -509,132 +493,86 @@ def search_cached_level_fixed(cache_depths, matrix_sizes, loop_order, invariance
             k: (remove_prime_factors(matrix_sizes[k], used_factors[k]) if k in used_factors else matrix_sizes[k].copy())
             for k in matrix_sizes
         }
-        
-        tile_size_product = reduce(mul, (x[1] for x in cached_tiling), 1)
+
         next_cache = cache_depths.copy()
-        
-        # update cache depths for all dimensions that are not invariant to the current loop
+
         for d_t, s_t, _ in cached_tiling:
             for d in next_cache:
                 if d != d_t:
                     next_cache[d] //= s_t
-        
+
         suffix_options = search_critical_levels(next_cache, next_matrix_sizes, loop_order, 0)
-        
+
         for suffix in suffix_options:
             full = cached_tiling + suffix
-            c = cost_of_tiling(full, request_per_streamer, invariance_map)
+            c = energy_cost_of_tiling(full, request_per_streamer, invariance_map)
             if c < min_local:
                 min_local = c
                 best_local = full
-                
+
     return best_local
 
+
 def rebuild_schedule(template, old_schedule, tiling, dim_groups):
-    # tiling: [(l_dim, size, is_crit), ...] (Inner -> Outer)
-    # We need to construct new loops.
-    # Each item in tiling generates a loop.
-    # The spatial loops from old_schedule (the last template.num_dims) must be appended at the end (Innermost).
-    
-    # 1. Calculate Strides for each Logical Dim
-    # Strides track the cumulative position in the 'linearized' logical dimension.
-    # Since we are essentially re-tiling, we can track the 'step' for each tile.
-    
-    # Extract Base Vectors for each Logical Dim
-    # We must iterate dim_groups in the same order as find_optimal_tiling to match l_id
+    """
+    Reconstruct a Schedule from a tiling result.
+
+    tiling: [(l_dim, size, is_crit), ...] ordered inner → outer.
+    """
     l_id_to_base_vec = {}
-    
+
     for l_id, (sig, loop_data) in enumerate(dim_groups.items()):
-        # Find base vector
         indices = [x[0] for x in loop_data]
-        # Check all cols.
-        # We need the vector `v` such that any col `c` is `k * v`.
-        # Taking the column with smallest norms?
         best_vec = None
         min_norm = float('inf')
         for i in indices:
-            # Construct vec for this col across all ops
             vec = np.array([sp.pattern.A[:, i] for sp in old_schedule])
-            # vec shape (num_ops, num_results_per_op).
-            # Flatten to measure 'size'?
             norm = np.sum(np.abs(vec))
-            if norm < min_norm and norm > 0:
+            if 0 < norm < min_norm:
                  min_norm = norm
                  best_vec = vec
-        if best_vec is None: # All zero?
+        if best_vec is None:
              best_vec = np.zeros_like(np.array([sp.pattern.A[:, indices[0]] for sp in old_schedule]))
         l_id_to_base_vec[l_id] = best_vec
 
-    # 2. Build New Schedule
-    # Loop order: Outer -> Inner.
-    # Tiling: Reversed(tiling) (which is originally Inner->Outer).
-    loops = list(reversed(tiling))
-    
-    # We also have the Spatial loops from old_schedule.
-    # We should keep their pattern contributions as is.
-    spatial_cols = [np.array([sp.pattern.A[:, i + (old_schedule.num_dims - template.num_dims)] for sp in old_schedule]) 
-                    for i in range(template.num_dims)]
+    spatial_cols = [
+        np.array([sp.pattern.A[:, i + (old_schedule.num_dims - template.num_dims)] for sp in old_schedule])
+        for i in range(template.num_dims)
+    ]
     spatial_bounds = old_schedule[0].bounds[-(template.num_dims):]
-    
-    # Current accumulators for strides of logical dims
-    # We use number of logical dimensions = number of keys in l_id_to_base_vec
-    num_logical_dims = len(l_id_to_base_vec)
-    l_stride_tracker = {l_id: 1 for l_id in range(num_logical_dims)}
-    
-    # Calculate vector for each tile level, iterating Inner -> Outer (tiling order)
-    # Then reverse to get Outer -> Inner for final schedule construction
-    
-    schedule_components = [] # List of (bound, [vec_op0, vec_op1, ...])
-    
-    for l_id, size, is_crit in tiling:
-        # Inner to Outer
+
+    l_stride_tracker: dict[int, int] = {l_id: 1 for l_id in range(len(l_id_to_base_vec))}
+
+    schedule_components: list[tuple[int, list[np.ndarray]]] = []
+
+    for l_id, size, _is_crit in tiling:
         vecs = []
-        base = l_id_to_base_vec[l_id] # Shape (num_ops, dim_out) - base_vec is already a list of arrays? No, base_vec is 'vec'.
-        
-        # In the extraction loop:
-        # best_vec = np.array([sp.pattern.A[:, i] for sp in old_schedule])
-        # So base is an np.array of shape (num_ops, num_results_per_op).
-        
-        # We need individual op vectors for this level.
-        # base[op_idx] is the vector for that op.
-        
+        base = l_id_to_base_vec[l_id]
         for op_idx in range(len(old_schedule)):
-             # Scale by current stride tracker and Append
              vecs.append(base[op_idx] * l_stride_tracker[l_id])
-             
         schedule_components.append((size, vecs))
-        
-        # Update stride
         l_stride_tracker[l_id] *= size
-        
-    # Reverse to get Outer -> Inner
+
+    # Reverse to get outer → inner
     schedule_components.reverse()
-    
+
     new_bounds = [x[0] for x in schedule_components] + list(spatial_bounds)
-    
-    # Construct final matrices
+
     new_patterns = []
     for op_idx in range(len(old_schedule)):
-        # Collect temporal cols
-        temp_cols = [x[1][op_idx] for x in schedule_components] 
-        # Collect spatial cols
+        temp_cols = [x[1][op_idx] for x in schedule_components]
         spat_cols = [spatial_cols[i][op_idx] for i in range(template.num_dims)]
-        
         all_cols = temp_cols + spat_cols
-        # Stack columns (each is 1D array of size dim_out)
-        # Result A matrix: (dim_out, new_num_dims)
         if all_cols:
             new_A = np.column_stack(all_cols)
         else:
             new_A = np.zeros((old_schedule[op_idx].pattern.A.shape[0], 0), dtype=int)
-            
         new_patterns.append(SchedulePattern(
             tuple(new_bounds),
             AffineTransform(new_A, old_schedule[op_idx].pattern.b)
         ))
-        
-    return Schedule(new_patterns)
 
+    return Schedule(new_patterns)
 
 
 def scheduler_backtrack(
@@ -841,8 +779,16 @@ def scheduler(
     ],
     schedule_idx: int | None = None,
     optimal_tiling: bool = False,
+    cost_model_name: str = "latency",
 ) -> Schedule:
-    # for now just return the first result of the backtracking
+    """
+    Main scheduling entry point.
+
+    Parameters
+    ----------
+    cost_model_name : "latency" to minimise TCDM bank conflicts,
+        "energy" to minimise total accesses.
+    """
     if schedule_idx is not None:
         iterator = scheduler_backtrack(template, schedule, extra_checks=extra_checks)
         try:
@@ -853,12 +799,12 @@ def scheduler(
             )
         except StopIteration:
             raise ValueError(f"No schedule found at index {schedule_idx}")
-        
+
         if optimal_tiling and any(any(isinstance(opt, HasFixedCache) for opt in streamer.opts) for streamer in streamers):
-            return find_optimal_tiling(template, candidate_schedule, streamers)
+            return find_optimal_tiling(template, candidate_schedule, streamers, cost_model_name)
         return candidate_schedule
 
     result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
     if optimal_tiling and any(any(isinstance(opt, HasFixedCache) for opt in streamer.opts) for streamer in streamers):
-        return find_optimal_tiling(template, result, streamers)
+        return find_optimal_tiling(template, result, streamers, cost_model_name)
     return result

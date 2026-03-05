@@ -20,7 +20,7 @@ systems = ["mat"]
 archs = ["full"]
 # banks = ['1', '2', '4', '8', '16', '32', '64', '128']
 # banks = ['8','16', '32', '64', '128']
-banks = ['32']
+banks = ['8', '16', '32']
 
 
 # Rules
@@ -92,8 +92,8 @@ def get_snax_config(wildcards):
 
 def get_extra_flags(wildcards):
     if wildcards.arch == "full":
-        return "--fixed-cache-schedule"
-        #return ""
+        #return "--fixed-cache-schedule"
+        return ""
     else:
         return ""
 

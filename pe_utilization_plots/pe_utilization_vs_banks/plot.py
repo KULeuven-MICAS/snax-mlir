@@ -103,25 +103,9 @@ files = {
 
 # === OPS per trace ===
 expected_cycles_per_trace = {
-    # "matmul_sysmat_bank1_traces.json": 5*7*9,
-    # "matmul_sysmat_bank2_traces.json": 5*7*9,
-    # "matmul_sysmat_bank4_traces.json": 5*7*9,
-    # "matmul_sysmat_archreg_bank8_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archreg_bank16_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archreg_bank32_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archreg_bank64_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archreg_bank128_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archcached_bank8_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archcached_bank16_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archcached_bank32_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archcached_bank64_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archcached_bank128_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archfull_cached_bank8_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archfull_cached_bank16_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archfull_cached_pipe_bank32_traces.json": 8 * 8 * 8,
-    "matmul_sysmat_archfull_cached_no_pipe_bank32_traces.json": 6 * 9 * 10,
-    # "matmul_sysmat_archfull_cached_bank64_traces.json": 8 * 8 * 8,
-    # "matmul_sysmat_archfull_cached_bank128_traces.json": 8 * 8 * 8,
+    "matmul_sysmat_archfull_bank8_traces.json": 16 * 16 * 16,
+    "matmul_sysmat_archfull_bank16_traces.json": 16 * 16 * 16,
+    "matmul_sysmat_archfull_bank32_traces.json": 16 * 16 * 16,
     
 }
 
@@ -129,10 +113,8 @@ expected_cycles_per_trace = {
 def _detect_arch(trace_filename: str) -> str:
     if "archreg" in trace_filename:
         return "archreg"
-    if "archcached" in trace_filename:
-        return "archcached"
-    if "archfull_cached" in trace_filename:
-        return "archfull_cached_pipe" if "pipe" in trace_filename else "archfull_cached_no_pipe"
+    if "archfull" in trace_filename:
+        return "archfull"
     return "unknown"
 
 records = []
@@ -172,16 +154,12 @@ def plot_arch_compare(df_in: pd.DataFrame, out_path: str):
     Each architecture is plotted as a separate line (different style). If multiple
     Operations exist, lines are labelled as "<arch> - <operation>".
     """
-    arches = ['archreg', 'archcached', 'archfull_cached_pipe', 'archfull_cached_no_pipe']
+    arches = ['archreg', 'archfull']
     styles = {'archreg': {'linestyle': '-', 'marker': 'o', 'color': 'C0'},
-              'archcached': {'linestyle': '--', 'marker': 's', 'color': 'C1'},
-              'archfull_cached_pipe': {'linestyle': '-.', 'marker': '^', 'color': 'C2'},
-              'archfull_cached_no_pipe': {'linestyle': ':', 'marker': '*', 'color': 'C3'}}
+              'archfull': {'linestyle': '-.', 'marker': '^', 'color': 'C2'}}
     
     archdict = {'archreg': 'Regular Memory Access',
-                'archcached': 'Fixed Level Cache',
-                'archfull_cached_pipe': 'Full Level Cache (Pipelined)',
-                'archfull_cached_no_pipe': 'Full Level Cache (Non-pipelined)'}
+                'archfull': 'Fixed Level Cache',}
 
     fig, ax = plt.subplots(figsize=(8, 6))
 
