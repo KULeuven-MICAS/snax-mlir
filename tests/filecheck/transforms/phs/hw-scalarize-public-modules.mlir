@@ -1,4 +1,4 @@
-// RUN: snax-opt %s -p hw-scalarize-public-modules --disable-verify | circt-opt --allow-unregistered-dialect --canonicalize | filecheck %s
+// RUN: snax-opt %s -p hw-scalarize-public-modules | circt-opt --allow-unregistered-dialect --canonicalize | filecheck %s
 
 hw.module @test_1d(in %data data_0: !hw.array<4xi64>, in %data_1: !hw.array<4xi64>, in %switch switch_0: i2, out out_0: !hw.array<4xi64>) {
   %0 = "test.op"(%data, %data_1, %switch) : (!hw.array<4xi64>, !hw.array<4xi64>, i2) -> !hw.array<4xi64>
