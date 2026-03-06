@@ -74,7 +74,7 @@ class ScalarizeHwModules(RewritePattern):
             shape, el_type = get_shaped_hw_array_shape(operand.type)
 
             for index in itertools.product(*[range(s) for s in shape]):
-                get_ops, scalar_val = get_from_shaped_hw_array(operand, index)
+                get_ops, scalar_val = get_from_shaped_hw_array(cast(SSAValue[hw.ArrayType], operand), index)
                 rewriter.insert_op(get_ops, InsertPoint(block, insert_before=output_op))
                 new_output_operands.append(scalar_val)
                 new_output_ports.append(
