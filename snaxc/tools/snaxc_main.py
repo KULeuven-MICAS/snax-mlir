@@ -181,6 +181,20 @@ class SNAXCMain(CommandLineTool):
             help="use the schedule optimized for fixed level cache.",
         )
 
+        arg_parser.add_argument(
+            "--cost-model",
+            choices=["latency", "energy"],
+            default="latency",
+            help="Select cost model for scheduling",
+        )
+
+        arg_parser.add_argument(
+            "--schedule-idx",
+            type=int,
+            default=None,
+            help="Select a specific schedule by index (for debugging purposes).",
+        )
+
     def setup_pipeline(self):
         """
         Creates a pipeline that consists of all the passes specified.
@@ -223,7 +237,7 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(FuseAccumulationMemrefsPass())
         pass_pipeline.append(AllocToGlobalPass())
         pass_pipeline.append(SetMemorySpace())
-        pass_pipeline.append(DartSchedulerPass(self.args.fixed_cache_schedule))
+        pass_pipeline.append(DartSchedulerPass(optimal_tiling=self.args.fixed_cache_schedule, cost_model=self.args.cost_model, schedule_idx=self.args.schedule_idx))
         pass_pipeline.append(SetMemoryLayout())
         if self.args.debug:
             pass_pipeline.append(InsertDebugPass())

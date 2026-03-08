@@ -495,6 +495,7 @@ class TestLatencyCostOfTiling:
         """
         Reader gated by a critical dimension it's invariant to.
         Only fires when the critical counter == 0.
+        Every iteration step still costs 1 cycle (execution always runs).
         """
         # Inner loop: dim 0, size 4, critical
         # Operand invariant to dim 0 → only fires when counter == 0
@@ -502,20 +503,23 @@ class TestLatencyCostOfTiling:
         tiling = [(0, 4, True)]
         inv = [{0}]
         cost = latency_cost_of_tiling(tiling, [desc], inv, num_banks=32)
-        # Only 1 cycle when ic=0 is active (counter == 0)
-        assert cost == 1.0
+        # 4 steps: each costs 1 cycle (1 hit at step 0, 0 hits at steps 1-3,
+        # but every step costs at least 1 cycle).
+        assert cost == 4.0
 
     def test_writer_gating(self):
         """
         Writer gated by a critical dimension it's invariant to.
         Only fires when critical counter == bound-1.
+        Every iteration step still costs 1 cycle (execution always runs).
         """
         desc = OperandDescriptor(OperandKind.WRITER, 8, 1, frozenset({0}))
         tiling = [(0, 4, True)]
         inv = [{0}]
         cost = latency_cost_of_tiling(tiling, [desc], inv, num_banks=32)
-        # Only 1 cycle when ic=3 (last value)
-        assert cost == 1.0
+        # 4 steps: each costs 1 cycle (1 hit at step 3, 0 hits at steps 0-2,
+        # but every step costs at least 1 cycle).
+        assert cost == 4.0
 
     def test_reader_writer_drain_cycles(self):
         """
@@ -598,9 +602,9 @@ class TestLatencyMultiLevel:
         tiling = [(0, 4, False), (1, 3, True)]
         inv = [{1}]
         cost = latency_cost_of_tiling(tiling, [desc], inv, num_banks=32)
-        # Outer counter 0: 4 inner iterations, 1 cycle each = 4
-        # Outer counter 1,2: reader not active → 0 cycles
-        assert cost == 4.0
+        # 12 total steps. Outer counter 0: 4 inner iterations with 1 hit = 4 cycles.
+        # Outer counter 1,2: reader not active but each step still costs 1 cycle = 8.
+        assert cost == 12.0
 
     def test_gemm_like_3_operands(self):
         """
@@ -717,8 +721,8 @@ class TestEdgeCases:
         desc = OperandDescriptor(OperandKind.WRITER, 8, 0, frozenset())
         tiling = [(0, 4, False)]
         cost = latency_cost_of_tiling(tiling, [desc], [set()], num_banks=32)
-        # No banks hit → 0 cycles (the `if bank_starts else 0` path)
-        assert cost == 0.0
+        # No banks hit, but every step costs at least 1 cycle.
+        assert cost == 4.0
 
     def test_energy_and_latency_produce_different_values(self):
         """The two models should generally produce different costs."""

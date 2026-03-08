@@ -37,15 +37,12 @@ class OperandDescriptor:
 
     Attributes:
         kind: READER, WRITER, or READER_WRITER.
-        element_bits: Bit-width of a single element (e.g. 8 for int8).
         spatial_banks: Number of consecutive TCDM banks accessed per burst.
-            Equal to (product of spatial dims the operand *varies* with)
-            * element_bits / bank_bits.
+            Equal to (product of spatial dims)
         invariant_dims: Set of *logical* dimension ids to which the operand
             is invariant (i.e. the stride is 0 for those dims).
     """
     kind: OperandKind
-    element_bits: int
     spatial_banks: int
     invariant_dims: frozenset[int]
 
@@ -286,27 +283,26 @@ def _reader_active(
     invariant_dims: frozenset[int],
 ) -> bool:
     """
-    A reader fires when, for every tiling level whose dimension is in
-    ``invariant_dims`` AND that is marked critical, the counter is 0.
-    Additionally all levels *below* (more inner than) the critical level
-    whose dimension is in ``invariant_dims`` must also be 0.
+    A reader fires when, for every tiling level at or below the outermost
+    critical level whose dimension the operand is invariant to (stride = 0),
+    the counter is 0.
     """
-    # Find the outermost critical level that the operand is invariant to.
+    # Find the outermost critical level (regardless of invariance).
     critical_level: int | None = None
     for lvl in range(len(tiling) - 1, -1, -1):  # outer → inner
-        dim_idx, _, is_crit = tiling[lvl]
-        if is_crit and dim_idx in invariant_dims:
+        _, _, is_crit = tiling[lvl]
+        if is_crit:
             critical_level = lvl
             break
 
     if critical_level is None:
-        # No critical loop for this operand → always active
+        # No critical loop → always active
         return True
 
     # All levels from critical_level down to 0 that the operand is invariant
     # to must have counter == 0.
     for lvl in range(critical_level, -1, -1):
-        dim_idx, _, is_crit = tiling[lvl]
+        dim_idx = tiling[lvl][0]
         if dim_idx in invariant_dims:
             if counters[lvl] != 0:
                 return False
@@ -320,15 +316,15 @@ def _writer_active(
     invariant_dims: frozenset[int],
 ) -> bool:
     """
-    A writer fires when, for every tiling level whose dimension is in
-    ``invariant_dims`` AND that is marked critical, the counter is at its
-    last value (bound - 1).  All levels below that critical level whose
-    dimension is in ``invariant_dims`` must also be at last value.
+    A writer fires when, for every tiling level at or below the outermost
+    critical level whose dimension the operand is invariant to, the counter
+    is at its last value (bound - 1).
     """
+    # Find the outermost critical level (regardless of invariance).
     critical_level: int | None = None
     for lvl in range(len(tiling) - 1, -1, -1):
-        dim_idx, _, is_crit = tiling[lvl]
-        if is_crit and dim_idx in invariant_dims:
+        _, _, is_crit = tiling[lvl]
+        if is_crit:
             critical_level = lvl
             break
 
@@ -336,7 +332,7 @@ def _writer_active(
         return True
 
     for lvl in range(critical_level, -1, -1):
-        dim_idx, _, is_crit = tiling[lvl]
+        dim_idx = tiling[lvl][0]
         if dim_idx in invariant_dims:
             if counters[lvl] != bounds[lvl] - 1:
                 return False
@@ -344,142 +340,9 @@ def _writer_active(
 
 
 # ---------------------------------------------------------------------------
-# Optimised inner-loop conflict analysis
+# (The old _analyse_innermost_period was removed – its functionality is now
+#  subsumed by the global-step simulation in _simulate_nested.)
 # ---------------------------------------------------------------------------
-
-def _analyse_innermost_period(
-    tiling: list[tuple[int, int, bool]],
-    operand_descriptors: Sequence[OperandDescriptor],
-    invariance_map: list[set[int]],
-    strides_bank: list[list[int]],
-    outer_counters: list[int],
-    num_banks: int,
-) -> int:
-    """
-    Analyse the innermost tiling level by iterating its iterations and
-    computing the max bank-hit count per cycle.  Returns total cycles spent
-    on the innermost loop for the given outer-counter configuration.
-
-    This is the hot inner loop of the simulation; it is kept tight.
-    """
-    if not tiling:
-        return 0
-
-    num_ops = len(operand_descriptors)
-    bounds = [t[1] for t in tiling]
-    inner_bound = bounds[0]
-    inner_dim = tiling[0][0]
-
-    # Precompute base bank offsets from outer counters (levels 1 … N-1)
-    base_offsets = [0] * num_ops
-    for op_idx in range(num_ops):
-        acc = 0
-        for lvl in range(1, len(tiling)):
-            acc += strides_bank[op_idx][lvl] * outer_counters[lvl]
-        base_offsets[op_idx] = acc
-
-    inner_strides = [strides_bank[op_idx][0] for op_idx in range(num_ops)]
-
-    # Precompute which operands are reader-writers
-    rw_indices = [
-        i for i, d in enumerate(operand_descriptors)
-        if d.kind == OperandKind.READER_WRITER
-    ]
-
-    total_cycles = 0
-
-    for ic in range(inner_bound):
-        # Build full counter vector for activity checks
-        full_counters = [ic] + list(outer_counters[1:])
-
-        # Collect active bursts this cycle
-        bank_starts: list[int] = []
-        burst_widths: list[int] = []
-        active_rw_read = False
-        active_rw_write = False
-
-        for op_idx, desc in enumerate(operand_descriptors):
-            if desc.spatial_banks <= 0:
-                continue  # zero-width burst → skip
-            addr_bank = (base_offsets[op_idx] + inner_strides[op_idx] * ic) % num_banks
-
-            if desc.kind == OperandKind.READER:
-                if _reader_active(full_counters, tiling, desc.invariant_dims):
-                    bank_starts.append(addr_bank)
-                    burst_widths.append(desc.spatial_banks)
-
-            elif desc.kind == OperandKind.WRITER:
-                if _writer_active(full_counters, bounds, tiling, desc.invariant_dims):
-                    bank_starts.append(addr_bank)
-                    burst_widths.append(desc.spatial_banks)
-
-            elif desc.kind == OperandKind.READER_WRITER:
-                # Reader part
-                if _reader_active(full_counters, tiling, desc.invariant_dims):
-                    active_rw_read = True
-                    bank_starts.append(addr_bank)
-                    burst_widths.append(desc.spatial_banks)
-
-                # Writer part – offset by 2 iterations
-                write_ic = ic - 2
-                if write_ic >= 0:
-                    write_counters = [write_ic] + list(outer_counters[1:])
-                    if _writer_active(write_counters, bounds, tiling, desc.invariant_dims):
-                        active_rw_write = True
-                        write_addr = (base_offsets[op_idx] + inner_strides[op_idx] * write_ic) % num_banks
-                        bank_starts.append(write_addr)
-                        burst_widths.append(desc.spatial_banks)
-
-        # ReaderWriter exclusion: cannot read and write in same cycle
-        if active_rw_read and active_rw_write:
-            # Split into two sub-cycles: first reads then writes
-            # Separate bursts
-            read_starts: list[int] = []
-            read_widths: list[int] = []
-            write_starts: list[int] = []
-            write_widths: list[int] = []
-
-            # Re-classify: non-RW always go into both
-            # We need to re-collect properly
-            read_starts_all, read_widths_all = [], []
-            write_starts_all, write_widths_all = [], []
-
-            for op_idx, desc in enumerate(operand_descriptors):
-                if desc.spatial_banks <= 0:
-                    continue
-                addr_bank = (base_offsets[op_idx] + inner_strides[op_idx] * ic) % num_banks
-                if desc.kind == OperandKind.READER:
-                    if _reader_active(full_counters, tiling, desc.invariant_dims):
-                        read_starts_all.append(addr_bank)
-                        read_widths_all.append(desc.spatial_banks)
-                        write_starts_all.append(addr_bank)
-                        write_widths_all.append(desc.spatial_banks)
-                elif desc.kind == OperandKind.WRITER:
-                    if _writer_active(full_counters, bounds, tiling, desc.invariant_dims):
-                        read_starts_all.append(addr_bank)
-                        read_widths_all.append(desc.spatial_banks)
-                        write_starts_all.append(addr_bank)
-                        write_widths_all.append(desc.spatial_banks)
-                elif desc.kind == OperandKind.READER_WRITER:
-                    if _reader_active(full_counters, tiling, desc.invariant_dims):
-                        read_starts_all.append(addr_bank)
-                        read_widths_all.append(desc.spatial_banks)
-                    write_ic2 = ic - 2
-                    if write_ic2 >= 0:
-                        write_counters2 = [write_ic2] + list(outer_counters[1:])
-                        if _writer_active(write_counters2, bounds, tiling, desc.invariant_dims):
-                            write_addr2 = (base_offsets[op_idx] + inner_strides[op_idx] * write_ic2) % num_banks
-                            write_starts_all.append(write_addr2)
-                            write_widths_all.append(desc.spatial_banks)
-
-            read_cycles = _count_max_bank_hits(read_starts_all, read_widths_all, num_banks)
-            write_cycles = _count_max_bank_hits(write_starts_all, write_widths_all, num_banks)
-            total_cycles += read_cycles + write_cycles
-        else:
-            hits = _count_max_bank_hits(bank_starts, burst_widths, num_banks)
-            total_cycles += max(hits, 1) if bank_starts else 0
-
-    return total_cycles
 
 
 # ---------------------------------------------------------------------------
@@ -529,7 +392,7 @@ def _compute_period_cost_fast(
     for ic in range(period):
         starts = [(s + ist * ic) % num_banks for s, ist in zip(strides_mod, inner_stride_mod)]
         hits = _count_max_bank_hits(starts, burst_widths, num_banks)
-        per_period_cycles += max(hits, 1) if any(w > 0 for w in burst_widths) else 0
+        per_period_cycles += max(hits, 1)
 
     full_periods = inner_bound // period
     remainder = inner_bound % period
@@ -540,7 +403,7 @@ def _compute_period_cost_fast(
     for ic in range(remainder):
         starts = [(s + ist * ic) % num_banks for s, ist in zip(strides_mod, inner_stride_mod)]
         hits = _count_max_bank_hits(starts, burst_widths, num_banks)
-        total += max(hits, 1) if any(w > 0 for w in burst_widths) else 0
+        total += max(hits, 1)
 
     return total
 
@@ -577,39 +440,11 @@ def latency_cost_of_tiling(
     if not tiling:
         return 0.0
 
-    num_ops = len(operand_descriptors)
-    num_levels = len(tiling)
-    bounds = [t[1] for t in tiling]
-
     # Compute per-operand strides in bank-word units
     strides_bank = _compute_operand_stride_per_tile(
         tiling, operand_descriptors, invariance_map, bank_bits
     )
 
-    # Try the fast analytical path for simple cases (all operands always active,
-    # no reader-writer timing offsets).
-    has_rw = any(d.kind == OperandKind.READER_WRITER for d in operand_descriptors)
-    has_gating = any(
-        any(
-            tiling[lvl][2] and tiling[lvl][0] in d.invariant_dims
-            for lvl in range(num_levels)
-        )
-        for d in operand_descriptors
-    )
-
-    if num_levels == 1 and not has_rw and not has_gating:
-        # All operands always active, single loop → use fast path
-        inner_strides_mod = [strides_bank[op][0] % num_banks for op in range(num_ops)]
-        base_offsets_mod = [0] * num_ops  # no outer loops
-        burst_widths = [d.spatial_banks for d in operand_descriptors]
-        result = _compute_period_cost_fast(
-            base_offsets_mod, burst_widths, inner_strides_mod, bounds[0], num_banks
-        )
-        if result is not None:
-            return float(result)
-
-    # General simulation: iterate outer loops, handle inner loop with
-    # _analyse_innermost_period.
     return float(_simulate_nested(
         tiling, operand_descriptors, invariance_map, strides_bank, num_banks
     ))
@@ -623,43 +458,125 @@ def _simulate_nested(
     num_banks: int,
 ) -> int:
     """
-    Recursively simulate nested loops.  The innermost loop (level 0) is
-    handled by ``_analyse_innermost_period``; outer loops are iterated.
+    Simulate all iteration steps of the deeply nested for-loop given by
+    *tiling*, computing cycle costs including banking conflicts and
+    ReaderWriter stalls.
+
+    The iteration steps are enumerated globally (as a mixed-radix counter
+    over all tiling levels, innermost changing fastest).  The writer part
+    of a ReaderWriter operand is always 2 *global* iteration steps behind
+    the reader part.  Every iteration step costs at least 1 cycle (the
+    accelerator always executes even when no memory is accessed).  When a
+    ReaderWriter has both its reader and writer parts active in the same
+    step, the read and write phases are serialised (each costs at least 1
+    cycle).
     """
     num_levels = len(tiling)
+    if num_levels == 0:
+        return 0
+
     bounds = [t[1] for t in tiling]
+    num_ops = len(operand_descriptors)
 
-    if num_levels <= 1:
-        # Degenerate: single level handled directly
-        total_cycles = _analyse_innermost_period(
-            tiling, operand_descriptors, invariance_map,
-            strides_bank, [0] * max(num_levels, 1), num_banks
-        )
-    else:
-        # Iterate all combinations of outer counters (levels 1 … num_levels-1).
-        # Level 0 is the innermost and is handled analytically.
-        outer_counters_list = [0] * num_levels  # index 0 unused here
+    # Total number of iteration steps
+    total_steps = 1
+    for b in bounds:
+        total_steps *= b
 
-        def _recurse(level: int) -> int:
-            """Iterate level ``level`` (1-based in tiling) and all levels above."""
-            if level >= num_levels:
-                # All outer counters set; run innermost loop
-                return _analyse_innermost_period(
-                    tiling, operand_descriptors, invariance_map,
-                    strides_bank, outer_counters_list, num_banks
+    def step_to_counters(step: int) -> list[int]:
+        """Convert a global step to per-level counters (inner-first)."""
+        counters = []
+        s = step
+        for b in bounds:
+            counters.append(s % b)
+            s //= b
+        return counters
+
+    def compute_bank_address(op_idx: int, counters: list[int]) -> int:
+        addr = 0
+        for lvl in range(num_levels):
+            addr += strides_bank[op_idx][lvl] * counters[lvl]
+        return addr % num_banks
+
+    total_cycles = 0
+
+    for step in range(total_steps):
+        counters = step_to_counters(step)
+
+        # Collect read-phase accesses (readers + RW reader parts)
+        read_starts: list[int] = []
+        read_widths: list[int] = []
+        # Collect write-phase accesses (writers + RW writer parts)
+        write_starts: list[int] = []
+        write_widths: list[int] = []
+
+        rw_stall = False
+
+        for op_idx, desc in enumerate(operand_descriptors):
+            if desc.spatial_banks <= 0:
+                continue
+
+            if desc.kind == OperandKind.READER:
+                if _reader_active(counters, tiling, desc.invariant_dims):
+                    addr = compute_bank_address(op_idx, counters)
+                    read_starts.append(addr)
+                    read_widths.append(desc.spatial_banks)
+
+            elif desc.kind == OperandKind.WRITER:
+                if _writer_active(counters, bounds, tiling, desc.invariant_dims):
+                    addr = compute_bank_address(op_idx, counters)
+                    write_starts.append(addr)
+                    write_widths.append(desc.spatial_banks)
+
+            elif desc.kind == OperandKind.READER_WRITER:
+                # Reader part uses current step's counters
+                reader_is_active = _reader_active(
+                    counters, tiling, desc.invariant_dims
                 )
-            acc = 0
-            for val in range(bounds[level]):
-                outer_counters_list[level] = val
-                acc += _recurse(level + 1)
-            return acc
 
-        total_cycles = _recurse(1)
+                # Writer part is 2 global steps behind
+                writer_is_active = False
+                writer_counters: list[int] | None = None
+                writer_step = step - 2
+                if writer_step >= 0:
+                    writer_counters = step_to_counters(writer_step)
+                    writer_is_active = _writer_active(
+                        writer_counters, bounds, tiling, desc.invariant_dims
+                    )
 
-    # Add drain cycles for reader-writer write pipeline (2-cycle lag)
+                if reader_is_active:
+                    addr = compute_bank_address(op_idx, counters)
+                    read_starts.append(addr)
+                    read_widths.append(desc.spatial_banks)
+
+                if writer_is_active:
+                    assert writer_counters is not None
+                    addr = compute_bank_address(op_idx, writer_counters)
+                    write_starts.append(addr)
+                    write_widths.append(desc.spatial_banks)
+
+                if reader_is_active and writer_is_active:
+                    rw_stall = True
+
+        if rw_stall:
+            # Read and write phases are serialised for the RW operand.
+            read_hits = _count_max_bank_hits(
+                read_starts, read_widths, num_banks
+            )
+            write_hits = _count_max_bank_hits(
+                write_starts, write_widths, num_banks
+            )
+            total_cycles += max(1, read_hits) + max(1, write_hits)
+        else:
+            # All accesses happen simultaneously.
+            all_starts = read_starts + write_starts
+            all_widths = read_widths + write_widths
+            hits = _count_max_bank_hits(all_starts, all_widths, num_banks)
+            total_cycles += max(hits, 1)  # always at least 1 cycle
+
+    # Drain cycles for RW writer pipeline (2-step lag)
     for desc in operand_descriptors:
         if desc.kind == OperandKind.READER_WRITER:
-            # Up to 2 extra drain cycles at the end of the innermost loop
             total_cycles += 2
             break  # only count once
 

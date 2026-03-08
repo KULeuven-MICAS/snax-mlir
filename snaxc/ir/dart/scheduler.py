@@ -1,6 +1,7 @@
 from collections.abc import Callable, Iterator, Sequence
 from functools import reduce
 from math import ceil
+import math
 from operator import mul
 from itertools import permutations
 
@@ -99,31 +100,16 @@ def _build_operand_descriptors(
         if streamer.type == StreamerType.Reader:
             kind = OperandKind.READER
         elif streamer.type == StreamerType.Writer:
-            kind = OperandKind.WRITER
+            kind = OperandKind.READER_WRITER
         else:
             kind = OperandKind.READER_WRITER
 
-        # Element bit-width: inferred from spatial dims and streamer config.
-        # The spatial_dims tuple contains the spatial unrolling factors.
-        # The element_bits is derived from the streamer's data width
-        # divided by the number of spatial elements.
-        # For streamers in this codebase, spatial_dims are integers
-        # representing the bound per spatial dimension.
-        # The total elements fetched = product of spatial_dims.
-        # The total bits fetched = total_elements * element_bits = spatial_banks * bank_bits.
-        # We infer element_bits from the streamer if available;
-        # default to 8 bits as the most common case.
-        element_bits = 8  # default for int8 workloads
-
         # Number of consecutive banks accessed per burst:
-        # = (product of spatial dims that the operand *varies* with) * element_bits / bank_bits
-        # For invariant spatial dims, those are excluded from the product.
-        varying_spatial_product = reduce(mul, streamer.spatial_dims, 1)
-        spatial_banks = max(1, (varying_spatial_product * element_bits) // bank_bits)
+        spatial_banks = reduce(mul, streamer.spatial_dims, 1)
+        
 
         descs.append(OperandDescriptor(
             kind=kind,
-            element_bits=element_bits,
             spatial_banks=spatial_banks,
             invariant_dims=frozenset(invariance_map[op_idx]),
         ))
@@ -207,6 +193,7 @@ def search_cached_level(
     # If generic, we can perform a DFS.
 
     # Result accumulator
+    all_tilings = []
     best_tiling = None
     min_cost = float("inf")
     
@@ -255,6 +242,7 @@ def search_cached_level(
         full_tiling = cached_tiling + suffix
         
         if not full_tiling: continue # Should not happen
+        all_tilings.append(full_tiling)
 
         cost = cost_of_tiling(full_tiling, request_per_streamer, invariance_map)
         
@@ -262,7 +250,7 @@ def search_cached_level(
             min_cost = cost
             best_tiling = full_tiling
 
-    return best_tiling if best_tiling is not None else []
+    return best_tiling if best_tiling is not None else [], all_tilings
 
 def generate_valid_multidim_factors(matrix_sizes, dims, limit):
     """
@@ -316,9 +304,11 @@ def search_critical_levels(cache_depths, matrix_sizes, loop_order, current_idx):
     if next_idx < len(loop_order):
         constraint_dim = loop_order[next_idx]
         limit = cache_depths.get(constraint_dim, float("inf"))
+        is_last_tile = False
     else:
         # Outermost critical loop. Not constrained.
         limit = float("inf")
+        is_last_tile = True
     
     divisors = get_all_divisors_with_factors(matrix_sizes[dim])
     
@@ -333,7 +323,12 @@ def search_critical_levels(cache_depths, matrix_sizes, loop_order, current_idx):
     
     valid_results = []
 
-    for size, factors in divisors.items():
+    if not is_last_tile:
+        all_sizes = divisors.items()
+    else:
+        all_sizes = [(math.prod(matrix_sizes[dim]), matrix_sizes[dim])]  # For last tile, we can choose not to tile (size=1) if it fits constraints.
+
+    for size, factors in all_sizes:
         if size <= limit:
             # We enforce "No dimension of same type in lower loops as innermost loop of critical loops"
             # This check is complex here inside recursion.
@@ -375,6 +370,7 @@ def find_optimal_tiling(
     schedule: Schedule,
     streamers: Sequence[Streamer],
     cost_model_name: str = "latency",
+    schedule_idx: int | None = None
 ) -> Schedule:
     """
     Find the optimal tiling for *schedule* on *template* by exploring
@@ -453,15 +449,18 @@ def find_optimal_tiling(
     # Request-per-streamer heuristic for energy model
     request_per_streamer = [d.spatial_banks for d in operand_descs]
 
+    all_tilings: list[list[tuple[int, int, bool]]] = []
     best_tiling: list[tuple[int, int, bool]] = []
     min_cost = float("inf")
 
     crit_list = list(critical_dims_pool)
 
     for perm in permutations(crit_list):
-        tiling = search_cached_level_fixed(
+        pass
+        tiling, partial_all_tilings = search_cached_level_fixed(
             cache_depths, matrix_sizes, perm, inv_map_for_cost, request_per_streamer
         )
+        all_tilings.extend(partial_all_tilings)
         if not tiling:
             continue
 
@@ -476,6 +475,13 @@ def find_optimal_tiling(
         if c < min_cost:
             min_cost = c
             best_tiling = tiling
+    
+    if schedule_idx is not None:
+        if schedule_idx >= len(all_tilings):
+            raise ValueError(f"No schedule found at index {schedule_idx}")
+        best_tiling = all_tilings[schedule_idx]
+        cost = latency_cost_of_tiling(best_tiling, operand_descs, inv_map_for_cost)
+        print("Predicted Cost for schedule index", schedule_idx, ":", cost)
 
     return rebuild_schedule(template, schedule, best_tiling, dim_groups)
 
@@ -485,6 +491,7 @@ def search_cached_level_fixed(cache_depths, matrix_sizes, loop_order, invariance
     limit = cache_depths.get(critical_dim, 50)
     other_dims = [d for d in matrix_sizes.keys() if d != critical_dim]
 
+    all_tilings = []
     best_local = None
     min_local = float("inf")
 
@@ -505,12 +512,13 @@ def search_cached_level_fixed(cache_depths, matrix_sizes, loop_order, invariance
 
         for suffix in suffix_options:
             full = cached_tiling + suffix
+            all_tilings.append(full)
             c = energy_cost_of_tiling(full, request_per_streamer, invariance_map)
             if c < min_local:
                 min_local = c
                 best_local = full
 
-    return best_local
+    return best_local, all_tilings
 
 
 def rebuild_schedule(template, old_schedule, tiling, dim_groups):
@@ -777,9 +785,9 @@ def scheduler(
         # defaulting to pure output stationary schedules for now
         is_pure_output_stationary,
     ],
-    schedule_idx: int | None = None,
     optimal_tiling: bool = False,
     cost_model_name: str = "latency",
+    schedule_idx: int | None = None,
 ) -> Schedule:
     """
     Main scheduling entry point.
@@ -791,17 +799,10 @@ def scheduler(
     """
     if schedule_idx is not None:
         iterator = scheduler_backtrack(template, schedule, extra_checks=extra_checks)
-        try:
-            candidate_schedule = next(
-                result
-                for i, result in enumerate(iterator)
-                if i == schedule_idx
-            )
-        except StopIteration:
-            raise ValueError(f"No schedule found at index {schedule_idx}")
+        candidate_schedule = next(iterator)
 
         if optimal_tiling and any(any(isinstance(opt, HasFixedCache) for opt in streamer.opts) for streamer in streamers):
-            return find_optimal_tiling(template, candidate_schedule, streamers, cost_model_name)
+            return find_optimal_tiling(template, candidate_schedule, streamers, cost_model_name, schedule_idx)
         return candidate_schedule
 
     result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks))

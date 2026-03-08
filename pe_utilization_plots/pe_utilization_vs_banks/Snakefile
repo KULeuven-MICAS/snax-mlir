@@ -51,7 +51,7 @@ rule simulate:
     input:
         "{file}_sys{sys}_arch{arch}.x",
     output:
-#        temp(
+        temp(
             expand(
                 "{file}_sys{sys}_arch{arch}_bank{bank}_trace_chip_{num_chips:02d}_hart_{num_harts:05d}.dasm",
                 file=["{file}"],
@@ -61,9 +61,9 @@ rule simulate:
                 num_chips=range(config["num_chips"]),
                 num_harts=range(config["num_harts"]),
             ),
-#        ),
+        ),
     log:
-        "{file}_sys{sys}_arch{arch}_bank{bank}.vltlog",
+        temp("{file}_sys{sys}_arch{arch}_bank{bank}.vltlog"),
     params:
         vltsim=config_matmul["vltsim"],
     shell:

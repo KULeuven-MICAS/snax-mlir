@@ -64,7 +64,7 @@ rule simulate:
             ),
         ),
     log:
-        "{file}.vltlog",
+        temp("{file}.vltlog"),
     shell:
         "{config[vltsim]} --prefix-trace={wildcards.file}_ {wildcards.file}.x  2>&1 | tee {log}"
 
@@ -77,8 +77,8 @@ rule trace_dasm:
     input:
         "{file}.dasm",
     output:
-        "{file}_perf.json",
-        "{file}.txt",
+        temp("{file}_perf.json"),
+        temp("{file}.txt"),
     shell:
         "{config[spike-dasm]} < {input} | {config[python]} {config[gen_trace.py]} --permissive -d {output[0]} > {output[1]}"
 
@@ -95,7 +95,7 @@ rule aggregate_json:
             num_harts=range(config["num_harts"]),
         ),
     output:
-        "{file}_traces.json",
+        temp("{file}_traces.json"),
     run:
         merge_json(input, output[0])
 
@@ -119,7 +119,7 @@ rule perfetto_traces:
         ),
         elf="{file}.x",
     output:
-        "{file}_perfetto_traces.json",
+        temp("{file}_perfetto_traces.json"),
     shell:
         """
         python {config[trace_to_perfetto]} \

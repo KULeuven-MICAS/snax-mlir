@@ -1,0 +1,233 @@
+"""
+Schedule Sweep: compile, simulate, and compare all valid schedules
+for a matrix multiplication on the SNAX GEMMX accelerator (32 banks).
+
+This workflow:
+1. Generates MLIR for a matmul
+2. Enumerates all valid schedule indices and computes their cost model predictions
+3. For each schedule: compiles with --schedule-idx, simulates, extracts cycles
+4. Combines results and generates a comparison plot
+"""
+
+import json
+from pathlib import Path
+from util.snake.configs import get_snax_gemmx_config
+from util.tracing.merge_json import merge_json
+
+config = get_snax_gemmx_config()
+
+# Absolute path to the accelerator config YAML
+SNAX_CONFIG = str(config["snaxc-config"])
+
+# 32-bank VLT simulator (pre-built in the pe_utilization_vs_banks directory)
+VLT_32 = str(
+    (Path(workflow.basedir) / ".." / "pe_utilization_vs_banks" /
+     "vlt_fixed_cache_full" / "snitch_cluster_32_banks.vlt").resolve()
+)
+
+# Path to the C main file
+MAIN_C = str(
+    (Path(workflow.basedir) / ".." / "pe_utilization_vs_banks" / "main_2d_i8.c").resolve()
+)
+
+
+# ──── Default target ────────────────────────────────────────────────────────
+
+rule all:
+    input:
+        "schedule_sweep_plot.pdf",
+
+
+# ──── MLIR generation ───────────────────────────────────────────────────────
+
+rule generate_matmul:
+    output:
+        "matmul.mlir",
+    shell:
+        "python matmul.py --m 128 --n 128 --k 128 --output {output}"
+
+
+# ──── Schedule enumeration (checkpoint for dynamic scheduling) ──────────────
+
+checkpoint enumerate_schedules:
+    input:
+        "matmul.mlir",
+    output:
+        "schedule_list.json",
+    shell:
+        "python enumerate_schedules.py {input} -c {SNAX_CONFIG} -o {output}"
+
+
+# ──── Per-schedule compilation ──────────────────────────────────────────────
+
+rule compile_schedule:
+    """Compile the MLIR with a specific schedule index using snaxc."""
+    input:
+        "matmul.mlir",
+    output:
+        temp("matmul_sched{idx}.ll.mlir"),
+    shell:
+        "{config[snaxc]} -c {SNAX_CONFIG}"
+        " --schedule-idx {wildcards.idx}"
+        " --fixed-cache-schedule"
+        " --cost-model latency"
+        " --add-mcycle"
+        " -o {output} {input}"
+
+
+rule translate_mlir:
+    """Translate MLIR LLVM dialect to actual LLVM IR."""
+    input:
+        "{file}.ll.mlir",
+    output:
+        temp("{file}.ll"),
+    shell:
+        "{config[mlir-translate]} --mlir-to-llvmir -o {output} {input}"
+
+
+rule compile_llvm:
+    """Compile LLVM IR to object file."""
+    input:
+        "{file}.ll",
+    output:
+        temp("{file}.o"),
+    shell:
+        "{config[cc]} {config[clangflags]} -x ir -c {input} -o {output}"
+
+
+rule compile_main:
+    """Compile the C main file."""
+    output:
+        temp("main_2d_i8.o"),
+    shell:
+        "{config[cc]} {config[cflags]} -c {MAIN_C} -o {output}"
+
+
+rule link_schedule:
+    """Link the compiled schedule object with the C main to produce an executable."""
+    input:
+        "matmul_sched{idx}.o",
+        "main_2d_i8.o",
+    output:
+        temp("matmul_sched{idx}.x"),
+    shell:
+        "{config[ld]} {config[ldflags]} {input} -o {output}"
+
+
+# ──── Simulation ────────────────────────────────────────────────────────────
+
+rule simulate_schedule:
+    """Run the 32-bank VLT simulation for a specific schedule."""
+    input:
+        "matmul_sched{idx}.x",
+    output:
+        temp(
+            expand(
+                "matmul_sched{{idx}}_trace_chip_{c:02d}_hart_{h:05d}.dasm",
+                c=range(config["num_chips"]),
+                h=range(config["num_harts"]),
+            )
+        ),
+    log:
+        temp("matmul_sched{idx}.vltlog"),
+    shell:
+        "{VLT_32}"
+        " --prefix-trace=matmul_sched{wildcards.idx}_"
+        " {input} 2>&1 | tee {log}"
+
+
+# ──── Trace processing ──────────────────────────────────────────────────────
+
+rule trace_to_json:
+    """Process a raw .dasm trace into a human-readable .txt and perf .json."""
+    input:
+        "matmul_sched{idx}_trace_chip_{c}_hart_{h}.dasm",
+    output:
+        temp("matmul_sched{idx}_trace_chip_{c}_hart_{h}_perf.json"),
+        temp("matmul_sched{idx}_trace_chip_{c}_hart_{h}.txt"),
+    shell:
+        "{config[spike-dasm]} < {input}"
+        " | {config[python]} {config[gen_trace.py]} --permissive -d {output[0]}"
+        " > {output[1]}"
+
+
+rule aggregate_traces:
+    """Merge per-chip/hart trace JSONs into a single aggregated file."""
+    input:
+        expand(
+            "matmul_sched{{idx}}_trace_chip_{c:02d}_hart_{h:05d}_perf.json",
+            c=range(config["num_chips"]),
+            h=range(config["num_harts"]),
+        ),
+    output:
+        temp("matmul_sched{idx}_traces.json"),
+    run:
+        merge_json(input, output[0])
+
+
+# ──── Cycle extraction ──────────────────────────────────────────────────────
+
+rule extract_cycles:
+    """Extract the cycle count from the aggregated trace and pair it with
+    the predicted cost from the schedule enumeration."""
+    input:
+        traces="matmul_sched{idx}_traces.json",
+        schedule_list="schedule_list.json",
+    output:
+        temp("matmul_sched{idx}_result.txt"),
+    run:
+        import json
+
+        with open(input.traces) as f:
+            data = json.load(f)
+        cycles = data[0][0][2]["cycles"]
+
+        with open(input.schedule_list) as f:
+            sched_data = json.load(f)
+        cost = sched_data["costs"][str(wildcards.idx)]
+
+        with open(output[0], "w") as f:
+            f.write(f"{wildcards.idx}\t{cost}\t{cycles}\n")
+
+
+# ──── Aggregation and plotting ──────────────────────────────────────────────
+
+def get_all_schedule_results(wildcards):
+    """Aggregate function: read the checkpoint output to discover which
+    schedule indices exist, then return the list of per-schedule result files."""
+    checkpoint_output = checkpoints.enumerate_schedules.get(**wildcards).output[0]
+    with open(checkpoint_output) as f:
+        data = json.load(f)
+    schedule_indices = list(data["costs"].keys())
+    return expand("matmul_sched{idx}_result.txt", idx=schedule_indices)
+
+
+rule combine_results:
+    """Combine all per-schedule result files into a single TSV."""
+    input:
+        get_all_schedule_results,
+    output:
+        "schedule_sweep_combined.txt",
+    run:
+        results = []
+        for fname in input:
+            with open(fname) as f:
+                results.append(f.read().strip())
+
+        # Sort by schedule index
+        results.sort(key=lambda line: int(line.split("\t")[0]))
+
+        with open(output[0], "w") as out:
+            out.write("schedule_idx\tpredicted_cost\tactual_cycles\n")
+            for line in results:
+                out.write(line + "\n")
+
+
+rule plot_results:
+    """Generate the schedule sweep comparison plot."""
+    input:
+        "schedule_sweep_combined.txt",
+    output:
+        "schedule_sweep_plot.pdf",
+    shell:
+        "python plot_schedule_sweep.py {input} {output}"
