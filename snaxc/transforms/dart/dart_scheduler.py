@@ -68,6 +68,7 @@ class AutoflowScheduler(RewritePattern):
                 is_pure_output_stationary,
                 lambda t, s: is_memory_flexible_enough(t, s, element_sizes),
             ],
+            element_bytes=element_sizes,
             optimal_tiling=self.optimal_tiling,
             cost_model_name=self.cost_model_name,
             schedule_idx=self.schedule_idx,

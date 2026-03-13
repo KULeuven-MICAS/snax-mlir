@@ -22,7 +22,7 @@ SNAX_CONFIG = str(config["snaxc-config"])
 # 32-bank VLT simulator (pre-built in the pe_utilization_vs_banks directory)
 VLT_32 = str(
     (Path(workflow.basedir) / ".." / "pe_utilization_vs_banks" /
-     "vlt_fixed_cache_full" / "snitch_cluster_32_banks.vlt").resolve()
+     "vlt_fixed_cache_full" / "snitch_cluster_32_banks_small_cache.vlt").resolve()
 )
 
 # Path to the C main file
@@ -121,19 +121,18 @@ rule simulate_schedule:
     input:
         "matmul_sched{idx}.x",
     output:
-        temp(
+        dasm = temp(
             expand(
                 "matmul_sched{{idx}}_trace_chip_{c:02d}_hart_{h:05d}.dasm",
                 c=range(config["num_chips"]),
                 h=range(config["num_harts"]),
             )
         ),
-    log:
-        temp("matmul_sched{idx}.vltlog"),
+        vltlog = temp("matmul_sched{idx}.vltlog"), # Moved here!
     shell:
         "{VLT_32}"
         " --prefix-trace=matmul_sched{wildcards.idx}_"
-        " {input} 2>&1 | tee {log}"
+        " {input} 2>&1 | tee {output.vltlog}" # Updated from {log} to {output.vltlog}
 
 
 # ──── Trace processing ──────────────────────────────────────────────────────

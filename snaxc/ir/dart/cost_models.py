@@ -3,10 +3,14 @@ Cost models for the SNAX DART scheduler.
 
 This module provides cost model implementations for evaluating tiling strategies:
 - EnergyCostModel: Naive model minimizing total TCDM accesses (proxy for energy).
-- LatencyCostModel: Cycle-accurate model minimizing banking conflicts (proxy for latency).
+- LatencyCostModel: Step-level banking-conflict model (legacy).
+- HardwareLatencyCostModel: Cycle-accurate simulation matching the RTL streamer
+  pipeline (readers/writers with depth-2 buffers, burst-level banking conflicts,
+  accelerator fire gating, and round-robin bank arbitration).
 """
 
 from abc import ABC, abstractmethod
+from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -16,6 +20,7 @@ from operator import mul
 from typing import Protocol
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 # ---------------------------------------------------------------------------
@@ -29,6 +34,9 @@ class OperandKind(Enum):
     READER_WRITER = auto()
 
 
+TCDM_BANK_BYTES = 8  # Each TCDM bank holds one 64-bit word = 8 bytes
+
+
 @dataclass(frozen=True)
 class OperandDescriptor:
     """
@@ -37,14 +45,29 @@ class OperandDescriptor:
 
     Attributes:
         kind: READER, WRITER, or READER_WRITER.
-        spatial_banks: Number of consecutive TCDM banks accessed per burst.
-            Equal to (product of spatial dims)
+        spatial_banks: Number of spatial elements accessed per burst.
+            Equal to (product of spatial dims).
+        element_bytes: Size of a single element in bytes (e.g. 1 for i8,
+            4 for i32).  Needed to convert element counts to byte/bank
+            addresses.
         invariant_dims: Set of *logical* dimension ids to which the operand
             is invariant (i.e. the stride is 0 for those dims).
     """
     kind: OperandKind
     spatial_banks: int
+    element_bytes: int
     invariant_dims: frozenset[int]
+
+    @property
+    def burst_bank_words(self) -> int:
+        """Number of TCDM bank words touched per spatial burst.
+
+        Each bank word is ``TCDM_BANK_BYTES`` (8) bytes.  A burst
+        accesses ``spatial_banks * element_bytes`` contiguous bytes,
+        which spans ``spatial_banks * element_bytes / TCDM_BANK_BYTES``
+        consecutive banks.
+        """
+        return (self.spatial_banks * self.element_bytes) // TCDM_BANK_BYTES
 
 
 # ---------------------------------------------------------------------------
@@ -247,11 +270,10 @@ def _compute_operand_stride_per_tile(
         ``strides[op_idx][level_idx]`` – stride in bank-word units for
         that operand at that tiling level.
     """
-    bank_bytes = bank_bits // 8
     num_ops = len(operand_descriptors)
     num_levels = len(tiling)
 
-    # For each logical dim, track cumulative factor (inner → outer)
+    # For each logical dim, track cumulative factor (inner → outer).
     # tiling is already inner → outer.
     dim_cumulative: dict[int, int] = {}
 
@@ -263,11 +285,14 @@ def _compute_operand_stride_per_tile(
             if dim_idx in desc.invariant_dims:
                 strides[op_idx].append(0)
             else:
-                # base element stride = spatial_banks * bank_bytes (bytes per
-                # spatial burst). In bank-word units that is just spatial_banks.
-                # But the *temporal* stride for this dim is
-                # spatial_banks * cum (in bank-word units).
-                strides[op_idx].append(desc.spatial_banks * cum)
+                # A single temporal step moves through
+                #   spatial_banks * element_bytes  contiguous bytes
+                # in memory.  In bank-word units (each 8 bytes) the base
+                # stride is  burst_bank_words = spatial_banks * element_bytes / 8.
+                # For the cumulative factor (when the same dim is tiled
+                # multiple times), multiply by the product of inner tile
+                # sizes for this dim.
+                strides[op_idx].append(desc.burst_bank_words * cum)
         dim_cumulative[dim_idx] = cum * tile_size
 
     return strides
@@ -500,6 +525,7 @@ def _simulate_nested(
 
     total_cycles = 0
 
+    cycles_for_step_i = []
     for step in range(total_steps):
         counters = step_to_counters(step)
 
@@ -513,20 +539,21 @@ def _simulate_nested(
         rw_stall = False
 
         for op_idx, desc in enumerate(operand_descriptors):
-            if desc.spatial_banks <= 0:
+            bw = desc.burst_bank_words
+            if bw <= 0:
                 continue
 
             if desc.kind == OperandKind.READER:
                 if _reader_active(counters, tiling, desc.invariant_dims):
                     addr = compute_bank_address(op_idx, counters)
                     read_starts.append(addr)
-                    read_widths.append(desc.spatial_banks)
+                    read_widths.append(bw)
 
             elif desc.kind == OperandKind.WRITER:
                 if _writer_active(counters, bounds, tiling, desc.invariant_dims):
                     addr = compute_bank_address(op_idx, counters)
                     write_starts.append(addr)
-                    write_widths.append(desc.spatial_banks)
+                    write_widths.append(bw)
 
             elif desc.kind == OperandKind.READER_WRITER:
                 # Reader part uses current step's counters
@@ -547,17 +574,18 @@ def _simulate_nested(
                 if reader_is_active:
                     addr = compute_bank_address(op_idx, counters)
                     read_starts.append(addr)
-                    read_widths.append(desc.spatial_banks)
+                    read_widths.append(bw)
 
                 if writer_is_active:
                     assert writer_counters is not None
                     addr = compute_bank_address(op_idx, writer_counters)
                     write_starts.append(addr)
-                    write_widths.append(desc.spatial_banks)
+                    write_widths.append(bw)
 
                 if reader_is_active and writer_is_active:
                     rw_stall = True
-
+        if step == 15:
+            pass
         if rw_stall:
             # Read and write phases are serialised for the RW operand.
             read_hits = _count_max_bank_hits(
@@ -567,12 +595,14 @@ def _simulate_nested(
                 write_starts, write_widths, num_banks
             )
             total_cycles += max(1, read_hits) + max(1, write_hits)
+            cycles_for_step_i.append(max(1, read_hits) + max(1, write_hits))
         else:
             # All accesses happen simultaneously.
             all_starts = read_starts + write_starts
             all_widths = read_widths + write_widths
             hits = _count_max_bank_hits(all_starts, all_widths, num_banks)
             total_cycles += max(hits, 1)  # always at least 1 cycle
+            cycles_for_step_i.append(max(hits, 1))
 
     # Drain cycles for RW writer pipeline (2-step lag)
     for desc in operand_descriptors:
@@ -580,7 +610,390 @@ def _simulate_nested(
             total_cycles += 2
             break  # only count once
 
+    # plt.plot(cycles_for_step_i)
+    # plt.xlabel("Global iteration step")
+    # plt.ylabel("Cycles")
+    # plt.title("Cycles per iteration step")
+    # plt.savefig("cycles_per_step.png")
+
     return total_cycles
+
+
+# ---------------------------------------------------------------------------
+# Hardware-accurate latency cost model – cycle-level RTL simulation
+# ---------------------------------------------------------------------------
+
+class HardwareLatencyCostModel(CostModel):
+    """
+    Cycle-accurate cost model that simulates the actual SNAX streamer
+    hardware pipeline.
+
+    Each streamer has:
+      - Its own step counter (incremented when a memory access completes or
+        when the accelerator fires for a non-access step).
+      - A buffer of depth 2 holding step indices.
+      - Burst accesses of ``spatial_banks`` individual bank words; partial
+        completion is tracked per-bank so banking conflicts only stall the
+        conflicting sub-accesses.
+
+    The accelerator fires when:
+      - Every reader-type streamer either has the required data in its buffer
+        *or* does not need a memory access at the current accelerator step.
+      - Every writer-type streamer has space in its buffer.
+
+    Banking conflicts are resolved with round-robin priority among all
+    requestors competing for the same bank in a given cycle.
+    """
+
+    def cost(
+        self,
+        tiling: list[tuple[int, int, bool]],
+        operand_descriptors: Sequence[OperandDescriptor],
+        request_per_streamer: Sequence[int],
+        invariance_map: list[set[int]],
+        *,
+        num_banks: int = 32,
+        bank_bits: int = 64,
+    ) -> float:
+        return hardware_latency_cost_of_tiling(
+            tiling,
+            operand_descriptors,
+            invariance_map,
+            num_banks=num_banks,
+            bank_bits=bank_bits,
+        )
+
+
+def hardware_latency_cost_of_tiling(
+    tiling: list[tuple[int, int, bool]],
+    operand_descriptors: Sequence[OperandDescriptor],
+    invariance_map: list[set[int]],
+    *,
+    num_banks: int = 32,
+    bank_bits: int = 64,
+) -> float:
+    """
+    Cycle-accurate simulation of the SNAX streamer hardware.
+
+    Returns the total number of TCDM clock cycles to complete all streamer
+    accesses.
+    """
+    if not tiling:
+        return 0.0
+
+    strides_bank = _compute_operand_stride_per_tile(
+        tiling, operand_descriptors, invariance_map, bank_bits
+    )
+
+    return float(_simulate_hardware(
+        tiling, operand_descriptors, invariance_map, strides_bank, num_banks
+    ))
+
+
+# ---------------------------------------------------------------------------
+# Internal: hardware simulation
+# ---------------------------------------------------------------------------
+
+def _simulate_hardware(
+    tiling: list[tuple[int, int, bool]],
+    operand_descriptors: Sequence[OperandDescriptor],
+    invariance_map: list[set[int]],
+    strides_bank: list[list[int]],
+    num_banks: int,
+) -> int:
+    """
+    Simulate the SNAX streamer pipeline cycle-by-cycle.
+
+    Returns total cycle count.
+    """
+    num_levels = len(tiling)
+    if num_levels == 0:
+        return 0
+
+    bounds = [t[1] for t in tiling]
+    num_ops = len(operand_descriptors)
+    for i in range(len(operand_descriptors)):
+        if operand_descriptors[i].kind == OperandKind.READER_WRITER:
+            # Insert a duplicate descriptor for the writer part of the RW operand
+            desc = operand_descriptors[i]
+            operand_descriptors.insert(i, OperandDescriptor(
+                kind=OperandKind.WRITER,
+                spatial_banks=desc.spatial_banks,
+                element_bytes=desc.element_bytes,
+                invariant_dims=desc.invariant_dims,
+            ))
+            invariance_map.insert(i, invariance_map[i])
+            strides_bank.insert(i, strides_bank[i])
+            num_ops += 1
+    
+    # Total number of global iteration steps
+    total_steps = 1
+    for b in bounds:
+        total_steps *= b
+
+    # --- Helper functions ---
+
+    def step_to_counters(step: int) -> list[int]:
+        counters = []
+        s = step
+        for b in bounds:
+            counters.append(s % b)
+            s //= b
+        return counters
+
+    def compute_bank_address(op_idx: int, counters: list[int]) -> int:
+        addr = 0
+        for lvl in range(num_levels):
+            addr += strides_bank[op_idx][lvl] * counters[lvl]
+        return (addr // 8) % num_banks #TODO: CHECK IF // 8 SHOULD BE HERE
+
+    def streamer_needs_access(op_idx: int, step: int) -> bool:
+        """Does this streamer perform a memory access at the given global step?"""
+        desc = operand_descriptors[op_idx]
+        counters = step_to_counters(step)
+        if desc.kind == OperandKind.READER or desc.kind == OperandKind.READER_WRITER:
+            return _reader_active(counters, tiling, desc.invariant_dims)
+        else:  # WRITER
+            return _writer_active(counters, bounds, tiling, desc.invariant_dims)
+
+    def compute_burst_banks(op_idx: int, step: int) -> list[int]:
+        """Return list of bank indices for the burst at the given step."""
+        desc = operand_descriptors[op_idx]
+        counters = step_to_counters(step)
+        base_bank = compute_bank_address(op_idx, counters)
+        return [(base_bank + i) % num_banks for i in range(desc.burst_bank_words)]
+
+    # --- Per-streamer state ---
+
+    BUFFER_DEPTH = 2
+
+    # Each streamer's "step pointer": the next global step index to fetch/store
+    streamer_step = [0] * num_ops
+
+    # Buffers: list of deques. For readers, entries are step indices of data
+    # that has been fetched. For writers, entries are step indices of data
+    # from the accelerator waiting to be written.
+    buffers: list[deque[int]] = [deque() for _ in range(num_ops)]
+
+    # Per-streamer in-flight burst state: which banks of the current burst
+    # still need to be serviced. None means no burst in progress.
+    pending_banks: list[set[int] | None] = [None] * num_ops
+    # The step index of the currently in-flight burst
+    pending_step: list[int] = [0] * num_ops
+
+    # Accelerator step counter
+    acc_step = 0
+
+    # Round-robin priority counter for bank arbitration
+    rr_priority = 0
+
+    cycle = 0
+    MAX_CYCLES = total_steps * num_ops * num_banks * 10  # safety bound
+
+    while cycle < MAX_CYCLES:
+        # Check termination: all streamers have completed all their steps
+        all_done = all(streamer_step[op] >= total_steps and
+                       pending_banks[op] is None and
+                       len(buffers[op]) == 0
+                       for op in range(num_ops))
+        if all_done and acc_step >= total_steps:
+            break
+
+        cycle += 1
+
+        # ==================================================================
+        # Phase 1: Determine which streamers want to issue memory requests
+        # ==================================================================
+
+        # Collect all individual bank requests for this cycle.
+        # A request is (op_idx, bank_idx).
+        bank_requests: list[tuple[int, int]] = []
+
+        reader_writer_writing = False  # track if any RW streamer is in its write phase this cycle
+        for op in range(num_ops):
+            desc = operand_descriptors[op]
+            step = streamer_step[op]
+            is_reader_writer = desc.kind == OperandKind.READER_WRITER
+            is_reader = desc.kind == OperandKind.READER
+            is_writer = desc.kind == OperandKind.WRITER
+            
+            if step >= total_steps:
+                # This streamer has completed all its steps; ignore it.
+                continue
+
+            # Continue a pending burst?
+            if pending_banks[op] is not None:
+                for bank in pending_banks[op]:
+                    bank_requests.append((op, bank))
+                if is_writer:
+                    reader_writer_writing = True
+                continue
+
+            if not streamer_needs_access(op, step):
+                # This step doesn't need a memory access; the streamer
+                # advances when the accelerator fires (handled in Phase 3).
+                reader_writer_writing = False  
+                continue
+
+            # Check buffer capacity
+            if is_reader or is_reader_writer:
+                # Reader: must have space in buffer to put fetched data
+                reader_writer_writing = False
+                if len(buffers[op]) >= BUFFER_DEPTH:
+                    continue
+                if is_reader_writer and reader_writer_writing:
+                    # ReaderWriter in write phase this cycle → read phase is stalled
+                    continue
+
+            elif is_writer:
+                # Writer: must have data in buffer to write
+                if len(buffers[op]) == 0:
+                    reader_writer_writing = False
+                    continue
+                reader_writer_writing = True
+
+            # Start a new burst
+            burst_banks = compute_burst_banks(op, step)
+            pending_banks[op] = set(burst_banks)
+            pending_step[op] = step
+            for bank in pending_banks[op]:
+                bank_requests.append((op, bank))
+
+        # ==================================================================
+        # Phase 2: Resolve banking conflicts (round-robin arbitration)
+        # ==================================================================
+
+        # Group requests by bank
+        bank_to_ops: dict[int, list[int]] = {}
+        for op, bank in bank_requests:
+            bank_to_ops.setdefault(bank, [])
+            if op not in bank_to_ops[bank]:
+                bank_to_ops[bank].append(op)
+
+        # For each bank, grant access to one requester (round-robin)
+        granted: dict[int, set[int]] = {op: set() for op in range(num_ops)}
+        for bank, ops in bank_to_ops.items():
+            if len(ops) == 1:
+                granted[ops[0]].add(bank)
+            else:
+                # Round-robin: pick the op closest to rr_priority in order
+                ops_sorted = sorted(ops, key=lambda o: (o - rr_priority) % num_ops)
+                winner = ops_sorted[0]
+                granted[winner].add(bank)
+
+        rr_priority = (rr_priority + 1) % max(num_ops, 1)
+
+        # ==================================================================
+        # Phase 2b: Update pending bursts based on grants
+        # ==================================================================
+
+        # Track which streamers complete their burst this cycle
+        # Use next-state tracking to apply updates atomically at end of cycle
+        next_buffers: list[deque[int]] = [deque(b) for b in buffers]
+        next_pending_banks: list[set[int] | None] = list(pending_banks)
+        next_streamer_step: list[int] = list(streamer_step)
+        next_pending_step: list[int] = list(pending_step)
+
+        for op in range(num_ops):
+            if pending_banks[op] is None:
+                continue
+
+            # Remove granted banks from pending set
+            remaining = pending_banks[op] - granted[op]
+            if len(remaining) == 0:
+                # Burst complete
+                desc = operand_descriptors[op]
+                is_reader = desc.kind in (OperandKind.READER, OperandKind.READER_WRITER)
+                is_writer = desc.kind == OperandKind.WRITER
+
+                if is_reader:
+                    next_buffers[op].append(pending_step[op])
+                elif is_writer:
+                    # Writer: data was in buffer, now written to memory
+                    # Pop the oldest entry from the buffer
+                    if next_buffers[op]:
+                        next_buffers[op].popleft()
+
+                next_pending_banks[op] = None
+                next_streamer_step[op] = pending_step[op] + 1
+
+                # Advance past any subsequent non-access steps
+                # (these will be handled when the accelerator fires)
+            else:
+                next_pending_banks[op] = remaining
+
+        # ==================================================================
+        # Phase 3: Accelerator fire logic
+        # ==================================================================
+
+        # The accelerator fires if:
+        # 1. For each reader-type streamer: either the required data (for
+        #    acc_step) is in its buffer, or no access is needed at acc_step.
+        # 2. For each writer-type streamer: there is space in its buffer.
+
+        acc_can_fire = acc_step < total_steps
+        if acc_step == 514:
+            pass
+        if acc_can_fire:
+            for op in range(num_ops):
+                desc = operand_descriptors[op]
+                is_reader = desc.kind in (OperandKind.READER, OperandKind.READER_WRITER)
+                is_writer = desc.kind == OperandKind.WRITER
+
+                if is_reader:
+                    needs_access = streamer_needs_access(op, acc_step)
+                    if needs_access:
+                        # Data for acc_step must be in the buffer.
+                        # Check both current and next-state buffers (data arriving
+                        # this cycle is visible to the accelerator).
+                        if acc_step not in next_buffers[op]:
+                            acc_can_fire = False
+                            break
+                    # If no access needed, the reader doesn't block the accelerator.
+
+                elif is_writer:
+                    # Writer needs space in its buffer to accept the result
+                    if len(next_buffers[op]) >= BUFFER_DEPTH:
+                        acc_can_fire = False
+                        break
+
+        if acc_can_fire:
+            # Pop consumed data from reader buffers; push to writer buffers
+            for op in range(num_ops):
+                desc = operand_descriptors[op]
+                is_reader = desc.kind in (OperandKind.READER, OperandKind.READER_WRITER)
+                is_writer = desc.kind == OperandKind.WRITER
+
+                if is_reader:
+                    needs_access = streamer_needs_access(op, acc_step)
+                    if needs_access and acc_step in next_buffers[op]:
+                        next_buffers[op].remove(acc_step)
+
+                elif is_writer:
+                    needs_access = streamer_needs_access(op, acc_step)
+                    if needs_access and len(next_buffers[op]) < BUFFER_DEPTH:
+                        next_buffers[op].append(acc_step)
+
+            # Advance streamers past non-access steps
+            for op in range(num_ops):
+                if next_streamer_step[op] < total_steps:
+                    if not streamer_needs_access(op, next_streamer_step[op]):
+                        # This step doesn't need memory access; advance the
+                        # streamer step counter 
+                        next_streamer_step[op] += 1
+
+            acc_step += 1
+
+        # ==================================================================
+        # Phase 4: Commit next-state
+        # ==================================================================
+
+        buffers = next_buffers
+        pending_banks = next_pending_banks
+        streamer_step = next_streamer_step
+        pending_step = next_pending_step
+
+    return cycle
 
 
 # ---------------------------------------------------------------------------
@@ -611,11 +1024,12 @@ def check_burst_overlap_differential(
 # Factory / selector
 # ---------------------------------------------------------------------------
 
-def get_cost_model(name: str = "latency") -> CostModel:
+def get_cost_model(name: str = "hardware_latency") -> CostModel:
     """Return a cost model instance by name."""
     models: dict[str, CostModel] = {
         "energy": EnergyCostModel(),
         "latency": LatencyCostModel(),
+        "hardware_latency": HardwareLatencyCostModel(),
     }
     if name not in models:
         raise ValueError(f"Unknown cost model '{name}'. Choose from {list(models)}")

@@ -13,10 +13,12 @@ from snaxc.ir.dart.affine_transform import AffineTransform
 from snaxc.ir.dart.cost_models import (
     CostModel,
     EnergyCostModel,
+    HardwareLatencyCostModel,
     LatencyCostModel,
     OperandDescriptor,
     OperandKind,
     energy_cost_of_tiling,
+    hardware_latency_cost_of_tiling,
     latency_cost_of_tiling,
 )
 
@@ -88,6 +90,7 @@ def cost_of_tiling(
 def _build_operand_descriptors(
     streamers: Sequence[Streamer],
     invariance_map: list[set[int]],
+    element_bytes: Sequence[int],
     bank_bits: int = 64,
 ) -> list[OperandDescriptor]:
     """
@@ -106,11 +109,11 @@ def _build_operand_descriptors(
 
         # Number of consecutive banks accessed per burst:
         spatial_banks = reduce(mul, streamer.spatial_dims, 1)
-        
 
         descs.append(OperandDescriptor(
             kind=kind,
             spatial_banks=spatial_banks,
+            element_bytes=element_bytes[op_idx],
             invariant_dims=frozenset(invariance_map[op_idx]),
         ))
     return descs
@@ -350,7 +353,7 @@ def search_critical_levels(cache_depths, matrix_sizes, loop_order, current_idx):
             # Result is list of tilings (lists).
             for sub_tiling in result_lists:
                  # Current tile
-                 current_tile = [(dim, size, True)] if size > 1 else []
+                 current_tile = [(dim, size, True)]
                  valid_results.append(current_tile + sub_tiling)
                  
     return valid_results
@@ -369,6 +372,7 @@ def find_optimal_tiling(
     template: Template,
     schedule: Schedule,
     streamers: Sequence[Streamer],
+    element_bytes: Sequence[int],
     cost_model_name: str = "latency",
     schedule_idx: int | None = None
 ) -> Schedule:
@@ -444,56 +448,79 @@ def find_optimal_tiling(
             cache_depths[l_id] = min(depths) if depths else float("inf")
 
     # Build operand descriptors for the latency cost model
-    operand_descs = _build_operand_descriptors(streamers, inv_map_for_cost)
+    operand_descs = _build_operand_descriptors(streamers, inv_map_for_cost, element_bytes)
 
     # Request-per-streamer heuristic for energy model
     request_per_streamer = [d.spatial_banks for d in operand_descs]
 
     all_tilings: list[list[tuple[int, int, bool]]] = []
-    best_tiling: list[tuple[int, int, bool]] = []
-    min_cost = float("inf")
 
     crit_list = list(critical_dims_pool)
 
     for perm in permutations(crit_list):
-        pass
-        tiling, partial_all_tilings = search_cached_level_fixed(
-            cache_depths, matrix_sizes, perm, inv_map_for_cost, request_per_streamer
+        partial_tilings = search_cached_level_fixed(
+            cache_depths, matrix_sizes, perm
         )
-        all_tilings.extend(partial_all_tilings)
-        if not tiling:
-            continue
+        all_tilings.extend(partial_tilings)
 
-        # Evaluate with the chosen cost model
-        if cost_model_name == "latency":
-            c = latency_cost_of_tiling(
-                tiling, operand_descs, inv_map_for_cost,
-            )
-        else:
-            c = energy_cost_of_tiling(tiling, request_per_streamer, inv_map_for_cost)
+    # Reevaluate critical flags for all tilings first
+    all_tilings = [
+        reevaluate_critical_flags(t, critical_dims_pool, cache_depths)
+        for t in all_tilings
+    ]
 
-        if c < min_cost:
-            min_cost = c
-            best_tiling = tiling
-    
     if schedule_idx is not None:
         if schedule_idx >= len(all_tilings):
             raise ValueError(f"No schedule found at index {schedule_idx}")
         best_tiling = all_tilings[schedule_idx]
-        cost = latency_cost_of_tiling(best_tiling, operand_descs, inv_map_for_cost)
+        if cost_model_name == "latency":
+            cost = hardware_latency_cost_of_tiling(best_tiling, operand_descs, inv_map_for_cost)
+        else:
+            cost = energy_cost_of_tiling(best_tiling, request_per_streamer, inv_map_for_cost)
         print("Predicted Cost for schedule index", schedule_idx, ":", cost)
+    else:
+        best_tiling = []
+        min_cost = float("inf")
+        for tiling in all_tilings:
+            if cost_model_name == "latency":
+                c = hardware_latency_cost_of_tiling(tiling, operand_descs, inv_map_for_cost)
+            else:
+                c = energy_cost_of_tiling(tiling, request_per_streamer, inv_map_for_cost)
+            if c < min_cost:
+                min_cost = c
+                best_tiling = tiling
+
+    best_tiling = [tile for tile in best_tiling if tile[1] > 1]  # Filter out trivial tiles
 
     return rebuild_schedule(template, schedule, best_tiling, dim_groups)
 
+def reevaluate_critical_flags(tiling, critical_dims_pool, cache_depths):
+    # Reevaluate which loop is actually the critical loop based on the final tiling, not just the original invariance signatures.
+    new_tiling = []
+    already_has_critical_loop = {i: False for i in critical_dims_pool}
+    for index, (dim_idx, size, _) in reversed(list(enumerate(tiling))):
+        is_crit = (fits_in_cache(dim_idx, tiling[:index], cache_depths[dim_idx]) if cache_depths else False) and not already_has_critical_loop[dim_idx]
+        if is_crit:
+            already_has_critical_loop[dim_idx] = True
+        new_tiling.append((dim_idx, size, is_crit))
 
-def search_cached_level_fixed(cache_depths, matrix_sizes, loop_order, invariance_map, request_per_streamer):
+    return new_tiling[::-1]
+
+def fits_in_cache(dim_idx, tiling, cache_limit):
+    # Calculate the product of tile sizes for the given dimension in the tiling
+    product = 1
+    for d_idx, size, _ in tiling:
+        if d_idx != dim_idx:
+            product *= size
+    return product <= cache_limit
+
+
+def search_cached_level_fixed(cache_depths, matrix_sizes, loop_order):
     critical_dim = loop_order[0]
     limit = cache_depths.get(critical_dim, 50)
     other_dims = [d for d in matrix_sizes.keys() if d != critical_dim]
 
     all_tilings = []
-    best_local = None
-    min_local = float("inf")
 
     for cached_tiling, used_factors in generate_valid_multidim_factors(matrix_sizes, other_dims, limit):
         next_matrix_sizes = {
@@ -513,12 +540,8 @@ def search_cached_level_fixed(cache_depths, matrix_sizes, loop_order, invariance
         for suffix in suffix_options:
             full = cached_tiling + suffix
             all_tilings.append(full)
-            c = energy_cost_of_tiling(full, request_per_streamer, invariance_map)
-            if c < min_local:
-                min_local = c
-                best_local = full
 
-    return best_local, all_tilings
+    return all_tilings
 
 
 def rebuild_schedule(template, old_schedule, tiling, dim_groups):
@@ -785,6 +808,7 @@ def scheduler(
         # defaulting to pure output stationary schedules for now
         is_pure_output_stationary,
     ],
+    element_bytes: Sequence[int] = (),
     optimal_tiling: bool = False,
     cost_model_name: str = "latency",
     schedule_idx: int | None = None,
@@ -797,15 +821,19 @@ def scheduler(
     cost_model_name : "latency" to minimise TCDM bank conflicts,
         "energy" to minimise total accesses.
     """
+    # Default element_bytes to 1 per operand when not provided
+    if not element_bytes:
+        element_bytes = [1] * len(streamers)
+
     if schedule_idx is not None:
         iterator = scheduler_backtrack(template, schedule, extra_checks=extra_checks)
         candidate_schedule = next(iterator)
 
         if optimal_tiling and any(any(isinstance(opt, HasFixedCache) for opt in streamer.opts) for streamer in streamers):
-            return find_optimal_tiling(template, candidate_schedule, streamers, cost_model_name, schedule_idx)
+            return find_optimal_tiling(template, candidate_schedule, streamers, element_bytes, cost_model_name, schedule_idx)
         return candidate_schedule
 
     result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
     if optimal_tiling and any(any(isinstance(opt, HasFixedCache) for opt in streamer.opts) for streamer in streamers):
-        return find_optimal_tiling(template, result, streamers, cost_model_name)
+        return find_optimal_tiling(template, result, streamers, element_bytes, cost_model_name)
     return result

@@ -41,6 +41,7 @@ from snaxc.ir.dart.scheduler import (
     _build_operand_descriptors,
     get_prime_factors,
     search_cached_level_fixed,
+    reevaluate_critical_flags,
 )
 from snaxc.ir.dart.cost_models import latency_cost_of_tiling
 from snaxc.tools.config_parser import parse_config
@@ -103,7 +104,7 @@ def load_and_preprocess(mlir_path: str, config_path: str):
     return module, ctx
 
 
-def get_all_tilings(template, schedule, streamers):
+def get_all_tilings(template, schedule, streamers, element_bytes):
     """
     Replicate find_optimal_tiling logic to enumerate ALL valid tilings.
 
@@ -163,7 +164,7 @@ def get_all_tilings(template, schedule, streamers):
             cache_depths[l_id] = min(depths) if depths else float("inf")
 
     # Operand descriptors
-    operand_descs = _build_operand_descriptors(streamers, inv_map_for_cost)
+    operand_descs = _build_operand_descriptors(streamers, inv_map_for_cost, element_bytes)
     request_per_streamer = [d.spatial_banks for d in operand_descs]
 
     # Enumerate all tilings across all permutations
@@ -171,10 +172,16 @@ def get_all_tilings(template, schedule, streamers):
     crit_list = list(critical_dims_pool)
 
     for perm in permutations(crit_list):
-        _, partial_tilings = search_cached_level_fixed(
-            cache_depths, matrix_sizes, perm, inv_map_for_cost, request_per_streamer
+        partial_tilings = search_cached_level_fixed(
+            cache_depths, matrix_sizes, perm
         )
         all_tilings.extend(partial_tilings)
+
+    # Reevaluate critical flags for all tilings first
+    all_tilings = [
+        reevaluate_critical_flags(t, critical_dims_pool, cache_depths)
+        for t in all_tilings
+    ]
 
     return all_tilings, operand_descs, inv_map_for_cost
 
@@ -236,7 +243,7 @@ def enumerate_schedules(module, ctx):
 
             # Enumerate ALL tilings for this backtrack result
             all_tilings, operand_descs, inv_map_for_cost = get_all_tilings(
-                template, bt_result, streamers
+                template, bt_result, streamers, element_sizes
             )
 
             print(

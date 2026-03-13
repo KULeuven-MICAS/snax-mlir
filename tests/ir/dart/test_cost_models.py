@@ -20,6 +20,7 @@ import pytest
 from snaxc.ir.dart.cost_models import (
     CostModel,
     EnergyCostModel,
+    HardwareLatencyCostModel,
     LatencyCostModel,
     OperandDescriptor,
     OperandKind,
@@ -45,19 +46,19 @@ class TestOperandDescriptor:
     def test_construction(self):
         desc = OperandDescriptor(
             kind=OperandKind.READER,
-            element_bits=8,
+            element_bytes=8,
             spatial_banks=8,
             invariant_dims=frozenset({1}),
         )
         assert desc.kind == OperandKind.READER
-        assert desc.element_bits == 8
+        assert desc.element_bytes == 8
         assert desc.spatial_banks == 8
         assert desc.invariant_dims == frozenset({1})
 
     def test_frozen(self):
         desc = OperandDescriptor(
             kind=OperandKind.WRITER,
-            element_bits=16,
+            element_bytes=16,
             spatial_banks=4,
             invariant_dims=frozenset(),
         )
@@ -648,9 +649,9 @@ class TestGetCostModel:
         with pytest.raises(ValueError, match="Unknown cost model"):
             get_cost_model("magic")
 
-    def test_default_is_latency(self):
+    def test_default_is_hardware_latency(self):
         model = get_cost_model()
-        assert isinstance(model, LatencyCostModel)
+        assert isinstance(model, HardwareLatencyCostModel)
 
 
 # ===================================================================
@@ -854,19 +855,19 @@ class TestRealisticGemm:
     def _make_gemm_descs(self):
         desc_a = OperandDescriptor(
             kind=OperandKind.READER,
-            element_bits=8,
+            element_bytes=8,
             spatial_banks=8,
             invariant_dims=frozenset({2}),  # invariant to N
         )
         desc_b = OperandDescriptor(
             kind=OperandKind.READER,
-            element_bits=8,
+            element_bytes=8,
             spatial_banks=8,
             invariant_dims=frozenset({0}),  # invariant to M
         )
         desc_c = OperandDescriptor(
             kind=OperandKind.READER_WRITER,
-            element_bits=8,
+            element_bytes=8,
             spatial_banks=1,  # 32-bit accumulator → fewer banks
             invariant_dims=frozenset({1}),  # invariant to K
         )
