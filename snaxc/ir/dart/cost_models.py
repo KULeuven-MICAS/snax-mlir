@@ -816,9 +816,16 @@ def _simulate_hardware(
             is_reader_writer = desc.kind == OperandKind.READER_WRITER
             is_reader = desc.kind == OperandKind.READER
             is_writer = desc.kind == OperandKind.WRITER
+
+            if is_writer:
+                pass
+            if is_reader_writer:
+                reader_writer_writing
+                pass
             
             if step >= total_steps:
                 # This streamer has completed all its steps; ignore it.
+                reader_writer_writing = False
                 continue
 
             # Continue a pending burst?
@@ -829,10 +836,19 @@ def _simulate_hardware(
                     reader_writer_writing = True
                 continue
 
-            if not streamer_needs_access(op, step):
-                # This step doesn't need a memory access; the streamer
-                # advances when the accelerator fires (handled in Phase 3).
-                reader_writer_writing = False  
+            # Advance past non-access steps independently for writers
+            if is_writer:
+                while step < total_steps and not streamer_needs_access(op, step):
+                    step += 1
+                    streamer_step[op] = step
+            else:
+                if not streamer_needs_access(op, step):
+                    # This step doesn't need a memory access; the streamer
+                    # advances when the accelerator fires (handled in Phase 3).
+                    reader_writer_writing = False  
+                    continue
+
+            if step >= total_steps:
                 continue
 
             # Check buffer capacity
@@ -974,12 +990,11 @@ def _simulate_hardware(
                     if needs_access and len(next_buffers[op]) < BUFFER_DEPTH:
                         next_buffers[op].append(acc_step)
 
-            # Advance streamers past non-access steps
+            # Advance readers past non-access steps
             for op in range(num_ops):
-                if next_streamer_step[op] < total_steps:
-                    if not streamer_needs_access(op, next_streamer_step[op]):
-                        # This step doesn't need memory access; advance the
-                        # streamer step counter 
+                is_reader = operand_descriptors[op].kind in (OperandKind.READER, OperandKind.READER_WRITER)
+                if is_reader and next_streamer_step[op] < total_steps:
+                    if not streamer_needs_access(op, acc_step):
                         next_streamer_step[op] += 1
 
             acc_step += 1
