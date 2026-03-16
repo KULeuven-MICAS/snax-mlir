@@ -67,7 +67,7 @@ class OperandDescriptor:
         which spans ``spatial_banks * element_bytes / TCDM_BANK_BYTES``
         consecutive banks.
         """
-        return (self.spatial_banks * self.element_bytes) // TCDM_BANK_BYTES
+        return self.spatial_banks
 
 
 # ---------------------------------------------------------------------------
@@ -294,6 +294,15 @@ def _compute_operand_stride_per_tile(
                 # sizes for this dim.
                 strides[op_idx].append(desc.burst_bank_words * cum)
         dim_cumulative[dim_idx] = cum * tile_size
+
+
+    # EXTREMELY IMPORTANT FIXME: HARD-CODED EXAMPLE FOR DEBUGGING – REPLACE WITH ACTUAL LOGIC
+    # TODO
+    # TODO
+    # TODO
+    strides[0] = [0, 64, 1024, 0, 256, 0, 0]
+    strides[1] = [0, 64, 0, 1024, 256, 0, 0]
+    strides[2] = [0, 0, 256, 4096, 0, 0, 0]
 
     return strides
 
@@ -694,6 +703,7 @@ def hardware_latency_cost_of_tiling(
 # Internal: hardware simulation
 # ---------------------------------------------------------------------------
 
+
 def _simulate_hardware(
     tiling: list[tuple[int, int, bool]],
     operand_descriptors: Sequence[OperandDescriptor],
@@ -790,6 +800,8 @@ def _simulate_hardware(
     cycle = 0
     MAX_CYCLES = total_steps * num_ops * num_banks * 10  # safety bound
 
+    cycles_for_step_i = [0]  # for debugging: track cycles taken by each global step
+
     while cycle < MAX_CYCLES:
         # Check termination: all streamers have completed all their steps
         all_done = all(streamer_step[op] >= total_steps and
@@ -810,6 +822,8 @@ def _simulate_hardware(
         bank_requests: list[tuple[int, int]] = []
 
         reader_writer_writing = False  # track if any RW streamer is in its write phase this cycle
+
+
         for op in range(num_ops):
             desc = operand_descriptors[op]
             step = streamer_step[op]
@@ -872,8 +886,18 @@ def _simulate_hardware(
             burst_banks = compute_burst_banks(op, step)
             pending_banks[op] = set(burst_banks)
             pending_step[op] = step
+
+            if op == 0:
+                pass
+
+            if op == 1:
+                pass
+
             for bank in pending_banks[op]:
                 bank_requests.append((op, bank))
+            
+        if cycle == 12:
+            pass
 
         # ==================================================================
         # Phase 2: Resolve banking conflicts (round-robin arbitration)
@@ -886,18 +910,27 @@ def _simulate_hardware(
             if op not in bank_to_ops[bank]:
                 bank_to_ops[bank].append(op)
 
-        # For each bank, grant access to one requester (round-robin)
+        # # For each bank, grant access to one requester (round-robin)
+        # granted: dict[int, set[int]] = {op: set() for op in range(num_ops)}
+        # for bank, ops in bank_to_ops.items():
+        #     if len(ops) == 1:
+        #         granted[ops[0]].add(bank)
+        #     else:
+        #         # Round-robin: pick the op closest to rr_priority in order
+        #         ops_sorted = sorted(ops, key=lambda o: (o - rr_priority) % num_ops)
+        #         winner = ops_sorted[0]
+        #         granted[winner].add(bank)
+
+        # rr_priority = (rr_priority + 1) % max(num_ops, 1)
+
         granted: dict[int, set[int]] = {op: set() for op in range(num_ops)}
         for bank, ops in bank_to_ops.items():
             if len(ops) == 1:
                 granted[ops[0]].add(bank)
             else:
-                # Round-robin: pick the op closest to rr_priority in order
-                ops_sorted = sorted(ops, key=lambda o: (o - rr_priority) % num_ops)
-                winner = ops_sorted[0]
+                # Give priority to the lowest operand
+                winner = min(ops)
                 granted[winner].add(bank)
-
-        rr_priority = (rr_priority + 1) % max(num_ops, 1)
 
         # ==================================================================
         # Phase 2b: Update pending bursts based on grants
@@ -947,6 +980,9 @@ def _simulate_hardware(
         #    acc_step) is in its buffer, or no access is needed at acc_step.
         # 2. For each writer-type streamer: there is space in its buffer.
 
+        if cycle == 13:
+            pass
+
         acc_can_fire = acc_step < total_steps
         if acc_step == 514:
             pass
@@ -973,7 +1009,11 @@ def _simulate_hardware(
                         acc_can_fire = False
                         break
 
+        if not acc_can_fire:
+            pass
+
         if acc_can_fire:
+            cycles_for_step_i.append(0)
             # Pop consumed data from reader buffers; push to writer buffers
             for op in range(num_ops):
                 desc = operand_descriptors[op]
@@ -994,7 +1034,7 @@ def _simulate_hardware(
             for op in range(num_ops):
                 is_reader = operand_descriptors[op].kind in (OperandKind.READER, OperandKind.READER_WRITER)
                 if is_reader and next_streamer_step[op] < total_steps:
-                    if not streamer_needs_access(op, acc_step):
+                    if not streamer_needs_access(op, streamer_step[op]):
                         next_streamer_step[op] += 1
 
             acc_step += 1
@@ -1007,6 +1047,8 @@ def _simulate_hardware(
         pending_banks = next_pending_banks
         streamer_step = next_streamer_step
         pending_step = next_pending_step
+        cycles_for_step_i[-1] += 1  # for debugging: count this cycle towards the current global step
+
 
     return cycle
 
