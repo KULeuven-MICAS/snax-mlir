@@ -12,6 +12,7 @@ from snaxc.dialects.kernel import KernelOp
 class SupportedKernel:
     kernel_type: type[KernelOp]
     operand_types: Iterable[Attribute]
+    secondary: bool = False
 
     def is_same_kernel(self, kernel_op: Operation | None) -> bool:
         """
