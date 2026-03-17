@@ -16,19 +16,19 @@ clusters:
               streamers:
                 - temporal_dims: 7
                   spatial_dims: [8]
-                  fixed_cache_depth: 64
+                  fixed_cache_depth: 63
                 - temporal_dims: 7
                   spatial_dims: [8]
-                  fixed_cache_depth: 64
+                  fixed_cache_depth: 63
                 - temporal_dims: 7
                   spatial_dims: [8]
-                  fixed_cache_depth: 64
+                  fixed_cache_depth: 63
                 - temporal_dims: 7
                   spatial_dims: [8, 4]
-                  fixed_cache_depth: 64
+                  fixed_cache_depth: 63
                 - temporal_dims: 7
                   spatial_dims: [8, 4]
-                  fixed_cache_depth: 64
+                  fixed_cache_depth: 63
       - accelerators:
           - data_mover:
 

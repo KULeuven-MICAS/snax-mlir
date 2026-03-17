@@ -291,10 +291,9 @@ class SNAXGEMMXAccelerator(
                 output_bounds = [
                     bound.data
                     for bound, stride in zip(
-                        last_pattern.upper_bounds.data,
-                        last_pattern.temporal_strides.data,
+                        last_pattern.upper_bounds.data[1:],
+                        last_pattern.temporal_strides.data[1:],
                     )
-                    if stride.data != 0
                 ]
                 
                 # separation logic for m and n to prevent 8-bit overflow
@@ -308,7 +307,7 @@ class SNAXGEMMXAccelerator(
                     n = 1
                     m = 1
 
-                k = prod(x.data for x in op.stride_patterns.data[0].upper_bounds.data) // (m * n)
+                k = op.stride_patterns.data[0].upper_bounds.data[0].data
             else:
                 # Weight Stationary or other interleaved mapping
                 # Configure accelerator to assume 1 input per output (stream partial sums)

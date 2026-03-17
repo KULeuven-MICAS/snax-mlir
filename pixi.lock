@@ -34,6 +34,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/configargparse-1.7-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/connection_pool-0.0.3-pyhd3deb0d_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/linux-64/datrie-0.8.2-py312h66e93f0_8.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/debugpy-1.8.20-py312h8285ef7_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/docutils-0.21.2-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/dpath-2.2.0-pyha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/gitdb-4.0.12-pyhd8ed1ab_0.conda
@@ -599,6 +600,21 @@ packages:
   - pkg:pypi/datrie?source=hash-mapping
   size: 158945
   timestamp: 1725961043726
+- conda: https://conda.anaconda.org/conda-forge/linux-64/debugpy-1.8.20-py312h8285ef7_0.conda
+  sha256: f20121b67149ff80bf951ccae7442756586d8789204cd08ade59397b22bfd098
+  md5: ee1b48795ceb07311dd3e665dd4f5f33
+  depends:
+  - python
+  - libgcc >=14
+  - libstdcxx >=14
+  - __glibc >=2.17,<3.0.a0
+  - python_abi 3.12.* *_cp312
+  license: MIT
+  license_family: MIT
+  purls:
+  - pkg:pypi/debugpy?source=hash-mapping
+  size: 2858582
+  timestamp: 1769744978783
 - pypi: https://files.pythonhosted.org/packages/91/a1/cf2472db20f7ce4a6be1253a81cfdf85ad9c7885ffbed7047fb72c24cf87/distlib-0.3.9-py2.py3-none-any.whl
   name: distlib
   version: 0.3.9
@@ -2160,7 +2176,7 @@ packages:
 - pypi: ./
   name: snax-mlir
   version: 0.2.2
-  sha256: f28964efda920b6894f4677113723d74e79f352eedc81eb048a636d3c9426dbb
+  sha256: 8fdd9b5c8caac5440488bf1f080a6f66cd2836374270e4d10ee005e906edca4f
   requires_dist:
   - xdsl @ git+https://github.com/xdslproject/xdsl.git@40857df3e6202602ef1a2361d1ba2ca03584402a
   - minimalloc @ git+https://github.com/jorendumoulin/minimalloc.git@917a2ddf8ea0f48c7c77145d57c21d7c5dd20ef2

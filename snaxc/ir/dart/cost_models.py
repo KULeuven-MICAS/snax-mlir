@@ -776,9 +776,14 @@ def _simulate_hardware(
     # --- Per-streamer state ---
 
     BUFFER_DEPTH = 2
+    AGU_QUEUE_DEPTH = 4  # Typical output buffer depth for AGU
 
-    # Each streamer's "step pointer": the next global step index to fetch/store
-    streamer_step = [0] * num_ops
+    # Each streamer's AGU "step pointer": the next global step index to generate addresses for
+    agu_step = [0] * num_ops
+
+    # Address buffers decoupled from the memory requests
+    # Represents the outputBuffer of the AGU module
+    address_buffers: list[deque[int]] = [deque() for _ in range(num_ops)]
 
     # Buffers: list of deques. For readers, entries are step indices of data
     # that has been fetched. For writers, entries are step indices of data
@@ -803,8 +808,10 @@ def _simulate_hardware(
     cycles_for_step_i = [0]  # for debugging: track cycles taken by each global step
 
     while cycle < MAX_CYCLES:
-        # Check termination: all streamers have completed all their steps
-        all_done = all(streamer_step[op] >= total_steps and
+        # Check termination: AGU done generating addresses, all memory requests have resolved,
+        # and buffers empty up to total_steps completion.
+        all_done = all(agu_step[op] >= total_steps and
+                       len(address_buffers[op]) == 0 and
                        pending_banks[op] is None and
                        len(buffers[op]) == 0
                        for op in range(num_ops))
@@ -812,6 +819,20 @@ def _simulate_hardware(
             break
 
         cycle += 1
+
+        # ==================================================================
+        # Phase 0: Address Generation Unit (AGU)
+        # ==================================================================
+        
+        # Advance agu_step for all ops past non-access steps and append necessary steps to address_buffers
+        # Hardware can generate at most 1 access per cycle.
+        for op in range(num_ops):
+            while agu_step[op] < total_steps and not streamer_needs_access(op, agu_step[op]):
+                agu_step[op] += 1
+            
+            if agu_step[op] < total_steps and len(address_buffers[op]) < AGU_QUEUE_DEPTH:
+                address_buffers[op].append(agu_step[op])
+                agu_step[op] += 1
 
         # ==================================================================
         # Phase 1: Determine which streamers want to issue memory requests
@@ -826,7 +847,6 @@ def _simulate_hardware(
 
         for op in range(num_ops):
             desc = operand_descriptors[op]
-            step = streamer_step[op]
             is_reader_writer = desc.kind == OperandKind.READER_WRITER
             is_reader = desc.kind == OperandKind.READER
             is_writer = desc.kind == OperandKind.WRITER
@@ -837,11 +857,6 @@ def _simulate_hardware(
                 reader_writer_writing
                 pass
             
-            if step >= total_steps:
-                # This streamer has completed all its steps; ignore it.
-                reader_writer_writing = False
-                continue
-
             # Continue a pending burst?
             if pending_banks[op] is not None:
                 for bank in pending_banks[op]:
@@ -850,20 +865,12 @@ def _simulate_hardware(
                     reader_writer_writing = True
                 continue
 
-            # Advance past non-access steps independently for writers
-            if is_writer:
-                while step < total_steps and not streamer_needs_access(op, step):
-                    step += 1
-                    streamer_step[op] = step
-            else:
-                if not streamer_needs_access(op, step):
-                    # This step doesn't need a memory access; the streamer
-                    # advances when the accelerator fires (handled in Phase 3).
-                    reader_writer_writing = False  
-                    continue
-
-            if step >= total_steps:
+            if len(address_buffers[op]) == 0:
+                # No addresses to generate memory requests for
+                reader_writer_writing = False
                 continue
+
+            step = address_buffers[op][0]
 
             # Check buffer capacity
             if is_reader or is_reader_writer:
@@ -910,19 +917,6 @@ def _simulate_hardware(
             if op not in bank_to_ops[bank]:
                 bank_to_ops[bank].append(op)
 
-        # # For each bank, grant access to one requester (round-robin)
-        # granted: dict[int, set[int]] = {op: set() for op in range(num_ops)}
-        # for bank, ops in bank_to_ops.items():
-        #     if len(ops) == 1:
-        #         granted[ops[0]].add(bank)
-        #     else:
-        #         # Round-robin: pick the op closest to rr_priority in order
-        #         ops_sorted = sorted(ops, key=lambda o: (o - rr_priority) % num_ops)
-        #         winner = ops_sorted[0]
-        #         granted[winner].add(bank)
-
-        # rr_priority = (rr_priority + 1) % max(num_ops, 1)
-
         granted: dict[int, set[int]] = {op: set() for op in range(num_ops)}
         for bank, ops in bank_to_ops.items():
             if len(ops) == 1:
@@ -938,9 +932,10 @@ def _simulate_hardware(
 
         # Track which streamers complete their burst this cycle
         # Use next-state tracking to apply updates atomically at end of cycle
+        next_address_buffers: list[deque[int]] = [deque(b) for b in address_buffers]
         next_buffers: list[deque[int]] = [deque(b) for b in buffers]
         next_pending_banks: list[set[int] | None] = list(pending_banks)
-        next_streamer_step: list[int] = list(streamer_step)
+        next_agu_step: list[int] = list(agu_step)
         next_pending_step: list[int] = list(pending_step)
 
         for op in range(num_ops):
@@ -964,10 +959,13 @@ def _simulate_hardware(
                         next_buffers[op].popleft()
 
                 next_pending_banks[op] = None
-                next_streamer_step[op] = pending_step[op] + 1
+                
+                # Consume this completed address from the AGU queue
+                if next_address_buffers[op]:
+                    next_address_buffers[op].popleft()
 
                 # Advance past any subsequent non-access steps
-                # (these will be handled when the accelerator fires)
+                # (handled by AGU now)
             else:
                 next_pending_banks[op] = remaining
 
@@ -1030,22 +1028,16 @@ def _simulate_hardware(
                     if needs_access and len(next_buffers[op]) < BUFFER_DEPTH:
                         next_buffers[op].append(acc_step)
 
-            # Advance readers past non-access steps
-            for op in range(num_ops):
-                is_reader = operand_descriptors[op].kind in (OperandKind.READER, OperandKind.READER_WRITER)
-                if is_reader and next_streamer_step[op] < total_steps:
-                    if not streamer_needs_access(op, streamer_step[op]):
-                        next_streamer_step[op] += 1
-
             acc_step += 1
 
         # ==================================================================
         # Phase 4: Commit next-state
         # ==================================================================
 
+        address_buffers = next_address_buffers
         buffers = next_buffers
         pending_banks = next_pending_banks
-        streamer_step = next_streamer_step
+        agu_step = next_agu_step
         pending_step = next_pending_step
         cycles_for_step_i[-1] += 1  # for debugging: count this cycle towards the current global step
 

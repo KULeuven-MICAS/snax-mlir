@@ -1,20 +1,20 @@
 {
   "extensionVersion": "1.5.1",
   "fileName": "/esat/studscratch/r0886198/thesis_2025_linux/snax-mlir/pe_utilization_plots/schedule_sweep/sim.vcd",
-  "markerTime": 13538,
+  "markerTime": 5901,
   "altMarkerTime": null,
   "selectedSignal": {
-    "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.criticalLoopFinder.io_criticalLoop",
-    "msb": 2,
-    "lsb": 0
+    "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_tcdmReq_0_valid",
+    "msb": -1,
+    "lsb": -1
   },
-  "zoomRatio": 2.275048722089203,
-  "scrollLeft": 23724,
+  "zoomRatio": 38.864824985654565,
+  "scrollLeft": 5889,
   "displayedSignals": [
     {
       "dataType": "signal-group",
       "groupName": "gemm_io",
-      "collapseState": 1,
+      "collapseState": 2,
       "children": [
         {
           "dataType": "netlist-variable",
@@ -505,7 +505,7 @@
             {
               "dataType": "signal-group",
               "groupName": "output_reader",
-              "collapseState": 2,
+              "collapseState": 1,
               "children": [
                 {
                   "dataType": "netlist-variable",
@@ -668,7 +668,7 @@
             {
               "dataType": "signal-group",
               "groupName": "output_writer",
-              "collapseState": 1,
+              "collapseState": 2,
               "children": [
                 {
                   "dataType": "netlist-variable",
@@ -814,7 +814,7 @@
     {
       "dataType": "signal-group",
       "groupName": "mem_requests",
-      "collapseState": 1,
+      "collapseState": 2,
       "children": [
         {
           "dataType": "netlist-variable",
@@ -969,6 +969,19 @@
           "verticalScale": 1,
           "nameType": "fullPath",
           "customName": "io_readerInterface_tcdmReq_0_valid",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 80246,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_0_bits_write",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_readerInterface_tcdmReq_0_bits_write",
           "renderType": "binary",
           "valueLinkCommand": ""
         }
