@@ -43,7 +43,7 @@ from snaxc.ir.dart.scheduler import (
     search_cached_level_fixed,
     reevaluate_critical_flags,
 )
-from snaxc.ir.dart.cost_models import latency_cost_of_tiling
+from snaxc.ir.dart.cost_models import hardware_latency_cost_of_tiling, latency_cost_of_tiling
 from snaxc.tools.config_parser import parse_config
 
 # Passes to run before the scheduler (same order as snaxc_main.py)
@@ -252,7 +252,7 @@ def enumerate_schedules(module, ctx):
             )
 
             for idx, tiling in enumerate(all_tilings):
-                cost = latency_cost_of_tiling(
+                cost = hardware_latency_cost_of_tiling(
                     tiling, operand_descs, inv_map_for_cost
                 )
                 all_costs[idx] = cost

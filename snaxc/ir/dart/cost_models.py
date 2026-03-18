@@ -700,8 +700,371 @@ def hardware_latency_cost_of_tiling(
 
 
 # ---------------------------------------------------------------------------
-# Internal: hardware simulation
+# Internal: hardware simulation — per-streamer state classes
 # ---------------------------------------------------------------------------
+
+
+@dataclass
+class AGUState:
+    """
+    Models the AddressGenUnit FSM and counter chain from the RTL.
+
+    The AGU has a chain of ProgrammableCounters (one per tiling level).
+    On each ``counters_tick`` the innermost counter increments; when it
+    wraps the next counter increments, etc.  A ``counters_tick`` fires
+    whenever the outputBuffer (and, when caching, the
+    fixedCacheInstructionBuffer) successfully accepts a new entry.
+
+    The outputBuffer is a FIFO of depth ``output_buffer_depth`` that
+    stores per-channel bank addresses (one entry = addresses for all
+    spatial channels of this streamer).
+    """
+
+    # --- Configuration (set once) ---
+    num_levels: int
+    bounds: list[int]  # tile sizes per level (inner→outer)
+    is_writer: bool  # True for WRITER kind
+    output_buffer_depth: int = 4
+
+    # --- Runtime state ---
+    counters: list[int] = field(default_factory=list)
+    state: str = "IDLE"  # "IDLE" or "BUSY"
+    done: bool = False  # all counters wrapped → AGU finished
+
+    def __post_init__(self):
+        if not self.counters:
+            self.counters = [0] * self.num_levels
+
+    def reset_and_start(self):
+        """Transition IDLE → BUSY, zero all counters."""
+        self.counters = [0] * self.num_levels
+        self.state = "BUSY"
+        self.done = False
+
+    def current_step(self) -> int:
+        """Convert current counter state to a global step index."""
+        step = 0
+        multiplier = 1
+        for lvl in range(self.num_levels):
+            step += self.counters[lvl] * multiplier
+            multiplier *= self.bounds[lvl]
+        return step
+
+    def tick(self) -> bool:
+        """
+        Advance the counter chain by one tick (innermost first, carry
+        propagation).  Returns True if the outermost counter just
+        wrapped (i.e. this was the very last tick of the whole
+        sequence).
+        """
+        for lvl in range(self.num_levels):
+            self.counters[lvl] += 1
+            if self.counters[lvl] < self.bounds[lvl]:
+                return False
+            self.counters[lvl] = 0  # wrap, carry to next level
+        # All counters wrapped → done
+        self.done = True
+        self.state = "IDLE"
+        return True
+
+
+@dataclass
+class StreamerState:
+    """
+    Models the full state of a single hardware streamer (Reader or
+    Writer), mirroring the RTL pipeline:
+
+        AGU → outputBuffer (per-channel addr FIFOs)
+            → DataRequestors (one per channel, each issues to TCDM)
+            → DataResponsers (reader) / TCDM ack (writer)
+            → dataBuffer (depth-2 data FIFO)
+            → accelerator interface
+
+    The output buffer is implemented as ``spatial_banks`` independent
+    FIFOs (one per channel), matching the hardware's
+    ``ComplexQueueConcat`` which instantiates one ``Queue`` per
+    channel.  All channels enqueue simultaneously when the AGU ticks
+    (requiring all to have room), but each channel dequeues
+    independently when its DataRequestor is granted access to its
+    TCDM bank.
+
+    Without fixed-cache support (``newUseCache = false``), the AGU
+    places an address into the output buffer on *every* counter tick.
+    ``counters_tick`` fires iff ``currentState == sBUSY &&
+    outputBuffer.io.in.head.fire`` – so the counter only advances
+    when the buffer actually accepts.  No steps are skipped.
+    """
+
+    # --- Configuration (set once) ---
+    op_idx: int
+    kind: OperandKind  # READER or WRITER (RW split into two)
+    spatial_banks: int
+    invariant_dims: frozenset[int]
+    num_levels: int
+    bounds: list[int]
+    strides_bank: list[int]  # per-level strides in bank-word units
+    num_banks: int
+    tiling: list[tuple[int, int, bool]]
+
+    output_buffer_depth: int = 4
+    data_buffer_depth: int = 2
+
+    # --- Sub-components ---
+    agu: AGUState = field(default=None)  # type: ignore[assignment]
+
+    # Per-channel output buffer queues (N independent FIFOs,
+    # matching ComplexQueueConcat = N independent Queue modules).
+    # output_buffers[ch] is a deque of step indices for channel ch.
+    output_buffers: list[deque[int]] = field(default_factory=list)
+
+    # Per-channel pending bank request.  Each entry is the bank index
+    # that channel ``i`` is currently requesting, or None if channel
+    # ``i`` is idle (not requesting).
+    channel_pending_bank: list[int | None] = field(default_factory=list)
+
+    # Track step completion: step → number of channels still to grant.
+    # Initialised to spatial_banks when the AGU pushes a step.
+    # Decremented on each channel grant.  When it reaches 0 the step
+    # is fully complete and its response can enter the pipeline.
+    step_grants_remaining: dict[int, int] = field(default_factory=dict)
+
+    # dataBuffer: FIFO of step indices (reader: fetched data; writer:
+    # data from accelerator waiting to be written)
+    data_buffer: deque[int] = field(default_factory=deque)
+
+    # For readers: per-channel response slots available.  Each channel
+    # has its own UpDownCounter in DataResponser with ceil = bufferDepth+1.
+    # tickUp fires per-channel on reqSubmit; tickDown fires for ALL
+    # channels simultaneously on dataBuffer.out.fire (dataFifoPopped).
+    responser_slots: list[int] = field(default_factory=list)
+
+    def __post_init__(self):
+        if self.agu is None:
+            self.agu = AGUState(
+                num_levels=self.num_levels,
+                bounds=self.bounds,
+                is_writer=(self.kind == OperandKind.WRITER),
+                output_buffer_depth=self.output_buffer_depth,
+            )
+        if not self.output_buffers:
+            self.output_buffers = [deque() for _ in range(self.spatial_banks)]
+        if not self.channel_pending_bank:
+            self.channel_pending_bank = [None] * self.spatial_banks
+        if not self.responser_slots:
+            # Each channel starts with data_buffer_depth free slots
+            self.responser_slots = [self.data_buffer_depth] * self.spatial_banks
+
+    # ----- address helpers -----
+
+    def compute_channel_bank(self, step: int, ch: int) -> int:
+        """Compute the TCDM bank index for channel ``ch`` at ``step``."""
+        counters = self._step_to_counters(step)
+        base = sum(self.strides_bank[lvl] * counters[lvl]
+                   for lvl in range(self.num_levels))
+        return ((base + ch) // 8) % self.num_banks
+
+    def _step_to_counters(self, step: int) -> list[int]:
+        counters: list[int] = []
+        s = step
+        for b in self.bounds:
+            counters.append(s % b)
+            s //= b
+        return counters
+
+    def needs_tcdm_access(self, step: int) -> bool:
+        """Does this streamer need a TCDM access at ``step``?
+
+        NOTE: only relevant when fixed-cache is modelled.  Without
+        fixed-cache every step goes through TCDM.  Kept for the
+        legacy ``_simulate_nested`` cost model.
+        """
+        counters = self._step_to_counters(step)
+        if self.kind in (OperandKind.READER, OperandKind.READER_WRITER):
+            return _reader_active(counters, self.tiling, self.invariant_dims)
+        else:
+            return _writer_active(
+                counters, self.bounds, self.tiling, self.invariant_dims
+            )
+
+    # ----- AGU phase -----
+
+    def agu_tick_possible(self) -> bool:
+        """
+        Can the AGU advance its counter this cycle?
+
+        The RTL ``counters_tick`` logic (AddressGenUnit.scala):
+
+        * Without fixed cache (``!newUseCache``):
+          ``counters_tick = sBUSY && outputBuffer.in.head.fire``
+          → every step goes into the outputBuffer, so the counter is
+            gated by output buffer room.
+
+        * With fixed cache (``newUseCache``):
+          ``counters_tick = sBUSY && ((outputBufferFillCondition &&
+            outputBuffer.fire) || fixedCacheInstructionBuffer.fire)``
+          → access steps need output buffer room;
+            non-access steps tick via fixedCacheInstructionBuffer
+            (same depth, always consumed in parallel → not a
+            bottleneck).  We don't model the instruction buffer, so
+            non-access steps tick freely.
+
+        Combined: for an access step, all per-channel output queues
+        must have room.  For a non-access step, the counter ticks
+        unconditionally.
+        """
+        if self.agu.state != "BUSY":
+            return False
+        if self.agu.done:
+            return False
+        step = self.agu.current_step()
+        if self.needs_tcdm_access(step):
+            # Access step: outputBuffer must accept → all channel
+            # queues need room (enq_all_ready in ComplexQueueConcat)
+            return all(len(buf) < self.output_buffer_depth
+                       for buf in self.output_buffers)
+        else:
+            # Non-access step: fixedCacheInstructionBuffer would
+            # accept; we don't model it, so tick freely.
+            return True
+
+    def do_agu_tick(self):
+        """
+        Execute one AGU tick.
+
+        * Access step (``needs_tcdm_access`` is True):
+          Push the step index into ALL per-channel output buffer
+          queues simultaneously (matching ``outputBufferFillCondition
+          || !newUseCache`` in the RTL) and advance the counter.
+
+        * Non-access step: only advance the counter — no entry is
+          placed in the output buffer because no TCDM transaction is
+          needed.  The counter still ticks (via the
+          fixedCacheInstructionBuffer path in hardware).
+        """
+        step = self.agu.current_step()
+        if self.needs_tcdm_access(step):
+            for buf in self.output_buffers:
+                buf.append(step)
+            self.step_grants_remaining[step] = self.spatial_banks
+        self.agu.tick()
+
+    # ----- per-channel request / grant helpers -----
+
+    def channel_can_request(self, ch: int) -> bool:
+        """Can channel ``ch`` issue a new TCDM request this cycle?
+
+        Mirrors the DataRequestor fire conditions:
+        * Channel has a valid address (its output buffer queue is
+          non-empty).
+        * Not already mid-request (``channel_pending_bank[ch]`` is
+          None).
+        * Reader: DataResponser has room (``responser_slots > 0``).
+        * Writer: dataBuffer has data to write.
+        """
+        if self.channel_pending_bank[ch] is not None:
+            return False  # already has a pending request
+        if not self.output_buffers[ch]:
+            return False  # no address in queue
+        # Streamer-level preconditions
+        if self.kind in (OperandKind.READER, OperandKind.READER_WRITER):
+            if self.responser_slots[ch] <= 0:
+                return False
+        else:  # WRITER
+            if len(self.data_buffer) == 0:
+                return False
+        return True
+
+    def start_channel_request(self, ch: int):
+        """
+        Start a TCDM request for channel ``ch``.  Peeks at the head
+        of the channel's output buffer queue and computes the target
+        bank.
+        """
+        step = self.output_buffers[ch][0]
+        bank = self.compute_channel_bank(step, ch)
+        self.channel_pending_bank[ch] = bank
+        # Reader: consume this channel's responser slot (reqSubmit fires per-channel)
+        if self.kind in (OperandKind.READER, OperandKind.READER_WRITER):
+            self.responser_slots[ch] -= 1
+
+    def grant_channel(self, ch: int) -> list[int]:
+        """
+        Grant channel ``ch``'s bank request.  Dequeues from the
+        channel's output buffer queue.
+
+        Returns a list of step indices that became fully complete
+        (all channels granted) as a result of this grant.
+        """
+        step = self.output_buffers[ch].popleft()
+        self.channel_pending_bank[ch] = None
+        completed: list[int] = []
+        self.step_grants_remaining[step] -= 1
+        if self.step_grants_remaining[step] == 0:
+            del self.step_grants_remaining[step]
+            completed.append(step)
+        return completed
+
+    def has_pending_channels(self) -> bool:
+        return any(b is not None for b in self.channel_pending_bank)
+
+    # ----- accelerator interface -----
+
+    def reader_data_available(self, acc_step: int) -> bool:
+        """Does the dataBuffer contain the data for ``acc_step``?"""
+        return acc_step in self.data_buffer
+
+    def reader_consume(self, acc_step: int):
+        """Pop ``acc_step`` from the dataBuffer (accelerator consumed it)."""
+        self.data_buffer.remove(acc_step)
+        # dataFifoPopped fires for ALL channels simultaneously
+        for ch in range(self.spatial_banks):
+            self.responser_slots[ch] += 1
+
+    def writer_has_space(self) -> bool:
+        return len(self.data_buffer) < self.data_buffer_depth
+
+    def writer_accept(self, acc_step: int):
+        """Accelerator pushes result into the writer's dataBuffer."""
+        self.data_buffer.append(acc_step)
+
+    @property
+    def is_reader(self) -> bool:
+        return self.kind in (OperandKind.READER, OperandKind.READER_WRITER)
+
+    @property
+    def is_writer(self) -> bool:
+        return self.kind == OperandKind.WRITER
+
+    @property
+    def is_fully_done(self) -> bool:
+        """AGU finished, no pending requests, buffers drained."""
+        return (
+            self.agu.done
+            and all(len(buf) == 0 for buf in self.output_buffers)
+            and not self.has_pending_channels()
+            and len(self.step_grants_remaining) == 0
+            and len(self.data_buffer) == 0
+        )
+
+
+# ---------------------------------------------------------------------------
+# RW pair tracking
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ReaderWriterPair:
+    """
+    In the RTL a ReaderWriter shares one TCDM port set.  The writer
+    has priority (MuxDecoupled sel=0 for writer, sel=1 for reader).
+    Only one of them can issue requests on a given cycle.
+
+    ``reader_idx`` and ``writer_idx`` index into the ``streamers``
+    list.
+    """
+    reader_idx: int
+    writer_idx: int
+    # Track which side was selected last cycle (for response routing)
+    last_sel_writer: bool = False
 
 
 def _simulate_hardware(
@@ -712,7 +1075,32 @@ def _simulate_hardware(
     num_banks: int,
 ) -> int:
     """
-    Simulate the SNAX streamer pipeline cycle-by-cycle.
+    Cycle-accurate simulation of the SNAX streamer hardware pipeline.
+
+    Each streamer is modelled as a ``StreamerState`` object that
+    mirrors the RTL modules (AGU, outputBuffer, DataRequestors,
+    DataResponsers, dataBuffer).  ReaderWriter operands are split
+    into separate reader and writer ``StreamerState`` instances that
+    share TCDM ports through priority arbitration (writer wins).
+
+    Per-cycle phases
+    ----------------
+    0. **AGU phase** — each AGU that is busy and whose outputBuffer
+       has room generates one address-set (counter tick).
+    1. **Request issue** — streamers with addresses in their
+       outputBuffer and meeting preconditions (reader: responser has
+       room; writer: dataBuffer has data) start per-channel TCDM
+       requests.  RW pairs arbitrate (writer priority).
+    2. **Bank arbitration** — per-bank round-robin among all channel
+       requests from all streamers.  Each bank services at most one
+       request per cycle.
+    3. **Burst completion** — streamers whose *all* channels have
+       been granted complete their burst (reader: push to dataBuffer;
+       writer: pop from dataBuffer).
+    4. **Accelerator fire** — the accelerator fires if every reader
+       has its data ready and every writer has space.  On fire:
+       readers consume, writers accept.
+    5. **Commit** — next-state becomes current state.
 
     Returns total cycle count.
     """
@@ -721,327 +1109,240 @@ def _simulate_hardware(
         return 0
 
     bounds = [t[1] for t in tiling]
-    num_ops = len(operand_descriptors)
-    for i in range(len(operand_descriptors)):
-        if operand_descriptors[i].kind == OperandKind.READER_WRITER:
-            # Insert a duplicate descriptor for the writer part of the RW operand
-            desc = operand_descriptors[i]
-            operand_descriptors.insert(i, OperandDescriptor(
-                kind=OperandKind.WRITER,
-                spatial_banks=desc.spatial_banks,
-                element_bytes=desc.element_bytes,
-                invariant_dims=desc.invariant_dims,
-            ))
-            invariance_map.insert(i, invariance_map[i])
-            strides_bank.insert(i, strides_bank[i])
-            num_ops += 1
-    
-    # Total number of global iteration steps
     total_steps = 1
     for b in bounds:
         total_steps *= b
 
-    # --- Helper functions ---
+    # --- Build StreamerState list, splitting RW into reader+writer ---
 
-    def step_to_counters(step: int) -> list[int]:
-        counters = []
-        s = step
-        for b in bounds:
-            counters.append(s % b)
-            s //= b
-        return counters
+    streamers: list[StreamerState] = []
+    rw_pairs: list[ReaderWriterPair] = []
+    # Track which streamers share TCDM ports (RW pairs)
+    # All other streamers have their own dedicated TCDM ports
 
-    def compute_bank_address(op_idx: int, counters: list[int]) -> int:
-        addr = 0
-        for lvl in range(num_levels):
-            addr += strides_bank[op_idx][lvl] * counters[lvl]
-        return (addr // 8) % num_banks #TODO: CHECK IF // 8 SHOULD BE HERE
+    # cycle_for_step_i = [0] * total_steps  # for debugging: cycle count when accelerator step i fires
 
-    def streamer_needs_access(op_idx: int, step: int) -> bool:
-        """Does this streamer perform a memory access at the given global step?"""
-        desc = operand_descriptors[op_idx]
-        counters = step_to_counters(step)
-        if desc.kind == OperandKind.READER or desc.kind == OperandKind.READER_WRITER:
-            return _reader_active(counters, tiling, desc.invariant_dims)
-        else:  # WRITER
-            return _writer_active(counters, bounds, tiling, desc.invariant_dims)
+    for op_idx, desc in enumerate(operand_descriptors):
+        if desc.kind == OperandKind.READER_WRITER:
+            # Split into a reader streamer and a writer streamer
+            reader_s = StreamerState(
+                op_idx=op_idx,
+                kind=OperandKind.READER,
+                spatial_banks=desc.spatial_banks,
+                invariant_dims=desc.invariant_dims,
+                num_levels=num_levels,
+                bounds=list(bounds),
+                strides_bank=list(strides_bank[op_idx]),
+                num_banks=num_banks,
+                tiling=tiling,
+            )
+            reader_s.agu.reset_and_start()
+            reader_idx = len(streamers)
+            streamers.append(reader_s)
 
-    def compute_burst_banks(op_idx: int, step: int) -> list[int]:
-        """Return list of bank indices for the burst at the given step."""
-        desc = operand_descriptors[op_idx]
-        counters = step_to_counters(step)
-        base_bank = compute_bank_address(op_idx, counters)
-        return [(base_bank + i) % num_banks for i in range(desc.burst_bank_words)]
+            writer_s = StreamerState(
+                op_idx=op_idx,
+                kind=OperandKind.WRITER,
+                spatial_banks=desc.spatial_banks,
+                invariant_dims=desc.invariant_dims,
+                num_levels=num_levels,
+                bounds=list(bounds),
+                strides_bank=list(strides_bank[op_idx]),
+                num_banks=num_banks,
+                tiling=tiling,
+            )
+            writer_s.agu.reset_and_start()
+            writer_idx = len(streamers)
+            streamers.append(writer_s)
 
-    # --- Per-streamer state ---
+            rw_pairs.append(ReaderWriterPair(
+                reader_idx=reader_idx,
+                writer_idx=writer_idx,
+            ))
+        else:
+            s = StreamerState(
+                op_idx=op_idx,
+                kind=desc.kind,
+                spatial_banks=desc.spatial_banks,
+                invariant_dims=desc.invariant_dims,
+                num_levels=num_levels,
+                bounds=list(bounds),
+                strides_bank=list(strides_bank[op_idx]),
+                num_banks=num_banks,
+                tiling=tiling,
+            )
+            s.agu.reset_and_start()
+            streamers.append(s)
 
-    BUFFER_DEPTH = 2
-    AGU_QUEUE_DEPTH = 4  # Typical output buffer depth for AGU
+    num_streamers = len(streamers)
 
-    # Each streamer's AGU "step pointer": the next global step index to generate addresses for
-    agu_step = [0] * num_ops
+    # Per-bank round-robin priority state.
+    # After granting streamer *w* on bank *b*, the next priority on that
+    # bank rotates to the requestor index *after* w.  We store the
+    # "next priority" streamer index per bank.  Requestor indices are
+    # the global channel-request indices (streamer_idx * max_channels +
+    # ch_idx) flattened, but since the hardware's rr_arb_tree operates
+    # on the physical port indices wired into that bank, we simply
+    # track the *streamer index* that has next priority for each bank.
+    bank_rr_priority: dict[int, int] = {b: 0 for b in range(num_banks)}
 
-    # Address buffers decoupled from the memory requests
-    # Represents the outputBuffer of the AGU module
-    address_buffers: list[deque[int]] = [deque() for _ in range(num_ops)]
-
-    # Buffers: list of deques. For readers, entries are step indices of data
-    # that has been fetched. For writers, entries are step indices of data
-    # from the accelerator waiting to be written.
-    buffers: list[deque[int]] = [deque() for _ in range(num_ops)]
-
-    # Per-streamer in-flight burst state: which banks of the current burst
-    # still need to be serviced. None means no burst in progress.
-    pending_banks: list[set[int] | None] = [None] * num_ops
-    # The step index of the currently in-flight burst
-    pending_step: list[int] = [0] * num_ops
+    # Pending response queue: bursts that completed in the *previous*
+    # cycle.  Due to MemoryResponseLatency = 1 in the TCDM interconnect,
+    # response data arrives 1 cycle after the request is granted.
+    # Entries are (streamer_index, step) tuples.
+    pending_responses: list[tuple[int, int]] = []
 
     # Accelerator step counter
     acc_step = 0
-
-    # Round-robin priority counter for bank arbitration
-    rr_priority = 0
-
     cycle = 0
-    MAX_CYCLES = total_steps * num_ops * num_banks * 10  # safety bound
-
-    cycles_for_step_i = [0]  # for debugging: track cycles taken by each global step
+    MAX_CYCLES = total_steps * num_streamers * num_banks * 10
 
     while cycle < MAX_CYCLES:
-        # Check termination: AGU done generating addresses, all memory requests have resolved,
-        # and buffers empty up to total_steps completion.
-        all_done = all(agu_step[op] >= total_steps and
-                       len(address_buffers[op]) == 0 and
-                       pending_banks[op] is None and
-                       len(buffers[op]) == 0
-                       for op in range(num_ops))
-        if all_done and acc_step >= total_steps:
+        # --- Termination check ---
+        if acc_step >= total_steps and not pending_responses and all(
+            s.is_fully_done for s in streamers
+        ):
             break
 
         cycle += 1
 
-        # ==================================================================
-        # Phase 0: Address Generation Unit (AGU)
-        # ==================================================================
-        
-        # Advance agu_step for all ops past non-access steps and append necessary steps to address_buffers
-        # Hardware can generate at most 1 access per cycle.
-        for op in range(num_ops):
-            while agu_step[op] < total_steps and not streamer_needs_access(op, agu_step[op]):
-                agu_step[op] += 1
-            
-            if agu_step[op] < total_steps and len(address_buffers[op]) < AGU_QUEUE_DEPTH:
-                address_buffers[op].append(agu_step[op])
-                agu_step[op] += 1
-
-        # ==================================================================
-        # Phase 1: Determine which streamers want to issue memory requests
-        # ==================================================================
-
-        # Collect all individual bank requests for this cycle.
-        # A request is (op_idx, bank_idx).
-        bank_requests: list[tuple[int, int]] = []
-
-        reader_writer_writing = False  # track if any RW streamer is in its write phase this cycle
-
-
-        for op in range(num_ops):
-            desc = operand_descriptors[op]
-            is_reader_writer = desc.kind == OperandKind.READER_WRITER
-            is_reader = desc.kind == OperandKind.READER
-            is_writer = desc.kind == OperandKind.WRITER
-
-            if is_writer:
-                pass
-            if is_reader_writer:
-                reader_writer_writing
-                pass
-            
-            # Continue a pending burst?
-            if pending_banks[op] is not None:
-                for bank in pending_banks[op]:
-                    bank_requests.append((op, bank))
-                if is_writer:
-                    reader_writer_writing = True
-                continue
-
-            if len(address_buffers[op]) == 0:
-                # No addresses to generate memory requests for
-                reader_writer_writing = False
-                continue
-
-            step = address_buffers[op][0]
-
-            # Check buffer capacity
-            if is_reader or is_reader_writer:
-                # Reader: must have space in buffer to put fetched data
-                reader_writer_writing = False
-                if len(buffers[op]) >= BUFFER_DEPTH:
-                    continue
-                if is_reader_writer and reader_writer_writing:
-                    # ReaderWriter in write phase this cycle → read phase is stalled
-                    continue
-
-            elif is_writer:
-                # Writer: must have data in buffer to write
-                if len(buffers[op]) == 0:
-                    reader_writer_writing = False
-                    continue
-                reader_writer_writing = True
-
-            # Start a new burst
-            burst_banks = compute_burst_banks(op, step)
-            pending_banks[op] = set(burst_banks)
-            pending_step[op] = step
-
-            if op == 0:
-                pass
-
-            if op == 1:
-                pass
-
-            for bank in pending_banks[op]:
-                bank_requests.append((op, bank))
-            
-        if cycle == 12:
-            pass
-
-        # ==================================================================
-        # Phase 2: Resolve banking conflicts (round-robin arbitration)
-        # ==================================================================
-
-        # Group requests by bank
-        bank_to_ops: dict[int, list[int]] = {}
-        for op, bank in bank_requests:
-            bank_to_ops.setdefault(bank, [])
-            if op not in bank_to_ops[bank]:
-                bank_to_ops[bank].append(op)
-
-        granted: dict[int, set[int]] = {op: set() for op in range(num_ops)}
-        for bank, ops in bank_to_ops.items():
-            if len(ops) == 1:
-                granted[ops[0]].add(bank)
+        # ==============================================================
+        # Phase 0: Deliver responses from *previous* cycle
+        # ==============================================================
+        # TCDM response latency = 1 cycle: data requested in cycle N-1
+        # arrives in cycle N.  For readers this pushes into the
+        # dataBuffer; for writers this pops the written data.
+        next_pending_responses: list[tuple[int, int]] = []
+        for si, step in pending_responses:
+            s = streamers[si]
+            if s.is_reader:
+                s.data_buffer.append(step)
             else:
-                # Give priority to the lowest operand
-                winner = min(ops)
-                granted[winner].add(bank)
+                # Writer: data was in buffer, now written to TCDM
+                if s.data_buffer:
+                    s.data_buffer.popleft()
+        pending_responses = []
 
-        # ==================================================================
-        # Phase 2b: Update pending bursts based on grants
-        # ==================================================================
+        # ==============================================================
+        # Phase 1: AGU — generate addresses into outputBuffer
+        # ==============================================================
+        # Each AGU ticks at most once per cycle.  The counter only
+        # advances when ALL per-channel output buffer queues accept
+        # (mirrors counters_tick = sBUSY && outputBuffer.in.head.fire
+        # where fire requires enq_all_ready across all channel queues).
+        for s in streamers:
+            if s.agu_tick_possible():
+                s.do_agu_tick()
 
-        # Track which streamers complete their burst this cycle
-        # Use next-state tracking to apply updates atomically at end of cycle
-        next_address_buffers: list[deque[int]] = [deque(b) for b in address_buffers]
-        next_buffers: list[deque[int]] = [deque(b) for b in buffers]
-        next_pending_banks: list[set[int] | None] = list(pending_banks)
-        next_agu_step: list[int] = list(agu_step)
-        next_pending_step: list[int] = list(pending_step)
+        # ==============================================================
+        # Phase 2: Per-channel request issue
+        # ==============================================================
+        # Each channel independently issues a TCDM request when it
+        # has an address in its output buffer queue and meets
+        # streamer-level preconditions.
+        #
+        # For RW pairs: writer side has priority.  If the writer has
+        # any pending or requestable channels, the reader is blocked.
+        rw_blocked: set[int] = set()
 
-        for op in range(num_ops):
-            if pending_banks[op] is None:
-                continue
-
-            # Remove granted banks from pending set
-            remaining = pending_banks[op] - granted[op]
-            if len(remaining) == 0:
-                # Burst complete
-                desc = operand_descriptors[op]
-                is_reader = desc.kind in (OperandKind.READER, OperandKind.READER_WRITER)
-                is_writer = desc.kind == OperandKind.WRITER
-
-                if is_reader:
-                    next_buffers[op].append(pending_step[op])
-                elif is_writer:
-                    # Writer: data was in buffer, now written to memory
-                    # Pop the oldest entry from the buffer
-                    if next_buffers[op]:
-                        next_buffers[op].popleft()
-
-                next_pending_banks[op] = None
-                
-                # Consume this completed address from the AGU queue
-                if next_address_buffers[op]:
-                    next_address_buffers[op].popleft()
-
-                # Advance past any subsequent non-access steps
-                # (handled by AGU now)
+        for pair in rw_pairs:
+            ws = streamers[pair.writer_idx]
+            writer_wants = ws.has_pending_channels() or any(
+                ws.channel_can_request(ch) for ch in range(ws.spatial_banks)
+            )
+            if writer_wants:
+                rw_blocked.add(pair.reader_idx)
+                pair.last_sel_writer = True
             else:
-                next_pending_banks[op] = remaining
+                pair.last_sel_writer = False
 
-        # ==================================================================
-        # Phase 3: Accelerator fire logic
-        # ==================================================================
+        for si, s in enumerate(streamers):
+            if si in rw_blocked:
+                continue
+            for ch in range(s.spatial_banks):
+                if s.channel_can_request(ch):
+                    s.start_channel_request(ch)
 
-        # The accelerator fires if:
-        # 1. For each reader-type streamer: either the required data (for
-        #    acc_step) is in its buffer, or no access is needed at acc_step.
-        # 2. For each writer-type streamer: there is space in its buffer.
+        # ==============================================================
+        # Phase 3: Bank arbitration — per-bank round-robin
+        # ==============================================================
+        # The TCDM interconnect uses stream_xbar which instantiates a
+        # per-bank rr_arb_tree.  Each bank has its own independent
+        # round-robin state.  After granting a requestor the priority
+        # rotates to the *next* requestor (by index).
+        bank_to_requestors: dict[int, list[tuple[int, int]]] = {}
+        for si, s in enumerate(streamers):
+            for ch, bank in enumerate(s.channel_pending_bank):
+                if bank is not None:
+                    bank_to_requestors.setdefault(bank, []).append((si, ch))
 
-        if cycle == 13:
-            pass
+        for bank, requestors in bank_to_requestors.items():
+            if len(requestors) == 1:
+                si, ch = requestors[0]
+                completed = streamers[si].grant_channel(ch)
+                for step in completed:
+                    next_pending_responses.append((si, step))
+                bank_rr_priority[bank] = (si + 1) % num_streamers
+            else:
+                # Per-bank round-robin: pick the requestor whose
+                # streamer index is nearest *at or after* the current
+                # priority pointer, wrapping around.
+                prio = bank_rr_priority[bank]
+                def rr_key(r: tuple[int, int]) -> int:
+                    return (r[0] - prio) % num_streamers
+                winner = min(requestors, key=rr_key)
+                winner_si = winner[0]
+                # Grant ALL channels of the winner that are pending on
+                # this bank (there should be at most one per streamer).
+                for si, ch in requestors:
+                    if si == winner_si:
+                        completed = streamers[si].grant_channel(ch)
+                        for step in completed:
+                            next_pending_responses.append((si, step))
+                bank_rr_priority[bank] = (winner_si + 1) % num_streamers
 
+        # Store completed-step responses for delivery next cycle
+        pending_responses = next_pending_responses
+
+        # ==============================================================
+        # Phase 4: Accelerator fire logic
+        # ==============================================================
+        # The accelerator fires when every reader that needs a TCDM
+        # access at this step has its data in the dataBuffer, and
+        # every writer that needs a TCDM access has space.  Streamers
+        # whose invariant-dim gating says no access is needed at
+        # ``acc_step`` do not block the accelerator.
         acc_can_fire = acc_step < total_steps
-        if acc_step == 514:
-            pass
-        if acc_can_fire:
-            for op in range(num_ops):
-                desc = operand_descriptors[op]
-                is_reader = desc.kind in (OperandKind.READER, OperandKind.READER_WRITER)
-                is_writer = desc.kind == OperandKind.WRITER
+        # if acc_can_fire:
+        #     cycle_for_step_i[acc_step] += 1  # record when this step fired
 
-                if is_reader:
-                    needs_access = streamer_needs_access(op, acc_step)
-                    if needs_access:
-                        # Data for acc_step must be in the buffer.
-                        # Check both current and next-state buffers (data arriving
-                        # this cycle is visible to the accelerator).
-                        if acc_step not in next_buffers[op]:
+        if acc_step == 5:
+            pass #For debugging: keep this here dont remove
+
+        if acc_can_fire:
+            for s in streamers:
+                if s.is_reader:
+                    if s.needs_tcdm_access(acc_step):
+                        if not s.reader_data_available(acc_step):
                             acc_can_fire = False
                             break
-                    # If no access needed, the reader doesn't block the accelerator.
-
-                elif is_writer:
-                    # Writer needs space in its buffer to accept the result
-                    if len(next_buffers[op]) >= BUFFER_DEPTH:
-                        acc_can_fire = False
-                        break
-
-        if not acc_can_fire:
-            pass
+                elif s.is_writer:
+                    if s.needs_tcdm_access(acc_step):
+                        if not s.writer_has_space():
+                            acc_can_fire = False
+                            break
 
         if acc_can_fire:
-            cycles_for_step_i.append(0)
-            # Pop consumed data from reader buffers; push to writer buffers
-            for op in range(num_ops):
-                desc = operand_descriptors[op]
-                is_reader = desc.kind in (OperandKind.READER, OperandKind.READER_WRITER)
-                is_writer = desc.kind == OperandKind.WRITER
-
-                if is_reader:
-                    needs_access = streamer_needs_access(op, acc_step)
-                    if needs_access and acc_step in next_buffers[op]:
-                        next_buffers[op].remove(acc_step)
-
-                elif is_writer:
-                    needs_access = streamer_needs_access(op, acc_step)
-                    if needs_access and len(next_buffers[op]) < BUFFER_DEPTH:
-                        next_buffers[op].append(acc_step)
-
+            for s in streamers:
+                if s.is_reader:
+                    if s.needs_tcdm_access(acc_step):
+                        s.reader_consume(acc_step)
+                elif s.is_writer:
+                    if s.needs_tcdm_access(acc_step):
+                        s.writer_accept(acc_step)
             acc_step += 1
 
-        # ==================================================================
-        # Phase 4: Commit next-state
-        # ==================================================================
-
-        address_buffers = next_address_buffers
-        buffers = next_buffers
-        pending_banks = next_pending_banks
-        agu_step = next_agu_step
-        pending_step = next_pending_step
-        cycles_for_step_i[-1] += 1  # for debugging: count this cycle towards the current global step
-
-
+    # print(cycle_for_step_i)
     return cycle
 
 
