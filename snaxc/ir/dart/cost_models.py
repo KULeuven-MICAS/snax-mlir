@@ -300,7 +300,10 @@ def _compute_operand_stride_per_tile(
     # TODO
     # TODO
     # TODO
-    strides[0] = [0, 64, 1024, 0, 256, 0, 0]
+    # strides[0] = [0, 64, 1024, 0, 256, 0, 0] # sched 200
+    # strides[1] = [64, 0, 1024, 256, 4096, 0, 0]
+    # strides[2] = [256, 0, 4096, 512, 0, 0, 0]
+    strides[0] = [0, 64, 1024, 0, 256, 0, 0] # sched 195
     strides[1] = [0, 64, 0, 1024, 256, 0, 0]
     strides[2] = [0, 0, 256, 4096, 0, 0, 0]
 
@@ -808,6 +811,13 @@ class StreamerState:
 
     output_buffer_depth: int = 4
     data_buffer_depth: int = 2
+    fixed_cache_depth: int = 63
+
+    # HandShakeRepeater count — models the Reader's RepeatHandshake.
+    # When the innermost loop has stride 0 and bound > 1, the reader
+    # overrides AGU bounds[0] to 1 and repeats each data word
+    # ``repeat_count`` times.  Default 1 = no repeat.
+    repeat_count: int = 1
 
     # --- Sub-components ---
     agu: AGUState = field(default=None)  # type: ignore[assignment]
@@ -838,7 +848,41 @@ class StreamerState:
     # channels simultaneously on dataBuffer.out.fire (dataFifoPopped).
     responser_slots: list[int] = field(default_factory=list)
 
+    # ---- FixedLevelCache state (only active when uses_fixed_cache) ----
+    # Models the fixedCacheInstructionBuffer FIFO in the AGU.  Each
+    # entry is ``(step, is_update_cache)`` where ``is_update_cache``
+    # means the step needs TCDM data (first pass through critical
+    # loop) and ``not is_update_cache`` means data is read from cache
+    # memory (subsequent passes).  The FIFO depth equals
+    # ``output_buffer_depth`` (matches RTL).
+    cache_instruction_buffer: deque[tuple[int, bool]] = field(default_factory=deque)
+
+    # Models the ``delayedValid`` register + associated data inside
+    # the FixedLevelCache.  When not None, the cache has valid output
+    # for this step that the accelerator can consume.  Updated at the
+    # end of each cycle (register semantics).
+    cache_output_step: int | None = None
+
     def __post_init__(self):
+        # --- Reader innermost-loop repeat override ---
+        # Loops with bound == 1 are pruned before reaching hardware,
+        # so the effective innermost level is the first with bound > 1.
+        # Reader.scala: when(temporalStrides(0) === 0.U) {
+        #   addressgen.io.cfg.temporalBounds(0) := 1.U
+        # }
+        # HandShakeRepeater: repeat_times = Mux(stride(0)==0, bounds(0), 1)
+        if self.is_reader:
+            effective_inner = None
+            for lvl in range(len(self.strides_bank)):
+                if self.bounds[lvl] > 1:
+                    effective_inner = lvl
+                    break
+            if (effective_inner is not None
+                    and self.strides_bank[effective_inner] == 0):
+                self.repeat_count = self.bounds[effective_inner]
+                self.bounds = list(self.bounds)  # ensure own copy
+                self.bounds[effective_inner] = 1
+
         if self.agu is None:
             self.agu = AGUState(
                 num_levels=self.num_levels,
@@ -861,7 +905,7 @@ class StreamerState:
         counters = self._step_to_counters(step)
         base = sum(self.strides_bank[lvl] * counters[lvl]
                    for lvl in range(self.num_levels))
-        return ((base + ch) // 8) % self.num_banks
+        return (base // 8 ) % self.num_banks + ch
 
     def _step_to_counters(self, step: int) -> list[int]:
         counters: list[int] = []
@@ -888,6 +932,54 @@ class StreamerState:
 
     # ----- AGU phase -----
 
+    @property
+    def uses_fixed_cache(self) -> bool:
+        """Does this streamer use the FixedLevelCache?
+
+        Matches the CriticalLoopFinder RTL logic exactly:
+
+        ``totalBounds(0) = bounds(0)``
+        For ``i > 0``:
+          if ``strides(i) == 0``: ``totalBounds(i) = totalBounds(i-1)``
+          else: ``totalBounds(i) = totalBounds(i-1) * bounds(i)``
+
+        Level ``i`` (where ``i > 0``) is a critical-loop candidate
+        when all three hold:
+          1. ``totalBounds(i-1) <= fixedCacheDepth``
+          2. ``strides(i) == 0``  (stride-0 at that level)
+          3. ``bounds(i) > 1``    (non-trivial loop)
+
+        ``anyLoopFound = any candidate``.
+        ``enableFixedCache`` is always true for readers.
+        """
+        if not self.is_reader:
+            return False
+        # Levels with bound == 1 are pruned before reaching hardware.
+        # CriticalLoopFinder operates on the compacted set of levels.
+        eff_bounds = []
+        eff_strides = []
+        for i in range(self.num_levels):
+            if self.bounds[i] > 1:
+                eff_bounds.append(self.bounds[i])
+                eff_strides.append(self.strides_bank[i])
+        if len(eff_bounds) < 2:
+            return False  # need at least 2 effective levels
+        # Compute totalBounds exactly as the RTL CriticalLoopFinder
+        total_bounds = [0] * len(eff_bounds)
+        total_bounds[0] = eff_bounds[0]
+        for i in range(1, len(eff_bounds)):
+            if eff_strides[i] == 0:
+                total_bounds[i] = total_bounds[i - 1]
+            else:
+                total_bounds[i] = total_bounds[i - 1] * eff_bounds[i]
+        # Check each effective level i > 0 for the three conditions
+        for i in range(1, len(eff_bounds)):
+            if (total_bounds[i - 1] <= self.fixed_cache_depth
+                    and eff_strides[i] == 0
+                    and eff_bounds[i] > 1):
+                return True
+        return False
+
     def agu_tick_possible(self) -> bool:
         """
         Can the AGU advance its counter this cycle?
@@ -902,47 +994,51 @@ class StreamerState:
         * With fixed cache (``newUseCache``):
           ``counters_tick = sBUSY && ((outputBufferFillCondition &&
             outputBuffer.fire) || fixedCacheInstructionBuffer.fire)``
-          → access steps need output buffer room;
-            non-access steps tick via fixedCacheInstructionBuffer
-            (same depth, always consumed in parallel → not a
-            bottleneck).  We don't model the instruction buffer, so
-            non-access steps tick freely.
-
-        Combined: for an access step, all per-channel output queues
-        must have room.  For a non-access step, the counter ticks
-        unconditionally.
+          → both the instruction buffer and the output buffer must
+            have room (the RTL gates the instruction buffer enqueue
+            on ``outputBuffer.ready && fixedCacheInstructionBuffer
+            .ready``).
+          For access steps the address also enters the outputBuffer.
+          For non-access steps the outputBuffer is not pushed but
+          its ready (room available) is still required.
         """
         if self.agu.state != "BUSY":
             return False
         if self.agu.done:
             return False
+        ob_has_room = all(
+            len(buf) < self.output_buffer_depth
+            for buf in self.output_buffers
+        )
+        if self.uses_fixed_cache:
+            cib_has_room = (
+                len(self.cache_instruction_buffer)
+                < self.output_buffer_depth
+            )
+            return ob_has_room and cib_has_room
         step = self.agu.current_step()
         if self.needs_tcdm_access(step):
-            # Access step: outputBuffer must accept → all channel
-            # queues need room (enq_all_ready in ComplexQueueConcat)
-            return all(len(buf) < self.output_buffer_depth
-                       for buf in self.output_buffers)
+            return ob_has_room
         else:
-            # Non-access step: fixedCacheInstructionBuffer would
-            # accept; we don't model it, so tick freely.
+            # Non-cache, non-access: shouldn't normally happen
+            # (only cache-enabled readers have non-access steps).
             return True
 
     def do_agu_tick(self):
         """
         Execute one AGU tick.
 
-        * Access step (``needs_tcdm_access`` is True):
-          Push the step index into ALL per-channel output buffer
-          queues simultaneously (matching ``outputBufferFillCondition
-          || !newUseCache`` in the RTL) and advance the counter.
-
-        * Non-access step: only advance the counter — no entry is
-          placed in the output buffer because no TCDM transaction is
-          needed.  The counter still ticks (via the
-          fixedCacheInstructionBuffer path in hardware).
+        * With cache: every tick pushes to the cache instruction
+          buffer.  Access steps (``needs_tcdm_access``) also push
+          to the output buffers for TCDM.
+        * Without cache: access steps push to output buffers.
+          Non-access steps only advance the counter.
         """
         step = self.agu.current_step()
-        if self.needs_tcdm_access(step):
+        is_access = self.needs_tcdm_access(step)
+        if self.uses_fixed_cache:
+            self.cache_instruction_buffer.append((step, is_access))
+        if is_access:
             for buf in self.output_buffers:
                 buf.append(step)
             self.step_grants_remaining[step] = self.spatial_banks
@@ -1009,13 +1105,30 @@ class StreamerState:
 
     # ----- accelerator interface -----
 
-    def reader_data_available(self, acc_step: int) -> bool:
-        """Does the dataBuffer contain the data for ``acc_step``?"""
-        return acc_step in self.data_buffer
+    def acc_to_agu_step(self, acc_step: int) -> int:
+        """Convert a global accelerator step to this streamer's AGU step.
 
-    def reader_consume(self, acc_step: int):
-        """Pop ``acc_step`` from the dataBuffer (accelerator consumed it)."""
-        self.data_buffer.remove(acc_step)
+        With repeat_count > 1 the AGU generates fewer steps, each
+        presented ``repeat_count`` times by the HandShakeRepeater.
+        For repeat_count == 1 this is the identity.
+        """
+        return acc_step // self.repeat_count
+
+    def is_last_repeat(self, acc_step: int) -> bool:
+        """Is ``acc_step`` the last repeat of its AGU step?
+
+        Matches HandShakeRepeater: ``io.in.ready := io.out.fire &&
+        dataRepeatCounter.io.lastVal``.
+        """
+        return acc_step % self.repeat_count == self.repeat_count - 1
+
+    def reader_data_available(self, agu_step: int) -> bool:
+        """Does the dataBuffer contain the data for ``agu_step``?"""
+        return agu_step in self.data_buffer
+
+    def reader_consume(self, agu_step: int):
+        """Pop ``agu_step`` from the dataBuffer (accelerator consumed it)."""
+        self.data_buffer.remove(agu_step)
         # dataFifoPopped fires for ALL channels simultaneously
         for ch in range(self.spatial_banks):
             self.responser_slots[ch] += 1
@@ -1026,6 +1139,47 @@ class StreamerState:
     def writer_accept(self, acc_step: int):
         """Accelerator pushes result into the writer's dataBuffer."""
         self.data_buffer.append(acc_step)
+
+    # ----- FixedLevelCache processing -----
+
+    def cache_process(self, acc_consumed: bool):
+        """Advance the FixedLevelCache state for one cycle.
+
+        This models the ``delayedValid`` register semantics from the
+        RTL FixedLevelCache module.  Must be called AFTER the
+        accelerator fire decision so that ``acc_consumed`` is known.
+
+        * ``canAcceptNew = !delayedValid || dataOut.ready``
+        * If a new instruction is processed this cycle,
+          ``delayedValid := true`` (output will be valid next cycle).
+        * Else if the accelerator consumed (``dataOut.ready``),
+          ``delayedValid := false``.
+
+        For an updateCache instruction the cache needs data from
+        ``data_buffer`` (connected to ``dataBuffer.out.head`` in
+        RTL).  For a cache-hit instruction no TCDM data is needed.
+        """
+        can_accept_new = (self.cache_output_step is None) or acc_consumed
+        processed_new = False
+        if can_accept_new and self.cache_instruction_buffer:
+            step, is_update = self.cache_instruction_buffer[0]
+            if is_update:
+                # Mode 2: needs data from dataBuffer head
+                if self.data_buffer:
+                    self.cache_instruction_buffer.popleft()
+                    self.data_buffer.popleft()
+                    # dataFifoPopped: free responser slots for ALL channels
+                    for ch in range(self.spatial_banks):
+                        self.responser_slots[ch] += 1
+                    self.cache_output_step = step
+                    processed_new = True
+            else:
+                # Mode 3: cache hit — read from cache memory, no TCDM
+                self.cache_instruction_buffer.popleft()
+                self.cache_output_step = step
+                processed_new = True
+        if not processed_new and acc_consumed:
+            self.cache_output_step = None
 
     @property
     def is_reader(self) -> bool:
@@ -1038,13 +1192,19 @@ class StreamerState:
     @property
     def is_fully_done(self) -> bool:
         """AGU finished, no pending requests, buffers drained."""
-        return (
+        done = (
             self.agu.done
             and all(len(buf) == 0 for buf in self.output_buffers)
             and not self.has_pending_channels()
             and len(self.step_grants_remaining) == 0
             and len(self.data_buffer) == 0
         )
+        if self.uses_fixed_cache:
+            done = done and (
+                len(self.cache_instruction_buffer) == 0
+                and self.cache_output_step is None
+            )
+        return done
 
 
 # ---------------------------------------------------------------------------
@@ -1120,7 +1280,7 @@ def _simulate_hardware(
     # Track which streamers share TCDM ports (RW pairs)
     # All other streamers have their own dedicated TCDM ports
 
-    # cycle_for_step_i = [0] * total_steps  # for debugging: cycle count when accelerator step i fires
+    cycle_for_step_i = [0] * total_steps  # for debugging: cycle count when accelerator step i fires
 
     for op_idx, desc in enumerate(operand_descriptors):
         if desc.kind == OperandKind.READER_WRITER:
@@ -1176,14 +1336,32 @@ def _simulate_hardware(
 
     num_streamers = len(streamers)
 
+    # --- TCDM port mapping ---
+    # In the RTL, a ReaderWriter shares one set of TCDM request
+    # channels (via MuxDecoupled).  The TCDM interconnect (stream_xbar
+    # / rr_arb_tree) only sees one physical port group per RW pair.
+    # Map each streamer index to a TCDM port index so that the RW
+    # pair's reader and writer share the same port.
+    streamer_to_port: dict[int, int] = {}
+    port_idx = 0
+    for si in range(num_streamers):
+        # Check if this streamer is the writer part of an RW pair
+        is_rw_writer = False
+        for pair in rw_pairs:
+            if pair.writer_idx == si:
+                # Writer shares port with reader
+                streamer_to_port[si] = streamer_to_port[pair.reader_idx]
+                is_rw_writer = True
+                break
+        if not is_rw_writer:
+            streamer_to_port[si] = port_idx
+            port_idx += 1
+    num_ports = port_idx
+
     # Per-bank round-robin priority state.
-    # After granting streamer *w* on bank *b*, the next priority on that
-    # bank rotates to the requestor index *after* w.  We store the
-    # "next priority" streamer index per bank.  Requestor indices are
-    # the global channel-request indices (streamer_idx * max_channels +
-    # ch_idx) flattened, but since the hardware's rr_arb_tree operates
-    # on the physical port indices wired into that bank, we simply
-    # track the *streamer index* that has next priority for each bank.
+    # The rr_arb_tree in stream_xbar operates on physical TCDM port
+    # indices.  After granting port *p* on bank *b*, the next priority
+    # rotates to ``(p + 1) % num_ports``.
     bank_rr_priority: dict[int, int] = {b: 0 for b in range(num_banks)}
 
     # Pending response queue: bursts that completed in the *previous*
@@ -1270,6 +1448,9 @@ def _simulate_hardware(
         # per-bank rr_arb_tree.  Each bank has its own independent
         # round-robin state.  After granting a requestor the priority
         # rotates to the *next* requestor (by index).
+        if acc_step == 8:
+            pass #For debugging: keep this here dont remove
+
         bank_to_requestors: dict[int, list[tuple[int, int]]] = {}
         for si, s in enumerate(streamers):
             for ch, bank in enumerate(s.channel_pending_bank):
@@ -1282,14 +1463,15 @@ def _simulate_hardware(
                 completed = streamers[si].grant_channel(ch)
                 for step in completed:
                     next_pending_responses.append((si, step))
-                bank_rr_priority[bank] = (si + 1) % num_streamers
+                port = streamer_to_port[si]
+                bank_rr_priority[bank] = (port + 1) % num_ports
             else:
                 # Per-bank round-robin: pick the requestor whose
-                # streamer index is nearest *at or after* the current
+                # TCDM port index is nearest *at or after* the current
                 # priority pointer, wrapping around.
                 prio = bank_rr_priority[bank]
                 def rr_key(r: tuple[int, int]) -> int:
-                    return (r[0] - prio) % num_streamers
+                    return (streamer_to_port[r[0]] - prio) % num_ports
                 winner = min(requestors, key=rr_key)
                 winner_si = winner[0]
                 # Grant ALL channels of the winner that are pending on
@@ -1299,7 +1481,8 @@ def _simulate_hardware(
                         completed = streamers[si].grant_channel(ch)
                         for step in completed:
                             next_pending_responses.append((si, step))
-                bank_rr_priority[bank] = (winner_si + 1) % num_streamers
+                winner_port = streamer_to_port[winner_si]
+                bank_rr_priority[bank] = (winner_port + 1) % num_ports
 
         # Store completed-step responses for delivery next cycle
         pending_responses = next_pending_responses
@@ -1307,25 +1490,34 @@ def _simulate_hardware(
         # ==============================================================
         # Phase 4: Accelerator fire logic
         # ==============================================================
-        # The accelerator fires when every reader that needs a TCDM
-        # access at this step has its data in the dataBuffer, and
-        # every writer that needs a TCDM access has space.  Streamers
-        # whose invariant-dim gating says no access is needed at
-        # ``acc_step`` do not block the accelerator.
+        # The accelerator fires when every reader has its data ready
+        # and every writer has space.  For cache-enabled readers the
+        # data comes from the FixedLevelCache output (every step,
+        # since the cache provides data for both TCDM and cached
+        # steps).  For non-cache readers and writers, the
+        # ``needs_tcdm_access`` gating determines whether data is
+        # required.
         acc_can_fire = acc_step < total_steps
-        # if acc_can_fire:
-        #     cycle_for_step_i[acc_step] += 1  # record when this step fired
+        if acc_can_fire:
+            cycle_for_step_i[acc_step] += 1  # record when this step fired
 
-        if acc_step == 5:
+        if acc_step == 128:
             pass #For debugging: keep this here dont remove
 
         if acc_can_fire:
             for s in streamers:
                 if s.is_reader:
-                    if s.needs_tcdm_access(acc_step):
-                        if not s.reader_data_available(acc_step):
+                    agu_step = s.acc_to_agu_step(acc_step)
+                    if s.uses_fixed_cache:
+                        # Cache-enabled: every AGU step needs cache output
+                        if s.cache_output_step != agu_step:
                             acc_can_fire = False
                             break
+                    else:
+                        if s.needs_tcdm_access(agu_step):
+                            if not s.reader_data_available(agu_step):
+                                acc_can_fire = False
+                                break
                 elif s.is_writer:
                     if s.needs_tcdm_access(acc_step):
                         if not s.writer_has_space():
@@ -1335,14 +1527,44 @@ def _simulate_hardware(
         if acc_can_fire:
             for s in streamers:
                 if s.is_reader:
-                    if s.needs_tcdm_access(acc_step):
-                        s.reader_consume(acc_step)
+                    agu_step = s.acc_to_agu_step(acc_step)
+                    if s.uses_fixed_cache:
+                        pass  # cache output consumed — handled in Phase 5
+                    elif s.needs_tcdm_access(agu_step):
+                        # Only actually consume on the last repeat
+                        # (HandShakeRepeater: in.ready = out.fire && lastVal)
+                        if s.is_last_repeat(acc_step):
+                            s.reader_consume(agu_step)
                 elif s.is_writer:
                     if s.needs_tcdm_access(acc_step):
                         s.writer_accept(acc_step)
             acc_step += 1
 
-    # print(cycle_for_step_i)
+        # ==============================================================
+        # Phase 5: FixedLevelCache update (register edge)
+        # ==============================================================
+        # Process the cache for each cache-enabled reader.  This
+        # models the ``delayedValid`` register update at the clock
+        # edge.  The cache can start processing a new instruction
+        # if its output was consumed by the accelerator this cycle
+        # (``canAcceptNew = !delayedValid || dataOut.ready``).
+        for s in streamers:
+            if s.is_reader and s.uses_fixed_cache:
+                # Did the accelerator consume this reader's cache output?
+                # Only consumed on the last repeat of the AGU step
+                # (HandShakeRepeater: in.ready = out.fire && lastVal)
+                if acc_can_fire:
+                    fired_acc_step = acc_step - 1
+                    agu_step = s.acc_to_agu_step(fired_acc_step)
+                    consumed = (
+                        s.cache_output_step == agu_step
+                        and s.is_last_repeat(fired_acc_step)
+                    )
+                else:
+                    consumed = False
+                s.cache_process(consumed)
+
+    print(cycle_for_step_i)
     return cycle
 
 
