@@ -856,6 +856,7 @@ class StreamerState:
     # memory (subsequent passes).  The FIFO depth equals
     # ``output_buffer_depth`` (matches RTL).
     cache_instruction_buffer: deque[tuple[int, bool]] = field(default_factory=deque)
+    old_cib: deque[tuple[int, bool]] = field(default_factory=deque)  # for debugging: track the "old" CIB state at the time of AGU ticks
 
     # Models the ``delayedValid`` register + associated data inside
     # the FixedLevelCache.  When not None, the cache has valid output
@@ -950,10 +951,9 @@ class StreamerState:
           3. ``bounds(i) > 1``    (non-trivial loop)
 
         ``anyLoopFound = any candidate``.
-        ``enableFixedCache`` is always true for readers.
+        ``enableFixedCache`` is always true for readers and for
+        the writer half of a ReaderWriter pair.
         """
-        if not self.is_reader:
-            return False
         # Levels with bound == 1 are pruned before reaching hardware.
         # CriticalLoopFinder operates on the compacted set of levels.
         eff_bounds = []
@@ -1012,7 +1012,7 @@ class StreamerState:
         )
         if self.uses_fixed_cache:
             cib_has_room = (
-                len(self.cache_instruction_buffer)
+                len(self.old_cib)
                 < self.output_buffer_depth
             )
             return ob_has_room and cib_has_room
@@ -1046,7 +1046,7 @@ class StreamerState:
 
     # ----- per-channel request / grant helpers -----
 
-    def channel_can_request(self, ch: int) -> bool:
+    def channel_can_request(self, ch: int, data_fifo_popped: bool = False) -> bool:
         """Can channel ``ch`` issue a new TCDM request this cycle?
 
         Mirrors the DataRequestor fire conditions:
@@ -1054,7 +1054,9 @@ class StreamerState:
           non-empty).
         * Not already mid-request (``channel_pending_bank[ch]`` is
           None).
-        * Reader: DataResponser has room (``responser_slots > 0``).
+        * Reader: DataResponser has room (``responser_slots > 0``)
+          **or** ``dataFifoPopped`` is true (combinational bypass
+          from DataResponser: ``rspReady = ~lastVal || dataFifoPopped``).
         * Writer: dataBuffer has data to write.
         """
         if self.channel_pending_bank[ch] is not None:
@@ -1063,7 +1065,7 @@ class StreamerState:
             return False  # no address in queue
         # Streamer-level preconditions
         if self.kind in (OperandKind.READER, OperandKind.READER_WRITER):
-            if self.responser_slots[ch] <= 0:
+            if self.responser_slots[ch] <= 0 and not data_fifo_popped:
                 return False
         else:  # WRITER
             if len(self.data_buffer) == 0:
@@ -1134,10 +1136,44 @@ class StreamerState:
             self.responser_slots[ch] += 1
 
     def writer_has_space(self) -> bool:
+        """Can the writer accept a new d_o datum?
+
+        RTL Writer.scala (ReaderWriter, fixed-cache mode):
+          instrValid = fixedCacheInstructionBuffer.deq.valid
+          goToTCDM  = !instr.useCache || instr.lastAccess
+          targetReady = Mux(goToTCDM, dataBuffer.in.head.ready, true.B)
+          dataAfterCrosser.ready = instrValid && targetReady
+
+        Without fixed-cache: plain dataBuffer space check.
+        """
+        if self.uses_fixed_cache:
+            if not self.cache_instruction_buffer:
+                return False  # no instrValid
+            _step, is_access = self.cache_instruction_buffer[0]
+            if is_access:  # lastAccess → goToTCDM: need dataBuffer room
+                return len(self.data_buffer) < self.data_buffer_depth
+            return True  # cache-only path: no backpressure
         return len(self.data_buffer) < self.data_buffer_depth
 
     def writer_accept(self, acc_step: int):
-        """Accelerator pushes result into the writer's dataBuffer."""
+        """Accelerator pushes result into the writer.
+
+        RTL Writer.scala (ReaderWriter, fixed-cache mode):
+          bothValid = dataAfterCrosser.valid && instrValid
+          - goToCache (useCache): write to reader's FixedLevelCache
+            (combinational, no timing effect in model)
+          - goToTCDM (lastAccess): push into dataBuffer for TCDM
+            writeback
+          Consumes one fixedCacheInstruction per d_o fire.
+
+        Without fixed-cache: push directly to dataBuffer.
+        """
+        if self.uses_fixed_cache:
+            _step, is_access = self.cache_instruction_buffer.popleft()
+            if is_access:  # lastAccess → data goes to TCDM
+                self.data_buffer.append(acc_step)
+            # else: cache-only write, no dataBuffer entry
+            return
         self.data_buffer.append(acc_step)
 
     # ----- FixedLevelCache processing -----
@@ -1225,6 +1261,452 @@ class ReaderWriterPair:
     writer_idx: int
     # Track which side was selected last cycle (for response routing)
     last_sel_writer: bool = False
+
+
+@dataclass
+class BlockGemmState:
+    """
+    Models the BlockGemm accelerator state machine with independent
+    per-streamer ready/valid signals, matching the RTL in
+    BlockGemm.scala and GemmTileArray.scala.
+
+    Ports (mapped to streamer indices):
+      - a_i (Flipped Decoupled): reader for operand A
+      - b_i (Flipped Decoupled): reader for operand B
+      - c_i (Flipped Decoupled): reader for operand C (accumulator input)
+      - d_o (Decoupled): writer for operand D (result output)
+
+    Key RTL behaviours modelled:
+      1. DecoupledCat4to1 synchronises a_i and b_i — both must be
+         valid simultaneously for the combined value to enter the
+         register cut.
+      2. Register cut (``-\\>``) on the combined a+b bus: 1-cycle
+         pipeline delay before data reaches the compute array.
+      3. compute_fire_counter: counts 0..K-1.  When 0 the tile
+         additionally needs c_i.  When K-1 the output accumulation
+         is complete (result available next cycle).
+      4. Tile back-pressure:
+           d_valid_o = data_i_fire_reg || keep_output
+           a_b_c_ready_o = !keep_output && !(d_valid_o && !d_ready_i)
+           keep_output (reg) = d_valid_o && !d_ready_i
+      5. d_o.valid: asserted when d_output_ifvalid_counter == K-1
+         and d_valid_o is true.
+      6. d_ready_i = Mux(d_o.valid, d_o.ready, 1.B) — always
+         accepts internally when d_o is not externally valid.
+    """
+
+    # --- Configuration ---
+    K: int  # reduction dimension (number of a+b computes per output tile)
+    M_N: int  # total output tiles (M * N)
+    a_streamer_idx: int  # index into streamers[] for a_i
+    b_streamer_idx: int  # index into streamers[] for b_i
+    c_streamer_idx: int  # index into streamers[] for c_i (reader half of RW)
+    d_streamer_idx: int  # index into streamers[] for d_o (writer half of RW)
+
+    # --- Runtime state (registers) ---
+    busy: bool = False
+    compute_fire_counter: int = 0  # 0..K-1
+    d_output_ifvalid_counter: int = 0  # counts K output fires
+    d_output_counter: int = 0  # counts M*N total output writes
+
+    # DataCut(delay=2) pipeline: models the -\\> operator used in
+    # BlockGemm.scala for combined_decoupled_a_b_in -\\> combined_decoupled_a_b_out.
+    # This is a 2-stage shift register with enable.
+    #   shiftPermission = (outValid && out.ready) || !outValid
+    #   io.in.ready = shiftPermission
+    #   shift = shiftPermission && shiftSuggestion
+    # When shift fires, all stages advance simultaneously.
+    # stage[1] is the output (connected to combined_decoupled_a_b_out).
+    datacut_stage0_valid: bool = False
+    datacut_stage1_valid: bool = False  # = combined_decoupled_a_b_out.valid
+
+    # Tile registered state
+    data_i_fire_reg: bool = False  # compute fired last cycle → d_valid_o
+    keep_output: bool = False  # back-pressure: output not consumed
+
+    # Track total accelerator steps consumed (for compatibility with
+    # the rest of the simulation which uses ``acc_step``).
+    acc_step: int = 0  # compute-side step (which step the tile is processing)
+    input_step: int = 0  # regcut-input-side step (which step a+b are being fetched for)
+
+    # --- Per-streamer consumed flags (set by tick(), read by simulation) ---
+    # True when that reader's data was actually popped from its
+    # dataBuffer (or cache output consumed) this cycle.
+    # The agu_step fields store which agu_step was consumed (only
+    # valid when the corresponding bool is True).
+    a_consumed: bool = False
+    a_consumed_agu_step: int = -1
+    b_consumed: bool = False
+    b_consumed_agu_step: int = -1
+    c_consumed: bool = False
+    c_consumed_agu_step: int = -1
+    # True when the compute array fired (regcut output consumed)
+    compute_fired: bool = False
+    # True when d_o fired (output pushed to writer)
+    d_produced: bool = False
+
+    # --- Combinational signals (recomputed each cycle) ---
+
+    def _d_valid_o(self) -> bool:
+        """Tile's d_valid_o = data_i_fire_reg || keep_output"""
+        return self.data_i_fire_reg or self.keep_output
+
+    def _a_b_c_ready_o(self, d_ready_i: bool) -> bool:
+        """Tile: a_b_c_ready_o = !keep_output && !(d_valid_o && !d_ready_i)"""
+        d_valid = self._d_valid_o()
+        return (not self.keep_output) and not (d_valid and not d_ready_i)
+
+    def _d_o_valid(self) -> bool:
+        """BlockGemm d_o.valid output to the writer streamer.
+
+        When K==1: d_valid_o && busy
+        Otherwise: (d_output_ifvalid_counter == K-1) && d_valid_o && busy
+        """
+        if not self.busy:
+            return False
+        d_valid = self._d_valid_o()
+        if self.K == 1:
+            return d_valid
+        return (self.d_output_ifvalid_counter == self.K - 1) and d_valid
+
+    def tick(self, streamers: list) -> bool:
+        """
+        Advance the BlockGemm state machine by one cycle.
+
+        This replaces the monolithic ``acc_can_fire`` logic.  Instead
+        of requiring all streamers to be ready simultaneously, it
+        evaluates each port independently based on the RTL handshake
+        protocol.
+
+        Returns True if the accelerator consumed at least one input
+        (any fire happened), for use in Phase 5 cache logic.
+
+        Call order within the simulation loop:
+          Phase 4a: tick() — evaluates all combinational signals,
+            updates registered state for next cycle.
+        """
+        # Reset per-cycle flags
+        self.a_consumed = False
+        self.a_consumed_agu_step = -1
+        self.b_consumed = False
+        self.b_consumed_agu_step = -1
+        self.c_consumed = False
+        self.c_consumed_agu_step = -1
+        self.compute_fired = False
+        self.d_produced = False
+
+        if not self.busy:
+            return False
+
+        s_a: StreamerState = streamers[self.a_streamer_idx]
+        s_b: StreamerState = streamers[self.b_streamer_idx]
+        s_c: StreamerState = streamers[self.c_streamer_idx]
+        s_d: StreamerState = streamers[self.d_streamer_idx]
+
+        # --- Step 1: Determine d_ready_i (writer back-pressure) ---
+        # d_ready_i = Mux(d_o.valid, d_o.ready, 1.B)
+        # d_o.ready = writer streamer has space in data_buffer
+        d_o_valid = self._d_o_valid()
+        d_o_ready = s_d.writer_has_space()
+        d_ready_i = d_o_ready if d_o_valid else True
+
+        # --- Step 2: Tile ready signal ---
+        a_b_c_ready = self._a_b_c_ready_o(d_ready_i)
+
+        # --- Step 3: combined_decoupled_a_b_out (after DataCut) ---
+        # stage[1] of the DataCut is the output.
+        combined_out_valid = self.datacut_stage1_valid
+
+        # --- Step 4: a_b_data_valid ---
+        # At counter==0: needs combined_out + c_i valid
+        # Otherwise: just combined_out valid
+        agu_step_a = s_a.acc_to_agu_step(self.acc_step)
+        agu_step_b = s_b.acc_to_agu_step(self.acc_step)
+
+        c_valid = False
+        if self.compute_fire_counter == 0:
+            agu_step_c = s_c.acc_to_agu_step(self.acc_step)
+            c_valid = self._reader_data_valid(s_c, agu_step_c)
+            a_b_data_valid = combined_out_valid and c_valid
+        else:
+            a_b_data_valid = combined_out_valid
+
+        # --- Step 5: Compute fire ---
+        # gemm_a_b_input_fire = a_b_data_ready && a_b_data_valid
+        # a_b_data_ready = a_b_c_ready && busy
+        a_b_data_ready = a_b_c_ready and self.busy
+        gemm_input_fire = a_b_data_ready and a_b_data_valid
+
+        # --- Step 6: add_c logic ---
+        add_c = (self.compute_fire_counter == 0 and self.busy
+                 and c_valid and a_b_data_valid)
+        add_c_fire = add_c and a_b_c_ready
+
+        # --- Step 7: d_o fire (output to writer streamer) ---
+        d_o_fire = d_o_valid and d_o_ready
+
+        # --- Step 8: gemm_output_fire (internal array output) ---
+        d_valid_o = self._d_valid_o()
+        gemm_output_fire = d_valid_o and d_ready_i
+
+        # ============================================================
+        # Consume from / produce to streamers
+        # ============================================================
+        any_consumed = False
+
+        # Output: if d_o fires, push to writer data_buffer
+        computation_finish = False
+        if d_o_fire:
+            s_d.writer_accept(self.acc_step - 1)  # the step that produced this result
+            # Check computation finish BEFORE incrementing (matches RTL)
+            computation_finish = (self.d_output_counter == self.M_N - 1)
+            self.d_output_counter += 1
+            self.d_produced = True
+
+        # Input consumption:
+        if gemm_input_fire:
+            any_consumed = True
+            self.compute_fired = True
+
+            # Consume c if add_c_fire
+            if add_c_fire:
+                if s_c.is_last_repeat(self.acc_step):
+                    self.c_consumed = True
+                    self.c_consumed_agu_step = s_c.acc_to_agu_step(self.acc_step)
+
+        # ============================================================
+        # DataCut(delay=2) INPUT: can a+b enter the pipeline?
+        # ============================================================
+        # The DataCut is a 2-stage shift register from the -\\>
+        # operator in BlockGemm.scala.
+        #   shiftPermission = (outValid && out.ready) || !outValid
+        #   io.in.ready = shiftPermission
+        # When the output is being consumed (gemm_input_fire acts as
+        # out.ready for the compute side), or when the output is not
+        # valid, the pipeline can accept new data.
+        #
+        # RTL: combined_decoupled_a_b_out.ready :=
+        #        cstate === sBUSY && gemm_a_b_input_fire
+        # gemm_a_b_input_fire = a_b_data_ready && a_b_data_valid
+        # So out.ready requires BOTH the tile ready AND data valid
+        # (which at counter==0 includes c_i.valid).
+        datacut_out_ready = gemm_input_fire
+        datacut_out_valid = self.datacut_stage1_valid
+        shift_permission = (datacut_out_valid and datacut_out_ready) or (not datacut_out_valid)
+        # shiftSuggestion = dataInsideShiftRegister || in.valid
+        # We track dataInsideShiftRegister via stage0_valid.
+        datacut_input_ready = shift_permission
+
+        # The input side tracks its own step counter (input_step),
+        # which can be up to 1 ahead of acc_step (the compute side)
+        # because the regcut decouples them.
+        if self.input_step < (self.M_N * self.K):
+            next_agu_a = s_a.acc_to_agu_step(self.input_step)
+            next_agu_b = s_b.acc_to_agu_step(self.input_step)
+            a_valid = self._reader_data_valid(s_a, next_agu_a)
+            b_valid = self._reader_data_valid(s_b, next_agu_b)
+        else:
+            a_valid = False
+            b_valid = False
+
+        regcut_input_fire = datacut_input_ready and a_valid and b_valid
+
+        # Consume a and b from streamers when regcut input fires
+        if regcut_input_fire:
+            if s_a.is_last_repeat(self.input_step):
+                self.a_consumed = True
+                self.a_consumed_agu_step = s_a.acc_to_agu_step(self.input_step)
+            if s_b.is_last_repeat(self.input_step):
+                self.b_consumed = True
+                self.b_consumed_agu_step = s_b.acc_to_agu_step(self.input_step)
+            self.input_step += 1
+
+        # ============================================================
+        # Update registered state for next cycle
+        # ============================================================
+
+        # compute_fire_counter update
+        if gemm_input_fire:
+            if self.K == 1:
+                pass  # stays at 0
+            elif self.compute_fire_counter == self.K - 1:
+                self.compute_fire_counter = 0
+            else:
+                self.compute_fire_counter += 1
+            self.acc_step += 1
+
+        # d_output_ifvalid_counter update
+        if gemm_output_fire:
+            if self.K == 1:
+                pass  # stays at 0
+            elif self.d_output_ifvalid_counter == self.K - 1:
+                self.d_output_ifvalid_counter = 0
+            else:
+                self.d_output_ifvalid_counter += 1
+
+        # Tile registers
+        new_data_i_fire_reg = gemm_input_fire
+        new_keep_output = d_valid_o and (not d_ready_i)
+
+        # DataCut shift register update
+        # shift = shiftPermission && shiftSuggestion
+        # shiftSuggestion = dataInsideShiftRegister || io.in.valid
+        # dataInsideShiftRegister tracks whether ANY stage has data
+        # (RTL uses a counter: insideCounter != delay).  For delay=2
+        # this is equivalent to stage0_valid || stage1_valid.
+        # io.in.valid = a_valid && b_valid (from DecoupledCat4to1;
+        # subtraction inputs are always valid when busy).
+        data_inside = self.datacut_stage0_valid or self.datacut_stage1_valid
+        shift_suggestion = data_inside or (a_valid and b_valid)
+        shift = shift_permission and shift_suggestion
+
+        if shift:
+            new_datacut_stage1_valid = self.datacut_stage0_valid
+            new_datacut_stage0_valid = regcut_input_fire
+        else:
+            new_datacut_stage1_valid = self.datacut_stage1_valid
+            new_datacut_stage0_valid = self.datacut_stage0_valid
+
+        # Apply register updates
+        self.data_i_fire_reg = new_data_i_fire_reg
+        self.keep_output = new_keep_output
+        self.datacut_stage0_valid = new_datacut_stage0_valid
+        self.datacut_stage1_valid = new_datacut_stage1_valid
+
+        # Check computation finish
+        if d_o_fire and computation_finish and self.busy:
+            self.busy = False
+
+        return any_consumed
+
+    def _reader_data_valid(self, s: 'StreamerState', agu_step: int) -> bool:
+        """Check if a reader streamer has data available."""
+        if s.uses_fixed_cache:
+            return s.cache_output_step == agu_step
+        else:
+            if s.needs_tcdm_access(agu_step):
+                return s.reader_data_available(agu_step)
+            return True  # invariant step — always "valid"
+
+    def _predict_acc_consumes_reader(self, si: int, streamers: list) -> bool:
+        """Predict whether tick() will set the consumed flag for reader si.
+
+        Mirrors the exact conditions in tick() that set
+        a_consumed / b_consumed / c_consumed.
+        """
+        s = streamers[si]
+
+        if si == self.a_streamer_idx or si == self.b_streamer_idx:
+            # a/b: consumed when datacut_input_fire AND is_last_repeat.
+            # datacut_input_ready = shift_permission
+            #   = (outValid && out.ready) || !outValid
+            # RTL: out.ready = sBUSY && gemm_a_b_input_fire
+            #   = a_b_data_ready && a_b_data_valid
+            # So we need to compute gemm_input_fire to get shift_permission.
+            d_o_valid = self._d_o_valid()
+            d_o_ready = streamers[self.d_streamer_idx].writer_has_space()
+            d_ready_i = d_o_ready if d_o_valid else True
+            a_b_c_ready = self._a_b_c_ready_o(d_ready_i)
+            a_b_data_ready = a_b_c_ready and self.busy
+
+            # Compute a_b_data_valid (same logic as tick Step 4)
+            combined_out_valid = self.datacut_stage1_valid
+            s_c = streamers[self.c_streamer_idx]
+            if self.compute_fire_counter == 0:
+                agu_step_c = s_c.acc_to_agu_step(self.acc_step)
+                c_valid = self._reader_data_valid(s_c, agu_step_c)
+                a_b_data_valid = combined_out_valid and c_valid
+            else:
+                a_b_data_valid = combined_out_valid
+
+            gemm_input_fire = a_b_data_ready and a_b_data_valid
+            datacut_out_valid = self.datacut_stage1_valid
+            shift_permission = (
+                (datacut_out_valid and gemm_input_fire) or
+                (not datacut_out_valid)
+            )
+            if not shift_permission:
+                return False
+            step = self.input_step
+            if step >= self.M_N * self.K:
+                return False
+            if not s.is_last_repeat(step):
+                return False
+            # Both a AND b must be valid for regcut input to fire
+            s_a = streamers[self.a_streamer_idx]
+            s_b = streamers[self.b_streamer_idx]
+            a_agu = s_a.acc_to_agu_step(step)
+            b_agu = s_b.acc_to_agu_step(step)
+            return (self._reader_data_valid(s_a, a_agu) and
+                    self._reader_data_valid(s_b, b_agu))
+
+        elif si == self.c_streamer_idx:
+            # c: consumed when add_c_fire AND is_last_repeat
+            if self.compute_fire_counter != 0:
+                return False
+            if not self.datacut_stage1_valid:
+                return False  # combined_out_valid required
+            step = self.acc_step
+            if not s.is_last_repeat(step):
+                return False
+            agu_step = s.acc_to_agu_step(step)
+            c_valid = self._reader_data_valid(s, agu_step)
+            if not c_valid:
+                return False
+            # a_b_c_ready_o: check tile back-pressure
+            d_o_valid = self._d_o_valid()
+            d_o_ready = streamers[self.d_streamer_idx].writer_has_space()
+            d_ready_i = d_o_ready if d_o_valid else True
+            return self._a_b_c_ready_o(d_ready_i)
+
+        return False
+
+    def predict_data_fifo_popped(self, si: int, streamers: list) -> bool:
+        """Predict whether reader si's dataBuffer will be popped this cycle.
+
+        Unified prediction for ALL reader types (cache and non-cache).
+        Used for the dataFifoPopped combinational bypass in Phase 2.
+
+        For cache readers the dataBuffer pop happens inside
+        cache_process when it handles an updateCache instruction.
+        canAcceptNew = (no output) or (acc consumed cache output).
+
+        For non-cache readers the dataBuffer is popped directly by
+        the accelerator, but only when needs_tcdm_access is True
+        (invariant steps have no buffer entry).
+        """
+        if not self.busy:
+            return False
+
+        s = streamers[si]
+
+        if s.uses_fixed_cache:
+            # Cache: dataBuffer popped when cache_process handles an
+            # updateCache instruction with data.
+            acc_consumed = self._predict_acc_consumes_reader(si, streamers)
+            can_accept = (s.cache_output_step is None) or acc_consumed
+            if can_accept and s.cache_instruction_buffer:
+                step, is_update = s.cache_instruction_buffer[0]
+                return is_update and bool(s.data_buffer)
+            return False
+        else:
+            # Non-cache: direct buffer pop when acc consumes AND
+            # this step actually has a buffer entry.
+            if not self._predict_acc_consumes_reader(si, streamers):
+                return False
+            if si == self.a_streamer_idx or si == self.b_streamer_idx:
+                step = self.input_step
+            elif si == self.c_streamer_idx:
+                step = self.acc_step
+            else:
+                return False
+            agu_step = s.acc_to_agu_step(step)
+            return s.needs_tcdm_access(agu_step)
+
+    @property
+    def is_done(self) -> bool:
+        """Has the accelerator finished all computation?"""
+        return not self.busy and self.d_output_counter >= self.M_N
 
 
 def _simulate_hardware(
@@ -1364,20 +1846,68 @@ def _simulate_hardware(
     # rotates to ``(p + 1) % num_ports``.
     bank_rr_priority: dict[int, int] = {b: 0 for b in range(num_banks)}
 
-    # Pending response queue: bursts that completed in the *previous*
-    # cycle.  Due to MemoryResponseLatency = 1 in the TCDM interconnect,
-    # response data arrives 1 cycle after the request is granted.
-    # Entries are (streamer_index, step) tuples.
+    # Two-stage response pipeline modeling TCDM + register latency:
+    # Cycle N:   request granted (Phase 3) → next_pending_responses
+    # Cycle N+1: response exits TCDM shift_reg (pending_responses)
+    # Cycle N+2: data registered into data_buffer (pending_buffer_writes)
     pending_responses: list[tuple[int, int]] = []
+    pending_buffer_writes: list[tuple[int, int]] = []
 
-    # Accelerator step counter
-    acc_step = 0
+    # --- Build BlockGemmState accelerator model ---
+    # Identify streamer indices for a, b, c, d and determine K / M*N.
+    # Convention: readers come first (A, B), then the RW split (C reader,
+    # C writer).  The K dimension is the one C is invariant to.
+    a_idx = b_idx = c_idx = d_idx = -1
+    reader_count = 0
+    for si, s in enumerate(streamers):
+        if s.is_reader:
+            if reader_count == 0:
+                a_idx = si
+            elif reader_count == 1:
+                b_idx = si
+            else:
+                # Third reader = C reader (from RW split)
+                c_idx = si
+            reader_count += 1
+        elif s.is_writer:
+            d_idx = si
+
+    # Determine K from tiling: product of bounds for dimensions
+    # that C (RW operand) is invariant to.
+    # The RW operand's invariant_dims tells us which dims are K.
+    rw_desc = None
+    for desc in operand_descriptors:
+        if desc.kind == OperandKind.READER_WRITER:
+            rw_desc = desc
+            break
+    k_dims = rw_desc.invariant_dims if rw_desc else frozenset()
+    K_val = 1
+    M_N_val = 1
+    found_inner_loop = False
+    for dim_idx, tile_size, _ in tiling:
+        if dim_idx in k_dims and not found_inner_loop:
+            K_val *= tile_size
+        else:
+            M_N_val *= tile_size
+        if tile_size > 1:
+            found_inner_loop = True
+
+    acc = BlockGemmState(
+        K=K_val,
+        M_N=M_N_val,
+        a_streamer_idx=a_idx,
+        b_streamer_idx=b_idx,
+        c_streamer_idx=c_idx,
+        d_streamer_idx=d_idx,
+    )
+    acc.busy = True
+
     cycle = 0
-    MAX_CYCLES = total_steps * num_streamers * num_banks * 10
+    MAX_CYCLES = total_steps * num_streamers * 2
 
     while cycle < MAX_CYCLES:
         # --- Termination check ---
-        if acc_step >= total_steps and not pending_responses and all(
+        if acc.is_done and not pending_responses and not pending_buffer_writes and all(
             s.is_fully_done for s in streamers
         ):
             break
@@ -1385,20 +1915,34 @@ def _simulate_hardware(
         cycle += 1
 
         # ==============================================================
-        # Phase 0: Deliver responses from *previous* cycle
+        # Phase 0: Deliver responses & advance pipeline
         # ==============================================================
-        # TCDM response latency = 1 cycle: data requested in cycle N-1
-        # arrives in cycle N.  For readers this pushes into the
-        # dataBuffer; for writers this pops the written data.
+        # Readers: 2-cycle latency — grant (N) → shift_reg (N+1) →
+        #   data_buffer register (N+2).
+        # Writers: 1-cycle latency — data leaves with the request,
+        #   the write completes when the grant is acknowledged (the
+        #   TCDM shift_reg response merely confirms the write).
+        #   data_buffer is popped in the cycle after grant.
         next_pending_responses: list[tuple[int, int]] = []
-        for si, step in pending_responses:
+
+        # Stage 2 (readers only): register TCDM read data into dataBuffer
+        for si, step in pending_buffer_writes:
             s = streamers[si]
             if s.is_reader:
                 s.data_buffer.append(step)
+
+        # Stage 1: process shift_reg outputs
+        # Writers: pop data_buffer now (data already sent with request)
+        # Readers: promote to stage 2 for next cycle
+        next_buffer_writes: list[tuple[int, int]] = []
+        for si, step in pending_responses:
+            s = streamers[si]
+            if s.is_reader:
+                next_buffer_writes.append((si, step))
             else:
-                # Writer: data was in buffer, now written to TCDM
                 if s.data_buffer:
                     s.data_buffer.popleft()
+        pending_buffer_writes = next_buffer_writes
         pending_responses = []
 
         # ==============================================================
@@ -1408,6 +1952,9 @@ def _simulate_hardware(
         # advances when ALL per-channel output buffer queues accept
         # (mirrors counters_tick = sBUSY && outputBuffer.in.head.fire
         # where fire requires enq_all_ready across all channel queues).
+        if cycle == 6:
+            pass #For debugging: keep this here dont remove
+
         for s in streamers:
             if s.agu_tick_possible():
                 s.do_agu_tick()
@@ -1419,6 +1966,29 @@ def _simulate_hardware(
         # has an address in its output buffer queue and meets
         # streamer-level preconditions.
         #
+        # The RTL DataResponser has a combinational bypass:
+        #   rspReady = ~lastVal || dataFifoPopped
+        # So even when responser_slots == 0, a reader can issue if
+        # its dataBuffer will be popped this cycle.  Pre-compute
+        # this per-reader before issuing requests.
+        #
+        # dataFifoPopped sources:
+        # (a) Non-cache reader: accelerator fire → reader_consume
+        # (b) Cache reader: cache_process consuming updateCache from
+        #     dataBuffer (independent of acc fire for the pop itself,
+        #     but canAcceptNew depends on acc consuming cache output).
+
+        # Compute per-reader dataFifoPopped bypass using BlockGemmState
+        data_fifo_popped: dict[int, bool] = {}
+
+        if cycle == 5:
+            pass #For debugging: keep this here dont remove
+
+        for si, s in enumerate(streamers):
+            if not s.is_reader:
+                continue
+            data_fifo_popped[si] = acc.predict_data_fifo_popped(si, streamers)
+
         # For RW pairs: writer side has priority.  If the writer has
         # any pending or requestable channels, the reader is blocked.
         rw_blocked: set[int] = set()
@@ -1434,11 +2004,15 @@ def _simulate_hardware(
             else:
                 pair.last_sel_writer = False
 
+        if cycle == 11:
+            pass #For debugging: keep this here dont remove
+
         for si, s in enumerate(streamers):
             if si in rw_blocked:
                 continue
+            bypass = data_fifo_popped.get(si, False)
             for ch in range(s.spatial_banks):
-                if s.channel_can_request(ch):
+                if s.channel_can_request(ch, data_fifo_popped=bypass):
                     s.start_channel_request(ch)
 
         # ==============================================================
@@ -1448,7 +2022,7 @@ def _simulate_hardware(
         # per-bank rr_arb_tree.  Each bank has its own independent
         # round-robin state.  After granting a requestor the priority
         # rotates to the *next* requestor (by index).
-        if acc_step == 8:
+        if cycle == 12:
             pass #For debugging: keep this here dont remove
 
         bank_to_requestors: dict[int, list[tuple[int, int]]] = {}
@@ -1464,7 +2038,8 @@ def _simulate_hardware(
                 for step in completed:
                     next_pending_responses.append((si, step))
                 port = streamer_to_port[si]
-                bank_rr_priority[bank] = (port + 1) % num_ports
+                #bank_rr_priority[bank] = (port + 1) % num_ports
+                bank_rr_priority[bank] = 0
             else:
                 # Per-bank round-robin: pick the requestor whose
                 # TCDM port index is nearest *at or after* the current
@@ -1482,89 +2057,64 @@ def _simulate_hardware(
                         for step in completed:
                             next_pending_responses.append((si, step))
                 winner_port = streamer_to_port[winner_si]
-                bank_rr_priority[bank] = (winner_port + 1) % num_ports
+                #bank_rr_priority[bank] = (winner_port + 1) % num_ports
+                bank_rr_priority[bank] = 0
 
         # Store completed-step responses for delivery next cycle
         pending_responses = next_pending_responses
 
         # ==============================================================
-        # Phase 4: Accelerator fire logic
+        # Phase 4: Accelerator tick (BlockGemmState)
         # ==============================================================
-        # The accelerator fires when every reader has its data ready
-        # and every writer has space.  For cache-enabled readers the
-        # data comes from the FixedLevelCache output (every step,
-        # since the cache provides data for both TCDM and cached
-        # steps).  For non-cache readers and writers, the
-        # ``needs_tcdm_access`` gating determines whether data is
-        # required.
-        acc_can_fire = acc_step < total_steps
-        if acc_can_fire:
-            cycle_for_step_i[acc_step] += 1  # record when this step fired
-
-        if acc_step == 128:
+        # The BlockGemmState models the full accelerator state machine
+        # with independent per-streamer ready/valid signals, register
+        # cut pipeline, K-accumulation, and d_o back-pressure.
+        if cycle == 8:
             pass #For debugging: keep this here dont remove
 
-        if acc_can_fire:
-            for s in streamers:
-                if s.is_reader:
-                    agu_step = s.acc_to_agu_step(acc_step)
-                    if s.uses_fixed_cache:
-                        # Cache-enabled: every AGU step needs cache output
-                        if s.cache_output_step != agu_step:
-                            acc_can_fire = False
-                            break
-                    else:
-                        if s.needs_tcdm_access(agu_step):
-                            if not s.reader_data_available(agu_step):
-                                acc_can_fire = False
-                                break
-                elif s.is_writer:
-                    if s.needs_tcdm_access(acc_step):
-                        if not s.writer_has_space():
-                            acc_can_fire = False
-                            break
+        acc.tick(streamers)
 
-        if acc_can_fire:
-            for s in streamers:
-                if s.is_reader:
-                    agu_step = s.acc_to_agu_step(acc_step)
-                    if s.uses_fixed_cache:
-                        pass  # cache output consumed — handled in Phase 5
-                    elif s.needs_tcdm_access(agu_step):
-                        # Only actually consume on the last repeat
-                        # (HandShakeRepeater: in.ready = out.fire && lastVal)
-                        if s.is_last_repeat(acc_step):
-                            s.reader_consume(agu_step)
-                elif s.is_writer:
-                    if s.needs_tcdm_access(acc_step):
-                        s.writer_accept(acc_step)
-            acc_step += 1
+        if acc.compute_fired:
+            cycle_for_step_i[acc.acc_step - 1] += 1
+
+        for si, s in enumerate(streamers):
+            s.old_cib = s.cache_instruction_buffer.copy()
 
         # ==============================================================
-        # Phase 5: FixedLevelCache update (register edge)
+        # Phase 5: Reader consumption (all readers)
         # ==============================================================
-        # Process the cache for each cache-enabled reader.  This
-        # models the ``delayedValid`` register update at the clock
-        # edge.  The cache can start processing a new instruction
-        # if its output was consumed by the accelerator this cycle
-        # (``canAcceptNew = !delayedValid || dataOut.ready``).
-        for s in streamers:
-            if s.is_reader and s.uses_fixed_cache:
-                # Did the accelerator consume this reader's cache output?
-                # Only consumed on the last repeat of the AGU step
-                # (HandShakeRepeater: in.ready = out.fire && lastVal)
-                if acc_can_fire:
-                    fired_acc_step = acc_step - 1
-                    agu_step = s.acc_to_agu_step(fired_acc_step)
-                    consumed = (
-                        s.cache_output_step == agu_step
-                        and s.is_last_repeat(fired_acc_step)
-                    )
-                else:
-                    consumed = False
+        # tick() only sets consumed flags; the actual buffer mutations
+        # (dataBuffer pops, cache_process) happen here so that ALL
+        # readers are handled uniformly via the consumed flags.
+        for si, s in enumerate(streamers):
+            if not s.is_reader:
+                continue
+            # Look up the per-streamer consumed flag
+            if si == acc.a_streamer_idx:
+                consumed = acc.a_consumed
+                consumed_agu_step = acc.a_consumed_agu_step
+            elif si == acc.b_streamer_idx:
+                consumed = acc.b_consumed
+                consumed_agu_step = acc.b_consumed_agu_step
+            elif si == acc.c_streamer_idx:
+                consumed = acc.c_consumed
+                consumed_agu_step = acc.c_consumed_agu_step
+            else:
+                consumed = False
+                consumed_agu_step = -1
+
+            if s.uses_fixed_cache:
+                # Cache reader: cache_process handles the delayedValid
+                # register update and dataBuffer pop (for updateCache).
                 s.cache_process(consumed)
+            elif consumed and s.needs_tcdm_access(consumed_agu_step):
+                # Non-cache reader: pop the consumed entry from dataBuffer.
+                # Guard: invariant steps have no buffer entry to pop.
+                s.reader_consume(consumed_agu_step)
 
     print(cycle_for_step_i)
+    if cycle >= MAX_CYCLES:
+        return -1
     return cycle
 
 
