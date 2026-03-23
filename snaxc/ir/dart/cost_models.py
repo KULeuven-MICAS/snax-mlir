@@ -813,11 +813,19 @@ class StreamerState:
     data_buffer_depth: int = 2
     fixed_cache_depth: int = 63
 
+    # True for streamers created from a READER_WRITER split.
+    from_rw: bool = False
+
     # HandShakeRepeater count — models the Reader's RepeatHandshake.
     # When the innermost loop has stride 0 and bound > 1, the reader
     # overrides AGU bounds[0] to 1 and repeats each data word
     # ``repeat_count`` times.  Default 1 = no repeat.
     repeat_count: int = 1
+
+    # Level whose bound was overridden to 1 by the repeat override.
+    # None if no override was applied.  Used to avoid pruning this
+    # level in uses_fixed_cache.
+    _repeat_override_level: int | None = field(default=None, repr=False)
 
     # --- Sub-components ---
     agu: AGUState = field(default=None)  # type: ignore[assignment]
@@ -865,14 +873,31 @@ class StreamerState:
     cache_output_step: int | None = None
 
     def __post_init__(self):
-        # --- Reader innermost-loop repeat override ---
-        # Loops with bound == 1 are pruned before reaching hardware,
-        # so the effective innermost level is the first with bound > 1.
-        # Reader.scala: when(temporalStrides(0) === 0.U) {
-        #   addressgen.io.cfg.temporalBounds(0) := 1.U
-        # }
-        # HandShakeRepeater: repeat_times = Mux(stride(0)==0, bounds(0), 1)
-        if self.is_reader:
+        # --- Repeat / bound override for ReaderWriter streamers ---
+        # Bound-1 levels from the original configuration are pruned
+        # (treated as no-ops).  The effective innermost level is the
+        # first with bound > 1.
+        #
+        # For ReaderWriter (from_rw) streamers only:
+        #   Reader.scala: when(temporalStrides(0) === 0.U) {
+        #     addressgen.io.cfg.temporalBounds(0) := 1.U
+        #   }
+        #   HandShakeRepeater: repeat_times = Mux(stride(0)==0, bounds(0), 1)
+        #   Both the reader and writer halves of the RW pair share the
+        #   same AGU configuration, so both see the bound override.
+        #   The new bound-1 must NOT be pruned later.
+        if self.from_rw:
+            effective_inner = None
+            for lvl in range(len(self.strides_bank)):
+                if self.bounds[lvl] > 1:
+                    effective_inner = lvl
+                    break
+            if (effective_inner is not None
+                    and self.strides_bank[effective_inner] == 0):
+                self.bounds = list(self.bounds)  # ensure own copy
+                self.bounds[effective_inner] = 1
+                self._repeat_override_level = effective_inner
+        else:
             effective_inner = None
             for lvl in range(len(self.strides_bank)):
                 if self.bounds[lvl] > 1:
@@ -954,12 +979,13 @@ class StreamerState:
         ``enableFixedCache`` is always true for readers and for
         the writer half of a ReaderWriter pair.
         """
-        # Levels with bound == 1 are pruned before reaching hardware.
-        # CriticalLoopFinder operates on the compacted set of levels.
+        # Bound-1 levels are pruned (they are no-ops in hardware),
+        # EXCEPT levels whose bound was set to 1 by the repeat
+        # override (_repeat_override_level) — those are real.
         eff_bounds = []
         eff_strides = []
         for i in range(self.num_levels):
-            if self.bounds[i] > 1:
+            if self.bounds[i] > 1 or i == self._repeat_override_level:
                 eff_bounds.append(self.bounds[i])
                 eff_strides.append(self.strides_bank[i])
         if len(eff_bounds) < 2:
@@ -1425,7 +1451,7 @@ class BlockGemmState:
 
         c_valid = False
         if self.compute_fire_counter == 0:
-            agu_step_c = s_c.acc_to_agu_step(self.acc_step)
+            agu_step_c = s_c.acc_to_agu_step(self.acc_step) // self.K
             c_valid = self._reader_data_valid(s_c, agu_step_c)
             a_b_data_valid = combined_out_valid and c_valid
         else:
@@ -1472,7 +1498,7 @@ class BlockGemmState:
             if add_c_fire:
                 if s_c.is_last_repeat(self.acc_step):
                     self.c_consumed = True
-                    self.c_consumed_agu_step = s_c.acc_to_agu_step(self.acc_step)
+                    self.c_consumed_agu_step = s_c.acc_to_agu_step(self.acc_step) // self.K
 
         # ============================================================
         # DataCut(delay=2) INPUT: can a+b enter the pipeline?
@@ -1613,7 +1639,7 @@ class BlockGemmState:
             combined_out_valid = self.datacut_stage1_valid
             s_c = streamers[self.c_streamer_idx]
             if self.compute_fire_counter == 0:
-                agu_step_c = s_c.acc_to_agu_step(self.acc_step)
+                agu_step_c = s_c.acc_to_agu_step(self.acc_step) //self.K
                 c_valid = self._reader_data_valid(s_c, agu_step_c)
                 a_b_data_valid = combined_out_valid and c_valid
             else:
@@ -1649,7 +1675,7 @@ class BlockGemmState:
             step = self.acc_step
             if not s.is_last_repeat(step):
                 return False
-            agu_step = s.acc_to_agu_step(step)
+            agu_step = s.acc_to_agu_step(step) // self.K
             c_valid = self._reader_data_valid(s, agu_step)
             if not c_valid:
                 return False
@@ -1777,6 +1803,7 @@ def _simulate_hardware(
                 strides_bank=list(strides_bank[op_idx]),
                 num_banks=num_banks,
                 tiling=tiling,
+                from_rw=True,
             )
             reader_s.agu.reset_and_start()
             reader_idx = len(streamers)
@@ -1792,6 +1819,7 @@ def _simulate_hardware(
                 strides_bank=list(strides_bank[op_idx]),
                 num_banks=num_banks,
                 tiling=tiling,
+                from_rw=True,
             )
             writer_s.agu.reset_and_start()
             writer_idx = len(streamers)
@@ -2027,6 +2055,11 @@ def _simulate_hardware(
 
         bank_to_requestors: dict[int, list[tuple[int, int]]] = {}
         for si, s in enumerate(streamers):
+            # RTL MuxDecoupled: when writer has ANY valid request,
+            # sel=0 and ALL reader channels are blocked — even those
+            # already pending.  Skip reader channels when writer is active.
+            if si in rw_blocked:
+                continue
             for ch, bank in enumerate(s.channel_pending_bank):
                 if bank is not None:
                     bank_to_requestors.setdefault(bank, []).append((si, ch))
@@ -2069,7 +2102,7 @@ def _simulate_hardware(
         # The BlockGemmState models the full accelerator state machine
         # with independent per-streamer ready/valid signals, register
         # cut pipeline, K-accumulation, and d_o back-pressure.
-        if cycle == 8:
+        if cycle == 13:
             pass #For debugging: keep this here dont remove
 
         acc.tick(streamers)
