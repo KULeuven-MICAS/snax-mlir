@@ -2032,7 +2032,7 @@ def _simulate_hardware(
             else:
                 pair.last_sel_writer = False
 
-        if cycle == 11:
+        if cycle == 13:
             pass #For debugging: keep this here dont remove
 
         for si, s in enumerate(streamers):
@@ -2102,7 +2102,7 @@ def _simulate_hardware(
         # The BlockGemmState models the full accelerator state machine
         # with independent per-streamer ready/valid signals, register
         # cut pipeline, K-accumulation, and d_o back-pressure.
-        if cycle == 13:
+        if cycle == 60:
             pass #For debugging: keep this here dont remove
 
         acc.tick(streamers)

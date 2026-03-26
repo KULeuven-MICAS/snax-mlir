@@ -73,6 +73,67 @@ def remove_prime_factors(prime_factors: list, factors_to_remove: list) -> list:
     return remaining
 
 
+def split_tiling_to_original_loops(
+    tiling: list[tuple[int, int, bool]],
+    original_loops_per_ldim: dict[int, list[tuple[int, int, list[int]]]],
+) -> list[tuple[int, int, bool]]:
+    """
+    Split a tiling expressed in logical dimension indices back to
+    original loop indices.
+
+    tiling: list of (l_id, size, is_critical) inner->outer
+    original_loops_per_ldim: dict l_id -> [(orig_dim_idx, bound, prime_factors)]
+
+    Returns: list of (orig_dim_idx, size, is_critical) inner->outer
+    """
+    # Track remaining prime factors per original loop (stateful across tiles)
+    remaining_factors: dict[int, list[int]] = {}
+    for loops in original_loops_per_ldim.values():
+        for orig_idx, _bound, pf in loops:
+            remaining_factors[orig_idx] = list(pf)
+
+    result: list[tuple[int, int, bool]] = []
+
+    for l_id, size, is_crit in tiling:
+        loops_info = original_loops_per_ldim[l_id]
+
+        # Fast path: only one original loop in this logical dim
+        if len(loops_info) == 1:
+            orig_idx = loops_info[0][0]
+            for p in get_prime_factors(size):
+                remaining_factors[orig_idx].remove(p)
+            result.append((orig_idx, size, is_crit))
+            continue
+
+        tile_factors = get_prime_factors(size)
+
+        # Greedily assign each prime factor to the first original loop
+        # that still has it available
+        assigned: dict[int, list[int]] = {info[0]: [] for info in loops_info}
+        for p in tile_factors:
+            for orig_idx, _, _ in loops_info:
+                if p in remaining_factors[orig_idx]:
+                    remaining_factors[orig_idx].remove(p)
+                    assigned[orig_idx].append(p)
+                    break
+
+        # Build sub-tiles; order within a split doesn't matter
+        sub_tiles: list[tuple[int, int, bool]] = []
+        for orig_idx, _, _ in loops_info:
+            sub_size = reduce(mul, assigned[orig_idx], 1)
+            if sub_size > 1:
+                sub_tiles.append((orig_idx, sub_size, False))
+
+        # The outermost (last) sub-tile inherits the critical flag
+        if is_crit and sub_tiles:
+            last = sub_tiles[-1]
+            sub_tiles[-1] = (last[0], last[1], True)
+
+        result.extend(sub_tiles)
+
+    return result
+
+
 def cost_of_tiling(
     tiling: list[tuple[int, int, bool]],
     request_per_streamer: list[int],
@@ -408,12 +469,17 @@ def find_optimal_tiling(
     # Build Matrix Sizes and Invariance Map
     matrix_sizes: dict[int, list[int]] = {}
     logical_inv_map: dict[int, tuple[bool, ...]] = {}
+    original_loops_per_ldim: dict[int, list[tuple[int, int, list[int]]]] = {}
 
     idx_counter = 0
     for sig, loop_list in dim_groups.items():
         total_size = reduce(mul, (x[1] for x in loop_list), 1)
         matrix_sizes[idx_counter] = get_prime_factors(total_size)
         logical_inv_map[idx_counter] = sig
+        original_loops_per_ldim[idx_counter] = [
+            (orig_idx, bound, get_prime_factors(bound))
+            for orig_idx, bound in loop_list
+        ]
         idx_counter += 1
 
     num_logical = idx_counter
@@ -474,25 +540,37 @@ def find_optimal_tiling(
             raise ValueError(f"No schedule found at index {schedule_idx}")
         best_tiling = all_tilings[schedule_idx]
         if cost_model_name == "latency":
+            cost = latency_cost_of_tiling(best_tiling, operand_descs, inv_map_for_cost)
+        elif cost_model_name == "hardware_latency":
             cost = hardware_latency_cost_of_tiling(best_tiling, operand_descs, inv_map_for_cost)
         else:
             cost = energy_cost_of_tiling(best_tiling, request_per_streamer, inv_map_for_cost)
         print("Predicted Cost for schedule index", schedule_idx, ":", cost)
     else:
         best_tiling = []
+        winning_index = -1
         min_cost = float("inf")
-        for tiling in all_tilings:
+        for index, tiling in enumerate(all_tilings):
             if cost_model_name == "latency":
+                c = latency_cost_of_tiling(tiling, operand_descs, inv_map_for_cost)
+            elif cost_model_name == "hardware_latency":
                 c = hardware_latency_cost_of_tiling(tiling, operand_descs, inv_map_for_cost)
             else:
                 c = energy_cost_of_tiling(tiling, request_per_streamer, inv_map_for_cost)
             if c < min_cost:
                 min_cost = c
                 best_tiling = tiling
-
+                winning_index = index
+        print("Best schedule index:", winning_index)
     best_tiling = [tile for tile in best_tiling if tile[1] > 1]  # Filter out trivial tiles
 
-    return rebuild_schedule(template, schedule, best_tiling, dim_groups)
+    # Split logical-dim tiles back to per-original-loop tiles
+    best_tiling_split = split_tiling_to_original_loops(
+        best_tiling, original_loops_per_ldim
+    )
+    best_tiling_split = [tile for tile in best_tiling_split if tile[1] > 1]
+
+    return rebuild_schedule(template, schedule, best_tiling_split, dim_groups)
 
 def reevaluate_critical_flags(tiling, critical_dims_pool, cache_depths):
     # Reevaluate which loop is actually the critical loop based on the final tiling, not just the original invariance signatures.
@@ -548,23 +626,15 @@ def rebuild_schedule(template, old_schedule, tiling, dim_groups):
     """
     Reconstruct a Schedule from a tiling result.
 
-    tiling: [(l_dim, size, is_crit), ...] ordered inner → outer.
+    tiling: [(orig_dim_idx, size, is_crit), ...] ordered inner → outer.
     """
-    l_id_to_base_vec = {}
-
-    for l_id, (sig, loop_data) in enumerate(dim_groups.items()):
-        indices = [x[0] for x in loop_data]
-        best_vec = None
-        min_norm = float('inf')
-        for i in indices:
-            vec = np.array([sp.pattern.A[:, i] for sp in old_schedule])
-            norm = np.sum(np.abs(vec))
-            if 0 < norm < min_norm:
-                 min_norm = norm
-                 best_vec = vec
-        if best_vec is None:
-             best_vec = np.zeros_like(np.array([sp.pattern.A[:, indices[0]] for sp in old_schedule]))
-        l_id_to_base_vec[l_id] = best_vec
+    # Build base vector per original temporal dim
+    orig_dim_to_base_vec: dict[int, np.ndarray] = {}
+    for _sig, loop_data in dim_groups.items():
+        for orig_idx, _bound in loop_data:
+            orig_dim_to_base_vec[orig_idx] = np.array(
+                [sp.pattern.A[:, orig_idx] for sp in old_schedule]
+            )
 
     spatial_cols = [
         np.array([sp.pattern.A[:, i + (old_schedule.num_dims - template.num_dims)] for sp in old_schedule])
@@ -572,17 +642,17 @@ def rebuild_schedule(template, old_schedule, tiling, dim_groups):
     ]
     spatial_bounds = old_schedule[0].bounds[-(template.num_dims):]
 
-    l_stride_tracker: dict[int, int] = {l_id: 1 for l_id in range(len(l_id_to_base_vec))}
+    stride_tracker: dict[int, int] = {idx: 1 for idx in orig_dim_to_base_vec}
 
     schedule_components: list[tuple[int, list[np.ndarray]]] = []
 
-    for l_id, size, _is_crit in tiling:
+    for orig_idx, size, _is_crit in tiling:
         vecs = []
-        base = l_id_to_base_vec[l_id]
+        base = orig_dim_to_base_vec[orig_idx]
         for op_idx in range(len(old_schedule)):
-             vecs.append(base[op_idx] * l_stride_tracker[l_id])
+            vecs.append(base[op_idx] * stride_tracker[orig_idx])
         schedule_components.append((size, vecs))
-        l_stride_tracker[l_id] *= size
+        stride_tracker[orig_idx] *= size
 
     # Reverse to get outer → inner
     schedule_components.reverse()

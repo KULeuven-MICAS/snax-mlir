@@ -1,16 +1,25 @@
 {
   "extensionVersion": "1.5.1",
-  "fileName": "/esat/studscratch/r0886198/thesis_2025_linux/snax-mlir/pe_utilization_plots/schedule_sweep/sim.vcd",
-  "markerTime": 5901,
+  "fileName": "/esat/studscratch/r0886198/thesis_2025_linux/snax-mlir/pe_utilization_plots/conv/sim.vcd",
+  "markerTime": 5804,
   "altMarkerTime": null,
-  "selectedSignal": {
-    "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_tcdmReq_0_valid",
-    "msb": -1,
-    "lsb": -1
-  },
-  "zoomRatio": 38.864824985654565,
-  "scrollLeft": 5889,
+  "selectedSignal": null,
+  "zoomRatio": 25.23413900839843,
+  "scrollLeft": 5665,
   "displayedSignals": [
+    {
+      "dataType": "netlist-variable",
+      "netlistId": 76593,
+      "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.clock",
+      "numberFormat": "binary",
+      "colorIndex": 0,
+      "rowHeight": 1,
+      "verticalScale": 1,
+      "nameType": "fullPath",
+      "customName": "clock",
+      "renderType": "binary",
+      "valueLinkCommand": ""
+    },
     {
       "dataType": "signal-group",
       "groupName": "gemm_io",
@@ -197,6 +206,19 @@
           "customName": "io_data_d_o_valid",
           "renderType": "binary",
           "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 72293,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_shell_wrapper.inst_block_gemm_simd.io_ctrl_gemm_ctrl_bits_K_i",
+          "numberFormat": "hexadecimal",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_ctrl_gemm_ctrl_bits_K_i",
+          "renderType": "multiBit",
+          "valueLinkCommand": ""
         }
       ]
     },
@@ -344,19 +366,6 @@
               "customName": "io_aguCfg_temporalStrides_4",
               "renderType": "multiBit",
               "valueLinkCommand": ""
-            },
-            {
-              "dataType": "netlist-variable",
-              "netlistId": 77954,
-              "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_0.addressgen.criticalLoopFinder.io_anyLoopFound",
-              "numberFormat": "binary",
-              "colorIndex": 0,
-              "rowHeight": 1,
-              "verticalScale": 1,
-              "nameType": "fullPath",
-              "customName": "io_anyLoopFound",
-              "renderType": "binary",
-              "valueLinkCommand": ""
             }
           ]
         },
@@ -367,7 +376,7 @@
           "children": [
             {
               "dataType": "netlist-variable",
-              "netlistId": 78958,
+              "netlistId": 78715,
               "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_aguCfg_temporalBounds_0",
               "numberFormat": "decimal",
               "colorIndex": 0,
@@ -380,7 +389,7 @@
             },
             {
               "dataType": "netlist-variable",
-              "netlistId": 78959,
+              "netlistId": 78716,
               "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_aguCfg_temporalBounds_1",
               "numberFormat": "decimal",
               "colorIndex": 0,
@@ -393,7 +402,7 @@
             },
             {
               "dataType": "netlist-variable",
-              "netlistId": 78960,
+              "netlistId": 78717,
               "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_aguCfg_temporalBounds_2",
               "numberFormat": "decimal",
               "colorIndex": 0,
@@ -406,7 +415,7 @@
             },
             {
               "dataType": "netlist-variable",
-              "netlistId": 78961,
+              "netlistId": 78718,
               "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_aguCfg_temporalBounds_3",
               "numberFormat": "decimal",
               "colorIndex": 0,
@@ -419,7 +428,7 @@
             },
             {
               "dataType": "netlist-variable",
-              "netlistId": 78962,
+              "netlistId": 78719,
               "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_aguCfg_temporalBounds_4",
               "numberFormat": "decimal",
               "colorIndex": 0,
@@ -432,7 +441,7 @@
             },
             {
               "dataType": "netlist-variable",
-              "netlistId": 78965,
+              "netlistId": 78722,
               "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_aguCfg_temporalStrides_0",
               "numberFormat": "decimal",
               "colorIndex": 0,
@@ -445,7 +454,7 @@
             },
             {
               "dataType": "netlist-variable",
-              "netlistId": 78966,
+              "netlistId": 78723,
               "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_aguCfg_temporalStrides_1",
               "numberFormat": "decimal",
               "colorIndex": 0,
@@ -458,7 +467,7 @@
             },
             {
               "dataType": "netlist-variable",
-              "netlistId": 78967,
+              "netlistId": 78724,
               "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_aguCfg_temporalStrides_2",
               "numberFormat": "decimal",
               "colorIndex": 0,
@@ -471,7 +480,7 @@
             },
             {
               "dataType": "netlist-variable",
-              "netlistId": 78968,
+              "netlistId": 78725,
               "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_aguCfg_temporalStrides_3",
               "numberFormat": "decimal",
               "colorIndex": 0,
@@ -484,7 +493,7 @@
             },
             {
               "dataType": "netlist-variable",
-              "netlistId": 78969,
+              "netlistId": 78726,
               "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_aguCfg_temporalStrides_4",
               "numberFormat": "decimal",
               "colorIndex": 0,
@@ -509,7 +518,7 @@
               "children": [
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 80562,
+                  "netlistId": 80076,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_aguCfg_temporalBounds_0",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -522,7 +531,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 80563,
+                  "netlistId": 80077,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_aguCfg_temporalBounds_1",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -535,7 +544,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 80564,
+                  "netlistId": 80078,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_aguCfg_temporalBounds_2",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -548,7 +557,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 80565,
+                  "netlistId": 80079,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_aguCfg_temporalBounds_3",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -561,7 +570,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 80566,
+                  "netlistId": 80080,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_aguCfg_temporalBounds_4",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -574,7 +583,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 80569,
+                  "netlistId": 80083,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_aguCfg_temporalStrides_0",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -587,7 +596,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 80570,
+                  "netlistId": 80084,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_aguCfg_temporalStrides_1",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -600,7 +609,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 80571,
+                  "netlistId": 80085,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_aguCfg_temporalStrides_2",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -613,7 +622,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 80572,
+                  "netlistId": 80086,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_aguCfg_temporalStrides_3",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -626,7 +635,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 80573,
+                  "netlistId": 80087,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.io_aguCfg_temporalStrides_4",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -636,43 +645,17 @@
                   "customName": "io_aguCfg_temporalStrides_4",
                   "renderType": "multiBit",
                   "valueLinkCommand": ""
-                },
-                {
-                  "dataType": "netlist-variable",
-                  "netlistId": 81022,
-                  "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.criticalLoopFinder.io_anyLoopFound",
-                  "numberFormat": "binary",
-                  "colorIndex": 0,
-                  "rowHeight": 1,
-                  "verticalScale": 1,
-                  "nameType": "fullPath",
-                  "customName": "io_anyLoopFound",
-                  "renderType": "binary",
-                  "valueLinkCommand": ""
-                },
-                {
-                  "dataType": "netlist-variable",
-                  "netlistId": 81021,
-                  "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.criticalLoopFinder.io_criticalLoop",
-                  "numberFormat": "hexadecimal",
-                  "colorIndex": 0,
-                  "rowHeight": 1,
-                  "verticalScale": 1,
-                  "nameType": "fullPath",
-                  "customName": "io_criticalLoop",
-                  "renderType": "multiBit",
-                  "valueLinkCommand": ""
                 }
               ]
             },
             {
               "dataType": "signal-group",
               "groupName": "output_writer",
-              "collapseState": 2,
+              "collapseState": 1,
               "children": [
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 84962,
+                  "netlistId": 83279,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_aguCfg_temporalBounds_0",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -685,7 +668,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 84963,
+                  "netlistId": 83280,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_aguCfg_temporalBounds_1",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -698,7 +681,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 84964,
+                  "netlistId": 83281,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_aguCfg_temporalBounds_2",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -711,7 +694,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 84965,
+                  "netlistId": 83282,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_aguCfg_temporalBounds_3",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -724,7 +707,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 84966,
+                  "netlistId": 83283,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_aguCfg_temporalBounds_4",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -737,7 +720,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 84969,
+                  "netlistId": 83286,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_aguCfg_temporalStrides_0",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -750,7 +733,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 84970,
+                  "netlistId": 83287,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_aguCfg_temporalStrides_1",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -763,7 +746,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 84971,
+                  "netlistId": 83288,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_aguCfg_temporalStrides_2",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -776,7 +759,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 84972,
+                  "netlistId": 83289,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_aguCfg_temporalStrides_3",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -789,7 +772,7 @@
                 },
                 {
                   "dataType": "netlist-variable",
-                  "netlistId": 84973,
+                  "netlistId": 83290,
                   "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.writer.io_aguCfg_temporalStrides_4",
                   "numberFormat": "decimal",
                   "colorIndex": 0,
@@ -814,11 +797,11 @@
     {
       "dataType": "signal-group",
       "groupName": "mem_requests",
-      "collapseState": 2,
+      "collapseState": 1,
       "children": [
         {
           "dataType": "netlist-variable",
-          "netlistId": 80435,
+          "netlistId": 79949,
           "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmRsp_0_valid",
           "numberFormat": "binary",
           "colorIndex": 0,
@@ -883,7 +866,59 @@
         },
         {
           "dataType": "netlist-variable",
-          "netlistId": 78977,
+          "netlistId": 78179,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_0.dataBuffer.queues_0.io_enq_ready",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_enq_ready",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 78174,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_0.dataBuffer.queues_0.io_enq_valid",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_enq_valid",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 78176,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_0.dataBuffer.queues_0.io_deq_ready",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_deq_ready",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 78177,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_0.dataBuffer.queues_0.io_deq_valid",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_deq_valid",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 78734,
           "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_tcdmReq_0_bits_addr",
           "numberFormat": "hexadecimal",
           "colorIndex": 0,
@@ -896,7 +931,7 @@
         },
         {
           "dataType": "netlist-variable",
-          "netlistId": 78975,
+          "netlistId": 78732,
           "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_tcdmReq_0_ready",
           "numberFormat": "binary",
           "colorIndex": 0,
@@ -909,7 +944,7 @@
         },
         {
           "dataType": "netlist-variable",
-          "netlistId": 78976,
+          "netlistId": 78733,
           "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_tcdmReq_0_valid",
           "numberFormat": "binary",
           "colorIndex": 0,
@@ -922,7 +957,7 @@
         },
         {
           "dataType": "netlist-variable",
-          "netlistId": 78999,
+          "netlistId": 78756,
           "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.io_tcdmRsp_0_valid",
           "numberFormat": "binary",
           "colorIndex": 0,
@@ -935,7 +970,59 @@
         },
         {
           "dataType": "netlist-variable",
-          "netlistId": 80245,
+          "netlistId": 79202,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.dataBuffer.queues_0.io_enq_ready",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_enq_ready",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 79197,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.dataBuffer.queues_0.io_enq_valid",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_enq_valid",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 79199,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.dataBuffer.queues_0.io_deq_ready",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_deq_ready",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 79200,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_1.dataBuffer.queues_0.io_deq_valid",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_deq_valid",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 79759,
           "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_0_bits_addr",
           "numberFormat": "hexadecimal",
           "colorIndex": 0,
@@ -948,7 +1035,7 @@
         },
         {
           "dataType": "netlist-variable",
-          "netlistId": 80243,
+          "netlistId": 79757,
           "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_0_ready",
           "numberFormat": "binary",
           "colorIndex": 0,
@@ -961,7 +1048,7 @@
         },
         {
           "dataType": "netlist-variable",
-          "netlistId": 80244,
+          "netlistId": 79758,
           "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_0_valid",
           "numberFormat": "binary",
           "colorIndex": 0,
@@ -974,7 +1061,7 @@
         },
         {
           "dataType": "netlist-variable",
-          "netlistId": 80246,
+          "netlistId": 79760,
           "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_0_bits_write",
           "numberFormat": "binary",
           "colorIndex": 0,
@@ -983,6 +1070,240 @@
           "nameType": "fullPath",
           "customName": "io_readerInterface_tcdmReq_0_bits_write",
           "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 81054,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.dataBuffer.queues_0.io_enq_ready",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_enq_ready",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 81049,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.dataBuffer.queues_0.io_enq_valid",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_enq_valid",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 81043,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.dataBuffer.io_out_0_ready",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_out_0_ready",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 81044,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.dataBuffer.io_out_0_valid",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_out_0_valid",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 79805,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_8_ready",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_readerInterface_tcdmReq_8_ready",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 79806,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_8_valid",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_readerInterface_tcdmReq_8_valid",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 79808,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.io_readerInterface_tcdmReq_8_bits_write",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_readerInterface_tcdmReq_8_bits_write",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 72389,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_shell_wrapper.inst_block_gemm_simd.gemm.add_c",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "add_c",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 80282,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.io_addr_0_bits",
+          "numberFormat": "hexadecimal",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_addr_0_bits",
+          "renderType": "multiBit",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 80493,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.outputBuffer.io_in_0_ready",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_in_0_ready",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 80494,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.outputBuffer.io_in_0_valid",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_in_0_valid",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 80280,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.io_addr_0_ready",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_addr_0_ready",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 80281,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.io_addr_0_valid",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_addr_0_valid",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 80385,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.counters_0.io_value",
+          "numberFormat": "hexadecimal",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_value",
+          "renderType": "multiBit",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 80401,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.counters_1.io_value",
+          "numberFormat": "hexadecimal",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_value",
+          "renderType": "multiBit",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 80417,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.counters_2.io_value",
+          "numberFormat": "hexadecimal",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_value",
+          "renderType": "multiBit",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 80378,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.counters_tick",
+          "numberFormat": "binary",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "counters_tick",
+          "renderType": "binary",
+          "valueLinkCommand": ""
+        },
+        {
+          "dataType": "netlist-variable",
+          "netlistId": 80433,
+          "name": "TOP.testharness.i_snax_KUL_cluster.i_snax_core_0_acc_0_snax_streamer_gemmX.i_snax_streamer_gemmX_streamer_wrapper.i_snax_streamer_gemmX_streamer_top.reader_writer_0.reader.addressgen.counters_3.io_value",
+          "numberFormat": "hexadecimal",
+          "colorIndex": 0,
+          "rowHeight": 1,
+          "verticalScale": 1,
+          "nameType": "fullPath",
+          "customName": "io_value",
+          "renderType": "multiBit",
           "valueLinkCommand": ""
         }
       ]

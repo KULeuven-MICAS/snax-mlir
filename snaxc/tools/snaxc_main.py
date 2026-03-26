@@ -259,7 +259,7 @@ class SNAXCMain(CommandLineTool):
         if self.args.add_mcycle:
             pass_pipeline.append(AddMcycleAroundLaunch())
         pass_pipeline.append(ConvertAccfgToCsrPass())
-        pass_pipeline.append(SNAXCopyToDMA(test_ignore_transform=True))
+        pass_pipeline.append(SNAXCopyToDMA(test_ignore_transform=False))
         pass_pipeline.append(SNAXToFunc())
         pass_pipeline.append(ConvertMemrefToArithPass())
         pass_pipeline.append(SNAXLowerMCycle())

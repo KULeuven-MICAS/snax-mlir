@@ -307,7 +307,7 @@ class SNAXGEMMXAccelerator(
                     n = 1
                     m = 1
 
-                k = op.stride_patterns.data[0].upper_bounds.data[0].data
+                k = last_pattern.upper_bounds.data[0].data
             else:
                 # Weight Stationary or other interleaved mapping
                 # Configure accelerator to assume 1 input per output (stream partial sums)

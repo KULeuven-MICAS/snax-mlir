@@ -86,7 +86,7 @@ class StridePattern(ParametrizedAttribute):
         # while B merges after its zero), making both zeros land at index 1 even
         # though they represent *different* hardware loop counters.  Keeping the
         # un-merged form guarantees all operands share the same loop structure.
-        has_broadcast = any(ts == 0 and ub != 0 for ts, ub in zip(temporal_strides, upper_bounds))
+        #has_broadcast = any(ts == 0 and ub != 0 for ts, ub in zip(temporal_strides, upper_bounds))
 
         new_upper_bounds: list[int] = []
         new_temporal_strides: list[int] = []
@@ -99,7 +99,7 @@ class StridePattern(ParametrizedAttribute):
             # upper bound of 1 can be removed
             elif ub == 1:
                 pass
-            elif not has_broadcast and len(new_upper_bounds) and new_upper_bounds[-1] * new_temporal_strides[-1] == ts:
+            elif len(new_upper_bounds) and new_upper_bounds[-1] * new_temporal_strides[-1] == ts:
                 # wrap two strides in 1
                 new_upper_bounds[-1] *= ub
             else:
