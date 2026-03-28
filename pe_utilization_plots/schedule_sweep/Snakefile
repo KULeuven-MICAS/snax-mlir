@@ -70,7 +70,7 @@ rule compile_schedule:
         "{config[snaxc]} -c {SNAX_CONFIG}"
         " --schedule-idx {wildcards.idx}"
         " --fixed-cache-schedule"
-        " --cost-model latency"
+        " --cost-model hardware_latency"
         " --add-mcycle"
         " -o {output} {input}"
 

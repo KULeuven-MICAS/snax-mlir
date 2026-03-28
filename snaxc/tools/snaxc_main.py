@@ -183,7 +183,7 @@ class SNAXCMain(CommandLineTool):
 
         arg_parser.add_argument(
             "--cost-model",
-            choices=["latency", "energy"],
+            choices=["latency", "hardware_latency", "energy"],
             default="latency",
             help="Select cost model for scheduling",
         )

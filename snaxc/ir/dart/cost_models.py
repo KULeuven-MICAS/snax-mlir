@@ -303,8 +303,11 @@ def _compute_operand_stride_per_tile(
     # strides[0] = [0, 64, 1024, 0, 256, 0, 0] # sched 200
     # strides[1] = [64, 0, 1024, 256, 4096, 0, 0]
     # strides[2] = [256, 0, 4096, 512, 0, 0, 0]
-    strides[0] = [0, 64, 1024, 0, 256, 0, 0] # sched 195
-    strides[1] = [0, 64, 0, 1024, 256, 0, 0]
+    # strides[0] = [0, 64, 1024, 0, 256, 0, 0] # sched 195
+    # strides[1] = [0, 64, 0, 1024, 256, 0, 0]
+    # strides[2] = [0, 0, 256, 4096, 0, 0, 0]
+    strides[0] = [0, 64, 1024, 0, 128,0,0] # sched 194
+    strides[1] = [0, 64, 0, 1024, 128, 0, 0]
     strides[2] = [0, 0, 256, 4096, 0, 0, 0]
 
     return strides
@@ -673,6 +676,8 @@ class HardwareLatencyCostModel(CostModel):
             invariance_map,
             num_banks=num_banks,
             bank_bits=bank_bits,
+            sparse_port_config=GEMMX_SPARSE_PORT_CONFIG,  # type: ignore[arg-type]
+            dormant_ports=GEMMX_DORMANT_PORTS,
         )
 
 
@@ -683,6 +688,8 @@ def hardware_latency_cost_of_tiling(
     *,
     num_banks: int = 32,
     bank_bits: int = 64,
+    sparse_port_config: "list[SparsePortDef] | None" = None,
+    dormant_ports: frozenset[int] | None = None,
 ) -> float:
     """
     Cycle-accurate simulation of the SNAX streamer hardware.
@@ -698,7 +705,9 @@ def hardware_latency_cost_of_tiling(
     )
 
     return float(_simulate_hardware(
-        tiling, operand_descriptors, invariance_map, strides_bank, num_banks
+        tiling, operand_descriptors, invariance_map, strides_bank, num_banks,
+        sparse_port_config=sparse_port_config,
+        dormant_ports=dormant_ports,
     ))
 
 
@@ -1289,6 +1298,300 @@ class ReaderWriterPair:
     last_sel_writer: bool = False
 
 
+# ---------------------------------------------------------------------------
+# Sparse Interconnect Arbiter — cycle-accurate model of per-bank
+# round-robin arbitration matching the RTL SparseInterconnect,
+# ArbitrationTree, and RoundRobinArbiter modules.
+# ---------------------------------------------------------------------------
+
+# SNAX gemmx accelerator sparse interconnect configuration
+# (matches fixed_cache_test_32_banks.hjson: [[8,1],[8,8],[8,8],[32,8]])
+GEMMX_SPARSE_PORT_CONFIG: list["SparsePortDef"] = None  # type: ignore[assignment]  # set after class def
+GEMMX_DORMANT_PORTS: frozenset[int] = frozenset({2})  # Port 2 (D standalone writer) is dormant
+
+@dataclass(frozen=True)
+class SparsePortDef:
+    """Mirrors the RTL ``SparsePortDefinition(width, access_granularity)``."""
+    width: int
+    access_granularity: int
+
+    @property
+    def inputs_per_bank(self) -> int:
+        return self.width // self.access_granularity
+
+
+# Now that SparsePortDef is defined, set the gemmx constant
+GEMMX_SPARSE_PORT_CONFIG = [
+    SparsePortDef(8, 1),    # Port 0 — A reader
+    SparsePortDef(8, 8),    # Port 1 — B reader
+    SparsePortDef(8, 8),    # Port 2 — D standalone writer (dormant)
+    SparsePortDef(32, 8),   # Port 3 — C/D ReaderWriter
+]
+
+
+@dataclass
+class SparseInterconnectConfig:
+    """
+    Mirrors the RTL ``SparseConfig``.
+
+    Given the port definitions and total bank count, pre-computes the
+    mapping from (streamer_index, channel) pairs to global TCDM input
+    indices, and the per-bank mapping from arbiter-local input index
+    to global input index.
+
+    The global input ordering matches the RTL: ports are concatenated
+    in order, and within each port the channels are laid out by their
+    ``width``.  Streamers are assigned to ports in the order they
+    appear (accounting for RW splits sharing one port).
+    """
+    ports: list[SparsePortDef]
+    num_banks: int
+
+    # --- Derived (computed in __post_init__) ---
+    # Total inputs across all ports
+    total_inputs: int = field(init=False)
+    # inputs_per_bank: how many wires feed into each bank's arbiter
+    inputs_per_bank: int = field(init=False)
+    # per_bank_global_idx[bank][local_idx] → global input index
+    per_bank_global_idx: list[list[int]] = field(init=False, repr=False)
+
+    def __post_init__(self):
+        self.total_inputs = sum(p.width for p in self.ports)
+        self.inputs_per_bank = sum(p.inputs_per_bank for p in self.ports)
+        # Replicate the RTL get_global_idx_list(bank) logic
+        self.per_bank_global_idx = []
+        for bank in range(self.num_banks):
+            idx_list: list[int] = []
+            acc = 0
+            for p in self.ports:
+                for i in range(p.inputs_per_bank):
+                    idx_list.append(
+                        acc + i * p.access_granularity + bank % p.access_granularity
+                    )
+                acc += p.width
+            self.per_bank_global_idx.append(idx_list)
+
+    def global_to_local(self, bank: int, global_idx: int) -> int | None:
+        """Return the local arbiter input index for *global_idx* on *bank*,
+        or None if that global input is not wired to this bank."""
+        try:
+            return self.per_bank_global_idx[bank].index(global_idx)
+        except ValueError:
+            return None
+
+
+@dataclass
+class SparseInterconnectArbiter:
+    """
+    Cycle-accurate model of the SNAX SparseInterconnect.
+
+    Each of the *num_banks* memory banks has its own ``ArbitrationTree``
+    containing a ``RoundRobinArbiter(inputs_per_bank)``.  The arbiter
+    selects **at most one** winner per cycle per bank using round-robin
+    arbitration.
+
+    RoundRobinArbiter RTL behaviour (with memReq.ready always true):
+      * ``previous`` register = RegNext(selection.bits), init = NumInp-1
+      * ``lock`` is always false (ready is always true)
+      * Selection:
+        1. Find valid requests with index > previous (``nextRequests``)
+        2. If any → PriorityEncoder(nextRequests) wins
+        3. Else → PriorityEncoder(allValidRequests) wins (wrap-around)
+      * ``previous`` updates to the winning local index every cycle
+        where any request was valid — even if the same winner is
+        selected.  When no request is valid, ``previous`` holds its
+        value (RegNext of the combinational output, but output is
+        ``anyValid``-gated — actually the Chisel code unconditionally
+        does ``RegNext(io.selection.bits)``, so ``previous`` always
+        latches the last combinational ``selectedRequest``).
+
+    Parameters
+    ----------
+    config : SparseInterconnectConfig
+        Pre-computed port/bank mapping.
+    streamer_channel_to_global : dict[(int, int), int]
+        Maps (streamer_idx, channel_idx) to a global TCDM input index.
+        Built externally when the streamer list is constructed.
+    """
+    config: SparseInterconnectConfig
+    streamer_channel_to_global: dict[tuple[int, int], int]
+
+    # Per-bank ``previous`` register, init to inputs_per_bank - 1.
+    _bank_previous: list[int] = field(init=False, repr=False)
+
+    def __post_init__(self):
+        n = self.config.inputs_per_bank
+        self._bank_previous = [n - 1] * self.config.num_banks
+
+    def arbitrate(
+        self,
+        requests: dict[int, list[tuple[int, int]]],
+    ) -> list[tuple[int, int, int]]:
+        """
+        Run one cycle of per-bank round-robin arbitration.
+
+        Parameters
+        ----------
+        requests : dict[bank, list[(streamer_idx, channel_idx)]]
+            All pending TCDM requests this cycle, grouped by target
+            bank.  Each entry is a (streamer_idx, channel) pair.
+
+        Returns
+        -------
+        grants : list[(streamer_idx, channel_idx, bank)]
+            The granted requests this cycle (at most one per bank).
+        """
+        grants: list[tuple[int, int, int]] = []
+        ipb = self.config.inputs_per_bank
+
+        for bank, requestors in requests.items():
+            if not requestors:
+                continue
+
+            # Map each requestor to its local arbiter input index
+            local_requests: list[tuple[int, int, int]] = []  # (local_idx, si, ch)
+            for si, ch in requestors:
+                global_idx = self.streamer_channel_to_global.get((si, ch))
+                if global_idx is None:
+                    continue
+                local_idx = self.config.global_to_local(bank, global_idx)
+                if local_idx is None:
+                    continue
+                local_requests.append((local_idx, si, ch))
+
+            if not local_requests:
+                continue
+
+            # --- Round-robin selection (mirrors RoundRobinArbiter RTL) ---
+            previous = self._bank_previous[bank]
+
+            # nextRequests: valid requests with local_idx > previous
+            next_reqs = [(li, si, ch) for li, si, ch in local_requests
+                         if li > previous]
+
+            if next_reqs:
+                # PriorityEncoder: pick smallest local_idx among next_reqs
+                winner = min(next_reqs, key=lambda x: x[0])
+            else:
+                # Wrap around: PriorityEncoder of all valid requests
+                winner = min(local_requests, key=lambda x: x[0])
+
+            local_idx, si, ch = winner
+            grants.append((si, ch, bank))
+
+            # Update previous register (RegNext of selection.bits)
+            self._bank_previous[bank] = local_idx
+
+        # Banks with no requests: previous holds its value (RegNext
+        # of the combinational output; but since selection.bits is
+        # driven by selectedRequest which depends on previous, and
+        # anyValid is false, the RegNext just latches the old value).
+        # No action needed — _bank_previous[bank] stays unchanged.
+
+        return grants
+
+
+def build_sparse_interconnect(
+    streamers: list,
+    rw_pairs: list,
+    num_banks: int,
+    sparse_port_config: list[SparsePortDef] | None = None,
+    dormant_ports: frozenset[int] | None = None,
+) -> SparseInterconnectArbiter:
+    """
+    Build a ``SparseInterconnectArbiter`` from the simulation's
+    streamer list.
+
+    The default sparse config for the SNAX gemmx accelerator (matching
+    ``fixed_cache_test_32_banks.hjson``) is::
+
+        [[8, 1], [8, 8], [8, 8], [32, 8]]
+
+    Port assignment (order must match RTL):
+      Port 0 — A reader (8 channels, access_granularity=1)
+      Port 1 — B reader (8 channels, access_granularity=8)
+      Port 2 — D writer (8 channels, access_granularity=8)
+      Port 3 — C/D RW  (32 channels, access_granularity=8)
+
+    For RW pairs the reader and writer halves share one set of TCDM
+    channels (the MuxDecoupled selects between them each cycle).
+    Both halves map to the same global input indices.
+    """
+    if dormant_ports is None:
+        dormant_ports = frozenset()
+
+    if sparse_port_config is None:
+        # Auto-generate port config from the actual streamers.
+        # Non-RW streamers get one port each; each RW pair gets one port.
+        # access_granularity defaults to 1 (any bank addressable) for
+        # generic configs; pass an explicit sparse_port_config for
+        # hardware-specific mappings (e.g. gemmx).
+        rw_reader_ids = {p.reader_idx for p in rw_pairs}
+        rw_writer_ids = {p.writer_idx for p in rw_pairs}
+        sparse_port_config = []
+        for si, s in enumerate(streamers):
+            if si in rw_reader_ids or si in rw_writer_ids:
+                continue
+            sparse_port_config.append(SparsePortDef(s.spatial_banks, 1))
+        for pair in rw_pairs:
+            sparse_port_config.append(
+                SparsePortDef(streamers[pair.reader_idx].spatial_banks, 1)
+            )
+
+    config = SparseInterconnectConfig(ports=sparse_port_config, num_banks=num_banks)
+
+    # Build (streamer_idx, channel) → global input index mapping.
+    # Ports are assigned in order: first non-RW streamers in order,
+    # then RW pairs.  Within each port, channel ``ch`` maps to
+    # global index = port_base + ch.
+    channel_to_global: dict[tuple[int, int], int] = {}
+
+    # Identify RW reader/writer indices
+    rw_reader_set = {p.reader_idx for p in rw_pairs}
+    rw_writer_set = {p.writer_idx for p in rw_pairs}
+
+    global_base = 0
+    port_idx = 0
+
+    def _skip_dormant():
+        """Advance past dormant ports, accumulating their global width."""
+        nonlocal global_base, port_idx
+        while port_idx in dormant_ports and port_idx < len(sparse_port_config):
+            global_base += sparse_port_config[port_idx].width
+            port_idx += 1
+
+    # Non-RW streamers first (in order of streamer index)
+    for si, s in enumerate(streamers):
+        if si in rw_reader_set or si in rw_writer_set:
+            continue
+        _skip_dormant()
+        if port_idx >= len(sparse_port_config):
+            break
+        p = sparse_port_config[port_idx]
+        for ch in range(s.spatial_banks):
+            channel_to_global[(si, ch)] = global_base + ch
+        global_base += p.width
+        port_idx += 1
+
+    # RW pairs: reader and writer share the same global indices
+    for pair in rw_pairs:
+        _skip_dormant()
+        if port_idx >= len(sparse_port_config):
+            break
+        p = sparse_port_config[port_idx]
+        reader_s = streamers[pair.reader_idx]
+        for ch in range(reader_s.spatial_banks):
+            channel_to_global[(pair.reader_idx, ch)] = global_base + ch
+            channel_to_global[(pair.writer_idx, ch)] = global_base + ch
+        global_base += p.width
+        port_idx += 1
+
+    return SparseInterconnectArbiter(
+        config=config,
+        streamer_channel_to_global=channel_to_global,
+    )
+
+
 @dataclass
 class BlockGemmState:
     """
@@ -1741,6 +2044,9 @@ def _simulate_hardware(
     invariance_map: list[set[int]],
     strides_bank: list[list[int]],
     num_banks: int,
+    *,
+    sparse_port_config: "list[SparsePortDef] | None" = None,
+    dormant_ports: frozenset[int] | None = None,
 ) -> int:
     """
     Cycle-accurate simulation of the SNAX streamer hardware pipeline.
@@ -1846,33 +2152,15 @@ def _simulate_hardware(
 
     num_streamers = len(streamers)
 
-    # --- TCDM port mapping ---
-    # In the RTL, a ReaderWriter shares one set of TCDM request
-    # channels (via MuxDecoupled).  The TCDM interconnect (stream_xbar
-    # / rr_arb_tree) only sees one physical port group per RW pair.
-    # Map each streamer index to a TCDM port index so that the RW
-    # pair's reader and writer share the same port.
-    streamer_to_port: dict[int, int] = {}
-    port_idx = 0
-    for si in range(num_streamers):
-        # Check if this streamer is the writer part of an RW pair
-        is_rw_writer = False
-        for pair in rw_pairs:
-            if pair.writer_idx == si:
-                # Writer shares port with reader
-                streamer_to_port[si] = streamer_to_port[pair.reader_idx]
-                is_rw_writer = True
-                break
-        if not is_rw_writer:
-            streamer_to_port[si] = port_idx
-            port_idx += 1
-    num_ports = port_idx
-
-    # Per-bank round-robin priority state.
-    # The rr_arb_tree in stream_xbar operates on physical TCDM port
-    # indices.  After granting port *p* on bank *b*, the next priority
-    # rotates to ``(p + 1) % num_ports``.
-    bank_rr_priority: dict[int, int] = {b: 0 for b in range(num_banks)}
+    # --- Build SparseInterconnectArbiter ---
+    # This replaces the old streamer_to_port / bank_rr_priority
+    # with a cycle-accurate model of the RTL SparseInterconnect,
+    # including per-bank RoundRobinArbiter state.
+    tcdm_arbiter = build_sparse_interconnect(
+        streamers, rw_pairs, num_banks,
+        sparse_port_config=sparse_port_config,
+        dormant_ports=dormant_ports,
+    )
 
     # Two-stage response pipeline modeling TCDM + register latency:
     # Cycle N:   request granted (Phase 3) → next_pending_responses
@@ -2044,54 +2332,27 @@ def _simulate_hardware(
                     s.start_channel_request(ch)
 
         # ==============================================================
-        # Phase 3: Bank arbitration — per-bank round-robin
+        # Phase 3: Bank arbitration — SparseInterconnect model
         # ==============================================================
-        # The TCDM interconnect uses stream_xbar which instantiates a
-        # per-bank rr_arb_tree.  Each bank has its own independent
-        # round-robin state.  After granting a requestor the priority
-        # rotates to the *next* requestor (by index).
+        # Cycle-accurate per-bank round-robin arbitration matching the
+        # RTL SparseInterconnect → ArbitrationTree → RoundRobinArbiter
+        # pipeline.  Each bank selects at most one winner per cycle.
         if cycle == 12:
             pass #For debugging: keep this here dont remove
 
         bank_to_requestors: dict[int, list[tuple[int, int]]] = {}
         for si, s in enumerate(streamers):
-            # RTL MuxDecoupled: when writer has ANY valid request,
-            # sel=0 and ALL reader channels are blocked — even those
-            # already pending.  Skip reader channels when writer is active.
             if si in rw_blocked:
                 continue
             for ch, bank in enumerate(s.channel_pending_bank):
                 if bank is not None:
                     bank_to_requestors.setdefault(bank, []).append((si, ch))
 
-        for bank, requestors in bank_to_requestors.items():
-            if len(requestors) == 1:
-                si, ch = requestors[0]
-                completed = streamers[si].grant_channel(ch)
-                for step in completed:
-                    next_pending_responses.append((si, step))
-                port = streamer_to_port[si]
-                #bank_rr_priority[bank] = (port + 1) % num_ports
-                bank_rr_priority[bank] = 0
-            else:
-                # Per-bank round-robin: pick the requestor whose
-                # TCDM port index is nearest *at or after* the current
-                # priority pointer, wrapping around.
-                prio = bank_rr_priority[bank]
-                def rr_key(r: tuple[int, int]) -> int:
-                    return (streamer_to_port[r[0]] - prio) % num_ports
-                winner = min(requestors, key=rr_key)
-                winner_si = winner[0]
-                # Grant ALL channels of the winner that are pending on
-                # this bank (there should be at most one per streamer).
-                for si, ch in requestors:
-                    if si == winner_si:
-                        completed = streamers[si].grant_channel(ch)
-                        for step in completed:
-                            next_pending_responses.append((si, step))
-                winner_port = streamer_to_port[winner_si]
-                #bank_rr_priority[bank] = (winner_port + 1) % num_ports
-                bank_rr_priority[bank] = 0
+        granted = tcdm_arbiter.arbitrate(bank_to_requestors)
+        for si, ch, bank in granted:
+            completed = streamers[si].grant_channel(ch)
+            for step in completed:
+                next_pending_responses.append((si, step))
 
         # Store completed-step responses for delivery next cycle
         pending_responses = next_pending_responses
