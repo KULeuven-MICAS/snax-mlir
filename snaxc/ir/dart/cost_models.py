@@ -87,6 +87,7 @@ class CostModel(ABC):
         *,
         num_banks: int = 32,
         bank_bits: int = 64,
+        template_bounds: tuple[int, ...] | None = None,
     ) -> float:
         """
         Evaluate the cost of *tiling*.
@@ -123,6 +124,7 @@ class EnergyCostModel(CostModel):
         *,
         num_banks: int = 32,
         bank_bits: int = 64,
+        template_bounds: tuple[int, ...] | None = None,
     ) -> float:
         return energy_cost_of_tiling(tiling, list(request_per_streamer), invariance_map)
 
@@ -179,6 +181,7 @@ class LatencyCostModel(CostModel):
         *,
         num_banks: int = 32,
         bank_bits: int = 64,
+        template_bounds: tuple[int, ...] | None = None,
     ) -> float:
         return latency_cost_of_tiling(
             tiling,
@@ -186,6 +189,7 @@ class LatencyCostModel(CostModel):
             invariance_map,
             num_banks=num_banks,
             bank_bits=bank_bits,
+            template_bounds=template_bounds,
         )
 
 
@@ -249,68 +253,223 @@ def _compute_operand_stride_per_tile(
     operand_descriptors: Sequence[OperandDescriptor],
     invariance_map: list[set[int]],
     bank_bits: int,
+    *,
+    template_bounds: tuple[int, ...] | None = None,
+    data_shapes: Sequence[Sequence[int]] | None = None,
 ) -> list[list[int]]:
     """
     For every operand, compute the *byte stride* contributed by each tiling
     level.
 
-    The stride for operand ``op`` at tiling level ``lvl`` =
-    ``base_stride[op] * cumulative_multiplier[logical_dim]``
-    where ``base_stride`` comes from the spatial-bank count and bank width.
+    Replicates the compiler pipeline (``rebuild_schedule`` →
+    ``set_memory_layout`` → ``dart_layout_resolution``) to derive the
+    strides that the hardware streamers would actually use.
 
-    Since we only need bank indices (address // bank_bytes % num_banks is
-    equivalent to (address // bank_bytes) % num_banks), we return strides
-    in units of **bank words** (each bank_bits / 8 bytes).
-
-    For an invariant dimension the stride is 0.
+    Parameters
+    ----------
+    template_bounds : per-template-dimension spatial tile sizes
+        (e.g. ``(8, 8, 8)`` for GEMMX).  When provided the TSL-based
+        stride derivation is used; otherwise falls back to the legacy
+        ``burst_bank_words * cum`` formula.
+    data_shapes : per-operand memref shapes, one tuple per operand, each
+        with ``num_data_dims`` entries.  When *None* the shapes are
+        inferred from *tiling* and *template_bounds*.
 
     Returns
     -------
     strides : list[list[int]]
-        ``strides[op_idx][level_idx]`` – stride in bank-word units for
-        that operand at that tiling level.
+        ``strides[op_idx][level_idx]`` – byte stride for that operand at
+        that tiling level.
     """
     num_ops = len(operand_descriptors)
-    num_levels = len(tiling)
 
-    # For each logical dim, track cumulative factor (inner → outer).
-    # tiling is already inner → outer.
-    dim_cumulative: dict[int, int] = {}
+    # ------------------------------------------------------------------
+    # Fast path: legacy formula when template_bounds is not provided
+    # ------------------------------------------------------------------
+    if template_bounds is None:
+        dim_cumulative: dict[int, int] = {}
+        strides: list[list[int]] = [[] for _ in range(num_ops)]
+        for _lvl, (dim_idx, tile_size, _is_crit) in enumerate(tiling):
+            cum = dim_cumulative.get(dim_idx, 1)
+            for op_idx, desc in enumerate(operand_descriptors):
+                if dim_idx in desc.invariant_dims:
+                    strides[op_idx].append(0)
+                else:
+                    strides[op_idx].append(desc.burst_bank_words * cum)
+            dim_cumulative[dim_idx] = cum * tile_size
+        return strides
 
-    strides: list[list[int]] = [[] for _ in range(num_ops)]
+    # ------------------------------------------------------------------
+    # TSL-based stride derivation (replicates compiler passes)
+    # ------------------------------------------------------------------
+    num_template_dims = len(template_bounds)
 
-    for lvl, (dim_idx, tile_size, _is_crit) in enumerate(tiling):
-        cum = dim_cumulative.get(dim_idx, 1)
-        for op_idx, desc in enumerate(operand_descriptors):
-            if dim_idx in desc.invariant_dims:
-                strides[op_idx].append(0)
+    # Filter size-1 levels for the schedule pattern construction
+    tiling_filtered = [(d, s) for d, s, *_ in tiling if s > 1]
+
+    # --- Per-operand access mapping ---
+    # From invariant_dims, derive which template dims each operand accesses
+    all_dims = set(range(num_template_dims))
+    op_accessed_dims: list[list[int]] = []
+    for desc in operand_descriptors:
+        accessed = sorted(all_dims - set(desc.invariant_dims))
+        op_accessed_dims.append(accessed)
+
+    num_data_dims = len(op_accessed_dims[0])
+
+    # --- Base vectors and spatial columns ---
+    # base_vecs[template_dim][op_idx] = array of len(num_data_dims)
+    base_vecs: dict[int, list[np.ndarray]] = {}
+    spatial_cols: list[list[np.ndarray]] = []
+
+    for tdim in range(num_template_dims):
+        bvecs = []
+        svecs = []
+        for op_idx, accessed in enumerate(op_accessed_dims):
+            bv = np.zeros(num_data_dims, dtype=int)
+            sv = np.zeros(num_data_dims, dtype=int)
+            if tdim in accessed:
+                data_dim_idx = accessed.index(tdim)
+                bv[data_dim_idx] = template_bounds[tdim]
+                sv[data_dim_idx] = 1
+            bvecs.append(bv)
+            svecs.append(sv)
+        base_vecs[tdim] = bvecs
+        spatial_cols.append(svecs)
+
+    # --- Build schedule pattern A (outer→inner temporal + spatial) ---
+    stride_tracker: dict[int, int] = {d: 1 for d, _ in tiling_filtered}
+    for d in range(num_template_dims):
+        stride_tracker.setdefault(d, 1)
+
+    components: list[tuple[int, list[np.ndarray]]] = []
+    for orig_idx, size in tiling_filtered:
+        vecs = [base_vecs[orig_idx][op] * stride_tracker[orig_idx]
+                for op in range(num_ops)]
+        components.append((size, vecs))
+        stride_tracker[orig_idx] *= size
+
+    components.reverse()  # outer → inner
+
+    bounds = [x[0] for x in components] + list(template_bounds)
+
+    patterns: list[np.ndarray] = []
+    for op_idx in range(num_ops):
+        temp_cols = [x[1][op_idx] for x in components]
+        spat = [spatial_cols[d][op_idx] for d in range(num_template_dims)]
+        cols = temp_cols + spat
+        patterns.append(np.column_stack(cols) if cols
+                        else np.zeros((num_data_dims, 0), dtype=int))
+
+    # --- Infer data shapes if not provided ---
+    if data_shapes is None:
+        dim_total: dict[int, int] = {d: template_bounds[d]
+                                     for d in range(num_template_dims)}
+        for d, s, *_ in tiling:
+            if s > 1:
+                dim_total[d] *= s
+        data_shapes = []
+        for accessed in op_accessed_dims:
+            data_shapes.append(tuple(dim_total[d] for d in accessed))
+
+    # --- Simulate set_memory_layout for each operand → TSL ---
+    def _simulate_tsl(
+        pattern: np.ndarray,
+        bnds: list[int],
+        shape: Sequence[int],
+        elem_b: int,
+    ) -> list[list[tuple[int, int]]]:
+        """Return TSL per data dim as [(stride_bytes, bound)] inner→outer."""
+        nd = pattern.shape[0]
+        current_stride = 1  # in elements
+        raw: list[list[tuple[int, int]]] = [[] for _ in range(nd)]
+
+        for rev_idx in range(len(bnds)):
+            orig_idx = len(bnds) - 1 - rev_idx
+            sbound = bnds[orig_idx]
+            accesses = pattern[:, orig_idx]
+            abin = tuple(0 if x == 0 else 1 for x in accesses)
+
+            if 1 not in abin:
+                continue
+
+            # ensure_access_granularity
+            if current_stride != 1:
+                if rev_idx >= num_template_dims:  # temporal
+                    gran = 8 if elem_b == 1 else 16
+                else:  # spatial
+                    gran = 8 if elem_b == 1 else 2
+                if current_stride % gran != 0:
+                    current_stride += (gran - current_stride) % 64
+
+            adim = abin.index(1)
+            existing_bound = 1
+            for s, b in raw[adim]:
+                existing_bound *= b
+            size_remaining = shape[adim] // existing_bound
+
+            to_tile = True
+            if size_remaining % sbound != 0:
+                to_tile = False
             else:
-                # A single temporal step moves through
-                #   spatial_banks * element_bytes  contiguous bytes
-                # in memory.  In bank-word units (each 8 bytes) the base
-                # stride is  burst_bank_words = spatial_banks * element_bytes / 8.
-                # For the cumulative factor (when the same dim is tiled
-                # multiple times), multiply by the product of inner tile
-                # sizes for this dim.
-                strides[op_idx].append(desc.burst_bank_words * cum)
-        dim_cumulative[dim_idx] = cum * tile_size
+                for sv, bv in zip(pattern[adim, :], bnds):
+                    if sv % sbound != 0 and bv != sbound:
+                        to_tile = False
+                        break
 
+            lbound = sbound if to_tile else size_remaining
+            raw[adim].insert(0, (current_stride, lbound))
+            current_stride *= lbound
 
-    # EXTREMELY IMPORTANT FIXME: HARD-CODED EXAMPLE FOR DEBUGGING – REPLACE WITH ACTUAL LOGIC
-    # TODO
-    # TODO
-    # TODO
-    # strides[0] = [0, 64, 1024, 0, 256, 0, 0] # sched 200
-    # strides[1] = [64, 0, 1024, 256, 4096, 0, 0]
-    # strides[2] = [256, 0, 4096, 512, 0, 0, 0]
-    # strides[0] = [0, 64, 1024, 0, 256, 0, 0] # sched 195
-    # strides[1] = [0, 64, 0, 1024, 256, 0, 0]
-    # strides[2] = [0, 0, 256, 4096, 0, 0, 0]
-    strides[0] = [0, 64, 1024, 0, 128,0,0] # sched 194
-    strides[1] = [0, 64, 0, 1024, 128, 0, 0]
-    strides[2] = [0, 0, 256, 4096, 0, 0, 0]
+        for dim_strides in raw:
+            if not dim_strides:
+                dim_strides.append((current_stride, 1))
 
-    return strides
+        # Convert to bytes, reverse to inner→outer, remove bound-1 entries
+        tsl: list[list[tuple[int, int]]] = []
+        for dim_strides in raw:
+            inner_first = [(s * elem_b, b) for s, b in reversed(dim_strides)]
+            inner_first = [(s, b) for s, b in inner_first if b != 1]
+            if not inner_first:
+                inner_first = [(0, 1)]
+            tsl.append(inner_first)
+        return tsl
+
+    def _eval_tsl(entries: list[tuple[int, int]], x: int) -> int:
+        result = 0
+        for stride, bound in entries:
+            result += (x % bound) * stride
+            x //= bound
+        return result
+
+    # --- Compose TSL with pattern to get per-tiling-level byte strides ---
+    num_temporal = len(tiling_filtered)
+
+    result_strides: list[list[int]] = [[] for _ in range(num_ops)]
+    for op_idx in range(num_ops):
+        pat = patterns[op_idx]
+        tsl = _simulate_tsl(pat, bounds, data_shapes[op_idx],
+                            operand_descriptors[op_idx].element_bytes)
+
+        # Pre-compute byte stride for each schedule dim
+        sched_strides: list[int] = []
+        for col_idx in range(len(bounds)):
+            col = pat[:, col_idx]
+            addr = sum(_eval_tsl(tsl[d], int(col[d]))
+                       for d in range(num_data_dims))
+            sched_strides.append(addr)
+
+        # Map schedule dims → tiling levels (inner→outer)
+        fi = 0
+        for _dim, size, *_ in tiling:
+            if size == 1:
+                result_strides[op_idx].append(0)
+            else:
+                sched_col = num_temporal - 1 - fi
+                result_strides[op_idx].append(sched_strides[sched_col])
+                fi += 1
+
+    return result_strides
 
 
 # ---------------------------------------------------------------------------
@@ -459,6 +618,7 @@ def latency_cost_of_tiling(
     *,
     num_banks: int = 32,
     bank_bits: int = 64,
+    template_bounds: tuple[int, ...] | None = None,
 ) -> float:
     """
     Compute the total number of TCDM cycles for a given tiling by
@@ -472,6 +632,7 @@ def latency_cost_of_tiling(
     invariance_map : operand_idx → set of logical dims it is invariant to.
     num_banks : TCDM bank count.
     bank_bits : width of a single TCDM bank word in bits.
+    template_bounds : per-template-dimension spatial tile sizes.
 
     Returns
     -------
@@ -482,7 +643,8 @@ def latency_cost_of_tiling(
 
     # Compute per-operand strides in bank-word units
     strides_bank = _compute_operand_stride_per_tile(
-        tiling, operand_descriptors, invariance_map, bank_bits
+        tiling, operand_descriptors, invariance_map, bank_bits,
+        template_bounds=template_bounds,
     )
 
     return float(_simulate_nested(
@@ -669,6 +831,7 @@ class HardwareLatencyCostModel(CostModel):
         *,
         num_banks: int = 32,
         bank_bits: int = 64,
+        template_bounds: tuple[int, ...] | None = None,
     ) -> float:
         return hardware_latency_cost_of_tiling(
             tiling,
@@ -678,6 +841,7 @@ class HardwareLatencyCostModel(CostModel):
             bank_bits=bank_bits,
             sparse_port_config=GEMMX_SPARSE_PORT_CONFIG,  # type: ignore[arg-type]
             dormant_ports=GEMMX_DORMANT_PORTS,
+            template_bounds=template_bounds,
         )
 
 
@@ -690,6 +854,7 @@ def hardware_latency_cost_of_tiling(
     bank_bits: int = 64,
     sparse_port_config: "list[SparsePortDef] | None" = None,
     dormant_ports: frozenset[int] | None = None,
+    template_bounds: tuple[int, ...] | None = None,
 ) -> float:
     """
     Cycle-accurate simulation of the SNAX streamer hardware.
@@ -701,7 +866,8 @@ def hardware_latency_cost_of_tiling(
         return 0.0
 
     strides_bank = _compute_operand_stride_per_tile(
-        tiling, operand_descriptors, invariance_map, bank_bits
+        tiling, operand_descriptors, invariance_map, bank_bits,
+        template_bounds=template_bounds,
     )
 
     return float(_simulate_hardware(
@@ -2406,7 +2572,6 @@ def _simulate_hardware(
                 # Guard: invariant steps have no buffer entry to pop.
                 s.reader_consume(consumed_agu_step)
 
-    print(cycle_for_step_i)
     if cycle >= MAX_CYCLES:
         return -1
     return cycle
