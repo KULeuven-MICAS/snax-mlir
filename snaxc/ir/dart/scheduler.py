@@ -148,6 +148,75 @@ def cost_of_tiling(
     return energy_cost_of_tiling(tiling, request_per_streamer, invariance_map)
 
 
+def _build_l_id_to_template(
+    schedule: Schedule,
+    template: Template,
+    logical_inv_map: dict[int, tuple[bool, ...]],
+) -> dict[int, int]:
+    """Map each Logical Dimension ID to the template dim it tiles.
+
+    Each L_ID groups temporal dims with the same invariance signature.
+    A template dim has the same invariance pattern (which operands have
+    all-zero columns) as the temporal dims that tile it.  Match them.
+    """
+    temporal_dims_count = schedule.num_dims - template.num_dims
+    template_sigs: dict[int, tuple[bool, ...]] = {}
+    for t in range(template.num_dims):
+        template_sigs[t] = tuple(
+            np.all(sp.pattern.A[:, temporal_dims_count + t] == 0)
+            for sp in schedule
+        )
+
+    l_id_to_template: dict[int, int] = {}
+    for l_id, l_sig in logical_inv_map.items():
+        for t, t_sig in template_sigs.items():
+            if l_sig == t_sig:
+                l_id_to_template[l_id] = t
+                break
+        else:
+            raise RuntimeError(
+                f"L_ID {l_id} with invariance sig {l_sig} does not match "
+                f"any template dim signature"
+            )
+    return l_id_to_template
+
+
+def _convert_to_template_dims(
+    tiling_split: list[tuple[int, int, bool]],
+    original_loops_per_ldim: dict[int, list[tuple[int, int, list[int]]]],
+    l_id_to_template: dict[int, int],
+    inv_map_l_id: list[set[int]],
+    num_operands: int,
+) -> tuple[list[tuple[int, int, bool]], list[set[int]]]:
+    """Convert a split tiling and invariance map from L_ID / orig-idx
+    space to template-dim space.
+
+    Returns (tiling_tdim, inv_map_tdim) where both use template dim
+    indices consistently.
+    """
+    # Build orig_idx → template_dim mapping
+    orig_to_template: dict[int, int] = {}
+    for l_id, loops in original_loops_per_ldim.items():
+        tdim = l_id_to_template[l_id]
+        for orig_idx, _bound, _pf in loops:
+            orig_to_template[orig_idx] = tdim
+
+    # Convert tiling entries
+    tiling_tdim = [
+        (orig_to_template[orig], size, crit)
+        for orig, size, crit in tiling_split
+    ]
+
+    # Convert invariance map: L_ID → template_dim
+    inv_map_tdim: list[set[int]] = [set() for _ in range(num_operands)]
+    for l_id, tdim in l_id_to_template.items():
+        for op_idx in range(num_operands):
+            if l_id in inv_map_l_id[op_idx]:
+                inv_map_tdim[op_idx].add(tdim)
+
+    return tiling_tdim, inv_map_tdim
+
+
 def _build_operand_descriptors(
     streamers: Sequence[Streamer],
     invariance_map: list[set[int]],
@@ -514,10 +583,27 @@ def find_optimal_tiling(
             cache_depths[l_id] = min(depths) if depths else float("inf")
 
     # Build operand descriptors for the latency cost model
-    operand_descs = _build_operand_descriptors(streamers, inv_map_for_cost, element_bytes)
+    # Energy model uses L_ID-based invariance (tiling is unsplit).
+    # Latency/hardware_latency models need template-dim-based invariance
+    # (tiling is split and converted to template dims).
+    l_id_to_template = _build_l_id_to_template(
+        schedule, template, logical_inv_map
+    )
+    _inv_map_tdim: list[set[int]] = [set() for _ in range(num_operands)]
+    for l_id, tdim in l_id_to_template.items():
+        for op_idx in range(num_operands):
+            if l_id in inv_map_for_cost[op_idx]:
+                _inv_map_tdim[op_idx].add(tdim)
+
+    operand_descs_energy = _build_operand_descriptors(
+        streamers, inv_map_for_cost, element_bytes
+    )
+    operand_descs_latency = _build_operand_descriptors(
+        streamers, _inv_map_tdim, element_bytes
+    )
 
     # Request-per-streamer heuristic for energy model
-    request_per_streamer = [d.spatial_banks for d in operand_descs]
+    request_per_streamer = [d.spatial_banks for d in operand_descs_energy]
 
     all_tilings: list[list[tuple[int, int, bool]]] = []
 
@@ -535,14 +621,34 @@ def find_optimal_tiling(
         for t in all_tilings
     ]
 
+    _template_bounds = tuple(template[0].bounds)
+
     if schedule_idx is not None:
         if schedule_idx >= len(all_tilings):
             raise ValueError(f"No schedule found at index {schedule_idx}")
         best_tiling = all_tilings[schedule_idx]
         if cost_model_name == "latency":
-            cost = latency_cost_of_tiling(best_tiling, operand_descs, inv_map_for_cost)
+            # Split logical-dim tiles back to per-original-loop tiles,
+            # then convert to template-dim space for the cost model.
+            best_tiling_split = split_tiling_to_original_loops(
+                best_tiling, original_loops_per_ldim
+            )
+            tiling_tdim, inv_tdim = _convert_to_template_dims(
+                best_tiling_split, original_loops_per_ldim,
+                l_id_to_template, inv_map_for_cost, num_operands,
+            )
+            cost = latency_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
+                                          template_bounds=_template_bounds)
         elif cost_model_name == "hardware_latency":
-            cost = hardware_latency_cost_of_tiling(best_tiling, operand_descs, inv_map_for_cost)
+            best_tiling_split = split_tiling_to_original_loops(
+                best_tiling, original_loops_per_ldim
+            )
+            tiling_tdim, inv_tdim = _convert_to_template_dims(
+                best_tiling_split, original_loops_per_ldim,
+                l_id_to_template, inv_map_for_cost, num_operands,
+            )
+            cost = hardware_latency_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
+                                                   template_bounds=_template_bounds)
         else:
             cost = energy_cost_of_tiling(best_tiling, request_per_streamer, inv_map_for_cost)
         print("Predicted Cost for schedule index", schedule_idx, ":", cost)
@@ -552,9 +658,21 @@ def find_optimal_tiling(
         min_cost = float("inf")
         for index, tiling in enumerate(all_tilings):
             if cost_model_name == "latency":
-                c = latency_cost_of_tiling(tiling, operand_descs, inv_map_for_cost)
+                tiling_split = split_tiling_to_original_loops(tiling, original_loops_per_ldim)
+                tiling_tdim, inv_tdim = _convert_to_template_dims(
+                    tiling_split, original_loops_per_ldim,
+                    l_id_to_template, inv_map_for_cost, num_operands,
+                )
+                c = latency_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
+                                           template_bounds=_template_bounds)
             elif cost_model_name == "hardware_latency":
-                c = hardware_latency_cost_of_tiling(tiling, operand_descs, inv_map_for_cost)
+                tiling_split = split_tiling_to_original_loops(tiling, original_loops_per_ldim)
+                tiling_tdim, inv_tdim = _convert_to_template_dims(
+                    tiling_split, original_loops_per_ldim,
+                    l_id_to_template, inv_map_for_cost, num_operands,
+                )
+                c = hardware_latency_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
+                                                   template_bounds=_template_bounds)
             else:
                 c = energy_cost_of_tiling(tiling, request_per_streamer, inv_map_for_cost)
             if c < min_cost:

@@ -50,8 +50,10 @@ class OperandDescriptor:
         element_bytes: Size of a single element in bytes (e.g. 1 for i8,
             4 for i32).  Needed to convert element counts to byte/bank
             addresses.
-        invariant_dims: Set of *logical* dimension ids to which the operand
-            is invariant (i.e. the stride is 0 for those dims).
+        invariant_dims: Set of *template* dimension indices to which the
+            operand is invariant (i.e. the stride is 0 for those dims).
+            Callers must convert from logical dimension IDs (L_IDs) to
+            template dimension indices before constructing descriptors.
     """
     kind: OperandKind
     spatial_banks: int
@@ -1021,9 +1023,16 @@ class StreamerState:
     # is fully complete and its response can enter the pipeline.
     step_grants_remaining: dict[int, int] = field(default_factory=dict)
 
-    # dataBuffer: FIFO of step indices (reader: fetched data; writer:
-    # data from accelerator waiting to be written)
+    # dataBuffer: FIFO of step indices (reader: fetched data from TCDM;
+    # for writers this is only used in the fixed-cache path).
     data_buffer: deque[int] = field(default_factory=deque)
+
+    # Writer per-channel data buffers.  Models the ComplexQueueConcat
+    # that splits one wide accelerator output into N per-channel queues
+    # (each of depth data_buffer_depth).  Each channel independently
+    # dequeues when its TCDM request fires (grant).  The wide input
+    # is accepted only when ALL per-channel queues have room.
+    writer_channel_bufs: list[deque[int]] = field(default_factory=list)
 
     # For readers: per-channel response slots available.  Each channel
     # has its own UpDownCounter in DataResponser with ceil = bufferDepth+1.
@@ -1032,6 +1041,14 @@ class StreamerState:
     responser_slots: list[int] = field(default_factory=list)
 
     # ---- FixedLevelCache state (only active when uses_fixed_cache) ----
+    # Writer pipe=false: the writer's ComplexQueueConcat has pipe=false,
+    # meaning the buffer cannot accept new data in the same cycle it
+    # becomes non-full due to a dequeue.  This flag snapshots whether
+    # the writer buffer was full at the start of a cycle (before
+    # Phase 0 pops), so that writer_has_space() correctly returns
+    # False for the rest of that cycle even after the pop.
+    _writer_buf_full_at_start: bool = False
+
     # Models the fixedCacheInstructionBuffer FIFO in the AGU.  Each
     # entry is ``(step, is_update_cache)`` where ``is_update_cache``
     # means the step needs TCDM data (first pass through critical
@@ -1098,15 +1115,26 @@ class StreamerState:
         if not self.responser_slots:
             # Each channel starts with data_buffer_depth free slots
             self.responser_slots = [self.data_buffer_depth] * self.spatial_banks
+        if not self.writer_channel_bufs and self.kind == OperandKind.WRITER:
+            self.writer_channel_bufs = [deque() for _ in range(self.spatial_banks)]
 
     # ----- address helpers -----
 
     def compute_channel_bank(self, step: int, ch: int) -> int:
-        """Compute the TCDM bank index for channel ``ch`` at ``step``."""
+        """Compute the TCDM bank index for channel ``ch`` at ``step``.
+
+        Mirrors the RTL address computation:
+          addr = temporal_base + spatial_offset(ch)
+          bank = (addr >> byteOffsetWidth) & (num_banks - 1)
+
+        For all current SNAX streamer configurations the spatial
+        offsets are multiples of 8 bytes (one bank word), so the bank
+        formula simplifies to ``(temporal_base // 8 + ch) % num_banks``.
+        """
         counters = self._step_to_counters(step)
         base = sum(self.strides_bank[lvl] * counters[lvl]
                    for lvl in range(self.num_levels))
-        return (base // 8 ) % self.num_banks + ch
+        return (base // 8 + ch) % self.num_banks
 
     def _step_to_counters(self, step: int) -> list[int]:
         counters: list[int] = []
@@ -1258,7 +1286,7 @@ class StreamerState:
         * Reader: DataResponser has room (``responser_slots > 0``)
           **or** ``dataFifoPopped`` is true (combinational bypass
           from DataResponser: ``rspReady = ~lastVal || dataFifoPopped``).
-        * Writer: dataBuffer has data to write.
+        * Writer: per-channel dataBuffer queue has data to write.
         """
         if self.channel_pending_bank[ch] is not None:
             return False  # already has a pending request
@@ -1269,7 +1297,7 @@ class StreamerState:
             if self.responser_slots[ch] <= 0 and not data_fifo_popped:
                 return False
         else:  # WRITER
-            if len(self.data_buffer) == 0:
+            if len(self.writer_channel_bufs[ch]) == 0:
                 return False
         return True
 
@@ -1291,11 +1319,18 @@ class StreamerState:
         Grant channel ``ch``'s bank request.  Dequeues from the
         channel's output buffer queue.
 
+        For writers, also pops from the per-channel data buffer
+        (data leaves with the request, matching DataRequestor RTL:
+        ``io.in.data.get.ready := io.in.addr.ready``).
+
         Returns a list of step indices that became fully complete
         (all channels granted) as a result of this grant.
         """
         step = self.output_buffers[ch].popleft()
         self.channel_pending_bank[ch] = None
+        # Writer: data is consumed alongside the request (per-channel)
+        if self.is_writer:
+            self.writer_channel_bufs[ch].popleft()
         completed: list[int] = []
         self.step_grants_remaining[step] -= 1
         if self.step_grants_remaining[step] == 0:
@@ -1346,15 +1381,22 @@ class StreamerState:
           dataAfterCrosser.ready = instrValid && targetReady
 
         Without fixed-cache: plain dataBuffer space check.
+
+        The writer's ComplexQueueConcat has ``pipe = false``, so the
+        buffer does NOT accept new data in the same cycle that a
+        dequeue frees a slot.  We use ``_writer_buf_full_at_start``
+        to model this: if ANY per-channel queue was full at the start
+        of the cycle, the wide input cannot fire even after grants
+        free slots during the cycle.
         """
         if self.uses_fixed_cache:
             if not self.cache_instruction_buffer:
                 return False  # no instrValid
             _step, is_access = self.cache_instruction_buffer[0]
             if is_access:  # lastAccess → goToTCDM: need dataBuffer room
-                return len(self.data_buffer) < self.data_buffer_depth
+                return not self._writer_buf_full_at_start
             return True  # cache-only path: no backpressure
-        return len(self.data_buffer) < self.data_buffer_depth
+        return not self._writer_buf_full_at_start
 
     def writer_accept(self, acc_step: int):
         """Accelerator pushes result into the writer.
@@ -1367,15 +1409,17 @@ class StreamerState:
             writeback
           Consumes one fixedCacheInstruction per d_o fire.
 
-        Without fixed-cache: push directly to dataBuffer.
+        Without fixed-cache: push directly to per-channel dataBuffers.
         """
         if self.uses_fixed_cache:
             _step, is_access = self.cache_instruction_buffer.popleft()
             if is_access:  # lastAccess → data goes to TCDM
-                self.data_buffer.append(acc_step)
+                for buf in self.writer_channel_bufs:
+                    buf.append(acc_step)
             # else: cache-only write, no dataBuffer entry
             return
-        self.data_buffer.append(acc_step)
+        for buf in self.writer_channel_bufs:
+            buf.append(acc_step)
 
     # ----- FixedLevelCache processing -----
 
@@ -1434,8 +1478,11 @@ class StreamerState:
             and all(len(buf) == 0 for buf in self.output_buffers)
             and not self.has_pending_channels()
             and len(self.step_grants_remaining) == 0
-            and len(self.data_buffer) == 0
         )
+        if self.is_writer:
+            done = done and all(len(buf) == 0 for buf in self.writer_channel_bufs)
+        else:
+            done = done and len(self.data_buffer) == 0
         if self.uses_fixed_cache:
             done = done and (
                 len(self.cache_instruction_buffer) == 0
@@ -1470,8 +1517,10 @@ class ReaderWriterPair:
 # ArbitrationTree, and RoundRobinArbiter modules.
 # ---------------------------------------------------------------------------
 
-# SNAX gemmx accelerator sparse interconnect configuration
-# (matches fixed_cache_test_32_banks.hjson: [[8,1],[8,8],[8,8],[32,8]])
+# Full SNAX gemmx sparse interconnect configuration including system ports.
+# Matches the RTL generated config from snaxgen.py:
+#   [[8,1],[8,8],[8,8],[32,8],[16,1],[1,1],[1,1],[1,1],[8,8]]
+# (accelerator ports 0-3 + xDMA + core0 + core1 + AXI + iDMA)
 GEMMX_SPARSE_PORT_CONFIG: list["SparsePortDef"] = None  # type: ignore[assignment]  # set after class def
 GEMMX_DORMANT_PORTS: frozenset[int] = frozenset({2})  # Port 2 (D standalone writer) is dormant
 
@@ -1492,6 +1541,11 @@ GEMMX_SPARSE_PORT_CONFIG = [
     SparsePortDef(8, 8),    # Port 1 — B reader
     SparsePortDef(8, 8),    # Port 2 — D standalone writer (dormant)
     SparsePortDef(32, 8),   # Port 3 — C/D ReaderWriter
+    SparsePortDef(16, 1),   # Port 4 — xDMA
+    SparsePortDef(1, 1),    # Port 5 — core 0
+    SparsePortDef(1, 1),    # Port 6 — core 1
+    SparsePortDef(1, 1),    # Port 7 — AXI
+    SparsePortDef(8, 8),    # Port 8 — iDMA
 ]
 
 
@@ -1610,6 +1664,9 @@ class SparseInterconnectArbiter:
         grants: list[tuple[int, int, int]] = []
         ipb = self.config.inputs_per_bank
 
+        # Track which banks had a valid winner this cycle.
+        banks_with_winner: set[int] = set()
+
         for bank, requestors in requests.items():
             if not requestors:
                 continue
@@ -1644,15 +1701,17 @@ class SparseInterconnectArbiter:
 
             local_idx, si, ch = winner
             grants.append((si, ch, bank))
+            banks_with_winner.add(bank)
 
             # Update previous register (RegNext of selection.bits)
             self._bank_previous[bank] = local_idx
 
-        # Banks with no requests: previous holds its value (RegNext
-        # of the combinational output; but since selection.bits is
-        # driven by selectedRequest which depends on previous, and
-        # anyValid is false, the RegNext just latches the old value).
-        # No action needed — _bank_previous[bank] stays unchanged.
+        # Banks with no valid requests: RTL's PriorityEncoder(all_false)
+        # returns NumInp-1 (Chisel PriorityMux recurses to the last
+        # element when no input is true), so previous latches ipb-1.
+        for bank in range(self.config.num_banks):
+            if bank not in banks_with_winner:
+                self._bank_previous[bank] = ipb - 1
 
         return grants
 
@@ -2004,7 +2063,19 @@ class BlockGemmState:
             a_valid = False
             b_valid = False
 
-        regcut_input_fire = datacut_input_ready and a_valid and b_valid
+        # DecoupledCat4to1 synchronises a_i, b_i, subtraction_a,
+        # subtraction_b.  All four inputs must be valid before the
+        # combined output is valid (and thus before any input ready
+        # can be asserted).
+        #   RTL: decoupled_subtraction_a.valid := cstate === sBUSY
+        #        decoupled_subtraction_b.valid := cstate === sBUSY
+        #   RTL: io.out.valid := in1.valid && in2.valid && in3.valid && in4.valid
+        #        io.inN.ready := io.out.ready && io.out.valid
+        sa_valid = self.busy
+        sb_valid = self.busy
+        cat4to1_out_valid = a_valid and b_valid and sa_valid and sb_valid
+
+        regcut_input_fire = datacut_input_ready and cat4to1_out_valid
 
         # Consume a and b from streamers when regcut input fires
         if regcut_input_fire:
@@ -2049,10 +2120,10 @@ class BlockGemmState:
         # dataInsideShiftRegister tracks whether ANY stage has data
         # (RTL uses a counter: insideCounter != delay).  For delay=2
         # this is equivalent to stage0_valid || stage1_valid.
-        # io.in.valid = a_valid && b_valid (from DecoupledCat4to1;
-        # subtraction inputs are always valid when busy).
+        # io.in.valid = DecoupledCat4to1 output valid
+        #             = a.valid && b.valid && sa.valid && sb.valid
         data_inside = self.datacut_stage0_valid or self.datacut_stage1_valid
-        shift_suggestion = data_inside or (a_valid and b_valid)
+        shift_suggestion = data_inside or cat4to1_out_valid
         shift = shift_permission and shift_suggestion
 
         if shift:
@@ -2127,13 +2198,17 @@ class BlockGemmState:
                 return False
             if not s.is_last_repeat(step):
                 return False
-            # Both a AND b must be valid for regcut input to fire
+            # Both a AND b (and subtraction via Cat4to1) must be valid
+            # for regcut input to fire.
             s_a = streamers[self.a_streamer_idx]
             s_b = streamers[self.b_streamer_idx]
             a_agu = s_a.acc_to_agu_step(step)
             b_agu = s_b.acc_to_agu_step(step)
+            sa_valid = self.busy
+            sb_valid = self.busy
             return (self._reader_data_valid(s_a, a_agu) and
-                    self._reader_data_valid(s_b, b_agu))
+                    self._reader_data_valid(s_b, b_agu) and
+                    sa_valid and sb_valid)
 
         elif si == self.c_streamer_idx:
             # c: consumed when add_c_fire AND is_last_repeat
@@ -2170,8 +2245,6 @@ class BlockGemmState:
         the accelerator, but only when needs_tcdm_access is True
         (invariant steps have no buffer entry).
         """
-        if not self.busy:
-            return False
 
         s = streamers[si]
 
@@ -2382,7 +2455,6 @@ def _simulate_hardware(
         c_streamer_idx=c_idx,
         d_streamer_idx=d_idx,
     )
-    acc.busy = True
 
     cycle = 0
     MAX_CYCLES = total_steps * num_streamers * 2
@@ -2395,17 +2467,30 @@ def _simulate_hardware(
             break
 
         cycle += 1
+    
+        if cycle == 1:
+            acc.busy = True  # For debugging: force busy to test preconditions
 
         # ==============================================================
         # Phase 0: Deliver responses & advance pipeline
         # ==============================================================
         # Readers: 2-cycle latency — grant (N) → shift_reg (N+1) →
         #   data_buffer register (N+2).
-        # Writers: 1-cycle latency — data leaves with the request,
-        #   the write completes when the grant is acknowledged (the
-        #   TCDM shift_reg response merely confirms the write).
-        #   data_buffer is popped in the cycle after grant.
+        # Writers: data leaves with the request at grant time (Phase 3).
+        #   Per-channel data buffers are popped in grant_channel().
+        #   The response pipeline is reader-only.
         next_pending_responses: list[tuple[int, int]] = []
+
+        # Snapshot writer buffer fullness BEFORE any grants (pipe=false).
+        # The ComplexQueueConcat input fires only when ALL per-channel
+        # queues have room.  With pipe=false, even if a grant frees a
+        # slot later this cycle, the input side still sees "full".
+        for s in streamers:
+            if s.is_writer:
+                s._writer_buf_full_at_start = any(
+                    len(buf) >= s.data_buffer_depth
+                    for buf in s.writer_channel_bufs
+                )
 
         # Stage 2 (readers only): register TCDM read data into dataBuffer
         for si, step in pending_buffer_writes:
@@ -2413,17 +2498,12 @@ def _simulate_hardware(
             if s.is_reader:
                 s.data_buffer.append(step)
 
-        # Stage 1: process shift_reg outputs
-        # Writers: pop data_buffer now (data already sent with request)
-        # Readers: promote to stage 2 for next cycle
+        # Stage 1 (readers only): promote shift_reg outputs to stage 2
         next_buffer_writes: list[tuple[int, int]] = []
         for si, step in pending_responses:
             s = streamers[si]
             if s.is_reader:
                 next_buffer_writes.append((si, step))
-            else:
-                if s.data_buffer:
-                    s.data_buffer.popleft()
         pending_buffer_writes = next_buffer_writes
         pending_responses = []
 
@@ -2463,7 +2543,7 @@ def _simulate_hardware(
         # Compute per-reader dataFifoPopped bypass using BlockGemmState
         data_fifo_popped: dict[int, bool] = {}
 
-        if cycle == 5:
+        if cycle == 6:
             pass #For debugging: keep this here dont remove
 
         for si, s in enumerate(streamers):
@@ -2503,7 +2583,7 @@ def _simulate_hardware(
         # Cycle-accurate per-bank round-robin arbitration matching the
         # RTL SparseInterconnect → ArbitrationTree → RoundRobinArbiter
         # pipeline.  Each bank selects at most one winner per cycle.
-        if cycle == 12:
+        if cycle == 23:
             pass #For debugging: keep this here dont remove
 
         bank_to_requestors: dict[int, list[tuple[int, int]]] = {}
@@ -2517,8 +2597,11 @@ def _simulate_hardware(
         granted = tcdm_arbiter.arbitrate(bank_to_requestors)
         for si, ch, bank in granted:
             completed = streamers[si].grant_channel(ch)
-            for step in completed:
-                next_pending_responses.append((si, step))
+            # Only readers need the response pipeline (data arrives later).
+            # Writers already consumed their data at grant time.
+            if streamers[si].is_reader:
+                for step in completed:
+                    next_pending_responses.append((si, step))
 
         # Store completed-step responses for delivery next cycle
         pending_responses = next_pending_responses
@@ -2529,8 +2612,9 @@ def _simulate_hardware(
         # The BlockGemmState models the full accelerator state machine
         # with independent per-streamer ready/valid signals, register
         # cut pipeline, K-accumulation, and d_o back-pressure.
-        if cycle == 60:
+        if cycle == 28:
             pass #For debugging: keep this here dont remove
+
 
         acc.tick(streamers)
 

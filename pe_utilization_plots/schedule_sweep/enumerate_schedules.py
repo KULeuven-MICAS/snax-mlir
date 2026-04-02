@@ -39,6 +39,7 @@ from snaxc.ir.dart.scheduler import (
     is_pure_output_stationary,
     is_memory_flexible_enough,
     _build_operand_descriptors,
+    _build_l_id_to_template,
     get_prime_factors,
     search_cached_level_fixed,
     reevaluate_critical_flags,
@@ -183,7 +184,26 @@ def get_all_tilings(template, schedule, streamers, element_bytes):
         for t in all_tilings
     ]
 
-    return all_tilings, operand_descs, inv_map_for_cost
+    # Convert from L_ID space → template-dim space for cost models
+    l_id_to_template = _build_l_id_to_template(schedule, template, logical_inv_map)
+
+    # Convert invariance map
+    inv_map_tdim: list[set[int]] = [set() for _ in range(num_operands)]
+    for l_id, tdim in l_id_to_template.items():
+        for op_idx in range(num_operands):
+            if l_id in inv_map_for_cost[op_idx]:
+                inv_map_tdim[op_idx].add(tdim)
+
+    # Convert all tiling entries: L_ID → template dim
+    all_tilings = [
+        [(l_id_to_template[l_id], size, crit) for l_id, size, crit in tiling]
+        for tiling in all_tilings
+    ]
+
+    # Operand descriptors use template-dim based invariance
+    operand_descs = _build_operand_descriptors(streamers, inv_map_tdim, element_bytes)
+
+    return all_tilings, operand_descs, inv_map_tdim
 
 
 def enumerate_schedules(module, ctx):
@@ -253,9 +273,20 @@ def enumerate_schedules(module, ctx):
 
             for idx, tiling in enumerate(all_tilings):
                 cost = hardware_latency_cost_of_tiling(
-                    tiling, operand_descs, inv_map_for_cost
+                    tiling, operand_descs, inv_map_for_cost,
+                    template_bounds=tuple(template[0].bounds)
                 )
                 all_costs[idx] = cost
+                if cost != -1:
+                    print(
+                        f"    Cost for tiling {idx}/{len(all_tilings)}: {cost}",
+                        file=sys.stderr,
+                    )
+                else:
+                    print(
+                        f"    ERROR IN COST MODEL for tiling {idx}/{len(all_tilings)}",
+                        file=sys.stderr,
+                    )
                 if (idx + 1) % 500 == 0:
                     print(
                         f"    ... computed cost for {idx + 1}/{len(all_tilings)}",
