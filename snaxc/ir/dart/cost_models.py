@@ -988,7 +988,7 @@ class StreamerState:
 
     output_buffer_depth: int = 4
     data_buffer_depth: int = 2
-    fixed_cache_depth: int = 63
+    fixed_cache_depth: int = 64
 
     # True for streamers created from a READER_WRITER split.
     from_rw: bool = False
@@ -1049,20 +1049,57 @@ class StreamerState:
     # False for the rest of that cycle even after the pop.
     _writer_buf_full_at_start: bool = False
 
-    # Models the fixedCacheInstructionBuffer FIFO in the AGU.  Each
-    # entry is ``(step, is_update_cache)`` where ``is_update_cache``
-    # means the step needs TCDM data (first pass through critical
-    # loop) and ``not is_update_cache`` means data is read from cache
-    # memory (subsequent passes).  The FIFO depth equals
-    # ``output_buffer_depth`` (matches RTL).
+    # --- Writer cache state (old model, used for WRITER streamers) ---
+    # Models the fixedCacheInstructionBuffer FIFO in the Writer AGU.
+    # Each entry is ``(step, is_update_cache)`` where ``is_update_cache``
+    # means the step needs TCDM data and ``not is_update_cache`` means
+    # data is read from cache memory.  FIFO depth = output_buffer_depth.
     cache_instruction_buffer: deque[tuple[int, bool]] = field(default_factory=deque)
-    old_cib: deque[tuple[int, bool]] = field(default_factory=deque)  # for debugging: track the "old" CIB state at the time of AGU ticks
+    old_cib: deque[tuple[int, bool]] = field(default_factory=deque)
 
     # Models the ``delayedValid`` register + associated data inside
     # the FixedLevelCache.  When not None, the cache has valid output
     # for this step that the accelerator can consume.  Updated at the
     # end of each cycle (register semantics).
     cache_output_step: int | None = None
+
+    # --- Reader cache state (new model, separate write/read buffers) ---
+    # Models the new AddressGenUnitReader with three independent counter
+    # chains and the dual-bank FixedLevelCache.
+
+    # Write cache instruction buffer (stores cache indices).
+    # Consumed by FixedLevelCache together with data from data_buffer.
+    write_cache_buffer: deque[int] = field(default_factory=deque)
+
+    # Read cache instruction buffer (stores (cache_index, agu_step) tuples).
+    # Consumed by FixedLevelCache to produce output to accelerator.
+    read_cache_buffer: deque[tuple[int, int]] = field(default_factory=deque)
+
+    # Independent write cache counter positions (per-level, 0..bounds[i]-1)
+    write_cache_positions: list[int] = field(default_factory=list)
+    write_cache_done: bool = False
+
+    # Independent read cache counter positions
+    read_cache_positions: list[int] = field(default_factory=list)
+    read_cache_done: bool = False
+
+    # Derived cache parameters (computed in __post_init__)
+    _critical_loop_level: int = field(default=-1, repr=False)
+    _total_bounds_arr: list[int] = field(default_factory=list, repr=False)
+    _fixed_cache_period: int = field(default=1, repr=False)
+
+    # Period/servicing tracking (matches RTL registers)
+    write_period_count: int = 0
+    read_serviced_period_count: int = 0
+    serviced_counter: int = 0  # write instructions consumed by FixedLevelCache
+    read_issued_counter: int = 0  # read counter ticks at updateCache positions
+
+    # FixedLevelCache dual-bank pipeline state (registered)
+    cache_instr_valid: bool = False
+    cache_instr_step: int = -1  # AGU step for current read instruction
+    cache_instr_index: int = 0  # cache index for current read instruction
+    cache_data_held: bool = False
+    cache_read_data_arriving: bool = False
 
     def __post_init__(self):
         # --- Repeat / bound override for ReaderWriter streamers ---
@@ -1117,6 +1154,282 @@ class StreamerState:
             self.responser_slots = [self.data_buffer_depth] * self.spatial_banks
         if not self.writer_channel_bufs and self.kind == OperandKind.WRITER:
             self.writer_channel_bufs = [deque() for _ in range(self.spatial_banks)]
+
+        # --- Initialise reader cache state ---
+        if self.is_reader and self.uses_fixed_cache:
+            self._init_reader_cache()
+
+    def _init_reader_cache(self):
+        """Compute cache parameters and initialise reader cache state."""
+        bounds = self.bounds
+        strides = self.strides_bank
+        n = self.num_levels
+
+        # Compute totalBounds (matches RTL CriticalLoopFinder)
+        total_bounds = [0] * n
+        total_bounds[0] = bounds[0]
+        for i in range(1, n):
+            if strides[i] == 0:
+                total_bounds[i] = total_bounds[i - 1]
+            else:
+                total_bounds[i] = total_bounds[i - 1] * bounds[i]
+        self._total_bounds_arr = total_bounds
+
+        # Find outermost critical loop (search outer→inner, skip i==0)
+        critical_loop = -1
+        for i in range(n - 1, 0, -1):
+            if (total_bounds[i - 1] <= self.fixed_cache_depth
+                    and strides[i] == 0
+                    and bounds[i] > 1):
+                critical_loop = i
+                break
+        self._critical_loop_level = critical_loop
+
+        self._fixed_cache_period = (
+            total_bounds[critical_loop - 1] if critical_loop > 0 else 1
+        )
+
+        # Initialise counter positions
+        if not self.write_cache_positions:
+            self.write_cache_positions = [0] * n
+        if not self.read_cache_positions:
+            self.read_cache_positions = [0] * n
+
+    # ----- Reader cache counter helpers -----
+
+    def _is_update_cache_at(self, positions: list[int]) -> bool:
+        """Check if all invariant loops within cache scope are at zero.
+
+        Matches the RTL updateCacheConditions logic:
+        For every dimension i where stride==0 AND i <= criticalLoop,
+        the counter at that dimension must be 0 (isZero).
+        """
+        cl = self._critical_loop_level
+        for i in range(self.num_levels):
+            if self.strides_bank[i] == 0 and i <= cl:
+                if positions[i] != 0:
+                    return False
+        return True
+
+    def _compute_cache_index_at(self, positions: list[int]) -> int:
+        """Compute the cache index from counter positions.
+
+        Matches the RTL writeIndex / readIndex computation:
+        sum of position[i] * step_size[i] for non-invariant levels
+        within cache scope, where step_size[0]=1 and
+        step_size[i]=totalBounds[i-1].
+        """
+        cl = self._critical_loop_level
+        tb = self._total_bounds_arr
+        index = 0
+        for i in range(self.num_levels):
+            if self.strides_bank[i] != 0 and i <= cl:
+                step_size = 1 if i == 0 else tb[i - 1]
+                index += positions[i] * step_size
+        return index
+
+    def _cache_counter_tick(self, positions: list[int]) -> bool:
+        """Advance a cache counter chain by one tick.
+
+        Models the ProgrammableCounter cascading in the RTL:
+        level 0 always ticks, level i>0 ticks when level i-1
+        was at lastVal (position == bounds-1) before the tick.
+
+        Returns True if ALL levels were at lastVal (sequence done).
+        """
+        # Snapshot pre-tick lastVals
+        pre_at_last = [
+            positions[lvl] == self.bounds[lvl] - 1
+            for lvl in range(self.num_levels)
+        ]
+        all_done = True
+        for lvl in range(self.num_levels):
+            if lvl > 0 and not pre_at_last[lvl - 1]:
+                all_done = False
+                break
+            # Tick this level
+            positions[lvl] += 1
+            if positions[lvl] >= self.bounds[lvl]:
+                positions[lvl] = 0
+            if not pre_at_last[lvl]:
+                all_done = False
+                break
+        return all_done
+
+    def _cache_data_available(self) -> bool:
+        """FixedLevelCache output data is available (combinational)."""
+        return self.cache_instr_valid and (
+            self.cache_data_held or self.cache_read_data_arriving
+        )
+
+    def process_reader_cache(self, acc_consumed: bool):
+        """Process one cycle of the reader's FixedLevelCache and cache
+        counter ticks.  Called AFTER Phase 4 (acc tick) with the known
+        acc consumption result.
+
+        This method models:
+        1. FixedLevelCache read/write accept decisions
+        2. Buffer dequeues (from cache consumption)
+        3. Cache counter ticks (write and read, with buffer readiness)
+        4. Buffer enqueues (from counter ticks)
+        5. Registered state updates (cache pipeline, period counters)
+        """
+        # ── Step 1: FixedLevelCache combinational signals ──
+        data_available = self._cache_data_available()
+        delivering = data_available and acc_consumed
+
+        can_accept_new = (not self.cache_instr_valid) or delivering
+        accept_new = bool(self.read_cache_buffer) and can_accept_new
+
+        # Determine read bank if accepting
+        read_bank = -1
+        if accept_new:
+            read_index, _step = self.read_cache_buffer[0]
+            read_bank = read_index & 1
+
+        issue_read = accept_new
+
+        # Bank conflict: write stalls if same bank as read
+        write_bank = -1
+        can_accept_write = False
+        if self.write_cache_buffer and self.data_buffer:
+            write_index = self.write_cache_buffer[0]
+            write_bank = write_index & 1
+            write_bank_busy = issue_read and (write_bank == read_bank)
+            can_accept_write = not write_bank_busy
+
+        write_fire = can_accept_write
+        read_fire = accept_new
+        data_fifo_popped = write_fire and bool(self.data_buffer)
+
+        # ── Step 2: Execute dequeues ──
+        if write_fire:
+            self.write_cache_buffer.popleft()
+            self.data_buffer.popleft()
+            # dataFifoPopped: free responser slots for ALL channels
+            for ch in range(self.spatial_banks):
+                self.responser_slots[ch] += 1
+            self.serviced_counter += 1
+
+        new_instr_step = self.cache_instr_step
+        new_instr_index = self.cache_instr_index
+        if read_fire:
+            _idx, step = self.read_cache_buffer.popleft()
+            new_instr_step = step
+            new_instr_index = _idx
+            self.read_serviced_period_count += 1
+
+        # ── Step 3: Compute buffer readiness (after dequeues,
+        #    accounting for pipe=true: room exists if not full OR
+        #    if a dequeue just happened) ──
+        write_buf_room = (
+            len(self.write_cache_buffer) < self.output_buffer_depth
+        )
+        read_buf_room = (
+            len(self.read_cache_buffer) < self.output_buffer_depth
+        )
+
+        # ── Step 4: Compute effective counters (combinational bypass) ──
+        effective_serviced = self.serviced_counter
+        # (write_fire already incremented serviced_counter above)
+        effective_read_serviced_period = self.read_serviced_period_count
+        # (read_fire already incremented above)
+
+        # ── Step 5: Write cache counter tick ──
+        write_is_update = self._is_update_cache_at(self.write_cache_positions)
+        write_not_too_far_ahead = (
+            self.write_period_count
+            < effective_read_serviced_period + self._fixed_cache_period
+        )
+        if write_is_update:
+            write_buffer_can_accept = write_buf_room and write_not_too_far_ahead
+        else:
+            write_buffer_can_accept = write_not_too_far_ahead
+
+        # In the RTL, currentState stays sBUSY until ALL counter
+        # chains (main + write cache + read cache) are done.  In
+        # Python the main AGU sets state="IDLE" when its counters
+        # wrap, so we use agu.done as a secondary "was started" flag.
+        agu_active = (
+            self.agu.state == "BUSY" or self.agu.done
+        )
+
+        write_tick = (
+            agu_active
+            and not self.write_cache_done
+            and write_buffer_can_accept
+        )
+
+        if write_tick:
+            # Compute index and push to buffer (only for updateCache)
+            if write_is_update:
+                w_idx = self._compute_cache_index_at(self.write_cache_positions)
+                self.write_cache_buffer.append(w_idx)
+            # Advance write counter
+            if self._cache_counter_tick(self.write_cache_positions):
+                self.write_cache_done = True
+            self.write_period_count += 1
+
+        # ── Step 6: Read cache counter tick ──
+        read_is_update = self._is_update_cache_at(self.read_cache_positions)
+        read_can_tick = read_buf_room and (
+            not read_is_update
+            or self.read_issued_counter < effective_serviced
+        )
+
+        read_tick = (
+            agu_active
+            and not self.read_cache_done
+            and read_can_tick
+        )
+
+        if read_tick:
+            # Compute index and AGU step, push to buffer
+            r_idx = self._compute_cache_index_at(self.read_cache_positions)
+            # The AGU step for this read instruction: the read cache
+            # counter visits positions in the same order as the main
+            # counter.  Convert positions to a flat step.
+            r_step = 0
+            multiplier = 1
+            for lvl in range(self.num_levels):
+                r_step += self.read_cache_positions[lvl] * multiplier
+                multiplier *= self.bounds[lvl]
+            self.read_cache_buffer.append((r_idx, r_step))
+            # Update read_issued_counter if at updateCache position
+            if read_is_update:
+                self.read_issued_counter += 1
+            # Advance read counter
+            if self._cache_counter_tick(self.read_cache_positions):
+                self.read_cache_done = True
+
+        # ── Step 7: Update FixedLevelCache registered state ──
+        # instrValid, dataHeld, readDataArriving update
+        if accept_new:
+            self.cache_instr_valid = True
+            self.cache_instr_step = new_instr_step
+            self.cache_instr_index = new_instr_index
+            self.cache_data_held = False
+        elif delivering and not accept_new:
+            self.cache_instr_valid = False
+
+        new_read_data_arriving = issue_read
+
+        if accept_new:
+            self.cache_data_held = False
+        elif self.cache_read_data_arriving:
+            self.cache_data_held = True
+        elif delivering:
+            self.cache_data_held = False
+
+        self.cache_read_data_arriving = new_read_data_arriving
+
+        # Update cache_output_step for accelerator interface
+        if self.cache_instr_valid and (
+            self.cache_data_held or self.cache_read_data_arriving
+        ):
+            self.cache_output_step = self.cache_instr_step
+        else:
+            self.cache_output_step = None
 
     # ----- address helpers -----
 
@@ -1213,23 +1526,17 @@ class StreamerState:
         """
         Can the AGU advance its counter this cycle?
 
-        The RTL ``counters_tick`` logic (AddressGenUnit.scala):
+        Reader with new cache (separate write/read buffers):
+          Main counter ticks independently of cache buffers.
+          When newUpdateCache: need outputBuffer room (TCDM request).
+          Otherwise: tick freely (cache hit, no TCDM request needed).
 
-        * Without fixed cache (``!newUseCache``):
-          ``counters_tick = sBUSY && outputBuffer.in.head.fire``
-          → every step goes into the outputBuffer, so the counter is
-            gated by output buffer room.
+        Writer with old cache:
+          Both outputBuffer and fixedCacheInstructionBuffer must
+          have room (unchanged from before).
 
-        * With fixed cache (``newUseCache``):
-          ``counters_tick = sBUSY && ((outputBufferFillCondition &&
-            outputBuffer.fire) || fixedCacheInstructionBuffer.fire)``
-          → both the instruction buffer and the output buffer must
-            have room (the RTL gates the instruction buffer enqueue
-            on ``outputBuffer.ready && fixedCacheInstructionBuffer
-            .ready``).
-          For access steps the address also enters the outputBuffer.
-          For non-access steps the outputBuffer is not pushed but
-          its ready (room available) is still required.
+        Without cache:
+          outputBuffer must have room for access steps.
         """
         if self.agu.state != "BUSY":
             return False
@@ -1239,7 +1546,18 @@ class StreamerState:
             len(buf) < self.output_buffer_depth
             for buf in self.output_buffers
         )
+        if self.uses_fixed_cache and self.is_reader:
+            # New reader cache: main counter is independent of cache
+            # buffers.  Use _is_update_cache_at (matches RTL
+            # newUpdateCache) — NOT needs_tcdm_access which uses
+            # the tiling's is_critical flag instead of strides.
+            update_cache = self._is_update_cache_at(self.agu.counters)
+            if update_cache:
+                return ob_has_room
+            else:
+                return True
         if self.uses_fixed_cache:
+            # Writer with old cache
             cib_has_room = (
                 len(self.old_cib)
                 < self.output_buffer_depth
@@ -1249,28 +1567,42 @@ class StreamerState:
         if self.needs_tcdm_access(step):
             return ob_has_room
         else:
-            # Non-cache, non-access: shouldn't normally happen
-            # (only cache-enabled readers have non-access steps).
             return True
 
     def do_agu_tick(self):
         """
         Execute one AGU tick.
 
-        * With cache: every tick pushes to the cache instruction
-          buffer.  Access steps (``needs_tcdm_access``) also push
-          to the output buffers for TCDM.
-        * Without cache: access steps push to output buffers.
-          Non-access steps only advance the counter.
+        Reader with new cache: push to outputBuffer only for
+          updateCache (access) steps.  Cache buffers are populated
+          by independent write/read cache counter ticks.
+        Writer with old cache: push to cache_instruction_buffer and
+          outputBuffer as before.
+        Without cache: push to outputBuffer for access steps.
         """
         step = self.agu.current_step()
         is_access = self.needs_tcdm_access(step)
-        if self.uses_fixed_cache:
+        if self.uses_fixed_cache and self.is_reader:
+            # New reader cache: TCDM request on updateCache steps only.
+            # Uses _is_update_cache_at (RTL newUpdateCache) not
+            # needs_tcdm_access.
+            update_cache = self._is_update_cache_at(self.agu.counters)
+            if update_cache:
+                for buf in self.output_buffers:
+                    buf.append(step)
+                self.step_grants_remaining[step] = self.spatial_banks
+        elif self.uses_fixed_cache:
+            # Writer with old cache
             self.cache_instruction_buffer.append((step, is_access))
-        if is_access:
-            for buf in self.output_buffers:
-                buf.append(step)
-            self.step_grants_remaining[step] = self.spatial_banks
+            if is_access:
+                for buf in self.output_buffers:
+                    buf.append(step)
+                self.step_grants_remaining[step] = self.spatial_banks
+        else:
+            if is_access:
+                for buf in self.output_buffers:
+                    buf.append(step)
+                self.step_grants_remaining[step] = self.spatial_banks
         self.agu.tick()
 
     # ----- per-channel request / grant helpers -----
@@ -1426,20 +1758,21 @@ class StreamerState:
     def cache_process(self, acc_consumed: bool):
         """Advance the FixedLevelCache state for one cycle.
 
-        This models the ``delayedValid`` register semantics from the
-        RTL FixedLevelCache module.  Must be called AFTER the
-        accelerator fire decision so that ``acc_consumed`` is known.
+        For readers with new separate write/read cache buffers,
+        delegates to ``process_reader_cache``.
 
-        * ``canAcceptNew = !delayedValid || dataOut.ready``
-        * If a new instruction is processed this cycle,
-          ``delayedValid := true`` (output will be valid next cycle).
-        * Else if the accelerator consumed (``dataOut.ready``),
-          ``delayedValid := false``.
+        For writers with old single cache_instruction_buffer, uses
+        the original delayedValid register model.
 
-        For an updateCache instruction the cache needs data from
-        ``data_buffer`` (connected to ``dataBuffer.out.head`` in
-        RTL).  For a cache-hit instruction no TCDM data is needed.
+        Must be called AFTER the accelerator fire decision so that
+        ``acc_consumed`` is known.
         """
+        if self.is_reader and self.uses_fixed_cache:
+            # New reader cache model with dual-bank FixedLevelCache
+            self.process_reader_cache(acc_consumed)
+            return
+
+        # --- Writer / old model ---
         can_accept_new = (self.cache_output_step is None) or acc_consumed
         processed_new = False
         if can_accept_new and self.cache_instruction_buffer:
@@ -1483,7 +1816,18 @@ class StreamerState:
             done = done and all(len(buf) == 0 for buf in self.writer_channel_bufs)
         else:
             done = done and len(self.data_buffer) == 0
-        if self.uses_fixed_cache:
+        if self.uses_fixed_cache and self.is_reader:
+            # New reader cache state
+            done = done and (
+                self.write_cache_done
+                and self.read_cache_done
+                and len(self.write_cache_buffer) == 0
+                and len(self.read_cache_buffer) == 0
+                and not self.cache_instr_valid
+                and self.cache_output_step is None
+            )
+        elif self.uses_fixed_cache:
+            # Writer old cache state
             done = done and (
                 len(self.cache_instruction_buffer) == 0
                 and self.cache_output_step is None
@@ -2237,20 +2581,46 @@ class BlockGemmState:
         Unified prediction for ALL reader types (cache and non-cache).
         Used for the dataFifoPopped combinational bypass in Phase 2.
 
-        For cache readers the dataBuffer pop happens inside
-        cache_process when it handles an updateCache instruction.
-        canAcceptNew = (no output) or (acc consumed cache output).
+        For new-model cache readers (separate write/read buffers):
+          dataBuffer popped when FixedLevelCache accepts a write
+          instruction.  This requires write_cache_buffer + data_buffer
+          both non-empty, and no bank conflict with a simultaneous
+          read instruction.
 
-        For non-cache readers the dataBuffer is popped directly by
-        the accelerator, but only when needs_tcdm_access is True
-        (invariant steps have no buffer entry).
+        For old-model cache readers (single instruction buffer):
+          dataBuffer popped when cache_process handles an updateCache
+          instruction with data.
+
+        For non-cache readers: dataBuffer popped directly by the
+          accelerator when the step needs TCDM access.
         """
 
         s = streamers[si]
 
-        if s.uses_fixed_cache:
-            # Cache: dataBuffer popped when cache_process handles an
-            # updateCache instruction with data.
+        if s.uses_fixed_cache and s.is_reader:
+            # New reader cache: dataFifoPopped when FixedLevelCache
+            # accepts a write (write_cache_buffer + data_buffer valid
+            # AND no bank conflict with read).
+            if not s.write_cache_buffer or not s.data_buffer:
+                return False
+            write_index = s.write_cache_buffer[0]
+            write_bank = write_index & 1
+
+            # Predict whether a read will be accepted this cycle
+            # (determines bank conflict for write).
+            acc_consumed = self._predict_acc_consumes_reader(si, streamers)
+            data_avail = s._cache_data_available()
+            delivering = data_avail and acc_consumed
+            can_accept_new = (not s.cache_instr_valid) or delivering
+            read_issued = can_accept_new and bool(s.read_cache_buffer)
+            if read_issued:
+                read_index, _step = s.read_cache_buffer[0]
+                read_bank = read_index & 1
+                if write_bank == read_bank:
+                    return False  # bank conflict, write stalls
+            return True
+        elif s.uses_fixed_cache:
+            # Old-model cache (writer streamers that use cache)
             acc_consumed = self._predict_acc_consumes_reader(si, streamers)
             can_accept = (s.cache_output_step is None) or acc_consumed
             if can_accept and s.cache_instruction_buffer:
@@ -2648,8 +3018,11 @@ def _simulate_hardware(
                 consumed_agu_step = -1
 
             if s.uses_fixed_cache:
-                # Cache reader: cache_process handles the delayedValid
-                # register update and dataBuffer pop (for updateCache).
+                # Cache reader: process FixedLevelCache + cache counter
+                # ticks.  For new reader model this also handles
+                # dual-bank pipeline and independent counter ticks.
+                # For old writer model this handles the delayedValid
+                # register.
                 s.cache_process(consumed)
             elif consumed and s.needs_tcdm_access(consumed_agu_step):
                 # Non-cache reader: pop the consumed entry from dataBuffer.
