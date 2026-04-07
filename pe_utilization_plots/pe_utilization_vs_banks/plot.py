@@ -106,6 +106,8 @@ expected_cycles_per_trace = {
     "matmul_sysmat_archfull_bank8_traces.json": 16 * 16 * 16,
     "matmul_sysmat_archfull_bank16_traces.json": 16 * 16 * 16,
     "matmul_sysmat_archfull_bank32_traces.json": 16 * 16 * 16,
+    "matmul_sysmat_archfull_bank64_traces.json": 16 * 16 * 16,
+    "matmul_sysmat_archfull_bank128_traces.json": 16 * 16 * 16
     
 }
 

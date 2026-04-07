@@ -32,7 +32,7 @@ rule compile_snax:
     wildcard_constraints:
         file="|".join(convspec_ids),
     shell:
-        "{config[snaxc]} -c {config[snaxc-config]} --fixed-cache-schedule --schedule-idx 3 -o {output} {input}"
+        "{config[snaxc]} -c {config[snaxc-config]} --fixed-cache-schedule -o {output} {input}"
 
 
 # Rules

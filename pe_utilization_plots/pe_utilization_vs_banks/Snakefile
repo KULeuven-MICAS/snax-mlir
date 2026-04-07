@@ -19,8 +19,8 @@ tests = ["matmul"]
 systems = ["mat"]
 archs = ["full"]
 # banks = ['1', '2', '4', '8', '16', '32', '64', '128']
-# banks = ['8','16', '32', '64', '128']
-banks = ['8', '16', '32']
+banks = ['8','16', '32', '64', '128']
+# banks = ['16']
 
 
 # Rules
@@ -67,10 +67,10 @@ rule simulate:
     params:
         vltsim=config_matmul["vltsim"],
     shell:
-        "vlt_fixed_cache_{wildcards.arch}/snitch_cluster_{wildcards.bank}_banks.vlt --prefix-trace={wildcards.file}_sys{wildcards.sys}_arch{wildcards.arch}_bank{wildcards.bank}_ {input}  2>&1 | tee {log}"
+#        "vlt_fixed_cache_{wildcards.arch}/snitch_cluster_{wildcards.bank}_banks.vlt --prefix-trace={wildcards.file}_sys{wildcards.sys}_arch{wildcards.arch}_bank{wildcards.bank}_ {input}  2>&1 | tee {log}"
+#        "../vlt_regular_array_size_test/new_16_8_8.vlt --prefix-trace={wildcards.file}_sys{wildcards.sys}_arch{wildcards.arch}_bank{wildcards.bank}_ {input}  2>&1 | tee {log}"
+        "../vlt_fixed_cache_performance_banks_test/{wildcards.bank}_banks.vlt --prefix-trace={wildcards.file}_sys{wildcards.sys}_arch{wildcards.arch}_bank{wildcards.bank}_ {input}  2>&1 | tee {log}"
 
-
-# matmul of 560x360x192
 rule generate_matmul:
     output:
         "matmul_sys{sys}_arch{arch}.mlir",

@@ -183,14 +183,18 @@ class SNAXStreamer(ABC):
 
             # channel mask option
             if any(isinstance(opt, HasChannelMask) for opt in streamer.opts):
-                if is_zero_pattern:
-                    # mask all channels such that they generate zeros
-                    c0 = arith.ConstantOp.from_int_and_width(0, i32)
-                    result.append(([c0], c0.result))
-                else:
-                    # else, set to 32b111...111 (=-1) (all enabled)
-                    n1 = arith.ConstantOp.from_int_and_width(-1, i32)
-                    result.append(([n1], n1.result))
+                import math
+                channels = math.prod(streamer.spatial_dims)
+                csr_count = math.ceil(channels / 32)
+                for _ in range(csr_count):
+                    if is_zero_pattern:
+                        # mask all channels such that they generate zeros
+                        c0 = arith.ConstantOp.from_int_and_width(0, i32)
+                        result.append(([c0], c0.result))
+                    else:
+                        # else, set to 32b111...111 (=-1) (all enabled)
+                        n1 = arith.ConstantOp.from_int_and_width(-1, i32)
+                        result.append(([n1], n1.result))
 
         # transpose specifications
         for operand, streamer in enumerate(self.streamer_config.data.streamers):
@@ -228,7 +232,11 @@ class SNAXStreamer(ABC):
             if any(isinstance(opt, HasAddressRemap) for opt in streamer.opts):
                 result.append(f"{name}_address_remap")
             if any(isinstance(opt, HasChannelMask) for opt in streamer.opts):
-                result.append(f"{name}_channel_mask")
+                import math
+                channels = math.prod(streamer.spatial_dims)
+                csr_count = math.ceil(channels / 32)
+                for i in range(csr_count):
+                    result.append(f"{name}_channel_mask_{i}")
 
         # transpose specifications
         for streamer, name in zip(self.streamer_config.data.streamers, self.streamer_names):

@@ -239,7 +239,7 @@ def gemm(m=16, n=16, k=16):
 
     output_type = TensorType(i32, (m, n))
     #c_vals = np.random.randint(-1024, 1023, (m, n))
-    c_vals = np.zeros((m, n), dtype=np.int32)
+    c_vals = np.ones((m, n), dtype=np.int32)
     
     golden_vals = a_vals @ b_vals + c_vals
 

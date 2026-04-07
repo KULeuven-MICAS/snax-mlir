@@ -6,6 +6,10 @@
 
 void _mlir_ciface_snax_main(TwoDMemrefI32_t *results);
 
+void snax_print_debug(int val) {
+  printf("Core %d DEBUG: %d\n", snrt_cluster_core_idx(), val);
+}
+
 int main() {
 
   TwoDMemrefI32_t results[2];
@@ -47,7 +51,7 @@ int main() {
   //   }
   // }
 
-  printf("Finished, nb errors: %d\n", nerr);
+  // printf("Finished, nb errors: %d\n", nerr);
 
   if (nerr > 0)
     return 1;
