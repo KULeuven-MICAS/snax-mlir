@@ -41,6 +41,7 @@ class AutoflowScheduler(RewritePattern):
     optimal_tiling: bool = False
     cost_model_name: str = "latency"
     schedule_idx: int | None = None
+    num_banks: int = 32
 
     @op_type_rewrite_pattern
     def match_and_rewrite(self, op: dart.OperationOp, rewriter: PatternRewriter):
@@ -72,6 +73,7 @@ class AutoflowScheduler(RewritePattern):
             optimal_tiling=self.optimal_tiling,
             cost_model_name=self.cost_model_name,
             schedule_idx=self.schedule_idx,
+            num_banks=self.num_banks,
         )
 
         schedule_op = dart.ScheduleOp(
@@ -95,7 +97,8 @@ class DartSchedulerPass(ModulePass):
     optimal_tiling: bool = True
     cost_model: str = "latency"
     schedule_idx: int | None = None
+    num_banks: int = 32
 
     def apply(self, ctx: Context, op: builtin.ModuleOp) -> None:
         assert isinstance(ctx, AccContext)
-        PatternRewriteWalker(AutoflowScheduler(ctx, self.optimal_tiling, self.cost_model, self.schedule_idx)).rewrite_module(op)
+        PatternRewriteWalker(AutoflowScheduler(ctx, self.optimal_tiling, self.cost_model, self.schedule_idx, self.num_banks)).rewrite_module(op)

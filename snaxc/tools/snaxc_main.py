@@ -195,6 +195,13 @@ class SNAXCMain(CommandLineTool):
             help="Select a specific schedule by index (for debugging purposes).",
         )
 
+        arg_parser.add_argument(
+            "--num-banks",
+            type=int,
+            default=32,
+            help="Number of TCDM banks (default: 32).",
+        )
+
     def setup_pipeline(self):
         """
         Creates a pipeline that consists of all the passes specified.
@@ -237,7 +244,7 @@ class SNAXCMain(CommandLineTool):
         pass_pipeline.append(FuseAccumulationMemrefsPass())
         pass_pipeline.append(AllocToGlobalPass())
         pass_pipeline.append(SetMemorySpace())
-        pass_pipeline.append(DartSchedulerPass(optimal_tiling=self.args.fixed_cache_schedule, cost_model=self.args.cost_model, schedule_idx=self.args.schedule_idx))
+        pass_pipeline.append(DartSchedulerPass(optimal_tiling=self.args.fixed_cache_schedule, cost_model=self.args.cost_model, schedule_idx=self.args.schedule_idx, num_banks=self.args.num_banks))
         pass_pipeline.append(SetMemoryLayout())
         if self.args.debug:
             pass_pipeline.append(InsertDebugPass())

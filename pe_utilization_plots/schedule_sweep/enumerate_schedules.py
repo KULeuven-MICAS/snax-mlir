@@ -206,7 +206,7 @@ def get_all_tilings(template, schedule, streamers, element_bytes):
     return all_tilings, operand_descs, inv_map_tdim
 
 
-def enumerate_schedules(module, ctx):
+def enumerate_schedules(module, ctx, num_banks=32):
     """
     Walk the module to find dart.OperationOp, enumerate all valid
     schedule_idx values and their latency costs.
@@ -274,7 +274,8 @@ def enumerate_schedules(module, ctx):
             for idx, tiling in enumerate(all_tilings):
                 cost = hardware_latency_cost_of_tiling(
                     tiling, operand_descs, inv_map_for_cost,
-                    template_bounds=tuple(template[0].bounds)
+                    template_bounds=tuple(template[0].bounds),
+                    num_banks=num_banks,
                 )
                 all_costs[idx] = cost
                 if cost != -1:
@@ -324,10 +325,16 @@ def main():
         default=False,
         help="Include ALL schedules instead of one representative per unique cost",
     )
+    parser.add_argument(
+        "--num-banks",
+        type=int,
+        default=32,
+        help="Number of TCDM banks (default: 32).",
+    )
     args = parser.parse_args()
 
     module, ctx = load_and_preprocess(args.mlir_file, args.config)
-    costs = enumerate_schedules(module, ctx)
+    costs = enumerate_schedules(module, ctx, num_banks=args.num_banks)
 
     if not args.all:
         # Keep only one representative schedule per unique cost value

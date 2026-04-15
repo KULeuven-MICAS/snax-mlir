@@ -59,6 +59,7 @@ class OperandDescriptor:
     spatial_banks: int
     element_bytes: int
     invariant_dims: frozenset[int]
+    fixed_cache_depth: int = 64
 
     @property
     def burst_bank_words(self) -> int:
@@ -993,6 +994,11 @@ class StreamerState:
     # True for streamers created from a READER_WRITER split.
     from_rw: bool = False
 
+    # Index of the paired writer in the streamers list (set for
+    # from_rw reader streamers).  Used by the prediction logic to
+    # find the writerPort state for dual-port bank conflict checks.
+    _paired_writer_idx: int | None = field(default=None, repr=False)
+
     # HandShakeRepeater count — models the Reader's RepeatHandshake.
     # When the innermost loop has stride 0 and bound > 1, the reader
     # overrides AGU bounds[0] to 1 and repeats each data word
@@ -1051,11 +1057,21 @@ class StreamerState:
 
     # --- Writer cache state (old model, used for WRITER streamers) ---
     # Models the fixedCacheInstructionBuffer FIFO in the Writer AGU.
-    # Each entry is ``(step, is_update_cache)`` where ``is_update_cache``
-    # means the step needs TCDM data and ``not is_update_cache`` means
-    # data is read from cache memory.  FIFO depth = output_buffer_depth.
-    cache_instruction_buffer: deque[tuple[int, bool]] = field(default_factory=deque)
-    old_cib: deque[tuple[int, bool]] = field(default_factory=deque)
+    # Each entry is ``(step, is_update_cache, cache_index)`` where
+    # ``is_update_cache`` means the step needs TCDM data and
+    # ``not is_update_cache`` means data is read from cache memory.
+    # ``cache_index`` is the computed FixedLevelCache index for this
+    # step (used by the writerPort to write into the reader's cache).
+    # FIFO depth = output_buffer_depth.
+    cache_instruction_buffer: deque[tuple[int, bool, int]] = field(default_factory=deque)
+    old_cib: deque[tuple[int, bool, int]] = field(default_factory=deque)
+
+    # When the writer fires with goToCache (useCache && !lastAccess),
+    # this records the cache index the writerPort writes to.  Set in
+    # writer_accept, cleared at the start of each cycle.  The paired
+    # reader's process_reader_cache uses this to determine writerPort
+    # bank conflicts on the dual-port SRAM write port.
+    _writer_port_cache_index: int | None = None
 
     # Models the ``delayedValid`` register + associated data inside
     # the FixedLevelCache.  When not None, the cache has valid output
@@ -1155,17 +1171,18 @@ class StreamerState:
         if not self.writer_channel_bufs and self.kind == OperandKind.WRITER:
             self.writer_channel_bufs = [deque() for _ in range(self.spatial_banks)]
 
-        # --- Initialise reader cache state ---
+        # --- Initialise cache state ---
+        if self.uses_fixed_cache:
+            self._init_cache_params()
         if self.is_reader and self.uses_fixed_cache:
             self._init_reader_cache()
 
-    def _init_reader_cache(self):
-        """Compute cache parameters and initialise reader cache state."""
+    def _init_cache_params(self):
+        """Compute totalBounds and criticalLoopLevel for cache index
+        computation.  Needed by both reader and writer streamers."""
         bounds = self.bounds
         strides = self.strides_bank
         n = self.num_levels
-
-        # Compute totalBounds (matches RTL CriticalLoopFinder)
         total_bounds = [0] * n
         total_bounds[0] = bounds[0]
         for i in range(1, n):
@@ -1174,8 +1191,6 @@ class StreamerState:
             else:
                 total_bounds[i] = total_bounds[i - 1] * bounds[i]
         self._total_bounds_arr = total_bounds
-
-        # Find outermost critical loop (search outer→inner, skip i==0)
         critical_loop = -1
         for i in range(n - 1, 0, -1):
             if (total_bounds[i - 1] <= self.fixed_cache_depth
@@ -1184,6 +1199,13 @@ class StreamerState:
                 critical_loop = i
                 break
         self._critical_loop_level = critical_loop
+
+    def _init_reader_cache(self):
+        """Initialise reader cache state (totalBounds and criticalLoop
+        already computed by _init_cache_params)."""
+        n = self.num_levels
+        critical_loop = self._critical_loop_level
+        total_bounds = self._total_bounds_arr
 
         self._fixed_cache_period = (
             total_bounds[critical_loop - 1] if critical_loop > 0 else 1
@@ -1262,10 +1284,27 @@ class StreamerState:
             self.cache_data_held or self.cache_read_data_arriving
         )
 
-    def process_reader_cache(self, acc_consumed: bool):
+    def process_reader_cache(self, acc_consumed: bool, writer_port_cache_index: int | None = None):
         """Process one cycle of the reader's FixedLevelCache and cache
         counter ticks.  Called AFTER Phase 4 (acc tick) with the known
         acc consumption result.
+
+        For ReaderWriter (from_rw) streamers, dual-port (1W1R) SRAMs
+        are used: the read port is independent of the write port, so
+        reads never conflict with writes.  However, the writerPort
+        (driven by the writer half) shares the write port with TCDM
+        writes, so TCDM writes stall when the writerPort targets the
+        same bank.
+
+        For regular readers (not from_rw), single-port SRAMs are used:
+        reads have priority and block writes to the same bank.
+
+        Args:
+            acc_consumed: whether the accelerator consumed the reader's
+                output this cycle.
+            writer_port_cache_index: if not None, the cache index the
+                paired writer's writerPort is writing to this cycle
+                (only relevant for from_rw readers).
 
         This method models:
         1. FixedLevelCache read/write accept decisions
@@ -1289,13 +1328,27 @@ class StreamerState:
 
         issue_read = accept_new
 
-        # Bank conflict: write stalls if same bank as read
+        # Bank conflict logic depends on memory type:
+        #   from_rw (dual-port 1W1R): write blocked by writerPort on same bank
+        #   regular (single-port):    write blocked by read on same bank
         write_bank = -1
         can_accept_write = False
         if self.write_cache_buffer and self.data_buffer:
             write_index = self.write_cache_buffer[0]
             write_bank = write_index & 1
-            write_bank_busy = issue_read and (write_bank == read_bank)
+            if self.from_rw:
+                # Dual-port SRAM: read and write ports are independent.
+                # The writerPort (from the RW writer) shares the write
+                # port with TCDM writes → conflict when same bank.
+                if writer_port_cache_index is not None:
+                    writer_port_bank = writer_port_cache_index & 1
+                    write_bank_busy = (write_bank == writer_port_bank)
+                else:
+                    write_bank_busy = False
+            else:
+                # Single-port SRAM: read has priority, blocks write
+                # to the same bank.
+                write_bank_busy = issue_read and (write_bank == read_bank)
             can_accept_write = not write_bank_busy
 
         write_fire = can_accept_write
@@ -1593,7 +1646,8 @@ class StreamerState:
                 self.step_grants_remaining[step] = self.spatial_banks
         elif self.uses_fixed_cache:
             # Writer with old cache
-            self.cache_instruction_buffer.append((step, is_access))
+            cache_index = self._compute_cache_index_at(self.agu.counters)
+            self.cache_instruction_buffer.append((step, is_access, cache_index))
             if is_access:
                 for buf in self.output_buffers:
                     buf.append(step)
@@ -1724,7 +1778,7 @@ class StreamerState:
         if self.uses_fixed_cache:
             if not self.cache_instruction_buffer:
                 return False  # no instrValid
-            _step, is_access = self.cache_instruction_buffer[0]
+            _step, is_access, _cidx = self.cache_instruction_buffer[0]
             if is_access:  # lastAccess → goToTCDM: need dataBuffer room
                 return not self._writer_buf_full_at_start
             return True  # cache-only path: no backpressure
@@ -1744,18 +1798,23 @@ class StreamerState:
         Without fixed-cache: push directly to per-channel dataBuffers.
         """
         if self.uses_fixed_cache:
-            _step, is_access = self.cache_instruction_buffer.popleft()
+            _step, is_access, cache_index = self.cache_instruction_buffer.popleft()
             if is_access:  # lastAccess → data goes to TCDM
                 for buf in self.writer_channel_bufs:
                     buf.append(acc_step)
-            # else: cache-only write, no dataBuffer entry
+            else:
+                # goToCache: writer drives writerPort into reader's
+                # FixedLevelCache memory.  Record the cache index so
+                # that the reader's process_reader_cache can detect
+                # writerPort bank conflicts on the shared write port.
+                self._writer_port_cache_index = cache_index
             return
         for buf in self.writer_channel_bufs:
             buf.append(acc_step)
 
     # ----- FixedLevelCache processing -----
 
-    def cache_process(self, acc_consumed: bool):
+    def cache_process(self, acc_consumed: bool, writer_port_cache_index: int | None = None):
         """Advance the FixedLevelCache state for one cycle.
 
         For readers with new separate write/read cache buffers,
@@ -1766,17 +1825,22 @@ class StreamerState:
 
         Must be called AFTER the accelerator fire decision so that
         ``acc_consumed`` is known.
+
+        Args:
+            writer_port_cache_index: for from_rw readers, the cache
+                index the paired writer's writerPort writes to this
+                cycle (or None if inactive).
         """
         if self.is_reader and self.uses_fixed_cache:
             # New reader cache model with dual-bank FixedLevelCache
-            self.process_reader_cache(acc_consumed)
+            self.process_reader_cache(acc_consumed, writer_port_cache_index)
             return
 
         # --- Writer / old model ---
         can_accept_new = (self.cache_output_step is None) or acc_consumed
         processed_new = False
         if can_accept_new and self.cache_instruction_buffer:
-            step, is_update = self.cache_instruction_buffer[0]
+            step, is_update, _cidx = self.cache_instruction_buffer[0]
             if is_update:
                 # Mode 2: needs data from dataBuffer head
                 if self.data_buffer:
@@ -2600,31 +2664,40 @@ class BlockGemmState:
         if s.uses_fixed_cache and s.is_reader:
             # New reader cache: dataFifoPopped when FixedLevelCache
             # accepts a write (write_cache_buffer + data_buffer valid
-            # AND no bank conflict with read).
+            # AND no bank conflict).
             if not s.write_cache_buffer or not s.data_buffer:
                 return False
             write_index = s.write_cache_buffer[0]
             write_bank = write_index & 1
 
-            # Predict whether a read will be accepted this cycle
-            # (determines bank conflict for write).
-            acc_consumed = self._predict_acc_consumes_reader(si, streamers)
-            data_avail = s._cache_data_available()
-            delivering = data_avail and acc_consumed
-            can_accept_new = (not s.cache_instr_valid) or delivering
-            read_issued = can_accept_new and bool(s.read_cache_buffer)
-            if read_issued:
-                read_index, _step = s.read_cache_buffer[0]
-                read_bank = read_index & 1
-                if write_bank == read_bank:
-                    return False  # bank conflict, write stalls
+            if s.from_rw:
+                # Dual-port SRAM: read port independent of write port.
+                # Write blocked only by writerPort on same bank.
+                # Predict whether d_o fires with goToCache this cycle.
+                writer_port_bank = self._predict_writer_port_bank(s, streamers)
+                if writer_port_bank is not None and write_bank == writer_port_bank:
+                    return False  # writerPort conflict, write stalls
+            else:
+                # Single-port SRAM: read has priority over write.
+                # Predict whether a read will be accepted this cycle
+                # (determines bank conflict for write).
+                acc_consumed = self._predict_acc_consumes_reader(si, streamers)
+                data_avail = s._cache_data_available()
+                delivering = data_avail and acc_consumed
+                can_accept_new = (not s.cache_instr_valid) or delivering
+                read_issued = can_accept_new and bool(s.read_cache_buffer)
+                if read_issued:
+                    read_index, _step = s.read_cache_buffer[0]
+                    read_bank = read_index & 1
+                    if write_bank == read_bank:
+                        return False  # bank conflict, write stalls
             return True
         elif s.uses_fixed_cache:
             # Old-model cache (writer streamers that use cache)
             acc_consumed = self._predict_acc_consumes_reader(si, streamers)
             can_accept = (s.cache_output_step is None) or acc_consumed
             if can_accept and s.cache_instruction_buffer:
-                step, is_update = s.cache_instruction_buffer[0]
+                step, is_update, _cidx = s.cache_instruction_buffer[0]
                 return is_update and bool(s.data_buffer)
             return False
         else:
@@ -2640,6 +2713,30 @@ class BlockGemmState:
                 return False
             agu_step = s.acc_to_agu_step(step)
             return s.needs_tcdm_access(agu_step)
+
+    def _predict_writer_port_bank(self, reader_s, streamers: list) -> int | None:
+        """Predict the bank the writerPort writes to this cycle.
+
+        Returns the bank index (0 or 1) if the paired writer fires
+        with goToCache, or None if the writerPort is inactive.
+
+        The writerPort fires when d_o fires AND the writer's head
+        cache instruction is goToCache (is_access=False).
+        """
+        if reader_s._paired_writer_idx is None:
+            return None
+        s_d = streamers[reader_s._paired_writer_idx]
+        if not s_d.uses_fixed_cache or not s_d.cache_instruction_buffer:
+            return None
+        _step, is_access, cache_index = s_d.cache_instruction_buffer[0]
+        if is_access:
+            return None  # goToTCDM, writerPort not active
+        # Predict d_o fire: d_o_valid AND d_o_ready
+        d_o_valid = self._d_o_valid()
+        d_o_ready = s_d.writer_has_space()
+        if not (d_o_valid and d_o_ready):
+            return None
+        return cache_index & 1
 
     @property
     def is_done(self) -> bool:
@@ -2719,6 +2816,7 @@ def _simulate_hardware(
                 num_banks=num_banks,
                 tiling=tiling,
                 from_rw=True,
+                fixed_cache_depth=desc.fixed_cache_depth,
             )
             reader_s.agu.reset_and_start()
             reader_idx = len(streamers)
@@ -2735,6 +2833,7 @@ def _simulate_hardware(
                 num_banks=num_banks,
                 tiling=tiling,
                 from_rw=True,
+                fixed_cache_depth=desc.fixed_cache_depth,
             )
             writer_s.agu.reset_and_start()
             writer_idx = len(streamers)
@@ -2744,6 +2843,9 @@ def _simulate_hardware(
                 reader_idx=reader_idx,
                 writer_idx=writer_idx,
             ))
+
+            # Link reader to its paired writer for writerPort prediction
+            reader_s._paired_writer_idx = writer_idx
         else:
             s = StreamerState(
                 op_idx=op_idx,
@@ -2755,6 +2857,7 @@ def _simulate_hardware(
                 strides_bank=list(strides_bank[op_idx]),
                 num_banks=num_banks,
                 tiling=tiling,
+                fixed_cache_depth=desc.fixed_cache_depth,
             )
             s.agu.reset_and_start()
             streamers.append(s)
@@ -2861,6 +2964,8 @@ def _simulate_hardware(
                     len(buf) >= s.data_buffer_depth
                     for buf in s.writer_channel_bufs
                 )
+                # Reset writerPort activity from last cycle
+                s._writer_port_cache_index = None
 
         # Stage 2 (readers only): register TCDM read data into dataBuffer
         for si, step in pending_buffer_writes:
@@ -3023,7 +3128,12 @@ def _simulate_hardware(
                 # dual-bank pipeline and independent counter ticks.
                 # For old writer model this handles the delayedValid
                 # register.
-                s.cache_process(consumed)
+                # For from_rw readers, pass the paired writer's
+                # writerPort cache index for dual-port bank conflict.
+                wpc_idx = None
+                if s.from_rw and s._paired_writer_idx is not None:
+                    wpc_idx = streamers[s._paired_writer_idx]._writer_port_cache_index
+                s.cache_process(consumed, writer_port_cache_index=wpc_idx)
             elif consumed and s.needs_tcdm_access(consumed_agu_step):
                 # Non-cache reader: pop the consumed entry from dataBuffer.
                 # Guard: invariant steps have no buffer entry to pop.

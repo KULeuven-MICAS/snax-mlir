@@ -49,7 +49,7 @@ rule extract_cycles:
 
 rule simulate:
     input:
-        "{file}_sys{sys}_arch{arch}.x",
+        "{file}_sys{sys}_arch{arch}_bank{bank}.x",
     output:
         temp(
             expand(
@@ -78,7 +78,7 @@ rule generate_matmul:
         sys="|".join(systems),
         arch="|".join(archs),
     shell:
-        "python matmul.py --m 128 --n 128 --k 128 --output {output}"
+        "python matmul.py --m 16 --n 16 --k 16 --output {output}"
         #"python matmul.py --m 48 --n 72 --k 80 --output {output}"
         #"python matmul.py --m 40 --n 56 --k 72 --output {output}"
         #"python matmul.py --m 560 --n 360 --k 168 --output {output}"
@@ -101,22 +101,23 @@ rule compile_snax:
     input:
         "{file}_sys{sys}_arch{arch}.mlir",
     output:
-        temp("{file}_sys{sys}_arch{arch}.ll.mlir"),
+        temp("{file}_sys{sys}_arch{arch}_bank{bank}.ll.mlir"),
     params:
         snaxconfig=get_snax_config,
         extra_flags=get_extra_flags,
     shell:
-        "{config[snaxc]} -c {params.snaxconfig} --add-mcycle {params.extra_flags} -o {output} {input}"
+        #"{config[snaxc]} -c {params.snaxconfig} --fixed-cache-schedule --cost-model hardware_latency --add-mcycle --num-banks {wildcards.bank} {params.extra_flags} -o {output} {input}"
+        "{config[snaxc]} -c {params.snaxconfig} --add-mcycle --num-banks {wildcards.bank} {params.extra_flags} -o {output} {input}"
 
 
 def get_linked_files(wildcards):
-    return [f"{wildcards.file}_sys{wildcards.sys}_arch{wildcards.arch}.o", "main_2d_i8.o"]
+    return [f"{wildcards.file}_sys{wildcards.sys}_arch{wildcards.arch}_bank{wildcards.bank}.o", "main_2d_i8.o"]
 
 
 rule link_snax_binary:
     input:
         get_linked_files,
     output:
-        "{file}_sys{sys}_arch{arch}.x",
+        "{file}_sys{sys}_arch{arch}_bank{bank}.x",
     shell:
         "{config[ld]} {config[ldflags]} {input} -o {output}"

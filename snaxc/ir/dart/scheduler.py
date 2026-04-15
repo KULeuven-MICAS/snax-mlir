@@ -245,6 +245,7 @@ def _build_operand_descriptors(
             spatial_banks=spatial_banks,
             element_bytes=element_bytes[op_idx],
             invariant_dims=frozenset(invariance_map[op_idx]),
+            fixed_cache_depth=streamer.fixed_cache_depth,
         ))
     return descs
 
@@ -504,7 +505,9 @@ def find_optimal_tiling(
     streamers: Sequence[Streamer],
     element_bytes: Sequence[int],
     cost_model_name: str = "latency",
-    schedule_idx: int | None = None
+    schedule_idx: int | None = None,
+    *,
+    num_banks: int = 32,
 ) -> Schedule:
     """
     Find the optimal tiling for *schedule* on *template* by exploring
@@ -638,7 +641,8 @@ def find_optimal_tiling(
                 l_id_to_template, inv_map_for_cost, num_operands,
             )
             cost = latency_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
-                                          template_bounds=_template_bounds)
+                                          template_bounds=_template_bounds,
+                                          num_banks=num_banks)
         elif cost_model_name == "hardware_latency":
             best_tiling_split = split_tiling_to_original_loops(
                 best_tiling, original_loops_per_ldim
@@ -648,7 +652,8 @@ def find_optimal_tiling(
                 l_id_to_template, inv_map_for_cost, num_operands,
             )
             cost = hardware_latency_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
-                                                   template_bounds=_template_bounds)
+                                                   template_bounds=_template_bounds,
+                                                   num_banks=num_banks)
         else:
             cost = energy_cost_of_tiling(best_tiling, request_per_streamer, inv_map_for_cost)
         print("Predicted Cost for schedule index", schedule_idx, ":", cost)
@@ -664,7 +669,8 @@ def find_optimal_tiling(
                     l_id_to_template, inv_map_for_cost, num_operands,
                 )
                 c = latency_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
-                                           template_bounds=_template_bounds)
+                                           template_bounds=_template_bounds,
+                                           num_banks=num_banks)
             elif cost_model_name == "hardware_latency":
                 tiling_split = split_tiling_to_original_loops(tiling, original_loops_per_ldim)
                 tiling_tdim, inv_tdim = _convert_to_template_dims(
@@ -672,10 +678,11 @@ def find_optimal_tiling(
                     l_id_to_template, inv_map_for_cost, num_operands,
                 )
                 c = hardware_latency_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
-                                                   template_bounds=_template_bounds)
+                                                   template_bounds=_template_bounds,
+                                                   num_banks=num_banks)
             else:
                 c = energy_cost_of_tiling(tiling, request_per_streamer, inv_map_for_cost)
-            if c < min_cost:
+            if c < min_cost and c != -1:
                 min_cost = c
                 best_tiling = tiling
                 winning_index = index
@@ -1000,6 +1007,7 @@ def scheduler(
     optimal_tiling: bool = False,
     cost_model_name: str = "latency",
     schedule_idx: int | None = None,
+    num_banks: int = 32,
 ) -> Schedule:
     """
     Main scheduling entry point.
@@ -1018,10 +1026,10 @@ def scheduler(
         candidate_schedule = next(iterator)
 
         if optimal_tiling and any(any(isinstance(opt, HasFixedCache) for opt in streamer.opts) for streamer in streamers):
-            return find_optimal_tiling(template, candidate_schedule, streamers, element_bytes, cost_model_name, schedule_idx)
+            return find_optimal_tiling(template, candidate_schedule, streamers, element_bytes, cost_model_name, schedule_idx, num_banks=num_banks)
         return candidate_schedule
 
     result = next(scheduler_backtrack(template, schedule, extra_checks=extra_checks))
     if optimal_tiling and any(any(isinstance(opt, HasFixedCache) for opt in streamer.opts) for streamer in streamers):
-        return find_optimal_tiling(template, result, streamers, element_bytes, cost_model_name)
+        return find_optimal_tiling(template, result, streamers, element_bytes, cost_model_name, num_banks=num_banks)
     return result

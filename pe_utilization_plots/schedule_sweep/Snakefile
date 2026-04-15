@@ -19,10 +19,10 @@ config = get_snax_gemmx_config()
 # Absolute path to the accelerator config YAML
 SNAX_CONFIG = str(config["snaxc-config"])
 
-# 32-bank VLT simulator (pre-built in the pe_utilization_vs_banks directory)
+# 32-bank VLT simulator (pre-built in the vlt_new_fixed_cache_performance_banks_test directory)
 VLT_32 = str(
-    (Path(workflow.basedir) / ".." / "pe_utilization_vs_banks" /
-     "vlt_fixed_cache_full" / "snitch_cluster_32_banks_small_cache.vlt").resolve()
+    (Path(workflow.basedir) / ".." / "vlt_new_fixed_cache_performance_banks_test"
+    / "32_banks.vlt").resolve()
 )
 
 # Path to the C main file
@@ -55,7 +55,7 @@ checkpoint enumerate_schedules:
     output:
         "schedule_list.json",
     shell:
-        "python enumerate_schedules.py {input} -c {SNAX_CONFIG} -o {output}"
+        "python enumerate_schedules.py {input} --num-banks 32 -c {SNAX_CONFIG} -o {output}"
 
 
 # ──── Per-schedule compilation ──────────────────────────────────────────────
