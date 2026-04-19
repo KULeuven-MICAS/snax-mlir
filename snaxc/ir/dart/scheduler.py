@@ -21,6 +21,7 @@ from snaxc.ir.dart.cost_models import (
     hardware_latency_cost_of_tiling,
     latency_cost_of_tiling,
 )
+from snaxc.ir.dart.zigzag_cost_model import zigzag_cost_of_tiling
 
 
 def get_prime_factors(n: int) -> list[int]:
@@ -654,6 +655,17 @@ def find_optimal_tiling(
             cost = hardware_latency_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
                                                    template_bounds=_template_bounds,
                                                    num_banks=num_banks)
+        elif cost_model_name == "zigzag":
+            best_tiling_split = split_tiling_to_original_loops(
+                best_tiling, original_loops_per_ldim
+            )
+            tiling_tdim, inv_tdim = _convert_to_template_dims(
+                best_tiling_split, original_loops_per_ldim,
+                l_id_to_template, inv_map_for_cost, num_operands,
+            )
+            cost = zigzag_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
+                                         template_bounds=_template_bounds,
+                                         num_banks=num_banks)
         else:
             cost = energy_cost_of_tiling(best_tiling, request_per_streamer, inv_map_for_cost)
         print("Predicted Cost for schedule index", schedule_idx, ":", cost)
@@ -680,6 +692,15 @@ def find_optimal_tiling(
                 c = hardware_latency_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
                                                    template_bounds=_template_bounds,
                                                    num_banks=num_banks)
+            elif cost_model_name == "zigzag":
+                tiling_split = split_tiling_to_original_loops(tiling, original_loops_per_ldim)
+                tiling_tdim, inv_tdim = _convert_to_template_dims(
+                    tiling_split, original_loops_per_ldim,
+                    l_id_to_template, inv_map_for_cost, num_operands,
+                )
+                c = zigzag_cost_of_tiling(tiling_tdim, operand_descs_latency, inv_tdim,
+                                         template_bounds=_template_bounds,
+                                         num_banks=num_banks)
             else:
                 c = energy_cost_of_tiling(tiling, request_per_streamer, inv_map_for_cost)
             if c < min_cost and c != -1:

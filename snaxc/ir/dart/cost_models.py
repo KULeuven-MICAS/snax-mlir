@@ -1345,6 +1345,14 @@ class StreamerState:
                     write_bank_busy = (write_bank == writer_port_bank)
                 else:
                     write_bank_busy = False
+                # Also stall when a read targets the same bank AND
+                # same address as the TCDM write (dual-port same-
+                # address read/write hazard).
+                if issue_read and read_bank == write_bank:
+                    write_addr = write_index >> 1
+                    read_addr = read_index >> 1
+                    if write_addr == read_addr:
+                        write_bank_busy = True
             else:
                 # Single-port SRAM: read has priority, blocks write
                 # to the same bank.
@@ -2677,6 +2685,20 @@ class BlockGemmState:
                 writer_port_bank = self._predict_writer_port_bank(s, streamers)
                 if writer_port_bank is not None and write_bank == writer_port_bank:
                     return False  # writerPort conflict, write stalls
+                # Also check read/write same-address conflict on
+                # dual-port SRAM (same bank AND same address).
+                acc_consumed = self._predict_acc_consumes_reader(si, streamers)
+                data_avail = s._cache_data_available()
+                delivering = data_avail and acc_consumed
+                can_accept_new = (not s.cache_instr_valid) or delivering
+                read_issued = can_accept_new and bool(s.read_cache_buffer)
+                if read_issued:
+                    read_index, _step = s.read_cache_buffer[0]
+                    read_bank = read_index & 1
+                    write_addr = write_index >> 1
+                    read_addr = read_index >> 1
+                    if read_bank == write_bank and read_addr == write_addr:
+                        return False  # same-address conflict, write stalls
             else:
                 # Single-port SRAM: read has priority over write.
                 # Predict whether a read will be accepted this cycle
