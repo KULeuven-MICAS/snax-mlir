@@ -1087,9 +1087,9 @@ class StreamerState:
     # Consumed by FixedLevelCache together with data from data_buffer.
     write_cache_buffer: deque[int] = field(default_factory=deque)
 
-    # Read cache instruction buffer (stores (cache_index, agu_step) tuples).
+    # Read cache instruction buffer (stores (cache_index, agu_step, last_access) tuples).
     # Consumed by FixedLevelCache to produce output to accelerator.
-    read_cache_buffer: deque[tuple[int, int]] = field(default_factory=deque)
+    read_cache_buffer: deque[tuple[int, int, bool]] = field(default_factory=deque)
 
     # Independent write cache counter positions (per-level, 0..bounds[i]-1)
     write_cache_positions: list[int] = field(default_factory=list)
@@ -1103,6 +1103,12 @@ class StreamerState:
     _critical_loop_level: int = field(default=-1, repr=False)
     _total_bounds_arr: list[int] = field(default_factory=list, repr=False)
     _fixed_cache_period: int = field(default=1, repr=False)
+
+    # Original bounds for read cache counters (before ceil=1 modification).
+    # Only populated for readers with fixed cache.
+    _read_cache_bounds: list[int] = field(default_factory=list, repr=False)
+    # Cached result of uses_fixed_cache (computed before bounds modification).
+    _uses_fixed_cache: bool | None = field(default=None, repr=False)
 
     # Period/servicing tracking (matches RTL registers)
     write_period_count: int = 0
@@ -1172,10 +1178,21 @@ class StreamerState:
             self.writer_channel_bufs = [deque() for _ in range(self.spatial_banks)]
 
         # --- Initialise cache state ---
-        if self.uses_fixed_cache:
+        self._uses_fixed_cache = self.uses_fixed_cache
+        if self._uses_fixed_cache:
             self._init_cache_params()
-        if self.is_reader and self.uses_fixed_cache:
+        if self.is_reader and self._uses_fixed_cache:
             self._init_reader_cache()
+            # Apply ceil=1 for irrelevant dims in reader AGU and
+            # write cache counters (matching RTL writeCounterCeil).
+            # Read cache counters keep original bounds.
+            self._read_cache_bounds = list(self.bounds)
+            cl = self._critical_loop_level
+            self.bounds = list(self.bounds)
+            for i in range(self.num_levels):
+                if self.strides_bank[i] == 0 and i <= cl:
+                    self.bounds[i] = 1
+            self.agu.bounds = list(self.bounds)
 
     def _init_cache_params(self):
         """Compute totalBounds and criticalLoopLevel for cache index
@@ -1233,6 +1250,21 @@ class StreamerState:
                     return False
         return True
 
+    def _is_read_last_access_at(self, positions: list[int]) -> bool:
+        """Check if all irrelevant counters within cache scope are at
+        their last value (matching RTL ReadLastAccessConditions).
+
+        For each dimension where stride==0 AND i <= criticalLoop,
+        the read counter must be at its last value (bound-1 in
+        _read_cache_bounds, which holds the original unmodified bounds).
+        """
+        cl = self._critical_loop_level
+        for i in range(self.num_levels):
+            if self.strides_bank[i] == 0 and i <= cl:
+                if positions[i] != self._read_cache_bounds[i] - 1:
+                    return False
+        return True
+
     def _compute_cache_index_at(self, positions: list[int]) -> int:
         """Compute the cache index from counter positions.
 
@@ -1250,18 +1282,25 @@ class StreamerState:
                 index += positions[i] * step_size
         return index
 
-    def _cache_counter_tick(self, positions: list[int]) -> bool:
+    def _cache_counter_tick(self, positions: list[int], bounds: list[int] | None = None) -> bool:
         """Advance a cache counter chain by one tick.
 
         Models the ProgrammableCounter cascading in the RTL:
         level 0 always ticks, level i>0 ticks when level i-1
         was at lastVal (position == bounds-1) before the tick.
 
+        Args:
+            bounds: explicit bounds to use.  Defaults to self.bounds
+                (modified bounds with ceil=1 for irrelevant dims).
+                Pass self._read_cache_bounds for the read cache
+                counter which uses the original unmodified bounds.
+
         Returns True if ALL levels were at lastVal (sequence done).
         """
+        bnds = bounds if bounds is not None else self.bounds
         # Snapshot pre-tick lastVals
         pre_at_last = [
-            positions[lvl] == self.bounds[lvl] - 1
+            positions[lvl] == bnds[lvl] - 1
             for lvl in range(self.num_levels)
         ]
         all_done = True
@@ -1271,7 +1310,7 @@ class StreamerState:
                 break
             # Tick this level
             positions[lvl] += 1
-            if positions[lvl] >= self.bounds[lvl]:
+            if positions[lvl] >= bnds[lvl]:
                 positions[lvl] = 0
             if not pre_at_last[lvl]:
                 all_done = False
@@ -1323,7 +1362,7 @@ class StreamerState:
         # Determine read bank if accepting
         read_bank = -1
         if accept_new:
-            read_index, _step = self.read_cache_buffer[0]
+            read_index, _step, _la = self.read_cache_buffer[0]
             read_bank = read_index & 1
 
         issue_read = accept_new
@@ -1375,10 +1414,11 @@ class StreamerState:
         new_instr_step = self.cache_instr_step
         new_instr_index = self.cache_instr_index
         if read_fire:
-            _idx, step = self.read_cache_buffer.popleft()
+            _idx, step, last_access = self.read_cache_buffer.popleft()
             new_instr_step = step
             new_instr_index = _idx
-            self.read_serviced_period_count += 1
+            if last_access:
+                self.read_serviced_period_count += 1
 
         # ── Step 3: Compute buffer readiness (after dequeues,
         #    accounting for pipe=true: room exists if not full OR
@@ -1449,18 +1489,20 @@ class StreamerState:
             r_idx = self._compute_cache_index_at(self.read_cache_positions)
             # The AGU step for this read instruction: the read cache
             # counter visits positions in the same order as the main
-            # counter.  Convert positions to a flat step.
+            # counter.  Convert positions to a flat step using the
+            # original (unmodified) read cache bounds.
             r_step = 0
             multiplier = 1
             for lvl in range(self.num_levels):
                 r_step += self.read_cache_positions[lvl] * multiplier
-                multiplier *= self.bounds[lvl]
-            self.read_cache_buffer.append((r_idx, r_step))
+                multiplier *= self._read_cache_bounds[lvl]
+            r_last_access = self._is_read_last_access_at(self.read_cache_positions)
+            self.read_cache_buffer.append((r_idx, r_step, r_last_access))
             # Update read_issued_counter if at updateCache position
             if read_is_update:
                 self.read_issued_counter += 1
-            # Advance read counter
-            if self._cache_counter_tick(self.read_cache_positions):
+            # Advance read counter (uses original bounds)
+            if self._cache_counter_tick(self.read_cache_positions, bounds=self._read_cache_bounds):
                 self.read_cache_done = True
 
         # ── Step 7: Update FixedLevelCache registered state ──
@@ -1556,6 +1598,8 @@ class StreamerState:
         ``enableFixedCache`` is always true for readers and for
         the writer half of a ReaderWriter pair.
         """
+        if self._uses_fixed_cache is not None:
+            return self._uses_fixed_cache
         # Bound-1 levels are pruned (they are no-ops in hardware),
         # EXCEPT levels whose bound was set to 1 by the repeat
         # override (_repeat_override_level) — those are real.
@@ -2693,7 +2737,7 @@ class BlockGemmState:
                 can_accept_new = (not s.cache_instr_valid) or delivering
                 read_issued = can_accept_new and bool(s.read_cache_buffer)
                 if read_issued:
-                    read_index, _step = s.read_cache_buffer[0]
+                    read_index, _step, _la = s.read_cache_buffer[0]
                     read_bank = read_index & 1
                     write_addr = write_index >> 1
                     read_addr = read_index >> 1
@@ -2709,7 +2753,7 @@ class BlockGemmState:
                 can_accept_new = (not s.cache_instr_valid) or delivering
                 read_issued = can_accept_new and bool(s.read_cache_buffer)
                 if read_issued:
-                    read_index, _step = s.read_cache_buffer[0]
+                    read_index, _step, _la = s.read_cache_buffer[0]
                     read_bank = read_index & 1
                     if write_bank == read_bank:
                         return False  # bank conflict, write stalls
